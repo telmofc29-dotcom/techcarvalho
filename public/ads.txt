@@ -1,0 +1,4 @@
+# Tech Carvalho ads.txt
+# No advertising networks are configured yet. This file is intentionally
+# empty of seller records — add a line per IAB ads.txt spec
+# (https://iabtechlab.com/ads-txt/) once an ad network account exists.
