@@ -26,6 +26,20 @@ export function PageHeader({
   );
 }
 
+// Distinct from EmptyState: this means the query itself failed (a real
+// error, not "there are zero rows"). Admin pages using raw Supabase calls
+// (rather than reference-service.ts, which already throws on error and
+// surfaces via error.tsx) should check `error` and render this instead of
+// silently falling back to an empty list.
+export function QueryErrorBanner({ message }: { message: string }) {
+  return (
+    <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 mb-4">
+      <p className="text-sm font-medium text-red-900">Couldn&apos;t load this data</p>
+      <p className="text-xs text-red-700 mt-1">{message}</p>
+    </div>
+  );
+}
+
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
     <div className={`rounded-lg border border-neutral-200 bg-white ${className}`}>
@@ -114,7 +128,7 @@ export function LinkButton({ href, children }: { href: string; children: ReactNo
   return (
     <Link
       href={href}
-      className="inline-flex items-center rounded px-3 py-2 text-sm font-medium bg-neutral-900 text-white hover:bg-neutral-700"
+      className="inline-flex items-center rounded px-3 py-2 text-sm font-medium bg-neutral-900 text-white hover:bg-neutral-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
     >
       {children}
     </Link>
@@ -123,7 +137,10 @@ export function LinkButton({ href, children }: { href: string; children: ReactNo
 
 export function TextLink({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <Link href={href} className="text-neutral-700 underline hover:text-neutral-900">
+    <Link
+      href={href}
+      className="text-neutral-700 underline hover:text-neutral-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 rounded"
+    >
       {children}
     </Link>
   );

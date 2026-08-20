@@ -6,10 +6,17 @@ import { requireAdmin } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { insertRow, updateRow, deleteRow, type ValidationResult } from "@/lib/admin/reference-service";
 import { slugify } from "@/lib/admin/slugify";
-import type { ProductStatus, SpecDataType, Insert } from "@/lib/types/database";
+import type { ProductStatus, SpecDataType, RelationshipType, Insert } from "@/lib/types/database";
 import type { FormState } from "@/components/admin/reference-form";
 
 const VALID_STATUSES: ProductStatus[] = ["active", "discontinued", "rumored"];
+const VALID_RELATIONSHIP_TYPES: RelationshipType[] = [
+  "successor_of",
+  "alternative_to",
+  "accessory_for",
+  "compatible_with",
+  "requires",
+];
 
 function readProductPayload(formData: FormData): ValidationResult<Insert<"products">> {
   const name = String(formData.get("name") ?? "").trim();
@@ -120,6 +127,40 @@ export async function logProductFreshnessReview(productId: string, formData: For
 
   revalidatePath(`/admin/products/${productId}`);
   revalidatePath("/admin/freshness");
+}
+
+export async function addProductRelationship(productId: string, formData: FormData): Promise<void> {
+  await requireAdmin();
+  const relatedProductId = String(formData.get("related_product_id") ?? "").trim();
+  const relationshipType = String(formData.get("relationship_type") ?? "").trim();
+
+  if (!relatedProductId || relatedProductId === productId) return;
+  if (!VALID_RELATIONSHIP_TYPES.includes(relationshipType as RelationshipType)) return;
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("product_relationships").insert({
+    product_id: productId,
+    related_product_id: relatedProductId,
+    relationship_type: relationshipType as RelationshipType,
+  });
+  // Ignore duplicate-relationship conflicts (unique constraint) rather than
+  // surfacing a confusing error for re-adding the same pair/type.
+  if (error && error.code !== "23505") throw new Error(error.message);
+
+  revalidatePath(`/admin/products/${productId}`);
+}
+
+export async function deleteProductRelationship(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  const productId = String(formData.get("product_id") ?? "");
+  if (!id) return;
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("product_relationships").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+
+  if (productId) revalidatePath(`/admin/products/${productId}`);
 }
 
 function coerceSpecValue(dataType: SpecDataType, raw: string): unknown | undefined {

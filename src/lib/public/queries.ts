@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { logQueryError } from "@/lib/log/query-error";
 
 // Public-facing reads. Every table queried here has RLS policies that
 // already scope results to published rows for the anon/authenticated
@@ -11,92 +12,113 @@ import { createClient } from "@/lib/supabase/server";
 // embedded-resource joins (`table(nested)`), because the hand-written
 // Database type in src/lib/types/database.ts has no Relationships metadata
 // for supabase-js to type an embed against.
+//
+// Every query logs its error server-side (see logQueryError) even though
+// the return value still degrades to an empty/null result either way — a
+// visitor should never see a raw error, but a real query failure (bad
+// grants, RLS misconfiguration, etc.) must never look identical to
+// "genuinely no data" in the server logs the way it did during the 2026-08
+// anon-grant incident.
 
 export async function getCategoryBySlug(slug: string) {
   const supabase = await createClient();
-  const { data } = await supabase.from("taxonomy_categories").select("*").eq("slug", slug).maybeSingle();
+  const { data, error } = await supabase.from("taxonomy_categories").select("*").eq("slug", slug).maybeSingle();
+  logQueryError(`getCategoryBySlug(${slug})`, error);
   return data;
+}
+
+export async function getSubcategories(categoryId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("taxonomy_categories")
+    .select("id, name, slug")
+    .eq("parent_id", categoryId)
+    .order("sort_order");
+  logQueryError(`getSubcategories(${categoryId})`, error);
+  return data ?? [];
 }
 
 export async function getPublishedProductsForCategory(categoryId: string) {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("products")
     .select("id, name, slug, summary, status")
     .eq("category_id", categoryId)
     .eq("is_published", true)
     .order("name");
+  logQueryError(`getPublishedProductsForCategory(${categoryId})`, error);
   return data ?? [];
 }
 
-// Content is associated with a category indirectly: a published content
-// item whose primary-subject product belongs to this category. content_items
-// has no direct category column (see supabase/migrations_pending for a
-// proposed one).
+// Content is associated with a category two ways: directly via
+// content_items.category_id, or indirectly through a published content
+// item whose primary-subject product belongs to this category. Both are
+// combined (a piece may be tagged with a category directly without having
+// any product association at all).
 export async function getPublishedContentForCategory(categoryId: string) {
   const supabase = await createClient();
 
-  const { data: productsInCategory } = await supabase.from("products").select("id").eq("category_id", categoryId);
+  const [{ data: directContent, error: directError }, { data: productsInCategory, error: productsError }] =
+    await Promise.all([
+      supabase
+        .from("content_items")
+        .select("id, title, slug, type, published_at")
+        .eq("category_id", categoryId)
+        .eq("status", "published")
+        .lte("published_at", new Date().toISOString()),
+      supabase.from("products").select("id").eq("category_id", categoryId),
+    ]);
+  logQueryError(`getPublishedContentForCategory(${categoryId}) direct`, directError);
+  logQueryError(`getPublishedContentForCategory(${categoryId}) products`, productsError);
+
+  const contentById = new Map((directContent ?? []).map((c) => [c.id, c]));
+
   const productIds = (productsInCategory ?? []).map((p) => p.id);
-  if (productIds.length === 0) return [];
+  if (productIds.length > 0) {
+    const { data: links, error: linksError } = await supabase
+      .from("content_products")
+      .select("content_id")
+      .eq("role", "primary_subject")
+      .in("product_id", productIds);
+    logQueryError(`getPublishedContentForCategory(${categoryId}) links`, linksError);
+    const indirectIds = [...new Set((links ?? []).map((l) => l.content_id))].filter((id) => !contentById.has(id));
 
-  const { data: links } = await supabase
-    .from("content_products")
-    .select("content_id")
-    .eq("role", "primary_subject")
-    .in("product_id", productIds);
-  const contentIds = [...new Set((links ?? []).map((l) => l.content_id))];
-  if (contentIds.length === 0) return [];
+    if (indirectIds.length > 0) {
+      const { data: indirectContent, error: indirectError } = await supabase
+        .from("content_items")
+        .select("id, title, slug, type, published_at")
+        .in("id", indirectIds)
+        .eq("status", "published")
+        .lte("published_at", new Date().toISOString());
+      logQueryError(`getPublishedContentForCategory(${categoryId}) indirect`, indirectError);
+      for (const c of indirectContent ?? []) contentById.set(c.id, c);
+    }
+  }
 
-  const { data: content } = await supabase
-    .from("content_items")
-    .select("id, title, slug, type, published_at")
-    .in("id", contentIds)
-    .eq("status", "published")
-    .lte("published_at", new Date().toISOString())
-    .order("published_at", { ascending: false });
-
-  return content ?? [];
+  return [...contentById.values()].sort((a, b) => (b.published_at ?? "").localeCompare(a.published_at ?? ""));
 }
 
 export async function getLatestPublishedContent(limit = 6) {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("content_items")
     .select("id, title, slug, type, published_at")
     .eq("status", "published")
     .lte("published_at", new Date().toISOString())
     .order("published_at", { ascending: false })
     .limit(limit);
+  logQueryError("getLatestPublishedContent", error);
   return data ?? [];
 }
 
-export async function getPublishedProductBySlug(slug: string) {
+export async function getLatestPublishedProducts(limit = 6) {
   const supabase = await createClient();
-  const { data: product } = await supabase
+  const { data, error } = await supabase
     .from("products")
-    .select("*")
-    .eq("slug", slug)
+    .select("id, name, slug, summary, status")
     .eq("is_published", true)
-    .maybeSingle();
-  if (!product) return null;
-
-  const [{ data: manufacturer }, { data: category }] = await Promise.all([
-    supabase.from("manufacturers").select("name, slug").eq("id", product.manufacturer_id).maybeSingle(),
-    supabase.from("taxonomy_categories").select("name, slug").eq("id", product.category_id).maybeSingle(),
-  ]);
-
-  return { ...product, manufacturer, category };
-}
-
-export async function getPublishedContentBySlug(slug: string) {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("content_items")
-    .select("*")
-    .eq("slug", slug)
-    .eq("status", "published")
-    .lte("published_at", new Date().toISOString())
-    .maybeSingle();
-  return data;
+    .order("updated_at", { ascending: false })
+    .limit(limit);
+  logQueryError("getLatestPublishedProducts", error);
+  return data ?? [];
 }

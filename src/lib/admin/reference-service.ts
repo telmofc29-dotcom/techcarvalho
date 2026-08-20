@@ -28,6 +28,33 @@ export async function listRows<T extends TableName>(
   return (data ?? []) as unknown as Row<T>[];
 }
 
+export type PaginatedRows<T extends TableName> = { rows: Row<T>[]; total: number; pageCount: number; page: number };
+
+export async function listRowsPaginated<T extends TableName>(
+  table: T,
+  opts: { orderBy?: string; ascending?: boolean; page: number; pageSize: number }
+): Promise<PaginatedRows<T>> {
+  const supabase = await createClient();
+  const page = Math.max(1, opts.page);
+  const from = (page - 1) * opts.pageSize;
+  const to = from + opts.pageSize - 1;
+
+  let query = supabase.from(table).select("*", { count: "exact" }).range(from, to);
+  if (opts.orderBy) {
+    query = query.order(opts.orderBy, { ascending: opts.ascending ?? true });
+  }
+  const { data, count, error } = await query;
+  if (error) throw new Error(error.message);
+
+  const total = count ?? 0;
+  return {
+    rows: (data ?? []) as unknown as Row<T>[],
+    total,
+    pageCount: Math.max(1, Math.ceil(total / opts.pageSize)),
+    page,
+  };
+}
+
 export async function getRowById<T extends TableName>(table: T, id: string): Promise<Row<T> | null> {
   const supabase = await createClient();
   const { data, error } = await supabase

@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
-import { getRowById } from "@/lib/admin/reference-service";
-import { PageHeader, Card, Checkbox, Field, TextInput, Select, Badge } from "@/components/admin/ui";
+import { getRowById, listRows } from "@/lib/admin/reference-service";
+import { PageHeader, Card, Checkbox, Field, TextInput, Select, Badge, TextLink } from "@/components/admin/ui";
 import { SubmitButton } from "@/components/admin/submit-button";
 import { ReferenceForm, type ReferenceFieldConfig } from "@/components/admin/reference-form";
 import {
@@ -11,6 +11,7 @@ import {
   updateContentProducts,
   updateContentSeo,
   logContentFreshnessReview,
+  archiveContentItem,
 } from "../actions";
 
 function toDatetimeLocal(iso: string | null): string {
@@ -39,6 +40,8 @@ export default async function EditContentPage({
     { data: contentProductRows },
     { data: seo },
     { data: freshnessEntries },
+    categories,
+    { data: mediaLinks },
   ] = await Promise.all([
     supabase.from("taxonomy_tags").select("*").order("name"),
     supabase.from("content_tags").select("tag_id").eq("content_id", id),
@@ -46,11 +49,20 @@ export default async function EditContentPage({
     supabase.from("content_products").select("product_id, role").eq("content_id", id),
     supabase.from("seo_metadata").select("*").eq("content_id", id).maybeSingle(),
     supabase.from("freshness_log").select("*").eq("content_id", id).order("reviewed_at", { ascending: false }),
+    listRows("taxonomy_categories", { orderBy: "name" }),
+    supabase.from("content_media").select("media_id, role").eq("content_id", id),
   ]);
 
   const selectedTagIds = new Set((contentTagRows ?? []).map((r) => r.tag_id));
   const roleByProductId = new Map((contentProductRows ?? []).map((r) => [r.product_id, r.role]));
   const productIds = (allProducts ?? []).map((p) => p.id);
+
+  const mediaIds = (mediaLinks ?? []).map((m) => m.media_id);
+  const { data: mediaRows } =
+    mediaIds.length > 0
+      ? await supabase.from("media_assets").select("id, alt_text, storage_path, publication_status").in("id", mediaIds)
+      : { data: [] };
+  const mediaById = new Map((mediaRows ?? []).map((m) => [m.id, m]));
 
   const fields: ReferenceFieldConfig[] = [
     {
@@ -78,9 +90,31 @@ export default async function EditContentPage({
       options: [
         { value: "draft", label: "Draft" },
         { value: "published", label: "Published" },
+        { value: "archived", label: "Archived" },
       ],
     },
     { key: "published_at", label: "Publish at", kind: "datetime" },
+    {
+      key: "category_id",
+      label: "Primary category",
+      kind: "select",
+      emptyLabel: "No category",
+      options: categories.map((c) => ({ value: c.id, label: c.name })),
+    },
+    {
+      key: "search_intent",
+      label: "Search intent",
+      kind: "select",
+      emptyLabel: "Not specified",
+      options: [
+        { value: "informational", label: "Informational" },
+        { value: "commercial", label: "Commercial" },
+        { value: "transactional", label: "Transactional" },
+        { value: "navigational", label: "Navigational" },
+      ],
+    },
+    { key: "primary_query", label: "Primary target query", kind: "text" },
+    { key: "intent_fingerprint", label: "Intent fingerprint", kind: "text" },
   ];
 
   const defaultValues = { ...content, published_at: toDatetimeLocal(content.published_at) };
@@ -88,7 +122,19 @@ export default async function EditContentPage({
   return (
     <div className="flex flex-col gap-8 max-w-3xl">
       <div>
-        <PageHeader title={`Edit ${content.title}`} />
+        <PageHeader
+          title={`Edit ${content.title}`}
+          action={
+            content.status !== "archived" ? (
+              <form action={archiveContentItem}>
+                <input type="hidden" name="id" value={id} />
+                <button type="submit" className="text-sm text-neutral-500 underline hover:text-neutral-800">
+                  Archive
+                </button>
+              </form>
+            ) : undefined
+          }
+        />
         <ReferenceForm
           fields={fields}
           defaultValues={defaultValues}
@@ -96,17 +142,6 @@ export default async function EditContentPage({
           submitLabel="Save changes"
         />
       </div>
-
-      <Card className="p-5 bg-amber-50 border-amber-200">
-        <h2 className="text-sm font-semibold text-amber-900 mb-1">Fields pending a schema migration</h2>
-        <p className="text-xs text-amber-800">
-          Primary taxonomy/category, search intent, primary query, and intent fingerprint were requested for
-          this registry but have no backing columns in the applied schema yet. A draft, additive migration for
-          these (plus a proper &quot;archived&quot; status) is prepared under{" "}
-          <code>supabase/migrations_pending/</code> and needs review and manual application before this form can
-          safely support them.
-        </p>
-      </Card>
 
       <Card className="p-5">
         <h2 className="text-sm font-semibold text-neutral-900 mb-3">Tags</h2>
@@ -175,6 +210,36 @@ export default async function EditContentPage({
             <SubmitButton pendingLabel="Saving SEO...">Save SEO metadata</SubmitButton>
           </div>
         </form>
+      </Card>
+
+      <Card className="p-5">
+        <h2 className="text-sm font-semibold text-neutral-900 mb-1">Media</h2>
+        <p className="text-xs text-neutral-500 mb-3">
+          Managed from the Media Registry — associate this content from a media asset&apos;s edit page.
+        </p>
+        {(mediaLinks ?? []).length === 0 ? (
+          <p className="text-sm text-neutral-500">No media associated yet.</p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {(mediaLinks ?? []).map((link) => {
+              const asset = mediaById.get(link.media_id);
+              if (!asset) return null;
+              return (
+                <li key={link.media_id} className="flex items-center justify-between text-sm">
+                  <span>
+                    <Badge>{link.role}</Badge> {asset.alt_text ?? asset.storage_path.split("/").pop()}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Badge tone={asset.publication_status === "published" ? "green" : "neutral"}>
+                      {asset.publication_status}
+                    </Badge>
+                    <TextLink href={`/admin/media/${asset.id}`}>Edit</TextLink>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </Card>
 
       <Card className="p-5">

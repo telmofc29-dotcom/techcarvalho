@@ -6,12 +6,13 @@ import { requireAdmin } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { insertRow, updateRow, deleteRow, type ValidationResult } from "@/lib/admin/reference-service";
 import { slugify } from "@/lib/admin/slugify";
-import type { ContentType, ContentStatus, ContentProductRole, Insert } from "@/lib/types/database";
+import type { ContentType, ContentStatus, ContentProductRole, SearchIntent, Insert } from "@/lib/types/database";
 import type { FormState } from "@/components/admin/reference-form";
 
 const VALID_TYPES: ContentType[] = ["review", "guide", "comparison", "news"];
-const VALID_STATUSES: ContentStatus[] = ["draft", "published"];
+const VALID_STATUSES: ContentStatus[] = ["draft", "published", "archived"];
 const VALID_ROLES: ContentProductRole[] = ["primary_subject", "mentioned", "compared_against"];
+const VALID_SEARCH_INTENTS: SearchIntent[] = ["informational", "commercial", "transactional", "navigational"];
 
 function readContentPayload(
   formData: FormData
@@ -22,10 +23,17 @@ function readContentPayload(
   const body = String(formData.get("body") ?? "").trim();
   const status = String(formData.get("status") ?? "").trim();
   const publishedAtInput = String(formData.get("published_at") ?? "").trim();
+  const categoryId = String(formData.get("category_id") ?? "").trim();
+  const searchIntent = String(formData.get("search_intent") ?? "").trim();
+  const primaryQuery = String(formData.get("primary_query") ?? "").trim();
+  const intentFingerprint = String(formData.get("intent_fingerprint") ?? "").trim();
 
   if (!VALID_TYPES.includes(type as ContentType)) return { error: "Choose a valid content type." };
   if (!title) return { error: "Title is required." };
   if (!VALID_STATUSES.includes(status as ContentStatus)) return { error: "Choose a valid status." };
+  if (searchIntent && !VALID_SEARCH_INTENTS.includes(searchIntent as SearchIntent)) {
+    return { error: "Choose a valid search intent." };
+  }
 
   return {
     payload: {
@@ -35,6 +43,10 @@ function readContentPayload(
       body: body || null,
       status: status as ContentStatus,
       published_at: publishedAtInput ? new Date(publishedAtInput).toISOString() : null,
+      category_id: categoryId || null,
+      search_intent: (searchIntent as SearchIntent) || null,
+      primary_query: primaryQuery || null,
+      intent_fingerprint: intentFingerprint || null,
     },
   };
 }
@@ -85,6 +97,15 @@ export async function unpublishContentItem(formData: FormData): Promise<void> {
   const id = String(formData.get("id") ?? "");
   if (!id) return;
   await updateRow("content_items", id, { status: "draft" });
+  revalidatePath("/admin/content");
+  revalidatePath(`/admin/content/${id}`);
+}
+
+export async function archiveContentItem(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  await updateRow("content_items", id, { status: "archived" });
   revalidatePath("/admin/content");
   revalidatePath(`/admin/content/${id}`);
 }

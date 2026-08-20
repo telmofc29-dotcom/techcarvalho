@@ -5,11 +5,12 @@ import { signIn, type SignInState } from "./actions";
 
 const initialState: SignInState = { error: null };
 
-export function LoginForm() {
+export function LoginForm({ next }: { next: string }) {
   const [state, formAction, pending] = useActionState(signIn, initialState);
 
   return (
     <form action={formAction} className="flex flex-col gap-4 w-full max-w-sm">
+      <input type="hidden" name="next" value={next} />
       <div className="flex flex-col gap-1">
         <label htmlFor="email" className="text-sm font-medium">
           Email

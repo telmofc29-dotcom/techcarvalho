@@ -13,6 +13,7 @@ export async function proxy(request: NextRequest) {
   // src/lib/dal.ts, called by every admin Server Component/Action.
   if (isAdminRoute && !isLoginRoute && !user) {
     const loginUrl = new URL("/admin/login", request.url);
+    loginUrl.searchParams.set("next", pathname + request.nextUrl.search);
     return NextResponse.redirect(loginUrl);
   }
 

@@ -1,4 +1,4 @@
-import { SITE_NAME, SITE_URL, absoluteUrl } from "./site";
+import { SITE_NAME, SITE_URL, absoluteUrl } from "./site.ts";
 
 // JSON-LD builders. Only Organization and WebSite are wired into pages
 // currently. Article/Product builders are provided as ready hooks for when

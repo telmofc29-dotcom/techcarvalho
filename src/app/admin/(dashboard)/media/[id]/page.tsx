@@ -3,12 +3,15 @@ import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { getRowById } from "@/lib/admin/reference-service";
-import { mediaPublicUrl } from "@/lib/media/public-url";
-import { PageHeader, Card, Select } from "@/components/admin/ui";
+import { getAdminPreviewUrl } from "@/lib/media/admin-preview-url";
+import { evaluatePublishEligibility } from "@/lib/media/rights";
+import { PageHeader, Card, Select, Checkbox, Textarea, Field, TextInput, Badge } from "@/components/admin/ui";
 import { SubmitButton, ConfirmDeleteButton } from "@/components/admin/submit-button";
 import { ReferenceForm, type ReferenceFieldConfig } from "@/components/admin/reference-form";
+import { PublishToggle } from "../publish-toggle";
 import {
   updateMediaAsset,
+  updateMediaProvenance,
   deleteMediaAsset,
   updateMediaProductAssociations,
   updateMediaContentAssociations,
@@ -25,7 +28,10 @@ export default async function EditMediaPage({
   const asset = await getRowById("media_assets", id);
   if (!asset) notFound();
 
-  const supabase = await createClient();
+  const isPublished = asset.publication_status === "published";
+  const eligibility = evaluatePublishEligibility(asset);
+
+  const [previewUrl, supabase] = await Promise.all([getAdminPreviewUrl(asset), createClient()]);
   const [{ data: allProducts }, { data: productLinks }, { data: allContent }, { data: contentLinks }] =
     await Promise.all([
       supabase.from("products").select("id, name").order("name"),
@@ -55,7 +61,7 @@ export default async function EditMediaPage({
     { key: "width", label: "Width (px)", kind: "number" },
     { key: "height", label: "Height (px)", kind: "number" },
     { key: "license", label: "License", kind: "text" },
-    { key: "attribution", label: "Attribution", kind: "text" },
+    { key: "creator", label: "Creator", kind: "text" },
   ];
 
   return (
@@ -66,13 +72,40 @@ export default async function EditMediaPage({
           action={
             <form action={deleteMediaAsset}>
               <input type="hidden" name="id" value={id} />
-              <ConfirmDeleteButton confirmMessage="Delete this media asset? This removes the file and all associations." />
+              <ConfirmDeleteButton confirmMessage="Delete this media asset? This removes the file(s) and all associations." />
             </form>
           }
         />
+        <div className="mb-4 flex flex-col gap-2">
+          <div className="flex items-center gap-3">
+            <PublishToggle id={id} isPublished={isPublished} />
+            <Badge
+              tone={
+                asset.rights_status === "restricted"
+                  ? "red"
+                  : asset.rights_status === "verified"
+                    ? "green"
+                    : asset.rights_status === "pending_verification"
+                      ? "amber"
+                      : "neutral"
+              }
+            >
+              Rights: {(asset.rights_status ?? "unknown").replace("_", " ")}
+            </Badge>
+          </div>
+          {!isPublished && !eligibility.allowed && (
+            <p className="text-xs text-amber-700 max-w-md">{eligibility.reason}</p>
+          )}
+        </div>
         {asset.media_type === "image" && (
           <div className="relative w-full max-w-sm aspect-video bg-neutral-100 rounded-lg overflow-hidden mb-4">
-            <Image src={mediaPublicUrl(asset.storage_path)} alt={asset.alt_text ?? ""} fill className="object-cover" unoptimized />
+            {previewUrl ? (
+              <Image src={previewUrl} alt={asset.alt_text ?? ""} fill className="object-cover" unoptimized />
+            ) : (
+              <div className="flex items-center justify-center h-full text-xs text-neutral-500">
+                No preview available
+              </div>
+            )}
           </div>
         )}
         <p className="text-xs text-neutral-500 mb-4 font-mono">{asset.storage_path}</p>
@@ -84,13 +117,65 @@ export default async function EditMediaPage({
         />
       </div>
 
-      <Card className="p-5 bg-amber-50 border-amber-200">
-        <h2 className="text-sm font-semibold text-amber-900 mb-1">Fields pending a schema migration</h2>
-        <p className="text-xs text-amber-800">
-          Caption, source type, creator, source URL, attribution-required flag, AI-generated flag, and owned
-          flag were requested for this registry but have no backing columns yet. Draft additive columns are
-          prepared under <code>supabase/migrations_pending/</code>, not yet applied.
-        </p>
+      <Card className="p-5">
+        <h2 className="text-sm font-semibold text-neutral-900 mb-3">Source, licensing &amp; provenance</h2>
+        <form action={updateMediaProvenance.bind(null, id)} className="flex flex-col gap-4">
+          <Field label="Caption" htmlFor="caption">
+            <TextInput id="caption" name="caption" defaultValue={asset.caption ?? ""} />
+          </Field>
+          <Field label="Source type" htmlFor="source_type">
+            <Select id="source_type" name="source_type" defaultValue={asset.source_type ?? ""}>
+              <option value="">Not specified</option>
+              <option value="manufacturer">Manufacturer</option>
+              <option value="staff_photograph">Staff photograph</option>
+              <option value="stock_licensed">Stock (licensed)</option>
+              <option value="user_submitted">User submitted</option>
+              <option value="press_kit">Press kit</option>
+              <option value="other">Other</option>
+            </Select>
+          </Field>
+          <Field label="Source URL" htmlFor="source_url">
+            <TextInput id="source_url" name="source_url" type="url" defaultValue={asset.source_url ?? ""} />
+          </Field>
+          <Field label="Attribution text" htmlFor="attribution">
+            <Textarea id="attribution" name="attribution" rows={2} defaultValue={asset.attribution ?? ""} />
+          </Field>
+          <div className="flex flex-col gap-2">
+            <Checkbox
+              id="attribution_required"
+              name="attribution_required"
+              label="Attribution required"
+              defaultChecked={asset.attribution_required ?? false}
+            />
+            <Checkbox
+              id="ai_generated"
+              name="ai_generated"
+              label="AI-generated"
+              defaultChecked={asset.ai_generated ?? false}
+            />
+            <Checkbox
+              id="owned"
+              name="owned"
+              label="Owned by Tech Carvalho"
+              defaultChecked={asset.owned ?? false}
+            />
+          </div>
+          <Field
+            label="Rights status"
+            htmlFor="rights_status"
+            hint="Only Verified assets — or ones marked Owned, or a staff photograph — can be published."
+          >
+            <Select id="rights_status" name="rights_status" defaultValue={asset.rights_status ?? "unknown"}>
+              <option value="unknown">Unknown</option>
+              <option value="pending_verification">Pending verification</option>
+              <option value="verified">Verified</option>
+              <option value="restricted">Restricted (never publish)</option>
+            </Select>
+          </Field>
+          <div>
+            <SubmitButton pendingLabel="Saving...">Save provenance</SubmitButton>
+          </div>
+        </form>
       </Card>
 
       <Card className="p-5">

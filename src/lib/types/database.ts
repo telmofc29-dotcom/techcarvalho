@@ -12,10 +12,20 @@ export type RelationshipType =
   | "requires";
 export type SpecDataType = "text" | "number" | "boolean" | "enum";
 export type ContentType = "review" | "guide" | "comparison" | "news";
-export type ContentStatus = "draft" | "published";
+export type ContentStatus = "draft" | "published" | "archived";
 export type ContentProductRole = "primary_subject" | "mentioned" | "compared_against";
 export type MediaRole = "hero" | "gallery" | "thumbnail";
 export type ReliabilityTier = "primary" | "secondary" | "community";
+export type MediaSourceType =
+  | "manufacturer"
+  | "staff_photograph"
+  | "stock_licensed"
+  | "user_submitted"
+  | "press_kit"
+  | "other";
+export type MediaPublicationStatus = "private" | "published";
+export type MediaRightsStatus = "unknown" | "pending_verification" | "verified" | "restricted";
+export type SearchIntent = "informational" | "commercial" | "transactional" | "navigational";
 
 export interface Database {
   public: {
@@ -45,6 +55,20 @@ export interface Database {
           license: string | null;
           attribution: string | null;
           created_at: string;
+          // Added by supabase/migrations_pending/20260819_content_media_extensions_and_storage.sql,
+          // applied to production.
+          caption: string | null;
+          source_type: MediaSourceType | null;
+          creator: string | null;
+          source_url: string | null;
+          attribution_required: boolean;
+          ai_generated: boolean;
+          owned: boolean;
+          publication_status: MediaPublicationStatus;
+          public_storage_path: string | null;
+          published_at: string | null;
+          published_by: string | null;
+          rights_status: MediaRightsStatus;
         };
         Insert: {
           id?: string;
@@ -56,6 +80,18 @@ export interface Database {
           license?: string | null;
           attribution?: string | null;
           created_at?: string;
+          caption?: string | null;
+          source_type?: MediaSourceType | null;
+          creator?: string | null;
+          source_url?: string | null;
+          attribution_required?: boolean;
+          ai_generated?: boolean;
+          owned?: boolean;
+          publication_status?: MediaPublicationStatus;
+          public_storage_path?: string | null;
+          published_at?: string | null;
+          published_by?: string | null;
+          rights_status?: MediaRightsStatus;
         };
         Update: Partial<Database["public"]["Tables"]["media_assets"]["Insert"]>;
         Relationships: [];
@@ -250,6 +286,12 @@ export interface Database {
           published_at: string | null;
           created_at: string;
           updated_at: string;
+          // Added by supabase/migrations_pending/20260819_content_media_extensions_and_storage.sql,
+          // applied to production.
+          category_id: string | null;
+          search_intent: SearchIntent | null;
+          primary_query: string | null;
+          intent_fingerprint: string | null;
         };
         Insert: {
           id?: string;
@@ -262,6 +304,10 @@ export interface Database {
           published_at?: string | null;
           created_at?: string;
           updated_at?: string;
+          category_id?: string | null;
+          search_intent?: SearchIntent | null;
+          primary_query?: string | null;
+          intent_fingerprint?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["content_items"]["Insert"]>;
         Relationships: [];
