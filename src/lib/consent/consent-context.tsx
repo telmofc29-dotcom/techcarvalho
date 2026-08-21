@@ -111,3 +111,22 @@ export function useConsent(): ConsentContextValue {
   if (!ctx) throw new Error("useConsent must be used within a ConsentProvider");
   return ctx;
 }
+
+// Raw, non-hook read of the same persisted value ConsentProvider itself
+// reads — for the handful of call sites (the first-party event dispatcher
+// in particular) that need a consent check from plain functions, not React
+// components, and therefore can't call useConsent(). Deliberately reuses
+// this file's own STORAGE_KEY/shape rather than duplicating either, so the
+// two can never drift out of sync. Fails closed (false) on any error,
+// exactly like ConsentProvider's own read does.
+export function hasAnalyticsConsent(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    if (!stored) return false;
+    const parsed = JSON.parse(stored) as Partial<Record<ConsentCategory, boolean>>;
+    return Boolean(parsed.analytics);
+  } catch {
+    return false;
+  }
+}

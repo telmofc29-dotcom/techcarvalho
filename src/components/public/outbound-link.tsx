@@ -9,7 +9,13 @@ import { AFFILIATE_DISCLOSURE_LABEL, AFFILIATE_DISCLOSURE_TOOLTIP, relFor } from
 type BaseProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "rel" | "target"> & {
   href: string;
   destinationDomain: string;
-  linkPosition: LinkPosition;
+  // Excludes "home" — no outbound/affiliate link currently lives on the
+  // homepage, and OutboundClickLinkPosition (the outbound_click_events
+  // table's own CHECK constraint, see src/lib/types/database.ts) doesn't
+  // include it either. Narrowing here keeps that DB-level constraint
+  // enforced at compile time without widening the constraint itself for a
+  // position no outbound link actually uses.
+  linkPosition: Exclude<LinkPosition, "home">;
   contentId?: string;
   productId?: string;
 };

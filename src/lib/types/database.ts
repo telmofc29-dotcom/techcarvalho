@@ -47,6 +47,23 @@ export type OutboundClickLinkPosition =
   | "search_results"
   | "related_content";
 export type OutboundClickKind = "affiliate" | "outbound";
+// Added by supabase/migrations_pending/20260821_first_party_analytics.sql —
+// mirrors src/lib/analytics/events.ts's own vocabularies; keep both in sync
+// if either changes.
+export type AnalyticsDeviceType = "mobile" | "tablet" | "desktop";
+export type AnalyticsEntityType = "product" | "content" | "manufacturer" | "category";
+export type AnalyticsEventType =
+  | "page_view"
+  | "internal_link_click"
+  | "related_content_click"
+  | "navigation_click"
+  | "search"
+  | "search_result_click"
+  | "scroll_depth"
+  | "cta_click"
+  | "outbound_link_click"
+  | "affiliate_click";
+export type AnalyticsRollupDimension = "category" | "product" | "content" | "manufacturer" | "search_term" | "path" | "site";
 export type MediaRole = "hero" | "gallery" | "thumbnail";
 export type ReliabilityTier = "primary" | "secondary" | "community";
 export type MediaSourceType =
@@ -613,9 +630,110 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["outbound_click_events"]["Insert"]>;
         Relationships: [];
       };
+      // Added by supabase/migrations_pending/20260821_first_party_analytics.sql
+      // — TechCarvalho's own first-party session/event analytics, separate from
+      // outbound_click_events (see that migration's header for the full
+      // three-privacy-tier design). anon insert-only, admin-read-only.
+      analytics_visitors: {
+        Row: { id: string; first_seen_at: string; last_seen_at: string };
+        Insert: { id?: string; first_seen_at?: string; last_seen_at?: string };
+        Update: Partial<Database["public"]["Tables"]["analytics_visitors"]["Insert"]>;
+        Relationships: [];
+      };
+      analytics_sessions: {
+        Row: {
+          id: string;
+          visitor_id: string | null;
+          started_at: string;
+          last_seen_at: string;
+          entry_path: string;
+          referrer_host: string | null;
+          utm_source: string | null;
+          utm_medium: string | null;
+          utm_campaign: string | null;
+          device_type: AnalyticsDeviceType | null;
+          is_admin: boolean;
+        };
+        Insert: {
+          id?: string;
+          visitor_id?: string | null;
+          started_at?: string;
+          last_seen_at?: string;
+          entry_path: string;
+          referrer_host?: string | null;
+          utm_source?: string | null;
+          utm_medium?: string | null;
+          utm_campaign?: string | null;
+          device_type?: AnalyticsDeviceType | null;
+          is_admin?: boolean;
+        };
+        Update: Partial<Database["public"]["Tables"]["analytics_sessions"]["Insert"]>;
+        Relationships: [];
+      };
+      analytics_events: {
+        Row: {
+          id: string;
+          session_id: string;
+          event_type: AnalyticsEventType;
+          path: string;
+          entity_type: AnalyticsEntityType | null;
+          product_id: string | null;
+          content_id: string | null;
+          manufacturer_id: string | null;
+          category_slug: string | null;
+          metadata: Record<string, unknown>;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          session_id: string;
+          event_type: AnalyticsEventType;
+          path: string;
+          entity_type?: AnalyticsEntityType | null;
+          product_id?: string | null;
+          content_id?: string | null;
+          manufacturer_id?: string | null;
+          category_slug?: string | null;
+          metadata?: Record<string, unknown>;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["analytics_events"]["Insert"]>;
+        Relationships: [];
+      };
+      analytics_daily_rollups: {
+        Row: {
+          day: string;
+          dimension_type: AnalyticsRollupDimension;
+          dimension_key: string;
+          sessions: number;
+          page_views: number;
+          event_count: number;
+          outbound_clicks: number;
+          affiliate_clicks: number;
+          computed_at: string;
+        };
+        Insert: {
+          day: string;
+          dimension_type: AnalyticsRollupDimension;
+          dimension_key: string;
+          sessions?: number;
+          page_views?: number;
+          event_count?: number;
+          outbound_clicks?: number;
+          affiliate_clicks?: number;
+          computed_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["analytics_daily_rollups"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: { [_ in never]: never };
-    Functions: { [_ in never]: never };
+    Functions: {
+      compute_analytics_rollup: {
+        Args: { target_day: string };
+        Returns: void;
+      };
+    };
   };
 }
 

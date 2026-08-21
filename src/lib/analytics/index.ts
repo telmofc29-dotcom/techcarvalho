@@ -11,6 +11,7 @@
 // invented.
 
 import type { EventName, EventParams } from "./events";
+import { sendFirstPartyEvent } from "./session-events";
 
 declare global {
   interface Window {
@@ -26,11 +27,16 @@ export function isAnalyticsConfigured(): boolean {
 }
 
 // Typed event tracking — the only supported way to send a custom event.
-// Silently no-ops if gtag isn't loaded (not configured, or consent not
-// granted yet), so call sites never need to guard this themselves.
+// Fans out to two independent destinations, each with its own gate: GA4
+// (via gtag, no-op if not loaded — not configured, or consent not granted
+// yet) and TechCarvalho's own first-party session/event system (see
+// session-events.ts, gated on the same analytics consent + production-host
+// checks internally). Call sites never need to guard either themselves,
+// and never need to call both separately — one track() call reaches both.
 export function track<N extends EventName>(name: N, params: EventParams<N>): void {
-  if (typeof window === "undefined" || !window.gtag) return;
-  window.gtag("event", name, params as Record<string, unknown>);
+  if (typeof window === "undefined") return;
+  if (window.gtag) window.gtag("event", name, params as Record<string, unknown>);
+  sendFirstPartyEvent(name, params);
 }
 
 // Only used by the route-change listener in analytics-scripts.tsx — GA4's

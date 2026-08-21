@@ -32,7 +32,15 @@ type CategoryContext = {
   category_slug?: string;
 };
 
+// Note: intentionally a superset of database.ts's OutboundClickLinkPosition
+// (which mirrors the outbound_click_events table's own CHECK constraint —
+// see 20260820_outbound_click_events.sql). "home" is only ever used for
+// page_view/internal_link_click/navigation_click context, never as an
+// outbound/affiliate link's position, so it doesn't need a matching DB
+// migration. If a future homepage outbound link is ever added, extend
+// that CHECK constraint (and OutboundClickLinkPosition) at that point.
 export type LinkPosition =
+  | "home"
   | "article_top"
   | "article_body"
   | "article_end"
@@ -46,8 +54,18 @@ export type LinkPosition =
   | "related_content";
 
 export type TechCarvalhoEventMap = {
-  // Traffic / navigation
-  page_view: { path: string };
+  // Traffic / navigation. entity_* fields are optional context carried
+  // alongside the generic path — this is what lets a single page_view
+  // event answer "which category/product/article was actually viewed"
+  // for the first-party content-interest dashboard, without needing three
+  // separate view-event names for what is, at the analytics-consumer
+  // level, one concept ("a page was viewed").
+  page_view: {
+    path: string;
+    entity_type?: "product" | "content" | "manufacturer" | "category";
+    entity_id?: string;
+    category_slug?: string;
+  };
   navigation_click: { link_position: LinkPosition; destination: string; label?: string };
 
   // Content journeys — the whole point of the internal-link architecture.
@@ -68,7 +86,7 @@ export type TechCarvalhoEventMap = {
   };
 
   // Engagement
-  scroll_depth: ContentContext & { milestone: 25 | 50 | 75 | 100 };
+  scroll_depth: ContentContext & { milestone: 25 | 50 | 75 | 90 | 100 };
   cta_click: { cta_id: string; link_position: LinkPosition; destination: string };
 
   // Outbound / monetisation
@@ -93,12 +111,16 @@ const MAX_TEXT_LENGTH = 200;
 
 // Strips anything that isn't plain readable text and caps length, so a
 // search query or label can never smuggle HTML/script content or become an
-// unbounded payload into analytics.
-export function sanitizeEventText(input: string): string {
+// unbounded payload into analytics. maxLength defaults to 200 (the
+// original fixed cap) but is overridable for fields with a different,
+// deliberately chosen limit (e.g. the analytics ingestion route's
+// referrer_host/utm_* columns, each capped to match their own CHECK
+// constraint in supabase/migrations_pending/20260821_first_party_analytics.sql).
+export function sanitizeEventText(input: string, maxLength: number = MAX_TEXT_LENGTH): string {
   return input
     .replace(/[<>]/g, "")
     .trim()
-    .slice(0, MAX_TEXT_LENGTH);
+    .slice(0, maxLength);
 }
 
 // Only allow a fixed vocabulary of category context values through — never
