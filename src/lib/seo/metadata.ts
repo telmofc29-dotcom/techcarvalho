@@ -37,15 +37,23 @@ export function buildMetadata({
   description,
   path,
   noindex = false,
+  image,
 }: {
   title: string;
   description?: string;
   path: string;
   noindex?: boolean;
+  // Absolute or root-relative URL of a real hero image for this specific
+  // page (product/article). Omit when none exists — the root
+  // opengraph-image.tsx file convention already supplies a site-wide
+  // fallback for any page that doesn't set its own, so leaving this unset
+  // is not "no image", just "use the default".
+  image?: { url: string; alt?: string | null } | null;
 }): Metadata {
   const fullTitle = title === SITE_NAME ? title : `${title} | ${SITE_NAME}`;
   const desc = description ?? SITE_TAGLINE;
   const url = absoluteUrl(path);
+  const ogImages = image ? [{ url: image.url, alt: image.alt ?? fullTitle }] : undefined;
 
   return {
     title: fullTitle,
@@ -58,11 +66,13 @@ export function buildMetadata({
       url,
       siteName: SITE_NAME,
       type: "website",
+      ...(ogImages ? { images: ogImages } : {}),
     },
     twitter: {
-      card: "summary",
+      card: image ? "summary_large_image" : "summary",
       title: fullTitle,
       description: desc,
+      ...(ogImages ? { images: ogImages } : {}),
     },
   };
 }

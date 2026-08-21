@@ -3,6 +3,7 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { logQueryError } from "@/lib/log/query-error";
 import { attachExcerpts } from "./excerpt";
+import { attachHeroImages } from "./hero-image";
 
 // Public-facing reads. Every table queried here has RLS policies that
 // already scope results to published rows for the anon/authenticated
@@ -51,7 +52,7 @@ export async function getPublishedProductsForCategory(categoryId: string) {
     .eq("is_published", true)
     .order("name");
   logQueryError(`getPublishedProductsForCategory(${categoryId})`, error);
-  return data ?? [];
+  return attachHeroImages(supabase, data ?? [], "product");
 }
 
 // Manufacturers with at least one published product in this category — a
@@ -125,7 +126,7 @@ export async function getPublishedContentForCategory(categoryId: string) {
   }
 
   const sorted = [...contentById.values()].sort((a, b) => (b.published_at ?? "").localeCompare(a.published_at ?? ""));
-  return attachExcerpts(supabase, sorted);
+  return attachHeroImages(supabase, await attachExcerpts(supabase, sorted), "content");
 }
 
 export async function getLatestPublishedContent(limit = 6) {
@@ -138,7 +139,7 @@ export async function getLatestPublishedContent(limit = 6) {
     .order("published_at", { ascending: false })
     .limit(limit);
   logQueryError("getLatestPublishedContent", error);
-  return attachExcerpts(supabase, data ?? []);
+  return attachHeroImages(supabase, await attachExcerpts(supabase, data ?? []), "content");
 }
 
 export async function getLatestPublishedGuides(limit = 6) {
@@ -152,7 +153,7 @@ export async function getLatestPublishedGuides(limit = 6) {
     .order("published_at", { ascending: false })
     .limit(limit);
   logQueryError("getLatestPublishedGuides", error);
-  return attachExcerpts(supabase, data ?? []);
+  return attachHeroImages(supabase, await attachExcerpts(supabase, data ?? []), "content");
 }
 
 export async function getLatestPublishedProducts(limit = 6) {
@@ -164,5 +165,5 @@ export async function getLatestPublishedProducts(limit = 6) {
     .order("updated_at", { ascending: false })
     .limit(limit);
   logQueryError("getLatestPublishedProducts", error);
-  return data ?? [];
+  return attachHeroImages(supabase, data ?? [], "product");
 }

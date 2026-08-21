@@ -2,6 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { logQueryError } from "@/lib/log/query-error";
 import { attachExcerpts } from "./excerpt";
+import { attachHeroImages } from "./hero-image";
 import type { ContentType } from "@/lib/types/database";
 
 const PAGE_SIZE = 24;
@@ -23,7 +24,7 @@ export async function getPublishedContentPage(page: number, type?: ContentType) 
   const { data, count, error } = await query;
   logQueryError(`getPublishedContentPage(${page}, ${type ?? "all"})`, error);
   const total = count ?? 0;
-  const content = await attachExcerpts(supabase, data ?? []);
+  const content = await attachHeroImages(supabase, await attachExcerpts(supabase, data ?? []), "content");
 
   return { content, total, pageCount: Math.max(1, Math.ceil(total / PAGE_SIZE)) };
 }

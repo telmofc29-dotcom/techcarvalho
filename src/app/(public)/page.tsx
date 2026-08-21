@@ -111,6 +111,8 @@ export default async function HomePage() {
                     title={item.title}
                     publishedAt={item.published_at}
                     excerpt={item.excerpt}
+                    imageUrl={item.heroImage?.url}
+                    imageAlt={item.heroImage?.alt}
                   />
                 </li>
               ))}
@@ -138,6 +140,8 @@ export default async function HomePage() {
                     title={item.title}
                     publishedAt={item.published_at}
                     excerpt={item.excerpt}
+                    imageUrl={item.heroImage?.url}
+                    imageAlt={item.heroImage?.alt}
                   />
                 </li>
               ))}
@@ -164,7 +168,14 @@ export default async function HomePage() {
             <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {latestProducts.map((p) => (
                 <li key={p.id}>
-                  <ProductCard href={`/products/${p.slug}`} name={p.name} summary={p.summary} status={p.status} />
+                  <ProductCard
+                    href={`/products/${p.slug}`}
+                    name={p.name}
+                    summary={p.summary}
+                    status={p.status}
+                    imageUrl={p.heroImage?.url}
+                    imageAlt={p.heroImage?.alt}
+                  />
                 </li>
               ))}
             </ul>

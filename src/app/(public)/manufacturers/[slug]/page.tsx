@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { buildMetadata } from "@/lib/seo/metadata";
@@ -34,7 +35,7 @@ export default async function ManufacturerPage({
   const detail = await getManufacturerDetail(slug);
   if (!detail) notFound();
 
-  const { manufacturer, products, families } = detail;
+  const { manufacturer, logo, products, families } = detail;
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-12">
@@ -45,6 +46,12 @@ export default async function ManufacturerPage({
           { name: manufacturer.name, path: `/manufacturers/${slug}` },
         ]}
       />
+
+      {logo && (
+        <div className="relative h-16 w-40 mb-4">
+          <Image src={logo.url} alt={logo.alt ?? `${manufacturer.name} logo`} fill className="object-contain object-left" />
+        </div>
+      )}
 
       <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight text-zinc-900 mb-3">
         {manufacturer.name}
@@ -86,7 +93,14 @@ export default async function ManufacturerPage({
           <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {products.map((p) => (
               <li key={p.id}>
-                <ProductCard href={`/products/${p.slug}`} name={p.name} summary={p.summary} status={p.status} />
+                <ProductCard
+                  href={`/products/${p.slug}`}
+                  name={p.name}
+                  summary={p.summary}
+                  status={p.status}
+                  imageUrl={p.heroImage?.url}
+                  imageAlt={p.heroImage?.alt}
+                />
               </li>
             ))}
           </ul>

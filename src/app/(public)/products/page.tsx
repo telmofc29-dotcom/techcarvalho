@@ -85,6 +85,8 @@ export default async function ProductsIndexPage({
                   manufacturerName={p.manufacturerName}
                   summary={p.summary}
                   status={p.status}
+                  imageUrl={p.heroImage?.url}
+                  imageAlt={p.heroImage?.alt}
                 />
               </li>
             ))}

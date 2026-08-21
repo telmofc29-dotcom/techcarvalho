@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { buildMetadata } from "@/lib/seo/metadata";
 import { articleJsonLd, safeJsonLdString } from "@/lib/seo/jsonld";
 import { getArticleDetail } from "@/lib/public/article-detail";
+import { getPublishedGallery } from "@/lib/public/hero-image";
 import { Breadcrumbs } from "@/components/public/breadcrumbs";
 import { ContentCard, CONTENT_TYPE_LABEL } from "@/components/public/cards";
 import { RelatedContentTracker } from "@/components/public/related-content-tracker";
@@ -24,6 +25,7 @@ export async function generateMetadata({
     title: detail.seo?.meta_title ?? detail.content.title,
     description: detail.seo?.meta_description ?? undefined,
     path: `/articles/${slug}`,
+    image: detail.heroImage,
   });
 }
 
@@ -38,6 +40,7 @@ export default async function ArticlePage({
 
   const { content, products, tags, freshness, related, heroImage } = detail;
   const lastVerified = freshness[0]?.reviewed_at ?? null;
+  const gallery = await getPublishedGallery("content", content.id);
 
   const jsonLd = articleJsonLd({
     title: content.title,
@@ -135,6 +138,32 @@ export default async function ArticlePage({
         <p className="text-zinc-500 italic">This piece doesn&apos;t have body content yet.</p>
       )}
 
+      {gallery.length > 0 && (
+        <div className="mt-8 flex flex-col gap-6">
+          {gallery.map((img, i) => (
+            <figure key={i} className="flex flex-col gap-2">
+              <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-zinc-100">
+                <Image src={img.url} alt={img.alt ?? content.title} fill className="object-cover" loading="lazy" />
+              </div>
+              {(img.caption || (img.attributionRequired && (img.attribution || img.creator))) && (
+                <figcaption className="text-xs text-zinc-500">
+                  {img.caption}
+                  {img.caption && img.attributionRequired && (img.attribution || img.creator) ? " — " : ""}
+                  {img.attributionRequired &&
+                    (img.sourceUrl ? (
+                      <a href={img.sourceUrl} target="_blank" rel="noopener noreferrer nofollow" className="underline hover:text-accent">
+                        {img.attribution ?? img.creator}
+                      </a>
+                    ) : (
+                      img.attribution ?? img.creator
+                    ))}
+                </figcaption>
+              )}
+            </figure>
+          ))}
+        </div>
+      )}
+
       {tags.length > 0 && (
         <div className="flex flex-wrap gap-2 mt-8">
           {tags.map((t) => (
@@ -161,7 +190,14 @@ export default async function ArticlePage({
             <ul className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {related.map((item) => (
                 <li key={item.id}>
-                  <ContentCard href={`/articles/${item.slug}`} type={item.type} title={item.title} publishedAt={item.published_at} />
+                  <ContentCard
+                    href={`/articles/${item.slug}`}
+                    type={item.type}
+                    title={item.title}
+                    publishedAt={item.published_at}
+                    imageUrl={item.heroImage?.url}
+                    imageAlt={item.heroImage?.alt}
+                  />
                 </li>
               ))}
             </ul>

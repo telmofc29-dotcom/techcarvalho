@@ -1,7 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
-import { getPublishedHeroImage, type HeroImage } from "./hero-image";
+import { getPublishedHeroImage, attachHeroImages, type HeroImage } from "./hero-image";
 import { logQueryError } from "@/lib/log/query-error";
 
 export type ArticleDetail = {
@@ -18,7 +18,7 @@ export type ArticleDetail = {
   tags: { name: string; slug: string }[];
   freshness: { reviewed_at: string; reason: string }[];
   seo: { meta_title: string | null; meta_description: string | null; canonical_url: string | null } | null;
-  related: { id: string; title: string; slug: string; type: string; published_at: string | null }[];
+  related: { id: string; title: string; slug: string; type: string; published_at: string | null; heroImage: HeroImage | null }[];
   heroImage: HeroImage | null;
 };
 
@@ -132,6 +132,7 @@ export const getArticleDetail = cache(async (slug: string): Promise<ArticleDetai
     relatedIds.add(item.id);
     return true;
   });
+  const relatedWithImages = await attachHeroImages(supabase, related.slice(0, 3), "content");
 
   return {
     content,
@@ -139,7 +140,7 @@ export const getArticleDetail = cache(async (slug: string): Promise<ArticleDetai
     tags: tags ?? [],
     freshness: freshnessRows ?? [],
     seo: seo ?? null,
-    related: related.slice(0, 3),
+    related: relatedWithImages,
     heroImage,
   };
 });

@@ -69,6 +69,8 @@ export default async function ArticlesIndexPage({
                   title={item.title}
                   publishedAt={item.published_at}
                   excerpt={item.excerpt}
+                  imageUrl={item.heroImage?.url}
+                  imageAlt={item.heroImage?.alt}
                 />
               </li>
             ))}

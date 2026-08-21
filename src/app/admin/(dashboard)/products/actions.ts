@@ -6,10 +6,18 @@ import { requireAdmin } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { insertRow, updateRow, deleteRow, type ValidationResult } from "@/lib/admin/reference-service";
 import { slugify } from "@/lib/admin/slugify";
-import type { ProductStatus, SpecDataType, RelationshipType, AffiliateStatus, Insert } from "@/lib/types/database";
+import type {
+  ProductStatus,
+  SpecDataType,
+  RelationshipType,
+  AffiliateStatus,
+  LaunchPricingCurrency,
+  Insert,
+} from "@/lib/types/database";
 import type { FormState } from "@/components/admin/reference-form";
 
 const VALID_STATUSES: ProductStatus[] = ["active", "discontinued", "rumored"];
+const LAUNCH_PRICING_CURRENCIES: LaunchPricingCurrency[] = ["USD", "GBP", "EUR"];
 const VALID_RELATIONSHIP_TYPES: RelationshipType[] = [
   "successor_of",
   "alternative_to",
@@ -226,6 +234,59 @@ export async function updateProductSeo(productId: string, formData: FormData): P
     { onConflict: "product_id" }
   );
   if (error) throw new Error(error.message);
+
+  revalidatePath(`/admin/products/${productId}`);
+}
+
+// product_launch_pricing (see
+// supabase/migrations_pending/20260821_product_launch_pricing.sql — not yet
+// applied to production). One form, three fixed currency slots
+// (amount_USD/amount_GBP/amount_EUR etc.) rather than an arbitrary add/
+// delete list, since a product has at most one row per currency by design.
+// Leaving a currency's amount blank deletes any existing row for it —
+// clearing a previously-sourced price should mean "we no longer have this",
+// not a stale row nobody can see how to remove.
+export async function updateProductLaunchPricing(productId: string, formData: FormData): Promise<void> {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  for (const currency of LAUNCH_PRICING_CURRENCIES) {
+    const amountRaw = String(formData.get(`amount_${currency}`) ?? "").trim();
+
+    if (!amountRaw) {
+      const { error } = await supabase
+        .from("product_launch_pricing")
+        .delete()
+        .eq("product_id", productId)
+        .eq("currency", currency);
+      if (error) throw new Error(error.message);
+      continue;
+    }
+
+    const amount = Number(amountRaw);
+    if (Number.isNaN(amount) || amount <= 0) {
+      throw new Error(`${currency} launch price must be a positive number.`);
+    }
+
+    const sourceUrl = String(formData.get(`source_url_${currency}`) ?? "").trim();
+    const sourcePublisher = String(formData.get(`source_publisher_${currency}`) ?? "").trim();
+    const note = String(formData.get(`note_${currency}`) ?? "").trim();
+    const isEstimated = formData.get(`is_estimated_${currency}`) === "on";
+
+    const { error } = await supabase.from("product_launch_pricing").upsert(
+      {
+        product_id: productId,
+        currency,
+        amount,
+        is_estimated: isEstimated,
+        source_url: sourceUrl || null,
+        source_publisher: sourcePublisher || null,
+        note: note || null,
+      },
+      { onConflict: "product_id,currency" }
+    );
+    if (error) throw new Error(error.message);
+  }
 
   revalidatePath(`/admin/products/${productId}`);
 }

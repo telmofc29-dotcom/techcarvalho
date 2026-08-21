@@ -5,10 +5,12 @@ import { notFound } from "next/navigation";
 import { buildMetadata } from "@/lib/seo/metadata";
 import { productJsonLd, safeJsonLdString } from "@/lib/seo/jsonld";
 import { getProductDetail } from "@/lib/public/product-detail";
+import { getPublishedGallery } from "@/lib/public/hero-image";
 import { Breadcrumbs } from "@/components/public/breadcrumbs";
 import { ContentCard } from "@/components/public/cards";
 import { RelatedContentTracker } from "@/components/public/related-content-tracker";
 import { OutboundLink } from "@/components/public/outbound-link";
+import { LaunchPricingDisplay } from "@/components/public/launch-pricing";
 import { outboundLinkKindFor, destinationDomainOf } from "@/lib/monetisation/affiliate";
 import { Badge, EmptyState } from "@/components/shared/ui";
 
@@ -25,6 +27,7 @@ export async function generateMetadata({
     title: detail.product.name,
     description: detail.product.summary ?? undefined,
     path: `/products/${slug}`,
+    image: detail.heroImage,
   });
 }
 
@@ -37,9 +40,10 @@ export default async function ProductPage({
   const detail = await getProductDetail(slug);
   if (!detail) notFound();
 
-  const { product, manufacturer, family, category, specs, tags, related, articles, heroImage, offers, freshness, sourceCount, evidenceCount } =
+  const { product, manufacturer, family, category, specs, tags, related, articles, heroImage, offers, launchPricing, freshness, sourceCount, evidenceCount } =
     detail;
   const lastVerified = freshness[0]?.reviewed_at ?? null;
+  const gallery = await getPublishedGallery("product", product.id);
 
   const jsonLd = productJsonLd({
     name: product.name,
@@ -65,8 +69,32 @@ export default async function ProductPage({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
         <div className="lg:col-span-2">
           {heroImage && (
-            <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-zinc-100 mb-6">
-              <Image src={heroImage.url} alt={heroImage.alt ?? product.name} fill className="object-cover" />
+            <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-zinc-100 mb-3">
+              <Image src={heroImage.url} alt={heroImage.alt ?? product.name} fill priority className="object-cover" />
+            </div>
+          )}
+
+          {gallery.length > 0 && (
+            <div className="mb-6">
+              <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
+                {gallery.map((img, i) => (
+                  <div
+                    key={i}
+                    className="relative shrink-0 w-32 sm:w-40 aspect-[4/3] rounded-lg overflow-hidden bg-zinc-100 snap-start"
+                  >
+                    <Image src={img.url} alt={img.alt ?? product.name} fill sizes="160px" className="object-cover" loading="lazy" />
+                  </div>
+                ))}
+              </div>
+              {gallery.some((img) => img.attributionRequired && (img.attribution || img.creator)) && (
+                <p className="mt-1 text-xs text-zinc-400">
+                  Images:{" "}
+                  {gallery
+                    .filter((img) => img.attributionRequired && (img.attribution || img.creator))
+                    .map((img) => img.attribution ?? img.creator)
+                    .join(", ")}
+                </p>
+              )}
             </div>
           )}
 
@@ -82,6 +110,8 @@ export default async function ProductPage({
             {product.name}
           </h1>
           {product.summary && <p className="text-lg text-zinc-600 mb-3">{product.summary}</p>}
+          <LaunchPricingDisplay pricing={launchPricing} />
+          <div className="mb-3" />
           {lastVerified && (
             <p className="text-xs text-zinc-400 mb-3">
               Last verified{" "}
@@ -150,7 +180,13 @@ export default async function ProductPage({
                 <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {articles.map((a) => (
                     <li key={a.id}>
-                      <ContentCard href={`/articles/${a.slug}`} type={a.type} title={a.title} />
+                      <ContentCard
+                        href={`/articles/${a.slug}`}
+                        type={a.type}
+                        title={a.title}
+                        imageUrl={a.heroImage?.url}
+                        imageAlt={a.heroImage?.alt}
+                      />
                     </li>
                   ))}
                 </ul>

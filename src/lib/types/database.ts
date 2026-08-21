@@ -30,6 +30,8 @@ export type ContentProductRole = "primary_subject" | "mentioned" | "compared_aga
 export type ContentRelationshipType = "pillar_of" | "supporting_of" | "related_to";
 // Added by supabase/migrations/20260820_product_offers.sql.
 export type AffiliateStatus = "affiliate" | "non_affiliate" | "pending";
+// Drafted by supabase/migrations_pending/20260821_product_launch_pricing.sql — not yet applied to production.
+export type LaunchPricingCurrency = "USD" | "GBP" | "EUR";
 // Added by supabase/migrations/20260820_outbound_click_events.sql. Mirrors LinkPosition in
 // src/lib/analytics/events.ts — keep both in sync if either changes.
 export type OutboundClickLinkPosition =
@@ -290,6 +292,37 @@ export interface Database {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["product_offers"]["Insert"]>;
+        Relationships: [];
+      };
+      // Drafted by supabase/migrations_pending/20260821_product_launch_pricing.sql —
+      // not yet applied to production. Historical launch MSRP, structured per
+      // currency, distinct from product_offers (current retailer pricing).
+      product_launch_pricing: {
+        Row: {
+          id: string;
+          product_id: string;
+          currency: LaunchPricingCurrency;
+          amount: number;
+          is_estimated: boolean;
+          source_url: string | null;
+          source_publisher: string | null;
+          note: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          product_id: string;
+          currency: LaunchPricingCurrency;
+          amount: number;
+          is_estimated?: boolean;
+          source_url?: string | null;
+          source_publisher?: string | null;
+          note?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["product_launch_pricing"]["Insert"]>;
         Relationships: [];
       };
       spec_definitions: {

@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { logQueryError } from "@/lib/log/query-error";
+import { attachHeroImages } from "./hero-image";
 
 const PAGE_SIZE = 24;
 
@@ -53,7 +54,11 @@ export async function getPublishedProductsPage(page: number, filters: ProductLis
   logQueryError(`getPublishedProductsPage(${page}) manufacturers`, manufacturersError);
   const manufacturerNameById = new Map((manufacturers ?? []).map((m) => [m.id, m.name]));
 
-  const products = (data ?? []).map((p) => ({ ...p, manufacturerName: manufacturerNameById.get(p.manufacturer_id) ?? null }));
+  const productsWithManufacturer = (data ?? []).map((p) => ({
+    ...p,
+    manufacturerName: manufacturerNameById.get(p.manufacturer_id) ?? null,
+  }));
+  const products = await attachHeroImages(supabase, productsWithManufacturer, "product");
   const total = count ?? 0;
 
   return { products, total, pageCount: Math.max(1, Math.ceil(total / PAGE_SIZE)) };

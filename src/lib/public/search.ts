@@ -3,10 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import { sanitizeSearchTerm } from "@/lib/search/sanitize";
 import { logQueryError } from "@/lib/log/query-error";
 import { attachExcerpts } from "./excerpt";
+import { attachHeroImages, type HeroImage } from "./hero-image";
 
 export type SiteSearchResults = {
-  products: { id: string; name: string; slug: string; summary: string | null }[];
-  content: { id: string; title: string; slug: string; type: string; excerpt: string | null }[];
+  products: { id: string; name: string; slug: string; summary: string | null; heroImage: HeroImage | null }[];
+  content: { id: string; title: string; slug: string; type: string; excerpt: string | null; heroImage: HeroImage | null }[];
   manufacturers: { id: string; name: string; slug: string }[];
   categories: { id: string; name: string; slug: string }[];
 };
@@ -50,8 +51,8 @@ export async function searchSite(rawQuery: string): Promise<SiteSearchResults> {
   logQueryError(`searchSite(${q}) categories`, categories.error);
 
   return {
-    products: products.data ?? [],
-    content: await attachExcerpts(supabase, content.data ?? []),
+    products: await attachHeroImages(supabase, products.data ?? [], "product"),
+    content: await attachHeroImages(supabase, await attachExcerpts(supabase, content.data ?? []), "content"),
     manufacturers: manufacturers.data ?? [],
     categories: categories.data ?? [],
   };

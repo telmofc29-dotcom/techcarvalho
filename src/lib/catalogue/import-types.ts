@@ -114,6 +114,25 @@ export type ProductImport = {
   // (or keep this field in sync) in future re-runs of the same data file.
   metaTitle?: string;
   metaDescription?: string;
+  // Optional — maps onto the (not-yet-applied, see
+  // supabase/migrations_pending/20260821_product_launch_pricing.sql)
+  // product_launch_pricing table. Distinct from the older
+  // "launch-msrp-usd" spec_definition (still the only place USD launch
+  // price actually lives for every existing product) — this is the
+  // structured, multi-currency, provenance-carrying replacement going
+  // forward. isEstimated must only ever be true for a deliberately-flagged
+  // approximate/derived FX conversion, never the default for a genuinely
+  // sourced regional price.
+  launchPricing?: LaunchPricingImport[];
+};
+
+export type LaunchPricingImport = {
+  currency: "USD" | "GBP" | "EUR";
+  amount: number;
+  isEstimated?: boolean;
+  sourceUrl?: string;
+  sourcePublisher?: string;
+  note?: string;
 };
 
 export type CatalogueImport = {

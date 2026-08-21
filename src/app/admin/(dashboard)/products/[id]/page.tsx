@@ -11,13 +11,20 @@ import {
   updateProductTags,
   updateProductSpecs,
   updateProductSeo,
+  updateProductLaunchPricing,
   logProductFreshnessReview,
   addProductRelationship,
   deleteProductRelationship,
   addProductOffer,
   deleteProductOffer,
 } from "../actions";
-import type { RelationshipType, AffiliateStatus } from "@/lib/types/database";
+import type { RelationshipType, AffiliateStatus, LaunchPricingCurrency } from "@/lib/types/database";
+
+const LAUNCH_PRICING_CURRENCIES: { value: LaunchPricingCurrency; label: string; symbol: string }[] = [
+  { value: "USD", label: "USD", symbol: "$" },
+  { value: "GBP", label: "GBP", symbol: "£" },
+  { value: "EUR", label: "EUR", symbol: "€" },
+];
 
 const RELATIONSHIP_LABELS: Record<RelationshipType, string> = {
   successor_of: "Successor of",
@@ -65,6 +72,7 @@ export default async function EditProductPage({
     { data: allSpecs },
     { data: productSpecRows },
     { data: seo },
+    { data: launchPricingRows },
     { data: freshnessEntries },
     { data: outgoingRel },
     { data: incomingRel },
@@ -79,6 +87,7 @@ export default async function EditProductPage({
     supabase.from("spec_definitions").select("*").order("name"),
     supabase.from("product_specs").select("*").eq("product_id", id),
     supabase.from("seo_metadata").select("*").eq("product_id", id).maybeSingle(),
+    supabase.from("product_launch_pricing").select("*").eq("product_id", id),
     supabase.from("freshness_log").select("*").eq("product_id", id).order("reviewed_at", { ascending: false }),
     supabase.from("product_relationships").select("id, related_product_id, relationship_type").eq("product_id", id),
     supabase.from("product_relationships").select("id, product_id, relationship_type").eq("related_product_id", id),
@@ -101,6 +110,7 @@ export default async function EditProductPage({
       .order("retailer"),
   ]);
 
+  const launchPricingByCurrency = new Map((launchPricingRows ?? []).map((r) => [r.currency, r]));
   const selectedTagIds = new Set((productTagRows ?? []).map((r) => r.tag_id));
   const applicableSpecs = (allSpecs ?? []).filter(
     (s) => s.category_id === null || s.category_id === product.category_id
@@ -263,6 +273,62 @@ export default async function EditProductPage({
           <Checkbox name="noindex" label="noindex" defaultChecked={seo?.noindex ?? false} />
           <div>
             <SubmitButton pendingLabel="Saving SEO...">Save SEO metadata</SubmitButton>
+          </div>
+        </form>
+      </Card>
+
+      <Card className="p-5">
+        <h2 className="text-sm font-semibold text-neutral-900 mb-1">Launch pricing</h2>
+        <p className="text-xs text-neutral-500 mb-3">
+          Historical launch MSRP, per currency, only when genuinely sourced. Leave a currency blank rather than
+          guessing or converting from another currency — the public site never fabricates a regional price. The
+          existing &quot;Launch MSRP (USD)&quot; spec above is separate and untouched by this.
+        </p>
+        <form action={updateProductLaunchPricing.bind(null, id)} className="flex flex-col gap-6">
+          {LAUNCH_PRICING_CURRENCIES.map((c) => {
+            const existing = launchPricingByCurrency.get(c.value);
+            return (
+              <div key={c.value} className="flex flex-col gap-3 border-t border-neutral-100 pt-4 first:border-t-0 first:pt-0">
+                <h3 className="text-sm font-medium text-neutral-900">{c.label} ({c.symbol})</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Amount" htmlFor={`amount_${c.value}`}>
+                    <TextInput
+                      id={`amount_${c.value}`}
+                      name={`amount_${c.value}`}
+                      type="number"
+                      step="0.01"
+                      defaultValue={existing ? String(existing.amount) : ""}
+                    />
+                  </Field>
+                  <Field label="Source publisher" htmlFor={`source_publisher_${c.value}`}>
+                    <TextInput
+                      id={`source_publisher_${c.value}`}
+                      name={`source_publisher_${c.value}`}
+                      defaultValue={existing?.source_publisher ?? ""}
+                    />
+                  </Field>
+                </div>
+                <Field label="Source URL" htmlFor={`source_url_${c.value}`}>
+                  <TextInput
+                    id={`source_url_${c.value}`}
+                    name={`source_url_${c.value}`}
+                    type="url"
+                    defaultValue={existing?.source_url ?? ""}
+                  />
+                </Field>
+                <Field label="Note" htmlFor={`note_${c.value}`}>
+                  <TextInput id={`note_${c.value}`} name={`note_${c.value}`} defaultValue={existing?.note ?? ""} />
+                </Field>
+                <Checkbox
+                  name={`is_estimated_${c.value}`}
+                  label="This is an approximate/derived conversion, not a directly sourced price"
+                  defaultChecked={existing?.is_estimated ?? false}
+                />
+              </div>
+            );
+          })}
+          <div>
+            <SubmitButton pendingLabel="Saving launch pricing...">Save launch pricing</SubmitButton>
           </div>
         </form>
       </Card>

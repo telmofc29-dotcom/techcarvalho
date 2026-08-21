@@ -62,7 +62,14 @@ export default async function SearchPage({
                   <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {results!.content.map((item) => (
                       <li key={item.id} data-result-type="content" data-result-position={++resultPosition}>
-                        <ContentCard href={`/articles/${item.slug}`} type={item.type} title={item.title} excerpt={item.excerpt} />
+                        <ContentCard
+                          href={`/articles/${item.slug}`}
+                          type={item.type}
+                          title={item.title}
+                          excerpt={item.excerpt}
+                          imageUrl={item.heroImage?.url}
+                          imageAlt={item.heroImage?.alt}
+                        />
                       </li>
                     ))}
                   </ul>
@@ -75,7 +82,13 @@ export default async function SearchPage({
                   <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {results!.products.map((p) => (
                       <li key={p.id} data-result-type="product" data-result-position={++resultPosition}>
-                        <ProductCard href={`/products/${p.slug}`} name={p.name} summary={p.summary} />
+                        <ProductCard
+                          href={`/products/${p.slug}`}
+                          name={p.name}
+                          summary={p.summary}
+                          imageUrl={p.heroImage?.url}
+                          imageAlt={p.heroImage?.alt}
+                        />
                       </li>
                     ))}
                   </ul>

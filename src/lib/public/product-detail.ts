@@ -1,13 +1,13 @@
 import "server-only";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
-import { getPublishedHeroImage, type HeroImage } from "./hero-image";
+import { getPublishedHeroImage, attachHeroImages, type HeroImage } from "./hero-image";
 import { logQueryError } from "@/lib/log/query-error";
 import type { RelationshipType } from "@/lib/types/database";
 
 export type RelatedProduct = {
   label: string;
-  product: { id: string; name: string; slug: string; summary: string | null };
+  product: { id: string; name: string; slug: string; summary: string | null; heroImage: HeroImage | null };
 };
 
 export type ProductOffer = {
@@ -16,6 +16,16 @@ export type ProductOffer = {
   url: string;
   affiliate_status: "affiliate" | "non_affiliate" | "pending";
   price_note: string | null;
+};
+
+// From product_launch_pricing (see
+// supabase/migrations_pending/20260821_product_launch_pricing.sql — not yet
+// applied to production). Distinct from ProductOffer above: this is
+// historical launch MSRP per currency, not a current retailer offer.
+export type LaunchPricing = {
+  currency: "USD" | "GBP" | "EUR";
+  amount: number;
+  is_estimated: boolean;
 };
 
 export type ProductDetail = {
@@ -35,9 +45,10 @@ export type ProductDetail = {
   specs: { name: string; unit: string | null; value: unknown }[];
   tags: { name: string; slug: string }[];
   related: RelatedProduct[];
-  articles: { id: string; title: string; slug: string; type: string; role: string }[];
+  articles: { id: string; title: string; slug: string; type: string; role: string; heroImage: HeroImage | null }[];
   heroImage: HeroImage | null;
   offers: ProductOffer[];
+  launchPricing: LaunchPricing[];
   freshness: { reviewed_at: string; reason: string }[];
   // Counts only — the public page shows "N sources cited" rather than
   // reproducing the admin's full source/evidence editing UI.
@@ -87,6 +98,7 @@ export const getProductDetail = cache(async (slug: string): Promise<ProductDetai
     { data: incomingRel, error: incomingRelError },
     { data: contentLinks, error: contentLinksError },
     { data: offers, error: offersError },
+    { data: launchPricingRows, error: launchPricingError },
     { data: freshnessRows, error: freshnessError },
     { count: sourceCount, error: sourceCountError },
     { count: evidenceCount, error: evidenceCountError },
@@ -114,6 +126,10 @@ export const getProductDetail = cache(async (slug: string): Promise<ProductDetai
       .eq("product_id", product.id)
       .eq("is_active", true),
     supabase
+      .from("product_launch_pricing")
+      .select("currency, amount, is_estimated")
+      .eq("product_id", product.id),
+    supabase
       .from("freshness_log")
       .select("reviewed_at, reason")
       .eq("product_id", product.id)
@@ -133,6 +149,7 @@ export const getProductDetail = cache(async (slug: string): Promise<ProductDetai
     ["incomingRel", incomingRelError],
     ["contentLinks", contentLinksError],
     ["offers", offersError],
+    ["launchPricing", launchPricingError],
     ["freshness", freshnessError],
     ["sourceCount", sourceCountError],
     ["evidenceCount", evidenceCountError],
@@ -191,7 +208,8 @@ export const getProductDetail = cache(async (slug: string): Promise<ProductDetai
     })
     .filter((s): s is { name: string; unit: string | null; value: unknown } => s !== null);
 
-  const relatedById = new Map((relatedProducts ?? []).map((p) => [p.id, p]));
+  const relatedProductsWithImages = await attachHeroImages(supabase, relatedProducts ?? [], "product");
+  const relatedById = new Map(relatedProductsWithImages.map((p) => [p.id, p]));
   const related: RelatedProduct[] = [
     ...(outgoingRel ?? [])
       .map((r) => {
@@ -208,12 +226,14 @@ export const getProductDetail = cache(async (slug: string): Promise<ProductDetai
   ];
 
   const roleByContentId = new Map((contentLinks ?? []).map((c) => [c.content_id, c.role]));
-  const articles = (articleRows ?? []).map((a) => ({
+  const articlesWithImages = await attachHeroImages(supabase, articleRows ?? [], "content");
+  const articles = articlesWithImages.map((a) => ({
     id: a.id,
     title: a.title,
     slug: a.slug,
     type: a.type,
     role: roleByContentId.get(a.id) ?? "mentioned",
+    heroImage: a.heroImage,
   }));
 
   return {
@@ -227,6 +247,7 @@ export const getProductDetail = cache(async (slug: string): Promise<ProductDetai
     articles,
     heroImage,
     offers: offers ?? [],
+    launchPricing: launchPricingRows ?? [],
     freshness: freshnessRows ?? [],
     sourceCount: sourceCount ?? 0,
     evidenceCount: evidenceCount ?? 0,

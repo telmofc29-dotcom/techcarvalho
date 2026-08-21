@@ -484,6 +484,50 @@ async function main() {
     }
   }
 
+  // 7. Launch pricing — product_launch_pricing (see
+  // supabase/migrations_pending/20260821_product_launch_pricing.sql, not
+  // yet applied to production). One row per (product, currency); reported
+  // per-row (not per-product) since a single product can declare up to 3
+  // currency rows in one .upsert() call — the same per-row-reporting
+  // discipline established for content_tags/content_products in
+  // ingest-content.ts, to avoid the count masking real per-row errors.
+  for (const product of products) {
+    const productId = productIds[product.slug];
+    if (!product.launchPricing || product.launchPricing.length === 0) continue;
+
+    if (failedProductSlugs.has(product.slug)) {
+      for (const p of product.launchPricing) {
+        plan.record({ entity: "product_launch_pricing", identifier: `${product.slug}:${p.currency}`, action: "skip", detail: "parent product failed validation" });
+      }
+      continue;
+    }
+    if (!apply || !productId) {
+      for (const p of product.launchPricing) {
+        plan.record({ entity: "product_launch_pricing", identifier: `${product.slug}:${p.currency}`, action: apply ? "error" : "create" });
+      }
+      continue;
+    }
+    const rows = product.launchPricing.map((p) => ({
+      product_id: productId,
+      currency: p.currency,
+      amount: p.amount,
+      is_estimated: p.isEstimated ?? false,
+      source_url: p.sourceUrl ?? null,
+      source_publisher: p.sourcePublisher ?? null,
+      note: p.note ?? null,
+    }));
+    const { error } = await client.from("product_launch_pricing").upsert(rows, { onConflict: "product_id,currency" });
+    if (error) {
+      for (const p of product.launchPricing) {
+        plan.record({ entity: "product_launch_pricing", identifier: `${product.slug}:${p.currency}`, action: "error", detail: error.message });
+      }
+    } else {
+      for (const p of product.launchPricing) {
+        plan.record({ entity: "product_launch_pricing", identifier: `${product.slug}:${p.currency}`, action: "create" });
+      }
+    }
+  }
+
   plan.print(apply ? "apply" : "dry-run");
   // process.exitCode (not process.exit()) — after Supabase network calls,
   // a hard process.exit() races libuv's async-handle teardown on Windows
