@@ -6,6 +6,8 @@ import { getManufacturerDetail } from "@/lib/public/manufacturer-detail";
 import { Breadcrumbs } from "@/components/public/breadcrumbs";
 import { ProductCard, SectionHeading } from "@/components/public/cards";
 import { EmptyState } from "@/components/shared/ui";
+import { OutboundLink } from "@/components/public/outbound-link";
+import { destinationDomainOf } from "@/lib/monetisation/affiliate";
 
 export async function generateMetadata({
   params,
@@ -14,7 +16,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const detail = await getManufacturerDetail(slug);
-  if (!detail) return buildMetadata({ title: "Not found", path: `/manufacturers/${slug}`, noindex: true });
+  if (!detail) notFound();
 
   return buildMetadata({
     title: detail.manufacturer.name,
@@ -49,14 +51,15 @@ export default async function ManufacturerPage({
       </h1>
       {manufacturer.description && <p className="text-lg text-zinc-600 max-w-2xl mb-2">{manufacturer.description}</p>}
       {manufacturer.website && (
-        <a
+        <OutboundLink
           href={manufacturer.website}
-          target="_blank"
-          rel="noopener noreferrer nofollow"
+          destinationDomain={destinationDomainOf(manufacturer.website)}
+          linkPosition="manufacturer_page"
+          kind="outbound"
           className="text-sm text-accent hover:underline"
         >
           {manufacturer.website.replace(/^https?:\/\//, "")}
-        </a>
+        </OutboundLink>
       )}
 
       {families.length > 0 && (

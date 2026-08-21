@@ -8,6 +8,7 @@ import {
   getPublishedContentForCategory,
   getPublishedProductsForCategory,
   getSubcategories,
+  getManufacturersForCategory,
 } from "@/lib/public/queries";
 import { Breadcrumbs } from "@/components/public/breadcrumbs";
 import { ContentCard, ProductCard, SectionHeading } from "@/components/public/cards";
@@ -22,7 +23,7 @@ export async function generateMetadata({
   const planned = findPlannedCategory(slug);
   const dbCategory = await getCategoryBySlug(slug);
 
-  if (!planned && !dbCategory) return buildMetadata({ title: "Not found", path: `/${slug}`, noindex: true });
+  if (!planned && !dbCategory) notFound();
 
   const label = dbCategory?.name ?? planned?.label ?? slug;
   return buildMetadata({ title: label, description: planned?.blurb ?? dbCategory?.description ?? undefined, path: `/${slug}` });
@@ -40,13 +41,14 @@ export default async function CategoryPage({
   if (!planned && !dbCategory) notFound();
 
   const label = dbCategory?.name ?? planned?.label ?? slug;
-  const [products, content, subcategories] = dbCategory
+  const [products, content, subcategories, manufacturers] = dbCategory
     ? await Promise.all([
         getPublishedProductsForCategory(dbCategory.id),
         getPublishedContentForCategory(dbCategory.id),
         getSubcategories(dbCategory.id),
+        getManufacturersForCategory(dbCategory.id),
       ])
-    : [[], [], []];
+    : [[], [], [], []];
 
   const hasContent = products.length > 0 || content.length > 0 || subcategories.length > 0;
 
@@ -97,6 +99,7 @@ export default async function CategoryPage({
                         type={item.type}
                         title={item.title}
                         publishedAt={item.published_at}
+                        excerpt={item.excerpt}
                       />
                     </li>
                   ))}
@@ -111,6 +114,24 @@ export default async function CategoryPage({
                   {products.map((p) => (
                     <li key={p.id}>
                       <ProductCard href={`/products/${p.slug}`} name={p.name} summary={p.summary} status={p.status} />
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            {manufacturers.length > 0 && (
+              <section>
+                <SectionHeading>Manufacturers</SectionHeading>
+                <ul className="flex flex-wrap gap-3">
+                  {manufacturers.map((m) => (
+                    <li key={m.id}>
+                      <Link
+                        href={`/manufacturers/${m.slug}`}
+                        className="rounded-full border border-border-subtle bg-white px-4 py-2 text-sm font-medium hover:border-accent/40"
+                      >
+                        {m.name}
+                      </Link>
                     </li>
                   ))}
                 </ul>

@@ -10,6 +10,8 @@ const BROWSE_LINKS = [
 ];
 
 const LEGAL_LINKS = [
+  { href: "/about", label: "About" },
+  { href: "/contact", label: "Contact" },
   { href: "/privacy", label: "Privacy" },
   { href: "/cookies", label: "Cookies" },
   { href: "/terms", label: "Terms" },
@@ -51,7 +53,7 @@ export function SiteFooter() {
             </ul>
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-3">Policies</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-3">About &amp; Policies</p>
             <ul className="flex flex-col gap-1.5 text-sm text-zinc-600">
               {LEGAL_LINKS.map((link) => (
                 <li key={link.href}>

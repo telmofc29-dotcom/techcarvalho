@@ -3,10 +3,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { buildMetadata } from "@/lib/seo/metadata";
-import { productJsonLd } from "@/lib/seo/jsonld";
+import { productJsonLd, safeJsonLdString } from "@/lib/seo/jsonld";
 import { getProductDetail } from "@/lib/public/product-detail";
 import { Breadcrumbs } from "@/components/public/breadcrumbs";
 import { ContentCard } from "@/components/public/cards";
+import { RelatedContentTracker } from "@/components/public/related-content-tracker";
+import { OutboundLink } from "@/components/public/outbound-link";
+import { outboundLinkKindFor, destinationDomainOf } from "@/lib/monetisation/affiliate";
 import { Badge, EmptyState } from "@/components/shared/ui";
 
 export async function generateMetadata({
@@ -16,7 +19,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const detail = await getProductDetail(slug);
-  if (!detail) return buildMetadata({ title: "Not found", path: `/products/${slug}`, noindex: true });
+  if (!detail) notFound();
 
   return buildMetadata({
     title: detail.product.name,
@@ -34,7 +37,9 @@ export default async function ProductPage({
   const detail = await getProductDetail(slug);
   if (!detail) notFound();
 
-  const { product, manufacturer, family, category, specs, tags, related, articles, heroImage } = detail;
+  const { product, manufacturer, family, category, specs, tags, related, articles, heroImage, offers, freshness, sourceCount, evidenceCount } =
+    detail;
+  const lastVerified = freshness[0]?.reviewed_at ?? null;
 
   const jsonLd = productJsonLd({
     name: product.name,
@@ -47,7 +52,7 @@ export default async function ProductPage({
     <div className="mx-auto max-w-6xl px-6 py-12">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLdString(jsonLd) }}
       />
       <Breadcrumbs
         items={[
@@ -76,7 +81,14 @@ export default async function ProductPage({
           <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight text-zinc-900 mb-4">
             {product.name}
           </h1>
-          {product.summary && <p className="text-lg text-zinc-600 mb-8">{product.summary}</p>}
+          {product.summary && <p className="text-lg text-zinc-600 mb-3">{product.summary}</p>}
+          {lastVerified && (
+            <p className="text-xs text-zinc-400 mb-3">
+              Last verified{" "}
+              {new Date(lastVerified).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}
+            </p>
+          )}
+          <div className="mb-5" />
 
           {specs.length > 0 && (
             <section className="mb-10">
@@ -97,19 +109,69 @@ export default async function ProductPage({
             </section>
           )}
 
+          {offers.length > 0 && (
+            <section className="mb-10">
+              <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-zinc-500 mb-4">
+                Where to buy
+              </h2>
+              <ul className="flex flex-col gap-2 rounded-xl border border-border-subtle bg-white p-5">
+                {offers.map((offer) => {
+                  const kind = outboundLinkKindFor(offer.affiliate_status);
+                  const linkProps =
+                    kind === "affiliate"
+                      ? ({ kind: "affiliate" as const, retailer: offer.retailer })
+                      : ({ kind: "outbound" as const });
+                  return (
+                    <li key={offer.id} className="flex items-center justify-between gap-4 text-sm">
+                      <OutboundLink
+                        href={offer.url}
+                        destinationDomain={destinationDomainOf(offer.url)}
+                        linkPosition="product_page"
+                        productId={product.id}
+                        {...linkProps}
+                        className="font-medium text-zinc-900 hover:text-accent"
+                      >
+                        {offer.retailer}
+                      </OutboundLink>
+                      {offer.price_note && <span className="text-zinc-500">{offer.price_note}</span>}
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
+
           {articles.length > 0 && (
             <section className="mb-10">
               <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-zinc-500 mb-4">
                 Related articles
               </h2>
-              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {articles.map((a) => (
-                  <li key={a.id}>
-                    <ContentCard href={`/articles/${a.slug}`} type={a.type} title={a.title} />
-                  </li>
-                ))}
-              </ul>
+              <RelatedContentTracker>
+                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {articles.map((a) => (
+                    <li key={a.id}>
+                      <ContentCard href={`/articles/${a.slug}`} type={a.type} title={a.title} />
+                    </li>
+                  ))}
+                </ul>
+              </RelatedContentTracker>
             </section>
+          )}
+
+          {(sourceCount > 0 || evidenceCount > 0) && (
+            <div className="rounded-xl border border-border-subtle bg-zinc-50 p-4 text-xs text-zinc-500">
+              {[
+                sourceCount > 0 ? `${sourceCount} source${sourceCount === 1 ? "" : "s"} cited` : null,
+                evidenceCount > 0 ? `${evidenceCount} evidence record${evidenceCount === 1 ? "" : "s"}` : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}{" "}
+              — see our{" "}
+              <Link href="/editorial-policy" className="underline hover:text-accent">
+                editorial policy
+              </Link>{" "}
+              for how we verify facts.
+            </div>
           )}
         </div>
 
@@ -187,7 +249,7 @@ export default async function ProductPage({
         </aside>
       </div>
 
-      {specs.length === 0 && articles.length === 0 && related.length === 0 && (
+      {specs.length === 0 && articles.length === 0 && related.length === 0 && offers.length === 0 && (
         <div className="mt-10">
           <EmptyState
             title="More coming soon"

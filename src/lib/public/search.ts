@@ -2,10 +2,11 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { sanitizeSearchTerm } from "@/lib/search/sanitize";
 import { logQueryError } from "@/lib/log/query-error";
+import { attachExcerpts } from "./excerpt";
 
 export type SiteSearchResults = {
   products: { id: string; name: string; slug: string; summary: string | null }[];
-  content: { id: string; title: string; slug: string; type: string }[];
+  content: { id: string; title: string; slug: string; type: string; excerpt: string | null }[];
   manufacturers: { id: string; name: string; slug: string }[];
   categories: { id: string; name: string; slug: string }[];
 };
@@ -50,7 +51,7 @@ export async function searchSite(rawQuery: string): Promise<SiteSearchResults> {
 
   return {
     products: products.data ?? [],
-    content: content.data ?? [],
+    content: await attachExcerpts(supabase, content.data ?? []),
     manufacturers: manufacturers.data ?? [],
     categories: categories.data ?? [],
   };

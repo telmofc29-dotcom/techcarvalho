@@ -1,10 +1,17 @@
 import { SITE_NAME, SITE_URL, absoluteUrl } from "./site.ts";
 
-// JSON-LD builders. Only Organization and WebSite are wired into pages
-// currently. Article/Product builders are provided as ready hooks for when
-// individual content/product detail pages are built out — they are not
-// referenced anywhere yet, so no schema is emitted for content that doesn't
-// exist.
+// JSON.stringify doesn't escape "<" — if any field ever contains
+// "</script>" (e.g. an admin-authored title), that would close the script
+// tag early and let the rest of the string execute as HTML/script. Every
+// dangerouslySetInnerHTML call that embeds JSON-LD must go through this,
+// not JSON.stringify directly.
+export function safeJsonLdString(data: unknown): string {
+  return JSON.stringify(data).replace(/</g, "\\u003c");
+}
+
+// JSON-LD builders. Organization/WebSite are wired into the public layout,
+// BreadcrumbList into <Breadcrumbs>, Product/Article into their respective
+// detail pages — see products/[slug]/page.tsx and articles/[slug]/page.tsx.
 
 export function organizationJsonLd() {
   return {

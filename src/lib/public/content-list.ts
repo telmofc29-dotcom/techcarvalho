@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { logQueryError } from "@/lib/log/query-error";
+import { attachExcerpts } from "./excerpt";
 import type { ContentType } from "@/lib/types/database";
 
 const PAGE_SIZE = 24;
@@ -22,6 +23,7 @@ export async function getPublishedContentPage(page: number, type?: ContentType) 
   const { data, count, error } = await query;
   logQueryError(`getPublishedContentPage(${page}, ${type ?? "all"})`, error);
   const total = count ?? 0;
+  const content = await attachExcerpts(supabase, data ?? []);
 
-  return { content: data ?? [], total, pageCount: Math.max(1, Math.ceil(total / PAGE_SIZE)) };
+  return { content, total, pageCount: Math.max(1, Math.ceil(total / PAGE_SIZE)) };
 }

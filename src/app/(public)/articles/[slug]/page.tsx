@@ -3,17 +3,20 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { buildMetadata } from "@/lib/seo/metadata";
-import { articleJsonLd } from "@/lib/seo/jsonld";
+import { articleJsonLd, safeJsonLdString } from "@/lib/seo/jsonld";
 import { getArticleDetail } from "@/lib/public/article-detail";
 import { Breadcrumbs } from "@/components/public/breadcrumbs";
 import { ContentCard } from "@/components/public/cards";
+import { RelatedContentTracker } from "@/components/public/related-content-tracker";
 import { Badge } from "@/components/shared/ui";
+import { parseBodyBlocks } from "@/lib/content/body-format";
 
 const CONTENT_TYPE_LABEL: Record<string, string> = {
   review: "Review",
   guide: "Guide",
   comparison: "Comparison",
   news: "News",
+  troubleshooting: "Troubleshooting",
 };
 
 export async function generateMetadata({
@@ -23,7 +26,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const detail = await getArticleDetail(slug);
-  if (!detail) return buildMetadata({ title: "Not found", path: `/articles/${slug}`, noindex: true });
+  if (!detail) notFound();
 
   return buildMetadata({
     title: detail.seo?.meta_title ?? detail.content.title,
@@ -55,7 +58,7 @@ export default async function ArticlePage({
     <div className="mx-auto max-w-3xl px-6 py-12">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLdString(jsonLd) }}
       />
       <Breadcrumbs
         items={[
@@ -115,9 +118,26 @@ export default async function ArticlePage({
 
       {content.body ? (
         <div className="prose max-w-none text-zinc-800 leading-relaxed flex flex-col gap-4">
-          {content.body.split(/\n{2,}/).map((paragraph, i) => (
-            <p key={i}>{paragraph}</p>
-          ))}
+          {parseBodyBlocks(content.body).map((block, i) => {
+            if (block.kind === "heading") {
+              const HeadingTag = block.level === 2 ? "h2" : "h3";
+              return (
+                <HeadingTag key={i} className="font-display font-semibold text-zinc-900 mt-2">
+                  {block.text}
+                </HeadingTag>
+              );
+            }
+            if (block.kind === "list") {
+              return (
+                <ul key={i} className="list-disc list-inside flex flex-col gap-1">
+                  {block.items.map((item, j) => (
+                    <li key={j}>{item}</li>
+                  ))}
+                </ul>
+              );
+            }
+            return <p key={i}>{block.text}</p>;
+          })}
         </div>
       ) : (
         <p className="text-zinc-500 italic">This piece doesn&apos;t have body content yet.</p>
@@ -145,13 +165,15 @@ export default async function ArticlePage({
           <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-zinc-500 mb-4">
             More {CONTENT_TYPE_LABEL[content.type]?.toLowerCase() ?? content.type}
           </h2>
-          <ul className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {related.map((item) => (
-              <li key={item.id}>
-                <ContentCard href={`/articles/${item.slug}`} type={item.type} title={item.title} publishedAt={item.published_at} />
-              </li>
-            ))}
-          </ul>
+          <RelatedContentTracker contentId={content.id}>
+            <ul className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {related.map((item) => (
+                <li key={item.id}>
+                  <ContentCard href={`/articles/${item.slug}`} type={item.type} title={item.title} publishedAt={item.published_at} />
+                </li>
+              ))}
+            </ul>
+          </RelatedContentTracker>
         </section>
       )}
     </div>

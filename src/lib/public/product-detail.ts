@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getPublishedHeroImage, type HeroImage } from "./hero-image";
 import { logQueryError } from "@/lib/log/query-error";
@@ -7,6 +8,14 @@ import type { RelationshipType } from "@/lib/types/database";
 export type RelatedProduct = {
   label: string;
   product: { id: string; name: string; slug: string; summary: string | null };
+};
+
+export type ProductOffer = {
+  id: string;
+  retailer: string;
+  url: string;
+  affiliate_status: "affiliate" | "non_affiliate" | "pending";
+  price_note: string | null;
 };
 
 export type ProductDetail = {
@@ -28,6 +37,12 @@ export type ProductDetail = {
   related: RelatedProduct[];
   articles: { id: string; title: string; slug: string; type: string; role: string }[];
   heroImage: HeroImage | null;
+  offers: ProductOffer[];
+  freshness: { reviewed_at: string; reason: string }[];
+  // Counts only — the public page shows "N sources cited" rather than
+  // reproducing the admin's full source/evidence editing UI.
+  sourceCount: number;
+  evidenceCount: number;
 };
 
 const FORWARD_LABELS: Record<RelationshipType, string> = {
@@ -46,7 +61,9 @@ const REVERSE_LABELS: Record<RelationshipType, string> = {
   requires: "Required by",
 };
 
-export async function getProductDetail(slug: string): Promise<ProductDetail | null> {
+// Cached per-request: generateMetadata() and the page component both need
+// the same product, and without this each request would query it twice.
+export const getProductDetail = cache(async (slug: string): Promise<ProductDetail | null> => {
   const supabase = await createClient();
 
   const { data: product, error: productError } = await supabase
@@ -69,6 +86,10 @@ export async function getProductDetail(slug: string): Promise<ProductDetail | nu
     { data: outgoingRel, error: outgoingRelError },
     { data: incomingRel, error: incomingRelError },
     { data: contentLinks, error: contentLinksError },
+    { data: offers, error: offersError },
+    { data: freshnessRows, error: freshnessError },
+    { count: sourceCount, error: sourceCountError },
+    { count: evidenceCount, error: evidenceCountError },
     heroImage,
   ] = await Promise.all([
     supabase.from("manufacturers").select("name, slug").eq("id", product.manufacturer_id).maybeSingle(),
@@ -87,6 +108,19 @@ export async function getProductDetail(slug: string): Promise<ProductDetail | nu
       .select("product_id, relationship_type")
       .eq("related_product_id", product.id),
     supabase.from("content_products").select("content_id, role").eq("product_id", product.id),
+    supabase
+      .from("product_offers")
+      .select("id, retailer, url, affiliate_status, price_note")
+      .eq("product_id", product.id)
+      .eq("is_active", true),
+    supabase
+      .from("freshness_log")
+      .select("reviewed_at, reason")
+      .eq("product_id", product.id)
+      .order("reviewed_at", { ascending: false })
+      .limit(5),
+    supabase.from("source_records").select("id", { count: "exact", head: true }).eq("product_id", product.id),
+    supabase.from("evidence_records").select("id", { count: "exact", head: true }).eq("product_id", product.id),
     getPublishedHeroImage("product", product.id),
   ]);
   for (const [ctx, err] of [
@@ -98,6 +132,10 @@ export async function getProductDetail(slug: string): Promise<ProductDetail | nu
     ["outgoingRel", outgoingRelError],
     ["incomingRel", incomingRelError],
     ["contentLinks", contentLinksError],
+    ["offers", offersError],
+    ["freshness", freshnessError],
+    ["sourceCount", sourceCountError],
+    ["evidenceCount", evidenceCountError],
   ] as const) {
     logQueryError(`getProductDetail(${slug}) ${ctx}`, err);
   }
@@ -188,5 +226,9 @@ export async function getProductDetail(slug: string): Promise<ProductDetail | nu
     related,
     articles,
     heroImage,
+    offers: offers ?? [],
+    freshness: freshnessRows ?? [],
+    sourceCount: sourceCount ?? 0,
+    evidenceCount: evidenceCount ?? 0,
   };
-}
+});

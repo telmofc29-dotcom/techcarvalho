@@ -1,6 +1,8 @@
 import "server-only";
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { logQueryError } from "@/lib/log/query-error";
+import { attachExcerpts } from "./excerpt";
 
 // Public-facing reads. Every table queried here has RLS policies that
 // already scope results to published rows for the anon/authenticated
@@ -20,12 +22,14 @@ import { logQueryError } from "@/lib/log/query-error";
 // "genuinely no data" in the server logs the way it did during the 2026-08
 // anon-grant incident.
 
-export async function getCategoryBySlug(slug: string) {
+// Cached per-request — generateMetadata() and the page component both call
+// this with the same slug.
+export const getCategoryBySlug = cache(async (slug: string) => {
   const supabase = await createClient();
   const { data, error } = await supabase.from("taxonomy_categories").select("*").eq("slug", slug).maybeSingle();
   logQueryError(`getCategoryBySlug(${slug})`, error);
   return data;
-}
+});
 
 export async function getSubcategories(categoryId: string) {
   const supabase = await createClient();
@@ -47,6 +51,31 @@ export async function getPublishedProductsForCategory(categoryId: string) {
     .eq("is_published", true)
     .order("name");
   logQueryError(`getPublishedProductsForCategory(${categoryId})`, error);
+  return data ?? [];
+}
+
+// Manufacturers with at least one published product in this category — a
+// bounded two-round-trip lookup (product manufacturer_ids, then those
+// manufacturers by id), not a per-manufacturer query, so it stays cheap
+// even as the catalogue grows.
+export async function getManufacturersForCategory(categoryId: string) {
+  const supabase = await createClient();
+  const { data: productRows, error: productsError } = await supabase
+    .from("products")
+    .select("manufacturer_id")
+    .eq("category_id", categoryId)
+    .eq("is_published", true);
+  logQueryError(`getManufacturersForCategory(${categoryId}) products`, productsError);
+
+  const manufacturerIds = [...new Set((productRows ?? []).map((p) => p.manufacturer_id))];
+  if (manufacturerIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("manufacturers")
+    .select("id, name, slug")
+    .in("id", manufacturerIds)
+    .order("name");
+  logQueryError(`getManufacturersForCategory(${categoryId}) manufacturers`, error);
   return data ?? [];
 }
 
@@ -95,7 +124,8 @@ export async function getPublishedContentForCategory(categoryId: string) {
     }
   }
 
-  return [...contentById.values()].sort((a, b) => (b.published_at ?? "").localeCompare(a.published_at ?? ""));
+  const sorted = [...contentById.values()].sort((a, b) => (b.published_at ?? "").localeCompare(a.published_at ?? ""));
+  return attachExcerpts(supabase, sorted);
 }
 
 export async function getLatestPublishedContent(limit = 6) {
@@ -108,7 +138,21 @@ export async function getLatestPublishedContent(limit = 6) {
     .order("published_at", { ascending: false })
     .limit(limit);
   logQueryError("getLatestPublishedContent", error);
-  return data ?? [];
+  return attachExcerpts(supabase, data ?? []);
+}
+
+export async function getLatestPublishedGuides(limit = 6) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("content_items")
+    .select("id, title, slug, type, published_at")
+    .eq("type", "guide")
+    .eq("status", "published")
+    .lte("published_at", new Date().toISOString())
+    .order("published_at", { ascending: false })
+    .limit(limit);
+  logQueryError("getLatestPublishedGuides", error);
+  return attachExcerpts(supabase, data ?? []);
 }
 
 export async function getLatestPublishedProducts(limit = 6) {

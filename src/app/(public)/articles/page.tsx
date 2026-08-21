@@ -62,7 +62,13 @@ export default async function ArticlesIndexPage({
           <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {content.map((item) => (
               <li key={item.id}>
-                <ContentCard href={`/articles/${item.slug}`} type={item.type} title={item.title} publishedAt={item.published_at} />
+                <ContentCard
+                  href={`/articles/${item.slug}`}
+                  type={item.type}
+                  title={item.title}
+                  publishedAt={item.published_at}
+                  excerpt={item.excerpt}
+                />
               </li>
             ))}
           </ul>

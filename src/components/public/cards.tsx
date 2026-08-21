@@ -6,8 +6,16 @@ const CONTENT_TYPE_LABEL: Record<string, string> = {
   guide: "Guide",
   comparison: "Comparison",
   news: "News",
+  troubleshooting: "Troubleshooting",
 };
 
+// excerpt: no dedicated excerpt/summary column exists on content_items,
+// deliberately — investigated and decided against adding one, since every
+// call site instead passes seo_metadata.meta_description here (see
+// attachExcerpts in src/lib/public/excerpt.ts). A third summarization
+// field alongside body and meta_description would just be another thing
+// to keep in sync; reusing the SEO description closes the real gap (list
+// views previously showed no preview text at all) without one.
 export function ContentCard({
   href,
   type,

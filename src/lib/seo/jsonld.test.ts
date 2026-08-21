@@ -1,6 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { organizationJsonLd, websiteJsonLd, breadcrumbJsonLd, productJsonLd, articleJsonLd } from "./jsonld.ts";
+import {
+  organizationJsonLd,
+  websiteJsonLd,
+  breadcrumbJsonLd,
+  productJsonLd,
+  articleJsonLd,
+  safeJsonLdString,
+} from "./jsonld.ts";
 import { SITE_URL } from "./site.ts";
 
 test("organizationJsonLd has required schema.org fields", () => {
@@ -44,4 +51,12 @@ test("productJsonLd never fabricates rating/price/availability fields", () => {
 test("articleJsonLd falls back to publishedAt when no updatedAt given", () => {
   const result = articleJsonLd({ title: "T", slug: "t", publishedAt: "2026-01-01T00:00:00Z" });
   assert.equal(result.dateModified, "2026-01-01T00:00:00Z");
+});
+
+test("safeJsonLdString: escapes '<' so a malicious field can't break out of the <script> tag", () => {
+  const malicious = articleJsonLd({ title: "</script><script>alert(1)</script>", slug: "t", publishedAt: null });
+  const output = safeJsonLdString(malicious);
+  assert.equal(output.includes("</script>"), false);
+  assert.equal(output.includes("\\u003c"), true);
+  assert.equal(JSON.parse(output.replace(/\\u003c/g, "<")).headline, malicious.headline);
 });

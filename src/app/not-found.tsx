@@ -1,6 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteHeader } from "@/components/public/site-header";
 import { SiteFooter } from "@/components/public/site-footer";
+import { buildNotFoundMetadata } from "@/lib/seo/metadata";
+
+// "/" is the genuinely correct canonical fallback here — this is the
+// site-wide 404 for URLs that don't match any route at all, not a dead
+// entity page, so pointing at the homepage isn't misleading.
+export const metadata: Metadata = buildNotFoundMetadata("/");
 
 // Root-level not-found: renders inside the root layout (html/body already
 // provided there), but outside the (public) route group, so header/footer

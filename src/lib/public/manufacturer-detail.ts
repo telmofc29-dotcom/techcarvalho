@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { logQueryError } from "@/lib/log/query-error";
 
@@ -14,7 +15,8 @@ export type ManufacturerDetail = {
 // direct manufacturer_id column in the schema, so "families" here is
 // derived from the distinct families actually used by this manufacturer's
 // published products — real data, not a fabricated relationship.
-export async function getManufacturerDetail(slug: string): Promise<ManufacturerDetail | null> {
+// Cached per-request — see product-detail.ts for why.
+export const getManufacturerDetail = cache(async (slug: string): Promise<ManufacturerDetail | null> => {
   const supabase = await createClient();
 
   const { data: manufacturer, error: manufacturerError } = await supabase
@@ -42,4 +44,4 @@ export async function getManufacturerDetail(slug: string): Promise<ManufacturerD
   logQueryError(`getManufacturerDetail(${slug}) families`, familiesError);
 
   return { manufacturer, products: products ?? [], families: families ?? [] };
-}
+});

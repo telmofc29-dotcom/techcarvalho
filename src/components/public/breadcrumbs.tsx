@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { breadcrumbJsonLd } from "@/lib/seo/jsonld";
+import { breadcrumbJsonLd, safeJsonLdString } from "@/lib/seo/jsonld";
 
 export type BreadcrumbItem = { name: string; path: string };
 
@@ -10,7 +10,7 @@ export function Breadcrumbs({ items }: { items: BreadcrumbItem[] }) {
     <nav aria-label="Breadcrumb" className="text-sm text-zinc-500 mb-6">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd(items)) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLdString(breadcrumbJsonLd(items)) }}
       />
       <ol className="flex flex-wrap items-center gap-1.5">
         {items.map((item, index) => (

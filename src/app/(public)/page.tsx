@@ -2,17 +2,23 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { SITE_NAME, SITE_TAGLINE } from "@/lib/seo/site";
 import { PLANNED_CATEGORIES } from "@/lib/public/categories";
-import { getLatestPublishedContent, getLatestPublishedProducts } from "@/lib/public/queries";
+import { getLatestPublishedContent, getLatestPublishedProducts, getLatestPublishedGuides } from "@/lib/public/queries";
 import { Badge, EmptyState } from "@/components/shared/ui";
 import { ContentCard, ProductCard, SectionHeading } from "@/components/public/cards";
 
 export default async function HomePage() {
   const supabase = await createClient();
-  const [{ data: categories }, latestContent, latestProducts] = await Promise.all([
+  const [{ data: categories }, latestContent, latestProducts, latestGuides] = await Promise.all([
     supabase.from("taxonomy_categories").select("id, slug").is("parent_id", null),
     getLatestPublishedContent(6),
     getLatestPublishedProducts(6),
+    getLatestPublishedGuides(6),
   ]);
+
+  // Only worth its own section once there are enough guides to read as a
+  // distinct rail from "Latest" above — below that threshold it would just
+  // duplicate the same 1-2 items in a second list.
+  const showGuidesSection = latestGuides.length >= 3;
 
   let liveSlugSet = new Set<string>();
   if (categories && categories.length > 0) {
@@ -104,12 +110,40 @@ export default async function HomePage() {
                     type={item.type}
                     title={item.title}
                     publishedAt={item.published_at}
+                    excerpt={item.excerpt}
                   />
                 </li>
               ))}
             </ul>
           )}
         </section>
+
+        {showGuidesSection && (
+          <section className="py-16 border-b border-border-subtle">
+            <SectionHeading
+              action={
+                <Link href="/articles?type=guide" className="text-sm font-medium text-accent hover:underline">
+                  View all guides →
+                </Link>
+              }
+            >
+              Buying guides
+            </SectionHeading>
+            <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {latestGuides.map((item) => (
+                <li key={item.id}>
+                  <ContentCard
+                    href={`/articles/${item.slug}`}
+                    type={item.type}
+                    title={item.title}
+                    publishedAt={item.published_at}
+                    excerpt={item.excerpt}
+                  />
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         <section className="py-16">
           <SectionHeading

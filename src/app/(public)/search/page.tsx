@@ -56,7 +56,7 @@ export default async function SearchPage({
               <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {results!.content.map((item) => (
                   <li key={item.id}>
-                    <ContentCard href={`/articles/${item.slug}`} type={item.type} title={item.title} />
+                    <ContentCard href={`/articles/${item.slug}`} type={item.type} title={item.title} excerpt={item.excerpt} />
                   </li>
                 ))}
               </ul>
