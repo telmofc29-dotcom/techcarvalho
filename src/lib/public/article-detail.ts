@@ -44,6 +44,8 @@ export const getArticleDetail = cache(async (slug: string): Promise<ArticleDetai
     { data: seo, error: seoError },
     { data: sameTypeContent, error: sameTypeError },
     heroImage,
+    { data: outgoingRelationships, error: outgoingRelationshipsError },
+    { data: incomingRelationships, error: incomingRelationshipsError },
   ] = await Promise.all([
     supabase.from("content_products").select("product_id, role").eq("content_id", content.id),
     supabase.from("content_tags").select("tag_id").eq("content_id", content.id),
@@ -58,10 +60,10 @@ export const getArticleDetail = cache(async (slug: string): Promise<ArticleDetai
       .select("meta_title, meta_description, canonical_url")
       .eq("content_id", content.id)
       .maybeSingle(),
-    // Fallback only — see the shared-product query below, which is
-    // preferred when it has enough results, since it reflects a genuine
-    // editorial relationship rather than just "published around the same
-    // time."
+    // Fallback only — see the shared-product query and the explicit
+    // content_relationships query below, both preferred when they have
+    // enough results, since they reflect a genuine editorial relationship
+    // rather than just "published around the same time."
     supabase
       .from("content_items")
       .select("id, title, slug, type, published_at")
@@ -72,6 +74,14 @@ export const getArticleDetail = cache(async (slug: string): Promise<ArticleDetai
       .order("published_at", { ascending: false })
       .limit(3),
     getPublishedHeroImage("content", content.id),
+    // Explicit editorial clustering (pillar_of/supporting_of/related_to),
+    // curated via the admin content edit page — same directional-row +
+    // reverse-inferred-at-query-time pattern as product_relationships (see
+    // product-detail.ts). This is the highest-signal relationship source;
+    // until this fix it was recorded but never actually surfaced to
+    // visitors (see 20260820_content_relationships.sql's own header).
+    supabase.from("content_relationships").select("related_content_id").eq("content_id", content.id),
+    supabase.from("content_relationships").select("content_id").eq("related_content_id", content.id),
   ]);
   for (const [ctx, err] of [
     ["productLinks", productLinksError],
@@ -79,6 +89,8 @@ export const getArticleDetail = cache(async (slug: string): Promise<ArticleDetai
     ["freshness", freshnessError],
     ["seo", seoError],
     ["sameType", sameTypeError],
+    ["outgoingRelationships", outgoingRelationshipsError],
+    ["incomingRelationships", incomingRelationshipsError],
   ] as const) {
     logQueryError(`getArticleDetail(${slug}) ${ctx}`, err);
   }
@@ -86,11 +98,15 @@ export const getArticleDetail = cache(async (slug: string): Promise<ArticleDetai
   const productIds = (productLinks ?? []).map((p) => p.product_id);
   const roleByProductId = new Map((productLinks ?? []).map((p) => [p.product_id, p.role]));
   const tagIds = (tagRows ?? []).map((t) => t.tag_id);
+  const relationshipIds = [
+    ...new Set([
+      ...(outgoingRelationships ?? []).map((r) => r.related_content_id),
+      ...(incomingRelationships ?? []).map((r) => r.content_id),
+    ]),
+  ];
 
   // Content genuinely related via a shared product mention (content_products)
-  // — the internal-journey signal that actually exists today, ahead of
-  // content_relationships, which is still only a migration proposal. Needs
-  // productIds from round 1, so this can't be batched into it.
+  // — needs productIds from round 1, so this can't be batched into it.
   const { data: sharedProductLinks, error: sharedProductLinksError } =
     productIds.length > 0
       ? await supabase.from("content_products").select("content_id").in("product_id", productIds).neq("content_id", content.id)
@@ -102,6 +118,7 @@ export const getArticleDetail = cache(async (slug: string): Promise<ArticleDetai
     { data: productRows, error: productRowsError },
     { data: tags, error: tagsError },
     { data: relatedByProduct, error: relatedByProductError },
+    { data: relatedByRelationship, error: relatedByRelationshipError },
   ] = await Promise.all([
     productIds.length > 0
       ? supabase.from("products").select("id, name, slug").in("id", productIds).eq("is_published", true)
@@ -119,19 +136,33 @@ export const getArticleDetail = cache(async (slug: string): Promise<ArticleDetai
           .order("published_at", { ascending: false })
           .limit(3)
       : Promise.resolve({ data: [], error: null }),
+    relationshipIds.length > 0
+      ? supabase
+          .from("content_items")
+          .select("id, title, slug, type, published_at")
+          .in("id", relationshipIds)
+          .eq("status", "published")
+          .lte("published_at", new Date().toISOString())
+      : Promise.resolve({ data: [], error: null }),
   ]);
   logQueryError(`getArticleDetail(${slug}) productRows`, productRowsError);
   logQueryError(`getArticleDetail(${slug}) tags`, tagsError);
   logQueryError(`getArticleDetail(${slug}) relatedByProduct`, relatedByProductError);
+  logQueryError(`getArticleDetail(${slug}) relatedByRelationship`, relatedByRelationshipError);
 
   const products = (productRows ?? []).map((p) => ({ ...p, role: roleByProductId.get(p.id) ?? "mentioned" }));
 
+  // Explicit editorial relationships rank first (real curation), then
+  // shared-product association, then same-type recency as a last resort —
+  // deduplicated so a piece related both ways only appears once.
   const relatedIds = new Set<string>();
-  const related = [...(relatedByProduct ?? []), ...(sameTypeContent ?? [])].filter((item) => {
-    if (relatedIds.has(item.id)) return false;
-    relatedIds.add(item.id);
-    return true;
-  });
+  const related = [...(relatedByRelationship ?? []), ...(relatedByProduct ?? []), ...(sameTypeContent ?? [])].filter(
+    (item) => {
+      if (relatedIds.has(item.id)) return false;
+      relatedIds.add(item.id);
+      return true;
+    }
+  );
   const relatedWithImages = await attachHeroImages(supabase, related.slice(0, 3), "content");
 
   return {
