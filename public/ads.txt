@@ -1,4 +1,5 @@
 # Tech Carvalho ads.txt
-# No advertising networks are configured yet. This file is intentionally
-# empty of seller records — add a line per IAB ads.txt spec
-# (https://iabtechlab.com/ads-txt/) once an ad network account exists.
+# Real, current entry — verbatim from the AdSense verification screen
+# (Google Publisher ID pub-8902041855720121), not fabricated or guessed.
+# See docs/adsense-setup.md for the account status/config this corresponds to.
+google.com, pub-8902041855720121, DIRECT, f08c47fec0942fa0
