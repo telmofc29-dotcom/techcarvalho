@@ -1,4 +1,4 @@
-# AdSense setup — account created, site verification in progress
+# AdSense setup — account created, env vars configured, site verification in progress
 
 Publisher ID confirmed: **pub-8902041855720121** (from Google's verification
 screen). `public/ads.txt` now serves the real entry Google asked for:
@@ -16,10 +16,9 @@ inert, deliberately). Both read from env vars, nothing is hardcoded.
 
 Publisher ID above, confirmed by you from the verification screen.
 
-## 2. Set the publisher ID env var (not yet done — needs you)
+## 2. Set the publisher ID env var — done
 
-In Vercel, **Production only** (not Preview/Development — see the
-production-host note below for why that matters here specifically):
+Set in Vercel for all environments (Production/Preview/Development) as:
 
 ```
 NEXT_PUBLIC_ADSENSE_PUBLISHER_ID=ca-pub-8902041855720121
@@ -29,6 +28,11 @@ Note the `ca-pub-` prefix here, vs. the bare `pub-` form already in
 `ads.txt` — both are the same numeric ID; Google just uses the two formats
 in different places (ads.txt vs. the client-side library tag). This is a
 well-established, deterministic Google convention, not a guess.
+
+The production-host guard (`useIsProductionHost()`) means setting this
+broadly across environments is safe — the script still only actually loads
+on the real `techcarvalho.com` hostname, never on localhost or a Vercel
+preview URL, regardless of which environments carry the var.
 
 Leave `NEXT_PUBLIC_ADS_ENABLED` **unset** for now — that's the separate,
 more conservative flag that turns on individual ad placements

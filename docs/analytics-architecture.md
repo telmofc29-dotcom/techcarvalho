@@ -1,9 +1,13 @@
 # Analytics architecture
 
-Status as of this batch: **no analytics is active**. `NEXT_PUBLIC_GA_MEASUREMENT_ID`
-is unset, and even once it is set, nothing loads until a visitor grants
-analytics consent. This document describes the architecture that exists so
-turning it on later is a config change, not a rewrite.
+Status as of this batch: `NEXT_PUBLIC_GA_MEASUREMENT_ID` (G-G1RRCQ59KD) and
+`NEXT_PUBLIC_ADSENSE_PUBLISHER_ID` are set in Vercel for all environments,
+and Production has been redeployed with this code live. Collection is
+therefore active on real production traffic that grants analytics consent —
+nothing loads until that consent is granted, and nothing loads at all on
+localhost or a Vercel preview deployment (see the production-host guard
+below). This document describes the architecture so any future change here
+is incremental, not a rewrite.
 
 ## Two independent switches
 
