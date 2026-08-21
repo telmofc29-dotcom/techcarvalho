@@ -71,6 +71,35 @@ test("rejected items never carry a suggested angle", () => {
   assert.equal(r.suggestedAngle, null);
 });
 
+// These four were real misclassifications observed in production during the
+// Phase 4 pipeline run, kept as permanent regressions.
+test("rejects B2B semiconductor/manufacturing items that mention specs", () => {
+  const r = classifyRelevance({
+    title: "Intel and Lens Technology Collaborate to Enable Advanced Semiconductor Packaging",
+  });
+  assert.equal(r.verdict, "rejected", `score ${r.score}`);
+});
+
+test("rejects government/industry programme announcements", () => {
+  const r = classifyRelevance({ title: "Intel Completes RAMP-C Program, Accelerating Momentum for Secure Enclave" });
+  assert.equal(r.verdict, "rejected", `score ${r.score}`);
+});
+
+test("accepts consumer gaming promotions and betas", () => {
+  for (const title of [
+    "Intel Gamer Days 2026 Kicking Off with AAA Gaming Bundle & Partnerships",
+    "Pre-order Call of Duty: Modern Warfare 4 and Play the Beta Today",
+    "Free Play Days - Train Sim World 6, Icarus: Console Edition",
+  ]) {
+    assert.equal(classifyRelevance({ title }).verdict, "relevant", `expected accept: ${title}`);
+  }
+});
+
+test("enterprise/data-centre framing is suppressed", () => {
+  const r = classifyRelevance({ title: "New data center processors for enterprise workloads" });
+  assert.notEqual(r.verdict, "relevant");
+});
+
 test("M&A is treated as corporate, not consumer product news", () => {
   const r = classifyRelevance({ title: "Company acquires startup in strategic partnership" });
   assert.notEqual(r.verdict, "relevant");

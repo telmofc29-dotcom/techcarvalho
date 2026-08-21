@@ -58,6 +58,15 @@ const HARD_NEGATIVE: { pattern: RegExp; label: string; weight: number }[] = [
   { pattern: /\b(acquisition|acquires?|merger|divest|joint venture|strategic partnership)\b/i, label: "corporate M&A", weight: 5 },
   { pattern: /\b(award|recognit|named a leader|ranked|celebrat|anniversary|sponsorship|charit|donat|scholarship|internship|career)/i, label: "corporate PR/awards", weight: 5 },
   { pattern: /\b(investor|analyst day|capital markets|guidance|outlook for the (year|quarter))\b/i, label: "investor communications", weight: 8 },
+  // B2B / industrial / government-programme material. Production surfaced
+  // these as genuine false positives: "Intel and Lens Technology Collaborate
+  // to Enable Advanced Semiconductor Packaging" and "Intel Completes RAMP-C
+  // Program" both scored positive off incidental spec vocabulary despite
+  // having no consumer angle at all.
+  { pattern: /\b(semiconductor packaging|foundry|fab(rication)? (plant|facility|capacity)|wafer|advanced packaging|process node roadmap)\b/i, label: "semiconductor manufacturing (B2B)", weight: 9 },
+  { pattern: /\b(ramp-c|defen[cs]e program|government program|federal (contract|program)|consortium|industry alliance)\b/i, label: "government/industry programme", weight: 9 },
+  { pattern: /\b(enterprise|data ?cent(er|re)|hyperscal|b2b|supply chain|oem partner|channel partner|workforce|manufacturing capacity)\b/i, label: "enterprise/industrial audience", weight: 7 },
+  { pattern: /\bcollaborat(e|es|ion) (with|to)\b/i, label: "corporate collaboration framing", weight: 4 },
 ];
 
 // Consumer-relevant signals, each mapped to the angle it implies.
@@ -79,6 +88,11 @@ const POSITIVE: { pattern: RegExp; label: string; weight: number; angle: Content
   { pattern: /\b(vs\.?|versus|compared? (to|with)|difference between|which should you)\b/i, label: "comparison framing", weight: 5, angle: "comparison" },
   { pattern: /\b(worth it|should you (buy|upgrade)|best .{0,20}for|how to choose|buying guide)\b/i, label: "buying question", weight: 6, angle: "buying_question" },
   { pattern: /\b(wi-?fi \d|bluetooth \d|matter|thread|usb-?c|hdmi \d|pcie \d|ai pc|npu|on-?device ai)\b/i, label: "emerging consumer tech", weight: 5, angle: "emerging_tech" },
+  // Consumer gaming/storefront activity — free play days, betas, pre-orders,
+  // bundles, sales. Genuinely useful to readers, and previously scored zero
+  // and rejected ("Intel Gamer Days 2026 ... AAA Gaming Bundle").
+  { pattern: /\b(free play days|game pass|pre-?order|open beta|play the beta|now playable|gam(e|ing) bundle|gamer days)\b/i, label: "consumer gaming/storefront offer", weight: 7, angle: "buying_question" },
+  { pattern: /\b(game|title|dlc|expansion|season pass)\b[\s\S]{0,30}\b(launch|release|available|out now|beta)\b/i, label: "game release", weight: 5, angle: "product_launch" },
 ];
 
 /** Above this, accept. Below the reject floor, reject. Between, uncertain. */
