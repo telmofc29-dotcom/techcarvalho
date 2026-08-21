@@ -76,7 +76,14 @@ export async function runFreshness(supabase: Client): Promise<StageResult> {
     }
   }
 
-  const status = counters.failed > 0 ? (counters.created > 0 ? "partial" : "failed") : "success";
+  // Same reasoning as the discovery pass: on a repeat run every review
+  // already exists and dedupes, so `created` alone is not a success signal.
+  const status =
+    counters.failed === 0
+      ? "success"
+      : counters.created > 0 || counters.deduped > 0
+        ? "partial"
+        : "failed";
   await recordJobRun(supabase, JOB, status, counters, { staleDays: STALE_DAYS });
   return { status, ...counters, detail: { staleDays: STALE_DAYS } };
 }

@@ -131,7 +131,13 @@ export async function runDiscovery(supabase: Client): Promise<StageResult> {
     });
   }
 
-  const status = counters.failed > 0 ? (counters.created > 0 ? "partial" : "failed") : "success";
+  // "Some sources failed" is only a FAILED run if nothing useful happened at
+  // all. Deduping counts as useful work: on a re-poll every item is expected
+  // to dedupe and created will legitimately be 0, so keying success off
+  // `created` alone mislabels a healthy run as failed.
+  const didUsefulWork = counters.created > 0 || counters.deduped > 0;
+  const status =
+    counters.failed === 0 ? "success" : didUsefulWork ? "partial" : "failed";
   await recordJobRun(supabase, JOB, status, counters, { sources: perSource });
   return { status, ...counters, detail: { sources: perSource } };
 }
