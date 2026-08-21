@@ -11,11 +11,14 @@ const ENGINE_TABS: { href: string; label: string }[] = [
   { href: "/admin/engine", label: "Health" },
   { href: "/admin/engine/sources", label: "Sources" },
   { href: "/admin/engine/discoveries", label: "Discoveries" },
+  { href: "/admin/engine/trending", label: "Trending" },
   { href: "/admin/engine/opportunities", label: "Opportunities" },
   { href: "/admin/engine/briefs", label: "Review queue" },
   { href: "/admin/engine/searches", label: "Searches" },
   { href: "/admin/engine/freshness", label: "Freshness" },
+  { href: "/admin/engine/media-acquisition", label: "Media acquisition" },
   { href: "/admin/engine/media-blockers", label: "Media blockers" },
+  { href: "/admin/engine/homepage", label: "Homepage" },
 ];
 
 export function EngineTabs({ current }: { current: string }) {
@@ -166,6 +169,36 @@ export function FreshnessSensitivityBadge({ value }: { value: string | null }) {
 export function BriefKindBadge({ kind }: { kind: string | null }) {
   if (!kind) return <Badge tone="neutral">Kind not set</Badge>;
   return <Badge tone="blue">{humanise(kind)}</Badge>;
+}
+
+// Media candidate pipeline states. `approved` is blue rather than green on
+// purpose: approved means "cleared for a human to ingest", not "in use". Only
+// `associated` — actually attached to a record — earns green.
+const CANDIDATE_TONE: Record<string, Tone> = {
+  discovered: "neutral",
+  rights_review: "amber",
+  approved: "blue",
+  rejected: "red",
+  ingested: "blue",
+  associated: "green",
+};
+
+export function CandidateStateBadge({ state }: { state: string }) {
+  return <Badge tone={CANDIDATE_TONE[state] ?? "neutral"}>{humanise(state)}</Badge>;
+}
+
+/**
+ * Trend confidence, rendered as a judgement rather than a bare number.
+ *
+ * The distinction that matters: a score built only from feed activity, with no
+ * audience data behind it, measures how much a vendor published — not what
+ * readers care about. Showing it identically to an audience-backed score would
+ * quietly invite acting on the wrong thing, so low confidence is flagged.
+ */
+export function TrendConfidenceBadge({ confidence }: { confidence: number }) {
+  if (confidence >= 0.6) return <Badge tone="green">High confidence ({confidence.toFixed(2)})</Badge>;
+  if (confidence >= 0.3) return <Badge tone="amber">Moderate confidence ({confidence.toFixed(2)})</Badge>;
+  return <Badge tone="red">Low confidence ({confidence.toFixed(2)})</Badge>;
 }
 
 /** Milliseconds -> short human duration, for job-run timings. */

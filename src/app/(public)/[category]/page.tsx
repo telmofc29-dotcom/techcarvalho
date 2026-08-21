@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { buildMetadata } from "@/lib/seo/metadata";
 import { findPlannedCategory } from "@/lib/public/categories";
@@ -10,8 +11,11 @@ import {
   getSubcategories,
   getManufacturersForCategory,
 } from "@/lib/public/queries";
+import { getTrendingContent } from "@/lib/public/trending";
+import { getCategoryHeroImage, categoryGradient } from "@/lib/public/category-hero";
 import { Breadcrumbs } from "@/components/public/breadcrumbs";
 import { ContentCard, ProductCard, SectionHeading } from "@/components/public/cards";
+import { TrendingSection } from "@/components/public/trending";
 import { EmptyState } from "@/components/shared/ui";
 import { PageViewTracker } from "@/components/analytics/page-view-tracker";
 import { InternalLinkTracker } from "@/components/analytics/internal-link-tracker";
@@ -43,25 +47,76 @@ export default async function CategoryPage({
   if (!planned && !dbCategory) notFound();
 
   const label = dbCategory?.name ?? planned?.label ?? slug;
-  const [products, content, subcategories, manufacturers] = dbCategory
+
+  const [products, content, subcategories, manufacturers, trending, bannerImage] = dbCategory
     ? await Promise.all([
         getPublishedProductsForCategory(dbCategory.id),
         getPublishedContentForCategory(dbCategory.id),
         getSubcategories(dbCategory.id),
         getManufacturersForCategory(dbCategory.id),
+        getTrendingContent({ categorySlug: slug, supportingCount: 3 }),
+        getCategoryHeroImage(slug, label),
       ])
-    : [[], [], [], []];
+    : [
+        [],
+        [],
+        [],
+        [],
+        { lead: null, supporting: [], isRecencyFallback: true } as Awaited<ReturnType<typeof getTrendingContent>>,
+        null,
+      ];
 
   const hasContent = products.length > 0 || content.length > 0 || subcategories.length > 0;
+
+  // Split the article list by intent so the page reads as a publication rather
+  // than one long undifferentiated grid. Anything shown in the trending block
+  // is excluded so the same piece doesn't appear twice on one screen.
+  const trendingIds = new Set(
+    [trending.lead?.id, ...trending.supporting.map((s) => s.id)].filter(Boolean) as string[]
+  );
+  const remaining = content.filter((c) => !trendingIds.has(c.id));
+  const guidesAndComparisons = remaining.filter((c) => c.type === "guide" || c.type === "comparison");
+  const otherArticles = remaining.filter((c) => c.type !== "guide" && c.type !== "comparison");
 
   return (
     <div>
       <PageViewTracker entityType="category" categorySlug={slug} />
-      <div className="border-b border-border-subtle bg-zinc-50">
-        <div className="mx-auto max-w-6xl px-6 py-12">
+
+      {/* Category banner. Uses a real category_hero asset when one exists;
+          otherwise a deterministic per-category gradient so the header still
+          reads as designed rather than as a failed image load. */}
+      <div className="relative overflow-hidden border-b border-border-subtle bg-zinc-50">
+        {bannerImage ? (
+          <>
+            <Image
+              src={bannerImage.url}
+              alt={bannerImage.alt ?? label}
+              fill
+              priority
+              sizes="100vw"
+              className="object-cover"
+            />
+            {/* Scrim keeps heading contrast legible over an arbitrary photo. */}
+            <div className="absolute inset-0 bg-gradient-to-r from-white via-white/85 to-white/40" aria-hidden="true" />
+          </>
+        ) : (
+          <div
+            className={`absolute inset-0 bg-gradient-to-br ${categoryGradient(slug)}`}
+            aria-hidden="true"
+          />
+        )}
+        <div className="relative mx-auto max-w-6xl px-6 py-14 sm:py-20">
           <Breadcrumbs items={[{ name: "Home", path: "/" }, { name: label, path: `/${slug}` }]} />
-          <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight text-zinc-900">{label}</h1>
-          {planned?.blurb && <p className="mt-3 max-w-xl text-lg text-zinc-600">{planned.blurb}</p>}
+          <h1 className="font-display text-3xl sm:text-5xl font-bold tracking-tight text-zinc-900">{label}</h1>
+          {(planned?.blurb || dbCategory?.description) && (
+            <p className="mt-4 max-w-xl text-lg text-zinc-700">{planned?.blurb ?? dbCategory?.description}</p>
+          )}
+          {hasContent && (
+            <p className="mt-5 text-sm font-medium text-zinc-600">
+              {content.length} article{content.length === 1 ? "" : "s"}
+              {products.length > 0 && ` · ${products.length} product${products.length === 1 ? "" : "s"}`}
+            </p>
+          )}
         </div>
       </div>
 
@@ -72,7 +127,18 @@ export default async function CategoryPage({
             description={`${label} content hasn't been published yet. Check back once products and articles for this area go live.`}
           />
         ) : (
-          <div className="flex flex-col gap-12">
+          <div className="flex flex-col gap-14">
+            {trending.lead && (
+              <TrendingSection
+                lead={trending.lead}
+                supporting={trending.supporting}
+                isRecencyFallback={trending.isRecencyFallback}
+                linkPosition="category_page"
+                categorySlug={slug}
+                heading={`Trending in ${label}`}
+              />
+            )}
+
             {subcategories.length > 0 && (
               <section>
                 <SectionHeading>Subcategories</SectionHeading>
@@ -93,12 +159,35 @@ export default async function CategoryPage({
               </section>
             )}
 
-            {content.length > 0 && (
+            {guidesAndComparisons.length > 0 && (
+              <section>
+                <SectionHeading>Guides &amp; comparisons</SectionHeading>
+                <InternalLinkTracker linkPosition="category_page" categorySlug={slug}>
+                  <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {guidesAndComparisons.map((item) => (
+                      <li key={item.id} data-entity-type="content" data-entity-id={item.id}>
+                        <ContentCard
+                          href={`/articles/${item.slug}`}
+                          type={item.type}
+                          title={item.title}
+                          publishedAt={item.published_at}
+                          excerpt={item.excerpt}
+                          imageUrl={item.heroImage?.url}
+                          imageAlt={item.heroImage?.alt}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                </InternalLinkTracker>
+              </section>
+            )}
+
+            {otherArticles.length > 0 && (
               <section>
                 <SectionHeading>Latest articles</SectionHeading>
                 <InternalLinkTracker linkPosition="category_page" categorySlug={slug}>
                   <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {content.map((item) => (
+                    {otherArticles.map((item) => (
                       <li key={item.id} data-entity-type="content" data-entity-id={item.id}>
                         <ContentCard
                           href={`/articles/${item.slug}`}

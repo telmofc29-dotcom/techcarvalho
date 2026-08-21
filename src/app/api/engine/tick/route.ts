@@ -7,13 +7,16 @@ import { runBriefGeneration } from "@/lib/engine/jobs/brief-job";
 import { runOpportunityScoring } from "@/lib/engine/jobs/opportunity-job";
 import { runSearchIntelligence } from "@/lib/engine/jobs/search-job";
 import { runFreshness } from "@/lib/engine/jobs/freshness-job";
+import { runTrends } from "@/lib/engine/jobs/trend-job";
+import { runMediaAcquisition } from "@/lib/engine/jobs/media-acquisition-job";
 
 const JOB = "engine_tick";
 
 // The single orchestrated engine pass. ONE Vercel Cron entry drives every
 // engine capability, in pipeline order:
 //
-//   discover -> relevance -> brief -> search intelligence -> opportunity -> freshness
+//   discover -> relevance -> brief -> search intelligence -> opportunity
+//     -> trends -> media acquisition -> freshness
 //
 // This is the deliberate answer to the Hobby-plan two-cron limit: capabilities
 // are added as stages here, never as new cron entries, so the architecture
@@ -35,6 +38,11 @@ const STAGES = [
   ["briefs", runBriefGeneration],
   ["search_intelligence", runSearchIntelligence],
   ["opportunities", runOpportunityScoring],
+  // Trends run after search/opportunity so they see this pass's aggregates.
+  ["trends", runTrends],
+  // Media acquisition runs late: it proposes routes to unblock inventory but
+  // cannot ingest or approve anything itself.
+  ["media_acquisition", runMediaAcquisition],
   ["freshness", runFreshness],
 ] as const;
 

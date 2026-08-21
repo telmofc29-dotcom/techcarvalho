@@ -71,6 +71,20 @@ export async function updateEngineSettings(formData: FormData): Promise<void> {
   revalidatePath("/admin/engine");
 }
 
+/**
+ * Rights-review attribution for a source row.
+ *
+ * `last_reviewed_at` is stamped only when a reviewer name is actually given —
+ * an unnamed save leaves the previous review date alone rather than making the
+ * terms look freshly checked when nobody checked them. Clearing the name clears
+ * the date too, so the pair can never claim a review with no reviewer.
+ */
+function reviewFields(formData: FormData): { reviewed_by: string | null; last_reviewed_at: string | null } {
+  const reviewedBy = String(formData.get("reviewed_by") ?? "").trim();
+  if (!reviewedBy) return { reviewed_by: null, last_reviewed_at: null };
+  return { reviewed_by: reviewedBy, last_reviewed_at: new Date().toISOString() };
+}
+
 export async function createEngineSource(formData: FormData): Promise<void> {
   await requireAdmin();
 
@@ -100,17 +114,23 @@ export async function createEngineSource(formData: FormData): Promise<void> {
     trust_level: trustLevel as TrustLevel,
     categories,
     is_active: formData.get("is_active") === "on",
-    // These two are independent on purpose — see the migration's Source
-    // Registry header. Reading facts from a source never implies the right to
-    // republish its imagery, so they are never derived from one another.
+    // These three are independent on purpose — see the migration's Source
+    // Registry header. Reading facts from a source never implies permission to
+    // browse its image library, and browsing never implies permission to
+    // republish what's in it. Each is read from its own checkbox; none is ever
+    // derived from another.
     discovery_permitted: formData.get("discovery_permitted") === "on",
+    media_browsing_permitted: formData.get("media_browsing_permitted") === "on",
     media_republication_permitted: formData.get("media_republication_permitted") === "on",
     media_rights_status: mediaRights as MediaRightsStatus,
+    editorial_use_only: formData.get("editorial_use_only") === "on",
+    registration_required: formData.get("registration_required") === "on",
     terms_url: String(formData.get("terms_url") ?? "").trim() || null,
     terms_notes: String(formData.get("terms_notes") ?? "").trim() || null,
     attribution_required: formData.get("attribution_required") === "on",
     attribution_text: String(formData.get("attribution_text") ?? "").trim() || null,
     check_frequency_hours: Number.isFinite(frequency) && frequency >= 1 ? Math.floor(frequency) : 24,
+    ...reviewFields(formData),
   });
 
   revalidatePath("/admin/engine/sources");
@@ -144,13 +164,17 @@ export async function updateEngineSource(id: string, formData: FormData): Promis
       categories,
       is_active: formData.get("is_active") === "on",
       discovery_permitted: formData.get("discovery_permitted") === "on",
+      media_browsing_permitted: formData.get("media_browsing_permitted") === "on",
       media_republication_permitted: formData.get("media_republication_permitted") === "on",
       media_rights_status: mediaRights as MediaRightsStatus,
+      editorial_use_only: formData.get("editorial_use_only") === "on",
+      registration_required: formData.get("registration_required") === "on",
       terms_url: String(formData.get("terms_url") ?? "").trim() || null,
       terms_notes: String(formData.get("terms_notes") ?? "").trim() || null,
       attribution_required: formData.get("attribution_required") === "on",
       attribution_text: String(formData.get("attribution_text") ?? "").trim() || null,
       check_frequency_hours: Number.isFinite(frequency) && frequency >= 1 ? Math.floor(frequency) : 24,
+      ...reviewFields(formData),
       updated_at: new Date().toISOString(),
     })
     .eq("id", id);
@@ -318,4 +342,95 @@ export async function overrideDiscoveryRelevance(formData: FormData): Promise<vo
     .eq("id", id);
 
   revalidatePath("/admin/engine/discoveries");
+}
+
+// ---------------------------------------------------------------------------
+// Phase 5 — media acquisition rights review
+// ---------------------------------------------------------------------------
+
+const VALID_CANDIDATE_DECISIONS = ["approved", "rejected"] as const;
+type CandidateDecision = (typeof VALID_CANDIDATE_DECISIONS)[number];
+
+/**
+ * Human rights decision on a discovered media candidate.
+ *
+ * Deliberately limited to `approved` and `rejected`. Approving marks the
+ * candidate as cleared for a human to ingest — it does NOT ingest the asset,
+ * does not create a media_assets row, does not associate anything with a
+ * product or article, and does not touch the source's
+ * media_republication_permitted flag. "We may use this" and "we have used
+ * this" are separate facts, and conflating them is exactly how an unlicensed
+ * image ends up live.
+ *
+ * `ingested` and `associated` are reachable only by the flow that actually
+ * performs those acts, never from this review queue.
+ */
+export async function decideMediaCandidate(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  const decision = String(formData.get("decision") ?? "").trim() as CandidateDecision;
+  const reason = String(formData.get("state_reason") ?? "").trim();
+  if (!id || !VALID_CANDIDATE_DECISIONS.includes(decision)) return;
+
+  // A rejection with no reason is unhelpful six months later, but an empty
+  // note shouldn't block the decision — record a placeholder instead.
+  const stateReason =
+    reason ||
+    (decision === "approved"
+      ? "Approved for ingest by an administrator."
+      : "Rejected by an administrator (no reason given).");
+
+  const supabase = await createClient();
+  await supabase
+    .from("engine_media_candidates")
+    .update({ state: decision, state_reason: stateReason, updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  revalidatePath("/admin/engine/media-acquisition");
+}
+
+// ---------------------------------------------------------------------------
+// Phase 5 — homepage trending overrides
+// ---------------------------------------------------------------------------
+
+const VALID_OVERRIDE_MODES = ["pin_lead", "pin_supporting", "suppress"] as const;
+type OverrideMode = (typeof VALID_OVERRIDE_MODES)[number];
+
+/**
+ * Pins or suppresses a single item on the public homepage.
+ *
+ * homepage_overrides has a unique constraint on content_id, so this upserts:
+ * re-pinning an already-overridden item replaces its mode rather than failing.
+ *
+ * This cannot publish anything. An override only affects the ORDER of content
+ * that is already published — the homepage query still filters to
+ * status='published', so pinning a draft has no visible effect.
+ */
+export async function setHomepageOverride(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const contentId = String(formData.get("content_id") ?? "");
+  const mode = String(formData.get("mode") ?? "").trim() as OverrideMode;
+  const note = String(formData.get("note") ?? "").trim();
+  if (!contentId || !VALID_OVERRIDE_MODES.includes(mode)) return;
+
+  const supabase = await createClient();
+  await supabase
+    .from("homepage_overrides")
+    .upsert({ content_id: contentId, mode, note: note || null }, { onConflict: "content_id" });
+
+  revalidatePath("/admin/engine/homepage");
+  // The public homepage reads these, so its cache must drop too.
+  revalidatePath("/");
+}
+
+export async function removeHomepageOverride(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  const supabase = await createClient();
+  await supabase.from("homepage_overrides").delete().eq("id", id);
+
+  revalidatePath("/admin/engine/homepage");
+  revalidatePath("/");
 }

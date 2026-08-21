@@ -95,6 +95,14 @@ export type EngineSource = {
   last_success_at: string | null;
   consecutive_failures: number;
   last_error: string | null;
+  // Phase 5. media_browsing_permitted is a THIRD permission, independent of
+  // both discovery_permitted and media_republication_permitted: being allowed
+  // to look inside an image library is not permission to publish what's in it.
+  media_browsing_permitted: boolean;
+  editorial_use_only: boolean;
+  registration_required: boolean;
+  last_reviewed_at: string | null;
+  reviewed_by: string | null;
 };
 
 export type EngineDiscovery = {

@@ -97,6 +97,21 @@ export type MediaBrandRole =
   | "mark"
   | "favicon"
   | "og_image";
+// Phase 5 editorial asset roles — see supabase/migrations_pending/20260822_phase5_trends_media.sql
+export type MediaAssetRole =
+  | "product_photo"
+  | "article_hero"
+  | "banner"
+  | "category_hero"
+  | "homepage_feature"
+  | "background"
+  | "diagram"
+  | "chart"
+  | "comparison_graphic"
+  | "social_og"
+  | "logo_brand"
+  | "icon"
+  | "screenshot";
 export type SearchIntent = "informational" | "commercial" | "transactional" | "navigational";
 
 // ---- Growth Engine column unions (Phase 3) ----
@@ -218,6 +233,9 @@ export interface Database {
           // source), distinct from product/article/editorial media; the
           // value is its specific intended role.
           brand_role: MediaBrandRole | null;
+          // Phase 5 editorial role — broader than brand_role, lets the library
+          // be filtered and reused instead of being an undifferentiated pile.
+          asset_role: MediaAssetRole | null;
         };
         Insert: {
           id?: string;
@@ -242,6 +260,7 @@ export interface Database {
           published_by?: string | null;
           rights_status?: MediaRightsStatus;
           brand_role?: MediaBrandRole | null;
+          asset_role?: MediaAssetRole | null;
         };
         Update: Partial<Database["public"]["Tables"]["media_assets"]["Insert"]>;
         Relationships: [];
@@ -899,6 +918,13 @@ export interface Database {
           last_error: string | null;
           created_at: string;
           updated_at: string;
+          // Phase 5: a THIRD, independent permission. Being allowed to browse
+          // an image library is not permission to republish what is in it.
+          media_browsing_permitted: boolean;
+          editorial_use_only: boolean;
+          registration_required: boolean;
+          last_reviewed_at: string | null;
+          reviewed_by: string | null;
         };
         Insert: {
           id?: string;
@@ -924,6 +950,11 @@ export interface Database {
           // so updated_at only advances if a writer sets it explicitly.
           created_at?: string;
           updated_at?: string;
+          media_browsing_permitted?: boolean;
+          editorial_use_only?: boolean;
+          registration_required?: boolean;
+          last_reviewed_at?: string | null;
+          reviewed_by?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["engine_sources"]["Insert"]>;
         Relationships: [];
@@ -1064,6 +1095,81 @@ export interface Database {
           reason: string;
         };
         Update: Partial<Database["public"]["Tables"]["engine_freshness_reviews"]["Row"]>;
+        Relationships: [];
+      };
+      engine_trends: {
+        Row: {
+          id: string;
+          topic_key: string;
+          label: string;
+          category_slug: string | null;
+          trend_score: number | null;
+          confidence: number;
+          velocity: number | null;
+          contributing_signals: Record<string, unknown>;
+          why_trending: string;
+          first_detected_at: string;
+          last_observed_at: string;
+          observation_count: number;
+          recommended_content_type: string | null;
+          related_product_ids: string[];
+          related_content_ids: string[];
+          has_published_coverage: boolean;
+          is_active: boolean;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["engine_trends"]["Row"]> & {
+          topic_key: string;
+          label: string;
+          why_trending: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["engine_trends"]["Row"]>;
+        Relationships: [];
+      };
+      engine_media_candidates: {
+        Row: {
+          id: string;
+          media_requirement_id: string | null;
+          product_id: string | null;
+          content_id: string | null;
+          source_id: string | null;
+          source_organisation: string | null;
+          source_url: string | null;
+          asset_url: string | null;
+          asset_type: "image" | "video" | "generated" | null;
+          width: number | null;
+          height: number | null;
+          potential_licence: string | null;
+          attribution_required: boolean;
+          attribution_text: string | null;
+          rights_status: EngineMediaRightsStatus;
+          // Defaults TRUE. Only cleared for source classes whose terms are
+          // already established (our own graphics, staff photography).
+          requires_human_review: boolean;
+          confidence: number;
+          state: "discovered" | "rights_review" | "approved" | "rejected" | "ingested" | "associated";
+          state_reason: string | null;
+          ingested_media_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["engine_media_candidates"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["engine_media_candidates"]["Row"]>;
+        Relationships: [];
+      };
+      homepage_overrides: {
+        Row: {
+          id: string;
+          content_id: string;
+          mode: "pin_lead" | "pin_supporting" | "suppress";
+          note: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["homepage_overrides"]["Row"]> & {
+          content_id: string;
+          mode: "pin_lead" | "pin_supporting" | "suppress";
+        };
+        Update: Partial<Database["public"]["Tables"]["homepage_overrides"]["Row"]>;
         Relationships: [];
       };
       search_intelligence: {
@@ -1278,6 +1384,71 @@ export interface Database {
           p_content_type: string;
           p_priority: number;
           p_media_note: string;
+        };
+        Returns: string;
+      };
+      // ---- Phase 5 RPCs ----
+      engine_trend_inputs: {
+        Args: { p_days?: number };
+        Returns: {
+          topic_key: string;
+          label: string;
+          category_slug: string | null;
+          recent_discoveries: number;
+          relevant_discoveries: number;
+          recent_views: number;
+          prior_views: number;
+          searches: number;
+          zero_result_searches: number;
+          commercial_clicks: number;
+          published_coverage: number;
+          newest_discovery_at: string | null;
+        }[];
+      };
+      engine_upsert_trend: {
+        Args: {
+          p_topic_key: string;
+          p_label: string;
+          p_category: string | null;
+          p_score: number | null;
+          p_confidence: number;
+          p_velocity: number | null;
+          p_signals: unknown;
+          p_why: string;
+          p_recommended_type: string | null;
+          p_has_coverage: boolean;
+        };
+        Returns: string;
+      };
+      engine_open_media_requirements: {
+        Args: { p_limit?: number };
+        Returns: {
+          requirement_id: string;
+          kind: string;
+          entity_id: string;
+          slug: string;
+          label: string;
+          manufacturer: string | null;
+          category_slug: string | null;
+          existing_candidates: number;
+        }[];
+      };
+      engine_record_media_candidate: {
+        Args: {
+          p_requirement_id: string | null;
+          p_product_id: string | null;
+          p_content_id: string | null;
+          p_source_organisation: string | null;
+          p_source_url: string | null;
+          p_asset_url: string | null;
+          p_asset_type: string | null;
+          p_width: number | null;
+          p_height: number | null;
+          p_potential_licence: string | null;
+          p_rights_status: string | null;
+          p_confidence: number;
+          p_requires_human_review: boolean;
+          p_reason: string | null;
         };
         Returns: string;
       };

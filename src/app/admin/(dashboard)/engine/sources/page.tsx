@@ -39,22 +39,37 @@ const MEDIA_RIGHTS: MediaRightsStatus[] = [
   "prohibited",
 ];
 
-// The two permissions this page exists to keep apart. Rendering them as a
-// matched pair of explicit yes/no statements — rather than two loose
-// checkboxes — is deliberate: the whole failure mode we're guarding against is
-// someone reading "we may use this source" as "we may republish its images".
-function PermissionPair({ source }: { source: EngineSource }) {
+// The three permissions this page exists to keep apart. Rendering them as
+// three explicit yes/no statements — rather than three loose checkboxes — is
+// deliberate: the failure mode being guarded against is someone reading any one
+// of them as implying another. They escalate in seriousness left to right, and
+// each is an independent fact established by reading that source's own terms.
+function PermissionTriple({ source }: { source: EngineSource }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3">
       <div
         className={`rounded border p-2 ${
           source.discovery_permitted ? "border-green-200 bg-green-50" : "border-neutral-200 bg-neutral-50"
         }`}
       >
         <p className="text-xs font-semibold text-neutral-900">
-          Read facts: {source.discovery_permitted ? "permitted" : "not permitted"}
+          1. Read facts: {source.discovery_permitted ? "permitted" : "not permitted"}
         </p>
-        <p className="text-[11px] text-neutral-600 mt-0.5">Discovery may read information from this source.</p>
+        <p className="text-[11px] text-neutral-600 mt-0.5">
+          Discovery may extract information (specs, dates, announcements).
+        </p>
+      </div>
+      <div
+        className={`rounded border p-2 ${
+          source.media_browsing_permitted ? "border-green-200 bg-green-50" : "border-neutral-200 bg-neutral-50"
+        }`}
+      >
+        <p className="text-xs font-semibold text-neutral-900">
+          2. Browse media: {source.media_browsing_permitted ? "permitted" : "not permitted"}
+        </p>
+        <p className="text-[11px] text-neutral-600 mt-0.5">
+          We may look inside its image library. Looking is not using.
+        </p>
       </div>
       <div
         className={`rounded border p-2 ${
@@ -62,10 +77,10 @@ function PermissionPair({ source }: { source: EngineSource }) {
         }`}
       >
         <p className="text-xs font-semibold text-neutral-900">
-          Republish imagery: {source.media_republication_permitted ? "permitted" : "NOT permitted"}
+          3. Republish media: {source.media_republication_permitted ? "permitted" : "NOT permitted"}
         </p>
         <p className="text-[11px] text-neutral-600 mt-0.5">
-          Separate right. Never implied by the permission on the left.
+          The only one that lets an image go live. Never implied by 1 or 2.
         </p>
       </div>
     </div>
@@ -78,8 +93,11 @@ export default async function EngineSourcesPage() {
 
   const { data: sources, error } = await supabase
     .from("engine_sources")
+    // One unbroken literal on purpose: supabase-js infers the row shape from
+    // the select string's literal type, and a `+`-concatenated string widens to
+    // `string`, which silently degrades the result type.
     .select(
-      "id, organisation, url, source_type, categories, trust_level, is_active, discovery_permitted, media_republication_permitted, media_rights_status, terms_url, terms_notes, attribution_required, attribution_text, check_frequency_hours, last_checked_at, last_success_at, consecutive_failures, last_error"
+      "id, organisation, url, source_type, categories, trust_level, is_active, discovery_permitted, media_browsing_permitted, media_republication_permitted, media_rights_status, editorial_use_only, registration_required, last_reviewed_at, reviewed_by, terms_url, terms_notes, attribution_required, attribution_text, check_frequency_hours, last_checked_at, last_success_at, consecutive_failures, last_error"
     )
     .order("organisation");
 
@@ -94,12 +112,13 @@ export default async function EngineSourcesPage() {
       <EngineTabs current="/admin/engine/sources" />
 
       <Card className="p-4 mb-6 border-amber-200 bg-amber-50">
-        <p className="text-sm font-medium text-neutral-900">Two different permissions</p>
+        <p className="text-sm font-medium text-neutral-900">Three different permissions</p>
         <p className="text-xs text-neutral-700 mt-1">
           <strong>Read facts</strong> means discovery may extract information (specs, dates, announcements).{" "}
-          <strong>Republish imagery</strong> means we may host that source&apos;s pictures on TechCarvalho. A source can
-          be fully approved for the first and completely prohibited for the second. Never set the second because the
-          first is set.
+          <strong>Browse media</strong> means we may look inside that source&apos;s image library.{" "}
+          <strong>Republish media</strong> means we may host its pictures on TechCarvalho. They are independent: a
+          source can permit the first two and prohibit the third, and that is the common case. Never set one because
+          another is set; each needs its own reading of the terms.
         </p>
       </Card>
 
@@ -125,10 +144,12 @@ export default async function EngineSourcesPage() {
                     <Badge tone="neutral">{humanise(s.source_type)}</Badge>
                     <TrustBadge level={s.trust_level} />
                     <MediaRightsBadge status={s.media_rights_status} />
+                    {s.editorial_use_only && <Badge tone="blue">Editorial use only</Badge>}
+                    {s.registration_required && <Badge tone="amber">Registration required</Badge>}
                   </div>
                 </div>
 
-                <PermissionPair source={s} />
+                <PermissionTriple source={s} />
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 mt-3 text-xs text-neutral-600">
                   <p>Categories: {s.categories.length > 0 ? s.categories.join(", ") : "—"}</p>
@@ -142,6 +163,8 @@ export default async function EngineSourcesPage() {
                     </span>
                   </p>
                   <p>Attribution required: {s.attribution_required ? "Yes" : "No"}</p>
+                  <p>Last reviewed: {formatDateTime(s.last_reviewed_at)}</p>
+                  <p>Reviewed by: {s.reviewed_by ?? "—"}</p>
                 </div>
 
                 {s.attribution_text && (
@@ -193,13 +216,18 @@ export default async function EngineSourcesPage() {
                     <Checkbox name="is_active" label="Active" defaultChecked={s.is_active} />
                     <Checkbox
                       name="discovery_permitted"
-                      label="Read facts from this source (discovery permitted)"
+                      label="1. Read facts from this source (discovery permitted)"
                       defaultChecked={s.discovery_permitted}
+                    />
+                    <Checkbox
+                      name="media_browsing_permitted"
+                      label="2. Browse this source media library"
+                      defaultChecked={s.media_browsing_permitted}
                     />
                     <div className="rounded border border-amber-200 bg-amber-50 p-2">
                       <Checkbox
                         name="media_republication_permitted"
-                        label="Republish imagery from this source"
+                        label="3. Republish imagery from this source"
                         defaultChecked={s.media_republication_permitted}
                       />
                       <p className="text-[11px] text-amber-800 mt-1">
@@ -222,12 +250,29 @@ export default async function EngineSourcesPage() {
                       <Textarea id={`tnotes-${s.id}`} name="terms_notes" rows={2} defaultValue={s.terms_notes ?? ""} />
                     </Field>
                     <Checkbox
+                      name="editorial_use_only"
+                      label="Editorial use only (no commercial or promotional use)"
+                      defaultChecked={s.editorial_use_only}
+                    />
+                    <Checkbox
+                      name="registration_required"
+                      label="Registration or accreditation required first"
+                      defaultChecked={s.registration_required}
+                    />
+                    <Checkbox
                       name="attribution_required"
                       label="Attribution required"
                       defaultChecked={s.attribution_required}
                     />
                     <Field label="Attribution text" htmlFor={`atext-${s.id}`}>
                       <TextInput id={`atext-${s.id}`} name="attribution_text" defaultValue={s.attribution_text ?? ""} />
+                    </Field>
+                    <Field
+                      label="Reviewed by"
+                      hint="Who last read the terms for this source. Saving stamps the review date."
+                      htmlFor={`revby-${s.id}`}
+                    >
+                      <TextInput id={`revby-${s.id}`} name="reviewed_by" defaultValue={s.reviewed_by ?? ""} />
                     </Field>
                     <div>
                       <SubmitButton pendingLabel="Saving...">Save source</SubmitButton>
@@ -281,9 +326,10 @@ export default async function EngineSourcesPage() {
             <TextInput id="check_frequency_hours" name="check_frequency_hours" type="number" min={1} defaultValue={24} />
           </Field>
           <Checkbox name="is_active" label="Active" />
-          <Checkbox name="discovery_permitted" label="Read facts from this source (discovery permitted)" />
+          <Checkbox name="discovery_permitted" label="1. Read facts from this source (discovery permitted)" />
+          <Checkbox name="media_browsing_permitted" label="2. Browse this source media library" />
           <div className="rounded border border-amber-200 bg-amber-50 p-2">
-            <Checkbox name="media_republication_permitted" label="Republish imagery from this source" />
+            <Checkbox name="media_republication_permitted" label="3. Republish imagery from this source" />
             <p className="text-[11px] text-amber-800 mt-1">
               Leave unticked unless the source&apos;s actual terms have been read and permit republication.
             </p>
@@ -307,9 +353,14 @@ export default async function EngineSourcesPage() {
           <Field label="Terms notes" htmlFor="terms_notes">
             <Textarea id="terms_notes" name="terms_notes" rows={2} />
           </Field>
+          <Checkbox name="editorial_use_only" label="Editorial use only (no commercial or promotional use)" />
+          <Checkbox name="registration_required" label="Registration or accreditation required first" />
           <Checkbox name="attribution_required" label="Attribution required" />
           <Field label="Attribution text" htmlFor="attribution_text">
             <TextInput id="attribution_text" name="attribution_text" />
+          </Field>
+          <Field label="Reviewed by" htmlFor="reviewed_by" hint="Who read the terms for this source, if anyone has.">
+            <TextInput id="reviewed_by" name="reviewed_by" />
           </Field>
           <div>
             <SubmitButton pendingLabel="Adding...">Add source</SubmitButton>
