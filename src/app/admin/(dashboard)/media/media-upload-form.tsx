@@ -348,6 +348,8 @@ export function MediaUploadForm({ existingFileNames }: { existingFileNames: stri
                     <option value="stock_licensed">Stock (licensed)</option>
                     <option value="user_submitted">User submitted</option>
                     <option value="press_kit">Press kit</option>
+                    <option value="public_domain_or_cc">Public domain / Creative Commons</option>
+                    <option value="tc_graphic">TechCarvalho-created graphic/diagram</option>
                     <option value="other">Other</option>
                   </Select>
                 </Field>

@@ -24,6 +24,8 @@ const VALID_SOURCE_TYPES: MediaSourceType[] = [
   "stock_licensed",
   "user_submitted",
   "press_kit",
+  "public_domain_or_cc",
+  "tc_graphic",
   "other",
 ];
 
@@ -120,6 +122,8 @@ export default async function MediaListPage({
               { value: "stock_licensed", label: "Stock (licensed)" },
               { value: "user_submitted", label: "User submitted" },
               { value: "press_kit", label: "Press kit" },
+              { value: "public_domain_or_cc", label: "Public domain / Creative Commons" },
+              { value: "tc_graphic", label: "TechCarvalho-created graphic/diagram" },
               { value: "other", label: "Other" },
             ]}
             otherParams={otherParams}

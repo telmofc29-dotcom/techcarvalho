@@ -70,13 +70,20 @@ export type AnalyticsEventType =
 export type AnalyticsRollupDimension = "category" | "product" | "content" | "manufacturer" | "search_term" | "path" | "site";
 export type MediaRole = "hero" | "gallery" | "thumbnail";
 export type ReliabilityTier = "primary" | "secondary" | "community";
+// 'public_domain_or_cc' and 'tc_graphic' added by
+// supabase/migrations_pending/20260821_media_sourcing_workflow.sql.
 export type MediaSourceType =
   | "manufacturer"
   | "staff_photograph"
   | "stock_licensed"
   | "user_submitted"
   | "press_kit"
+  | "public_domain_or_cc"
+  | "tc_graphic"
   | "other";
+// Pre-asset media sourcing workflow state — see media_requirements above
+// and src/lib/media/requirements.ts.
+export type MediaSourcingStatus = "needed" | "sourcing" | "available" | "blocked" | "approved";
 export type MediaPublicationStatus = "private" | "published";
 export type MediaRightsStatus = "unknown" | "pending_verification" | "verified" | "restricted";
 // Added by supabase/migrations_pending/20260821_media_brand_role.sql — see
@@ -520,6 +527,34 @@ export interface Database {
           sort_order?: number;
         };
         Update: Partial<Database["public"]["Tables"]["content_media"]["Insert"]>;
+        Relationships: [];
+      };
+      // Added by supabase/migrations_pending/20260821_media_sourcing_workflow.sql
+      // — tracks the pre-asset media sourcing workflow (see src/lib/media/requirements.ts).
+      media_requirements: {
+        Row: {
+          id: string;
+          product_id: string | null;
+          content_id: string | null;
+          sourcing_status: MediaSourcingStatus;
+          target_source_type: MediaSourceType | null;
+          notes: string | null;
+          resolved_media_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          product_id?: string | null;
+          content_id?: string | null;
+          sourcing_status?: MediaSourcingStatus;
+          target_source_type?: MediaSourceType | null;
+          notes?: string | null;
+          resolved_media_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["media_requirements"]["Insert"]>;
         Relationships: [];
       };
       evidence_records: {
