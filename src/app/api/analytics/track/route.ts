@@ -152,12 +152,15 @@ export async function POST(request: NextRequest) {
       return ok({ ok: false, skipped: "rate_limited" });
     }
 
-    await supabase.from("analytics_visitors").upsert({ id: visitorId, last_seen_at: nowIso }, { onConflict: "id" });
+    const { error: visitorError } = await supabase
+      .from("analytics_visitors")
+      .upsert({ id: visitorId, last_seen_at: nowIso }, { onConflict: "id" });
 
     const sessionInit = body.sessionInit as Record<string, unknown> | undefined;
+    let sessionError = null;
     if (sessionInit && typeof sessionInit === "object") {
       const deviceType = String(sessionInit.deviceType ?? "");
-      await supabase.from("analytics_sessions").upsert(
+      const { error } = await supabase.from("analytics_sessions").upsert(
         {
           id: sessionId,
           visitor_id: visitorId,
@@ -172,8 +175,10 @@ export async function POST(request: NextRequest) {
         },
         { onConflict: "id" }
       );
+      sessionError = error;
     } else {
-      await supabase.from("analytics_sessions").update({ last_seen_at: nowIso }).eq("id", sessionId);
+      const { error } = await supabase.from("analytics_sessions").update({ last_seen_at: nowIso }).eq("id", sessionId);
+      sessionError = error;
     }
 
     const entityType = typeof body.entityType === "string" && isValidEntityType(body.entityType) ? body.entityType : null;
@@ -191,7 +196,17 @@ export async function POST(request: NextRequest) {
       metadata: sanitizeMetadata(body.metadata),
     } as never);
 
-    return ok({ ok: !insertError });
+    // TEMPORARY debug instrumentation — see the coordinating session's own
+    // notes for why (persistent {"ok":false} with no visible cause). To be
+    // removed the moment the real error is identified; not meant to ship.
+    return ok({
+      ok: !insertError,
+      _debug: {
+        visitorError: visitorError?.message ?? null,
+        sessionError: sessionError?.message ?? null,
+        insertError: insertError?.message ?? null,
+      },
+    });
   } catch {
     // A tracking-endpoint failure must never surface to the visitor —
     // always 200, always a benign body.
