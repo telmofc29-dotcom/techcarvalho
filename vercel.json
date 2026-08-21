@@ -5,16 +5,8 @@
       "schedule": "0 3 * * *"
     },
     {
-      "path": "/api/engine/discover",
-      "schedule": "0 */6 * * *"
-    },
-    {
-      "path": "/api/engine/opportunities",
+      "path": "/api/engine/tick",
       "schedule": "30 4 * * *"
-    },
-    {
-      "path": "/api/engine/freshness",
-      "schedule": "0 5 * * 1"
     }
   ]
 }
