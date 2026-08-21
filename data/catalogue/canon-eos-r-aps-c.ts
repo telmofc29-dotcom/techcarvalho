@@ -25,6 +25,7 @@ export const canonEosRApsc: CatalogueImport = {
   products: [
     {
       slug: "canon-eos-r7",
+      isPublished: true,
       name: "Canon EOS R7",
       manufacturerSlug: "canon",
       categorySlug: "cameras-photography",
@@ -68,6 +69,7 @@ export const canonEosRApsc: CatalogueImport = {
     },
     {
       slug: "canon-eos-r10",
+      isPublished: true,
       name: "Canon EOS R10",
       manufacturerSlug: "canon",
       categorySlug: "cameras-photography",
@@ -111,6 +113,7 @@ export const canonEosRApsc: CatalogueImport = {
     },
     {
       slug: "canon-eos-r50",
+      isPublished: true,
       name: "Canon EOS R50",
       manufacturerSlug: "canon",
       categorySlug: "cameras-photography",

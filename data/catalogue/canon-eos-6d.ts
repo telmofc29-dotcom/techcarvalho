@@ -22,6 +22,7 @@ export const canonEos6d: CatalogueImport = {
   products: [
     {
       slug: "canon-eos-6d",
+      isPublished: true,
       name: "Canon EOS 6D",
       manufacturerSlug: "canon",
       categorySlug: "cameras-photography",
@@ -61,6 +62,7 @@ export const canonEos6d: CatalogueImport = {
     },
     {
       slug: "canon-eos-6d-mark-ii",
+      isPublished: true,
       name: "Canon EOS 6D Mark II",
       manufacturerSlug: "canon",
       categorySlug: "cameras-photography",

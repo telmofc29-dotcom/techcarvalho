@@ -19,6 +19,7 @@ export const canonEosR8: CatalogueImport = {
   products: [
     {
       slug: "canon-eos-r8",
+      isPublished: true,
       name: "Canon EOS R8",
       manufacturerSlug: "canon",
       categorySlug: "cameras-photography",

@@ -21,6 +21,7 @@ export const canonEos7d: CatalogueImport = {
   products: [
     {
       slug: "canon-eos-7d-mark-ii",
+      isPublished: true,
       name: "Canon EOS 7D Mark II",
       manufacturerSlug: "canon",
       categorySlug: "cameras-photography",

@@ -20,6 +20,7 @@ export const canonEos5d: CatalogueImport = {
   products: [
     {
       slug: "canon-eos-5d-mark-iii",
+      isPublished: true,
       name: "Canon EOS 5D Mark III",
       manufacturerSlug: "canon",
       categorySlug: "cameras-photography",
@@ -59,6 +60,7 @@ export const canonEos5d: CatalogueImport = {
     },
     {
       slug: "canon-eos-5d-mark-iv",
+      isPublished: true,
       name: "Canon EOS 5D Mark IV",
       manufacturerSlug: "canon",
       categorySlug: "cameras-photography",

@@ -27,6 +27,7 @@ export const canonEosRFullFrame: CatalogueImport = {
   products: [
     {
       slug: "canon-eos-r",
+      isPublished: true,
       name: "Canon EOS R",
       manufacturerSlug: "canon",
       categorySlug: "cameras-photography",
@@ -67,6 +68,7 @@ export const canonEosRFullFrame: CatalogueImport = {
     },
     {
       slug: "canon-eos-rp",
+      isPublished: true,
       name: "Canon EOS RP",
       manufacturerSlug: "canon",
       categorySlug: "cameras-photography",
@@ -107,6 +109,7 @@ export const canonEosRFullFrame: CatalogueImport = {
     },
     {
       slug: "canon-eos-r6",
+      isPublished: true,
       name: "Canon EOS R6",
       manufacturerSlug: "canon",
       categorySlug: "cameras-photography",

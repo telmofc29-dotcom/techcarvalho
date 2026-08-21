@@ -158,6 +158,22 @@ async function main() {
 
     const existingId = existingBySlug.get(item.slug);
     const explicitlyStatused = Object.prototype.hasOwnProperty.call(item, "status");
+    // Same hasOwnProperty discipline as status, and for the same reason
+    // src/app/admin/(dashboard)/content/actions.ts auto-fills published_at
+    // on the Draft->Published transition: RLS requires status='published'
+    // AND published_at <= now() for public visibility. Before this fix,
+    // published_at was unconditionally included in baseRow on every
+    // UPDATE (`item.publishedAt ?? null`) — so re-running this idempotent
+    // import against an already-published row (e.g. to fix a typo, add
+    // SEO copy, or apply a later batch file that doesn't repeat the date)
+    // would silently null out a live publish date and make the row
+    // invisible again, even though status was never touched. Now
+    // published_at is only ever written when the import explicitly
+    // provides a date (always synced — preserves a deliberate historical
+    // date) or when this update is itself the transition to published
+    // with no date given (auto-filled to now()); otherwise it's omitted
+    // from the row entirely so an existing date is left alone.
+    const explicitlyDated = Object.prototype.hasOwnProperty.call(item, "publishedAt");
 
     if (!apply) {
       plan.record({ entity: "content_items", identifier: item.slug, action: existingId ? "update" : "create" });
@@ -174,11 +190,16 @@ async function main() {
       search_intent: item.searchIntent ?? null,
       primary_query: item.primaryQuery ?? null,
       intent_fingerprint: item.intentFingerprint ?? null,
-      published_at: item.publishedAt ?? null,
     };
 
     if (existingId) {
-      const row = explicitlyStatused ? { ...baseRow, status: item.status } : baseRow;
+      const row: Record<string, unknown> = { ...baseRow };
+      if (explicitlyStatused) row.status = item.status;
+      if (explicitlyDated) {
+        row.published_at = item.publishedAt ?? null;
+      } else if (explicitlyStatused && item.status === "published") {
+        row.published_at = new Date().toISOString();
+      }
       const { error } = await client.from("content_items").update(row as never).eq("id", existingId);
       if (error) {
         plan.record({ entity: "content_items", identifier: item.slug, action: "error", detail: error.message });
@@ -187,7 +208,13 @@ async function main() {
       contentIds[item.slug] = existingId;
       plan.record({ entity: "content_items", identifier: item.slug, action: "update" });
     } else {
-      const row = { ...baseRow, status: item.status ?? "draft" };
+      const status = item.status ?? "draft";
+      const publishedAt = explicitlyDated
+        ? (item.publishedAt ?? null)
+        : status === "published"
+          ? new Date().toISOString()
+          : null;
+      const row = { ...baseRow, status, published_at: publishedAt };
       const { data, error } = await client.from("content_items").insert(row as never).select("id").single();
       if (error || !data) {
         plan.record({ entity: "content_items", identifier: item.slug, action: "error", detail: error?.message ?? "insert failed" });

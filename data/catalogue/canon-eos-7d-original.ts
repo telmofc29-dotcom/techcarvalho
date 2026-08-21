@@ -20,6 +20,7 @@ export const canonEos7dOriginal: CatalogueImport = {
   products: [
     {
       slug: "canon-eos-7d",
+      isPublished: true,
       name: "Canon EOS 7D",
       manufacturerSlug: "canon",
       categorySlug: "cameras-photography",

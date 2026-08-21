@@ -14,6 +14,7 @@ export const canonEosR5: CatalogueImport = {
   products: [
     {
       slug: "canon-eos-r5",
+      isPublished: true,
       name: "Canon EOS R5",
       manufacturerSlug: "canon",
       categorySlug: "cameras-photography",

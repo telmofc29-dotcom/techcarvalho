@@ -34,6 +34,7 @@ export const canonEosXxd: CatalogueImport = {
   products: [
     {
       slug: "canon-eos-60d",
+      isPublished: true,
       name: "Canon EOS 60D",
       manufacturerSlug: "canon",
       categorySlug: "cameras-photography",
@@ -73,6 +74,7 @@ export const canonEosXxd: CatalogueImport = {
     },
     {
       slug: "canon-eos-70d",
+      isPublished: true,
       name: "Canon EOS 70D",
       manufacturerSlug: "canon",
       categorySlug: "cameras-photography",
@@ -114,6 +116,7 @@ export const canonEosXxd: CatalogueImport = {
     },
     {
       slug: "canon-eos-80d",
+      isPublished: true,
       name: "Canon EOS 80D",
       manufacturerSlug: "canon",
       categorySlug: "cameras-photography",
@@ -154,6 +157,7 @@ export const canonEosXxd: CatalogueImport = {
     },
     {
       slug: "canon-eos-90d",
+      isPublished: true,
       name: "Canon EOS 90D",
       manufacturerSlug: "canon",
       categorySlug: "cameras-photography",

@@ -38,6 +38,7 @@ export const canonEosRebel: CatalogueImport = {
   products: [
     {
       slug: "canon-eos-rebel-t7i",
+      isPublished: true,
       name: "Canon EOS Rebel T7i",
       manufacturerSlug: "canon",
       categorySlug: "cameras-photography",
@@ -76,6 +77,7 @@ export const canonEosRebel: CatalogueImport = {
     },
     {
       slug: "canon-eos-rebel-t7",
+      isPublished: true,
       name: "Canon EOS Rebel T7",
       manufacturerSlug: "canon",
       categorySlug: "cameras-photography",
