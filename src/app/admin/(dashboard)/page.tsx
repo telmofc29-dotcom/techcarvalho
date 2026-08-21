@@ -39,7 +39,7 @@ export default async function AdminDashboardPage() {
         title="Dashboard"
         description={`Welcome back${admin.display_name ? `, ${admin.display_name}` : ""}.`}
         action={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <LinkButton href="/admin/products/new">New product</LinkButton>
             <LinkButton href="/admin/content/new">New content</LinkButton>
             <LinkButton href="/admin/media/new">Upload media</LinkButton>

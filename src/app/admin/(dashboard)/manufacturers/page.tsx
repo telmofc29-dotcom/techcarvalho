@@ -50,7 +50,20 @@ export default async function ManufacturersPage({
                 <tr key={m.id}>
                   <Td className="font-medium text-neutral-900">{m.name}</Td>
                   <Td className="text-neutral-500">{m.slug}</Td>
-                  <Td className="text-neutral-500">{m.website ?? "—"}</Td>
+                  <Td className="text-neutral-500">
+                    {m.website ? (
+                      <a
+                        href={m.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline hover:text-neutral-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 rounded"
+                      >
+                        {m.website}
+                      </a>
+                    ) : (
+                      "—"
+                    )}
+                  </Td>
                   <Td>
                     <div className="flex items-center gap-3 justify-end">
                       <TextLink href={`/admin/manufacturers/${m.id}`}>Edit</TextLink>

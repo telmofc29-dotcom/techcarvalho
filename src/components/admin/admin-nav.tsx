@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useRef } from "react";
 
 const NAV_SECTIONS: { title: string; items: { href: string; label: string }[] }[] = [
   {
@@ -74,6 +75,11 @@ export function AdminNav() {
   const pathname = usePathname();
   const currentLabel =
     NAV_SECTIONS.flatMap((s) => s.items).find((item) => isActivePath(pathname, item.href))?.label ?? "Menu";
+  // AdminNav lives in the persistent dashboard layout, not per-page, so the
+  // native <details> element is never remounted on navigation — without
+  // explicitly closing it, tapping a link on mobile leaves the accordion
+  // open over the next page's content until the admin taps it shut again.
+  const detailsRef = useRef<HTMLDetailsElement>(null);
 
   return (
     <>
@@ -83,7 +89,7 @@ export function AdminNav() {
       </nav>
 
       {/* Mobile menu: native <details> disclosure, no client-side toggle state needed. */}
-      <details className="mobile-nav md:hidden border-b border-neutral-200 bg-neutral-50">
+      <details ref={detailsRef} className="mobile-nav md:hidden border-b border-neutral-200 bg-neutral-50">
         <summary className="flex cursor-pointer items-center justify-between px-4 py-3 text-sm font-medium text-neutral-700">
           <span>
             Section: <span className="text-neutral-900">{currentLabel}</span>
@@ -93,7 +99,7 @@ export function AdminNav() {
           </svg>
         </summary>
         <nav aria-label="Admin" className="px-4 pb-4">
-          <NavSections pathname={pathname} />
+          <NavSections pathname={pathname} onNavigate={() => { if (detailsRef.current) detailsRef.current.open = false; }} />
         </nav>
       </details>
     </>
