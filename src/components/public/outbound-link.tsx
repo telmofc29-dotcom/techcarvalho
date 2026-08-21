@@ -3,6 +3,7 @@
 import type { AnchorHTMLAttributes } from "react";
 import { track } from "@/lib/analytics";
 import type { LinkPosition } from "@/lib/analytics/events";
+import { recordOutboundClick } from "@/lib/analytics/first-party";
 import { AFFILIATE_DISCLOSURE_LABEL, AFFILIATE_DISCLOSURE_TOOLTIP, relFor } from "@/lib/monetisation/affiliate";
 
 type BaseProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "rel" | "target"> & {
@@ -57,6 +58,14 @@ export function OutboundLink({
           } else {
             track("outbound_link_click", context);
           }
+          recordOutboundClick({
+            kind,
+            retailer: kind === "affiliate" ? retailer : undefined,
+            destinationDomain,
+            linkPosition,
+            productId,
+            contentId,
+          });
           onClick?.(event);
         }}
       >

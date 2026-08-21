@@ -5,6 +5,8 @@ import { findCannibalisationMatches, type ContentSignal } from "./cannibalisatio
 
 export type DashboardCounts = {
   products: number;
+  productsPublished: number;
+  productsDraft: number;
   manufacturers: number;
   contentTotal: number;
   contentPublished: number;
@@ -23,6 +25,7 @@ export async function getDashboardCounts(): Promise<DashboardCounts> {
 
   const [
     productsResult,
+    productsPublishedResult,
     manufacturersResult,
     contentTotalResult,
     contentPublishedResult,
@@ -33,6 +36,7 @@ export async function getDashboardCounts(): Promise<DashboardCounts> {
     freshness,
   ] = await Promise.all([
     supabase.from("products").select("*", { count: "exact", head: true }),
+    supabase.from("products").select("*", { count: "exact", head: true }).eq("is_published", true),
     supabase.from("manufacturers").select("*", { count: "exact", head: true }),
     supabase.from("content_items").select("*", { count: "exact", head: true }),
     supabase.from("content_items").select("*", { count: "exact", head: true }).eq("status", "published"),
@@ -48,6 +52,7 @@ export async function getDashboardCounts(): Promise<DashboardCounts> {
 
   const errors = [
     productsResult.error,
+    productsPublishedResult.error,
     manufacturersResult.error,
     contentTotalResult.error,
     contentPublishedResult.error,
@@ -62,8 +67,13 @@ export async function getDashboardCounts(): Promise<DashboardCounts> {
     (item) => item.bucket === "overdue" || item.bucket === "no_review"
   ).length;
 
+  const productsTotal = productsResult.count ?? 0;
+  const productsPublished = productsPublishedResult.count ?? 0;
+
   return {
-    products: productsResult.count ?? 0,
+    products: productsTotal,
+    productsPublished,
+    productsDraft: productsTotal - productsPublished,
     manufacturers: manufacturersResult.count ?? 0,
     contentTotal: contentTotalResult.count ?? 0,
     contentPublished: contentPublishedResult.count ?? 0,

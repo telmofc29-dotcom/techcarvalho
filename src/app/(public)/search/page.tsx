@@ -4,6 +4,7 @@ import { buildMetadata } from "@/lib/seo/metadata";
 import { searchSite } from "@/lib/public/search";
 import { Breadcrumbs } from "@/components/public/breadcrumbs";
 import { ContentCard, ProductCard, SectionHeading } from "@/components/public/cards";
+import { SearchTracker } from "@/components/public/search-tracker";
 import { EmptyState } from "@/components/shared/ui";
 
 export async function generateMetadata({
@@ -22,12 +23,15 @@ export default async function SearchPage({
 }) {
   const { q } = await searchParams;
   const results = q ? await searchSite(q) : null;
-  const hasResults =
-    results &&
-    (results.products.length > 0 ||
-      results.content.length > 0 ||
-      results.manufacturers.length > 0 ||
-      results.categories.length > 0);
+  const resultCount = results
+    ? results.products.length + results.content.length + results.manufacturers.length + results.categories.length
+    : 0;
+  const hasResults = results && resultCount > 0;
+  // Running rank across the whole result set (content, then products, then
+  // manufacturers/categories) rather than restarting per section, so
+  // search_result_click's position reflects what a visitor actually sees
+  // top-to-bottom on the page.
+  let resultPosition = 0;
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-12">
@@ -46,64 +50,68 @@ export default async function SearchPage({
 
       {!q ? (
         <EmptyState title="Search Tech Carvalho" description="Find reviews, guides, products, and manufacturers." />
-      ) : !hasResults ? (
-        <EmptyState title={`No results for "${q}"`} description="Try a different term, or browse a subject area from the navigation." />
       ) : (
-        <div className="flex flex-col gap-12">
-          {results!.content.length > 0 && (
-            <section>
-              <SectionHeading>Content</SectionHeading>
-              <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {results!.content.map((item) => (
-                  <li key={item.id}>
-                    <ContentCard href={`/articles/${item.slug}`} type={item.type} title={item.title} excerpt={item.excerpt} />
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
+        <SearchTracker query={q} resultCount={resultCount}>
+          {!hasResults ? (
+            <EmptyState title={`No results for "${q}"`} description="Try a different term, or browse a subject area from the navigation." />
+          ) : (
+            <div className="flex flex-col gap-12">
+              {results!.content.length > 0 && (
+                <section>
+                  <SectionHeading>Content</SectionHeading>
+                  <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {results!.content.map((item) => (
+                      <li key={item.id} data-result-type="content" data-result-position={++resultPosition}>
+                        <ContentCard href={`/articles/${item.slug}`} type={item.type} title={item.title} excerpt={item.excerpt} />
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
 
-          {results!.products.length > 0 && (
-            <section>
-              <SectionHeading>Products</SectionHeading>
-              <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {results!.products.map((p) => (
-                  <li key={p.id}>
-                    <ProductCard href={`/products/${p.slug}`} name={p.name} summary={p.summary} />
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
+              {results!.products.length > 0 && (
+                <section>
+                  <SectionHeading>Products</SectionHeading>
+                  <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {results!.products.map((p) => (
+                      <li key={p.id} data-result-type="product" data-result-position={++resultPosition}>
+                        <ProductCard href={`/products/${p.slug}`} name={p.name} summary={p.summary} />
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
 
-          {(results!.manufacturers.length > 0 || results!.categories.length > 0) && (
-            <section>
-              <SectionHeading>More</SectionHeading>
-              <ul className="flex flex-wrap gap-3">
-                {results!.categories.map((c) => (
-                  <li key={c.id}>
-                    <Link
-                      href={`/${c.slug}`}
-                      className="rounded-full border border-border-subtle bg-white px-4 py-2 text-sm hover:border-accent/40"
-                    >
-                      {c.name} <span className="text-zinc-400">· category</span>
-                    </Link>
-                  </li>
-                ))}
-                {results!.manufacturers.map((m) => (
-                  <li key={m.id}>
-                    <Link
-                      href={`/manufacturers/${m.slug}`}
-                      className="rounded-full border border-border-subtle bg-white px-4 py-2 text-sm hover:border-accent/40"
-                    >
-                      {m.name} <span className="text-zinc-400">· manufacturer</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </section>
+              {(results!.manufacturers.length > 0 || results!.categories.length > 0) && (
+                <section>
+                  <SectionHeading>More</SectionHeading>
+                  <ul className="flex flex-wrap gap-3">
+                    {results!.categories.map((c) => (
+                      <li key={c.id} data-result-type="category" data-result-position={++resultPosition}>
+                        <Link
+                          href={`/${c.slug}`}
+                          className="rounded-full border border-border-subtle bg-white px-4 py-2 text-sm hover:border-accent/40"
+                        >
+                          {c.name} <span className="text-zinc-400">· category</span>
+                        </Link>
+                      </li>
+                    ))}
+                    {results!.manufacturers.map((m) => (
+                      <li key={m.id} data-result-type="manufacturer" data-result-position={++resultPosition}>
+                        <Link
+                          href={`/manufacturers/${m.slug}`}
+                          className="rounded-full border border-border-subtle bg-white px-4 py-2 text-sm hover:border-accent/40"
+                        >
+                          {m.name} <span className="text-zinc-400">· manufacturer</span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+            </div>
           )}
-        </div>
+        </SearchTracker>
       )}
     </div>
   );

@@ -8,6 +8,8 @@ export default async function AdminDashboardPage() {
 
   const catalogTiles: { label: string; value: number; href: string }[] = [
     { label: "Products", value: counts.products, href: "/admin/products" },
+    { label: "Published products", value: counts.productsPublished, href: "/admin/products?published=published" },
+    { label: "Draft products", value: counts.productsDraft, href: "/admin/products?published=draft" },
     { label: "Manufacturers", value: counts.manufacturers, href: "/admin/manufacturers" },
   ];
 
