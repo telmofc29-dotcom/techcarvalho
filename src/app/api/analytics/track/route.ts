@@ -152,33 +152,41 @@ export async function POST(request: NextRequest) {
       return ok({ ok: false, skipped: "rate_limited" });
     }
 
-    const { error: visitorError } = await supabase
-      .from("analytics_visitors")
-      .upsert({ id: visitorId, last_seen_at: nowIso }, { onConflict: "id" });
-
+    // Visitor/session "touch" (create-or-update) goes through a SECURITY
+    // DEFINER RPC (record_analytics_touch — see
+    // supabase/migrations_pending/20260821_first_party_analytics_touch_fn.sql)
+    // rather than upsert() against the tables directly. Root cause this
+    // fixes: Postgres's INSERT ... ON CONFLICT DO UPDATE (what upsert()
+    // compiles to) needs read-visibility on the existing row to detect the
+    // conflict — but anon was deliberately never granted SELECT on
+    // analytics_visitors/analytics_sessions (same "raw analytics not
+    // publicly readable" principle applied to analytics_events), so every
+    // upsert failed with a genuine RLS violation, which — because neither
+    // failure was being checked — silently left session rows never
+    // created, which then broke the final event insert's foreign key
+    // reference. Confirmed via temporary debug instrumentation in
+    // production before this fix (removed once the cause was found — see
+    // this same file's git history for that diagnostic commit). The RPC's
+    // internal writes bypass RLS the same way compute_analytics_rollup()
+    // and analytics_session_under_rate_limit() already do; anon's direct
+    // table grants on visitors/sessions are revoked in the same migration
+    // as no longer needed once this exists.
     const sessionInit = body.sessionInit as Record<string, unknown> | undefined;
-    let sessionError = null;
-    if (sessionInit && typeof sessionInit === "object") {
-      const deviceType = String(sessionInit.deviceType ?? "");
-      const { error } = await supabase.from("analytics_sessions").upsert(
-        {
-          id: sessionId,
-          visitor_id: visitorId,
-          entry_path: sanitizeEventText(String(sessionInit.entryPath ?? path), 512) || path,
-          referrer_host: sessionInit.referrerHost ? sanitizeEventText(String(sessionInit.referrerHost), 255) : null,
-          utm_source: sessionInit.utmSource ? sanitizeEventText(String(sessionInit.utmSource), 100) : null,
-          utm_medium: sessionInit.utmMedium ? sanitizeEventText(String(sessionInit.utmMedium), 100) : null,
-          utm_campaign: sessionInit.utmCampaign ? sanitizeEventText(String(sessionInit.utmCampaign), 100) : null,
-          device_type: isValidDeviceType(deviceType) ? deviceType : null,
-          is_admin: false,
-          last_seen_at: nowIso,
-        },
-        { onConflict: "id" }
-      );
-      sessionError = error;
-    } else {
-      const { error } = await supabase.from("analytics_sessions").update({ last_seen_at: nowIso }).eq("id", sessionId);
-      sessionError = error;
+    const deviceType = sessionInit ? String(sessionInit.deviceType ?? "") : null;
+    const { error: touchError } = await supabase.rpc("record_analytics_touch", {
+      p_visitor_id: visitorId,
+      p_session_id: sessionId,
+      p_now: nowIso,
+      p_is_new_session: Boolean(sessionInit),
+      p_entry_path: sessionInit ? sanitizeEventText(String(sessionInit.entryPath ?? path), 512) || path : null,
+      p_referrer_host: sessionInit?.referrerHost ? sanitizeEventText(String(sessionInit.referrerHost), 255) : null,
+      p_utm_source: sessionInit?.utmSource ? sanitizeEventText(String(sessionInit.utmSource), 100) : null,
+      p_utm_medium: sessionInit?.utmMedium ? sanitizeEventText(String(sessionInit.utmMedium), 100) : null,
+      p_utm_campaign: sessionInit?.utmCampaign ? sanitizeEventText(String(sessionInit.utmCampaign), 100) : null,
+      p_device_type: deviceType && isValidDeviceType(deviceType) ? deviceType : null,
+    });
+    if (touchError) {
+      return ok({ ok: false, skipped: "touch_failed" });
     }
 
     const entityType = typeof body.entityType === "string" && isValidEntityType(body.entityType) ? body.entityType : null;
@@ -196,17 +204,7 @@ export async function POST(request: NextRequest) {
       metadata: sanitizeMetadata(body.metadata),
     } as never);
 
-    // TEMPORARY debug instrumentation — see the coordinating session's own
-    // notes for why (persistent {"ok":false} with no visible cause). To be
-    // removed the moment the real error is identified; not meant to ship.
-    return ok({
-      ok: !insertError,
-      _debug: {
-        visitorError: visitorError?.message ?? null,
-        sessionError: sessionError?.message ?? null,
-        insertError: insertError?.message ?? null,
-      },
-    });
+    return ok({ ok: !insertError });
   } catch {
     // A tracking-endpoint failure must never surface to the visitor —
     // always 200, always a benign body.

@@ -737,6 +737,21 @@ export interface Database {
         Args: { p_session_id: string; p_max_per_minute: number };
         Returns: boolean;
       };
+      record_analytics_touch: {
+        Args: {
+          p_visitor_id: string;
+          p_session_id: string;
+          p_now: string;
+          p_is_new_session: boolean;
+          p_entry_path: string | null;
+          p_referrer_host: string | null;
+          p_utm_source: string | null;
+          p_utm_medium: string | null;
+          p_utm_campaign: string | null;
+          p_device_type: string | null;
+        };
+        Returns: void;
+      };
     };
   };
 }
