@@ -131,13 +131,24 @@ export async function POST(request: NextRequest) {
     // or similar) stop many distinct fabricated sessions. Vercel's own
     // platform-level request limits are the outer layer for that, exactly
     // as already relied on for outbound_click_events.
-    const oneMinuteAgo = new Date(Date.now() - 60_000).toISOString();
-    const { count: recentCount } = await supabase
-      .from("analytics_events")
-      .select("*", { count: "exact", head: true })
-      .eq("session_id", sessionId)
-      .gte("created_at", oneMinuteAgo);
-    if ((recentCount ?? 0) > MAX_EVENTS_PER_SESSION_PER_MINUTE) {
+    //
+    // Goes through a SECURITY DEFINER RPC (analytics_session_under_rate_limit,
+    // see supabase/migrations_pending/20260821_first_party_analytics_rate_limit_fn.sql)
+    // rather than a direct SELECT against analytics_events — anon was
+    // deliberately never granted SELECT on that table (raw analytics rows
+    // must never be publicly readable), so a direct count query here would
+    // fail outright and take the whole request down with it, which is
+    // exactly what happened before this fix: every real event silently
+    // failed with {"ok":false}, confirmed via a live production test. The
+    // RPC returns only a boolean, never the rows it counted.
+    const { data: underLimit, error: rateLimitError } = await supabase.rpc("analytics_session_under_rate_limit", {
+      p_session_id: sessionId,
+      p_max_per_minute: MAX_EVENTS_PER_SESSION_PER_MINUTE,
+    });
+    if (rateLimitError) {
+      return ok({ ok: false, skipped: "rate_limit_check_failed" });
+    }
+    if (!underLimit) {
       return ok({ ok: false, skipped: "rate_limited" });
     }
 

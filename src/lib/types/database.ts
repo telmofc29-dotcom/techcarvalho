@@ -733,6 +733,10 @@ export interface Database {
         Args: { target_day: string };
         Returns: void;
       };
+      analytics_session_under_rate_limit: {
+        Args: { p_session_id: string; p_max_per_minute: number };
+        Returns: boolean;
+      };
     };
   };
 }
