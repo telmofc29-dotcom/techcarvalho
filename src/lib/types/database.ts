@@ -99,6 +99,78 @@ export type MediaBrandRole =
   | "og_image";
 export type SearchIntent = "informational" | "commercial" | "transactional" | "navigational";
 
+// ---- Growth Engine column unions (Phase 3) ----
+// Mirrors the CHECK constraints in supabase/migrations_pending/20260821_growth_engine.sql.
+// Declared here (rather than imported from src/lib/engine/types.ts) so this
+// file stays dependency-free, matching how every other type here is defined.
+export type EngineSourceTypeCol =
+  | "manufacturer_newsroom"
+  | "product_feed"
+  | "rss_atom"
+  | "official_docs"
+  | "public_api"
+  | "regulatory_dataset"
+  | "trusted_editorial"
+  | "other_approved";
+export type EngineTrustLevel = "primary" | "secondary" | "community";
+export type EngineMediaRightsStatus =
+  | "unverified"
+  | "confirmed_usable"
+  | "requires_registration"
+  | "unclear_manual_review"
+  | "no_source_found"
+  | "prohibited";
+export type EngineDiscoveryType =
+  | "product_launch"
+  | "product_update"
+  | "spec_change"
+  | "firmware_release"
+  | "technology_news"
+  | "recall_or_security"
+  | "new_topic";
+export type EngineClaimStatus =
+  | "confirmed_primary"
+  | "reported_secondary"
+  | "estimate"
+  | "leak"
+  | "rumour"
+  | "unverified";
+export type EnginePipelineState =
+  | "discovered"
+  | "researched"
+  | "evidence_checked"
+  | "planned"
+  | "drafting"
+  | "media_check"
+  | "review_eligible"
+  | "published"
+  | "blocked"
+  | "rejected"
+  | "error";
+export type EngineBriefState =
+  | "planned"
+  | "drafting"
+  | "media_check"
+  | "review_eligible"
+  | "published"
+  | "blocked"
+  | "rejected"
+  | "error";
+export type EngineFreshnessReason =
+  | "spec_changed"
+  | "successor_released"
+  | "discontinued"
+  | "firmware_changed"
+  | "stale_facts"
+  | "stale_pricing"
+  | "broken_source_link"
+  | "outdated_comparison"
+  | "missing_internal_links";
+export type EngineSeverity = "low" | "medium" | "high";
+export type EngineFreshnessState = "open" | "acknowledged" | "actioned" | "dismissed";
+export type EngineJobStatus = "running" | "success" | "partial" | "failed" | "skipped";
+export type EngineOpportunitySubject = "category" | "topic" | "product" | "content" | "search_term";
+
 export interface Database {
   public: {
     Tables: {
@@ -782,6 +854,217 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["analytics_daily_rollups"]["Insert"]>;
         Relationships: [];
       };
+      // ---- Growth Engine (Phase 3) ----
+      // See supabase/migrations_pending/20260821_growth_engine.sql. All engine
+      // tables are admin-only via RLS; the scheduled jobs never read them
+      // directly, they go through SECURITY DEFINER RPCs (Functions below).
+      engine_settings: {
+        Row: {
+          id: boolean;
+          master_enabled: boolean;
+          discovery_enabled: boolean;
+          research_enabled: boolean;
+          freshness_enabled: boolean;
+          opportunity_scoring_enabled: boolean;
+          autonomous_publishing_enabled: boolean;
+          notes: string | null;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["engine_settings"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["engine_settings"]["Row"]>;
+        Relationships: [];
+      };
+      engine_sources: {
+        Row: {
+          id: string;
+          organisation: string;
+          url: string;
+          source_type: EngineSourceTypeCol;
+          categories: string[];
+          trust_level: EngineTrustLevel;
+          is_active: boolean;
+          // Deliberately separate from media_republication_permitted:
+          // permission to read facts never implies permission to reuse imagery.
+          discovery_permitted: boolean;
+          media_republication_permitted: boolean;
+          media_rights_status: EngineMediaRightsStatus;
+          terms_url: string | null;
+          terms_notes: string | null;
+          attribution_required: boolean;
+          attribution_text: string | null;
+          check_frequency_hours: number;
+          last_checked_at: string | null;
+          last_success_at: string | null;
+          consecutive_failures: number;
+          last_error: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organisation: string;
+          url: string;
+          source_type: EngineSourceTypeCol;
+          categories?: string[];
+          trust_level?: EngineTrustLevel;
+          is_active?: boolean;
+          discovery_permitted?: boolean;
+          media_republication_permitted?: boolean;
+          media_rights_status?: EngineMediaRightsStatus;
+          terms_url?: string | null;
+          terms_notes?: string | null;
+          attribution_required?: boolean;
+          attribution_text?: string | null;
+          check_frequency_hours?: number;
+          last_checked_at?: string | null;
+          last_success_at?: string | null;
+          consecutive_failures?: number;
+          last_error?: string | null;
+          // The migration defines these with `default now()` but no trigger,
+          // so updated_at only advances if a writer sets it explicitly.
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["engine_sources"]["Insert"]>;
+        Relationships: [];
+      };
+      engine_discoveries: {
+        Row: {
+          id: string;
+          dedupe_key: string;
+          title: string;
+          summary: string | null;
+          discovery_type: EngineDiscoveryType;
+          category_slug: string | null;
+          product_id: string | null;
+          content_id: string | null;
+          manufacturer_id: string | null;
+          confidence: number;
+          claim_status: EngineClaimStatus;
+          state: EnginePipelineState;
+          state_reason: string | null;
+          first_seen_at: string;
+          last_seen_at: string;
+          sighting_count: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["engine_discoveries"]["Row"]> & {
+          dedupe_key: string;
+          title: string;
+          discovery_type: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["engine_discoveries"]["Row"]>;
+        Relationships: [];
+      };
+      engine_discovery_evidence: {
+        Row: {
+          id: string;
+          discovery_id: string;
+          source_id: string | null;
+          url: string;
+          publisher: string | null;
+          excerpt: string | null;
+          claim_status: EngineClaimStatus;
+          trust_level: EngineTrustLevel;
+          // Non-null means this source is repeating someone else's claim, so
+          // it is excluded from corroboration — see confidence.ts.
+          originates_from_url: string | null;
+          retrieved_at: string;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["engine_discovery_evidence"]["Row"]> & {
+          discovery_id: string;
+          url: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["engine_discovery_evidence"]["Row"]>;
+        Relationships: [];
+      };
+      engine_opportunities: {
+        Row: {
+          id: string;
+          subject_type: EngineOpportunitySubject;
+          subject_key: string;
+          label: string;
+          score: number | null;
+          inputs: Record<string, unknown>;
+          explanation: string;
+          discovery_id: string | null;
+          computed_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["engine_opportunities"]["Row"]> & {
+          subject_type: string;
+          subject_key: string;
+          label: string;
+          explanation: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["engine_opportunities"]["Row"]>;
+        Relationships: [];
+      };
+      engine_briefs: {
+        Row: {
+          id: string;
+          discovery_id: string | null;
+          opportunity_id: string | null;
+          proposed_title: string;
+          proposed_slug: string | null;
+          content_type: string | null;
+          search_intent: string | null;
+          primary_query: string | null;
+          category_slug: string | null;
+          rationale: string;
+          related_product_slugs: string[];
+          related_content_slugs: string[];
+          media_requirement_note: string | null;
+          state: EngineBriefState;
+          state_reason: string | null;
+          content_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["engine_briefs"]["Row"]> & {
+          proposed_title: string;
+          rationale: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["engine_briefs"]["Row"]>;
+        Relationships: [];
+      };
+      engine_freshness_reviews: {
+        Row: {
+          id: string;
+          product_id: string | null;
+          content_id: string | null;
+          reason: EngineFreshnessReason;
+          detail: string | null;
+          severity: EngineSeverity;
+          state: EngineFreshnessState;
+          detected_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["engine_freshness_reviews"]["Row"]> & {
+          reason: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["engine_freshness_reviews"]["Row"]>;
+        Relationships: [];
+      };
+      engine_job_runs: {
+        Row: {
+          id: string;
+          job_name: string;
+          idempotency_key: string | null;
+          status: EngineJobStatus;
+          started_at: string;
+          finished_at: string | null;
+          items_examined: number;
+          items_created: number;
+          items_deduped: number;
+          items_failed: number;
+          detail: Record<string, unknown>;
+          error: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["engine_job_runs"]["Row"]> & { job_name: string };
+        Update: Partial<Database["public"]["Tables"]["engine_job_runs"]["Row"]>;
+        Relationships: [];
+      };
     };
     Views: { [_ in never]: never };
     Functions: {
@@ -807,6 +1090,106 @@ export interface Database {
           p_device_type: string | null;
         };
         Returns: void;
+      };
+      // Growth Engine RPCs — see supabase/migrations_pending/20260821_growth_engine.sql
+      // and _growth_engine_rpcs.sql. All are SECURITY DEFINER and anon-callable
+      // because scheduled jobs run without cookies; each re-checks the engine
+      // kill switch internally.
+      compute_analytics_rollup_guarded: {
+        Args: { target_day: string; cooldown_minutes?: number };
+        Returns: string;
+      };
+      engine_flag_enabled: {
+        Args: { p_flag: string };
+        Returns: boolean;
+      };
+      engine_record_job_run: {
+        Args: {
+          p_job_name: string;
+          p_status: string;
+          p_items_examined?: number;
+          p_items_created?: number;
+          p_items_deduped?: number;
+          p_items_failed?: number;
+          p_detail?: unknown;
+          p_error?: string | null;
+        };
+        Returns: void;
+      };
+      engine_upsert_discovery: {
+        Args: {
+          p_dedupe_key: string;
+          p_title: string;
+          p_summary: string | null;
+          p_discovery_type: string;
+          p_category_slug: string | null;
+          p_claim_status: string;
+          p_confidence: number;
+          p_source_url: string | null;
+          p_publisher: string | null;
+          p_trust_level: string;
+        };
+        Returns: string;
+      };
+      engine_due_sources: {
+        Args: Record<string, never>;
+        Returns: {
+          id: string;
+          organisation: string;
+          url: string;
+          source_type: string;
+          trust_level: string;
+          categories: string[];
+        }[];
+      };
+      engine_record_source_check: {
+        Args: { p_source_id: string; p_success: boolean; p_error?: string | null };
+        Returns: void;
+      };
+      engine_opportunity_inputs: {
+        Args: { p_days?: number };
+        Returns: {
+          category_slug: string;
+          search_volume: number;
+          zero_result_searches: number;
+          views: number;
+          previous_views: number;
+          existing_content_count: number;
+          commercial_clicks: number;
+          days_since_freshest: number;
+        }[];
+      };
+      engine_upsert_opportunity: {
+        Args: {
+          p_subject_type: string;
+          p_subject_key: string;
+          p_label: string;
+          p_score: number | null;
+          p_inputs: unknown;
+          p_explanation: string;
+        };
+        Returns: void;
+      };
+      engine_freshness_candidates: {
+        Args: { p_stale_days?: number };
+        Returns: {
+          kind: string;
+          entity_id: string;
+          slug: string;
+          title: string;
+          age_days: number;
+          source_count: number;
+        }[];
+      };
+      engine_upsert_freshness: {
+        Args: {
+          p_kind: string;
+          p_entity_id: string;
+          p_reason: string;
+          p_detail: string | null;
+          p_severity: string;
+        };
+        Returns: string;
       };
     };
   };

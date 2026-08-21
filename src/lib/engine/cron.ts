@@ -1,0 +1,104 @@
+import "server-only";
+import { NextResponse, type NextRequest } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+
+// Shared plumbing for Growth Engine scheduled jobs (requirement 10:
+// idempotent, rate-limited, observable, retryable, inexpensive, safe when a
+// source disappears or changes format).
+//
+// These routes run as `anon` — a Vercel Cron invocation carries no cookies.
+// That is deliberate and safe: every database interaction goes through a
+// narrow SECURITY DEFINER RPC (see 20260821_growth_engine_rpcs.sql) which
+// re-checks the engine kill switch itself, so hitting an endpoint directly
+// cannot bypass the switch.
+
+/** Same CRON_SECRET convention the analytics rollup already uses. */
+export function checkCronAuth(request: NextRequest): NextResponse | null {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) return null; // Not configured: behave as the rollup route does.
+  const auth = request.headers.get("authorization");
+  if (auth !== `Bearer ${secret}`) {
+    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  }
+  return null;
+}
+
+export type JobCounters = {
+  examined: number;
+  created: number;
+  deduped: number;
+  failed: number;
+};
+
+export function newCounters(): JobCounters {
+  return { examined: 0, created: 0, deduped: 0, failed: 0 };
+}
+
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
+
+/** Appends to the engine_job_runs audit log. Never throws — logging must not
+ *  be the thing that fails a job. */
+export async function recordJobRun(
+  supabase: SupabaseServerClient,
+  jobName: string,
+  status: "success" | "partial" | "failed" | "skipped",
+  counters: JobCounters,
+  detail: Record<string, unknown> = {},
+  error?: string
+): Promise<void> {
+  try {
+    await supabase.rpc("engine_record_job_run", {
+      p_job_name: jobName,
+      p_status: status,
+      p_items_examined: counters.examined,
+      p_items_created: counters.created,
+      p_items_deduped: counters.deduped,
+      p_items_failed: counters.failed,
+      p_detail: detail,
+      p_error: error ?? null,
+    });
+  } catch {
+    // Swallow: an unwritable audit row is worth a lost log line, not a
+    // failed job. The HTTP response still reports the real outcome.
+  }
+}
+
+/** Whether a specific engine capability is switched on. Fails closed. */
+export async function isFlagEnabled(
+  supabase: SupabaseServerClient,
+  flag: "discovery" | "research" | "freshness" | "opportunity" | "autonomous_publishing"
+): Promise<boolean> {
+  const { data, error } = await supabase.rpc("engine_flag_enabled", { p_flag: flag });
+  if (error) return false;
+  return data === true;
+}
+
+/**
+ * Fetch with a hard timeout and a declared User-Agent. Bounded so one slow or
+ * hostile source cannot hang a scheduled job, and never throws — callers get
+ * null and record a source failure rather than crashing the whole run.
+ */
+export async function safeFetchText(url: string, timeoutMs = 10_000): Promise<string | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        // Identify ourselves honestly rather than impersonating a browser.
+        "user-agent": "TechCarvalhoBot/1.0 (+https://www.techcarvalho.com)",
+        accept: "application/rss+xml, application/atom+xml, application/xml, text/xml, */*",
+      },
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const text = await res.text();
+    // Cap payload size — a source that starts returning something enormous
+    // shouldn't be able to blow up the function's memory.
+    return text.slice(0, 2_000_000);
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}

@@ -32,7 +32,10 @@ const NAV_SECTIONS: { title: string; items: { href: string; label: string }[] }[
   },
   {
     title: "Growth",
-    items: [{ href: "/admin/analytics", label: "Analytics" }],
+    items: [
+      { href: "/admin/analytics", label: "Analytics" },
+      { href: "/admin/engine", label: "Growth Engine" },
+    ],
   },
 ];
 

@@ -26,11 +26,22 @@ export async function GET(request: NextRequest) {
   const targetDay =
     targetDayParam ?? new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
+  // Calls the *guarded* wrapper, not compute_analytics_rollup directly.
+  // This route runs as `anon` (a cron invocation carries no cookies), and
+  // anon is deliberately not allowed to call the raw function — see
+  // 20260821_revoke_public_execute_compute_rollup.sql. The guarded wrapper
+  // is anon-callable but refuses to recompute a day computed within the
+  // cooldown window, so the DoS vector that revoke closed stays closed.
   const supabase = await createClient();
-  const { error } = await supabase.rpc("compute_analytics_rollup", { target_day: targetDay });
+  const { data, error } = await supabase.rpc("compute_analytics_rollup_guarded", {
+    target_day: targetDay,
+    cooldown_minutes: 60,
+  });
 
   if (error) {
     return NextResponse.json({ ok: false, day: targetDay, error: error.message }, { status: 500 });
   }
-  return NextResponse.json({ ok: true, day: targetDay });
+  // `status` distinguishes a real recomputation from a cooldown skip, so a
+  // skipped run is visible in logs rather than looking identical to success.
+  return NextResponse.json({ ok: true, day: targetDay, status: data });
 }
