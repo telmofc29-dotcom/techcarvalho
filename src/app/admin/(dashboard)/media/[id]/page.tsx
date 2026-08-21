@@ -92,6 +92,7 @@ export default async function EditMediaPage({
             >
               Rights: {(asset.rights_status ?? "unknown").replace("_", " ")}
             </Badge>
+            {asset.brand_role && <Badge tone="amber">Brand: {asset.brand_role.replace(/_/g, " ")}</Badge>}
           </div>
           {!isPublished && !eligibility.allowed && (
             <p className="text-xs text-amber-700 max-w-md">{eligibility.reason}</p>
@@ -170,6 +171,22 @@ export default async function EditMediaPage({
               <option value="pending_verification">Pending verification</option>
               <option value="verified">Verified</option>
               <option value="restricted">Restricted (never publish)</option>
+            </Select>
+          </Field>
+          <Field
+            label="Brand asset role"
+            htmlFor="brand_role"
+            hint="Leave as 'Not a brand asset' for product/article photography. Only for TechCarvalho's own logo/mark/icon files."
+          >
+            <Select id="brand_role" name="brand_role" defaultValue={asset.brand_role ?? ""}>
+              <option value="">Not a brand asset</option>
+              <option value="logo_full">Full logo (mark + wordmark)</option>
+              <option value="logo_full_tagline">Full logo + tagline</option>
+              <option value="wordmark">Wordmark only</option>
+              <option value="wordmark_tagline">Wordmark + tagline</option>
+              <option value="mark">Mark / monogram only</option>
+              <option value="favicon">Favicon candidate</option>
+              <option value="og_image">Social / OG image candidate</option>
             </Select>
           </Field>
           <div>
