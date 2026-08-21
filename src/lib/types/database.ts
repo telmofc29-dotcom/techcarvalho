@@ -75,6 +75,17 @@ export type MediaSourceType =
   | "other";
 export type MediaPublicationStatus = "private" | "published";
 export type MediaRightsStatus = "unknown" | "pending_verification" | "verified" | "restricted";
+// Added by supabase/migrations_pending/20260821_media_brand_role.sql — see
+// that file's header for why this is one column rather than a separate
+// is_brand_asset flag plus a role field.
+export type MediaBrandRole =
+  | "logo_full"
+  | "logo_full_tagline"
+  | "wordmark"
+  | "wordmark_tagline"
+  | "mark"
+  | "favicon"
+  | "og_image";
 export type SearchIntent = "informational" | "commercial" | "transactional" | "navigational";
 
 export interface Database {
@@ -119,6 +130,11 @@ export interface Database {
           published_at: string | null;
           published_by: string | null;
           rights_status: MediaRightsStatus;
+          // Added by supabase/migrations_pending/20260821_media_brand_role.sql.
+          // Non-null = this is a site-brand asset (logo/mark/favicon/OG
+          // source), distinct from product/article/editorial media; the
+          // value is its specific intended role.
+          brand_role: MediaBrandRole | null;
         };
         Insert: {
           id?: string;
@@ -142,6 +158,7 @@ export interface Database {
           published_at?: string | null;
           published_by?: string | null;
           rights_status?: MediaRightsStatus;
+          brand_role?: MediaBrandRole | null;
         };
         Update: Partial<Database["public"]["Tables"]["media_assets"]["Insert"]>;
         Relationships: [];

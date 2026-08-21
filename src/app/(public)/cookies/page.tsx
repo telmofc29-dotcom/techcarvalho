@@ -11,7 +11,8 @@ export default function CookiesPage() {
       <p>
         {SITE_NAME} uses a small number of cookies and similar browser storage. Some are required for the site to
         function; others are only used after you grant consent through the consent banner. You can change your
-        choice at any time by clearing this site&apos;s cookies and local storage in your browser.
+        choice at any time using the &quot;Cookie settings&quot; link in the footer of every page, which lets you
+        review and adjust each category individually.
       </p>
       <h2 className="font-display text-base font-semibold text-zinc-900 mt-2">Strictly necessary</h2>
       <p>

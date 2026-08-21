@@ -24,11 +24,11 @@ export default function PrivacyPage() {
       </p>
       <h2 className="font-display text-base font-semibold text-zinc-900 mt-2">Your choices</h2>
       <p>
-        You can withdraw analytics/advertising consent at any time by clearing this site&apos;s cookies and local
-        storage in your browser, which also stops any future collection. Because our first-party analytics is not
-        linked to your name, email, or any account, we have no way to identify and delete one specific visitor&apos;s
-        past records on request — clearing your browser storage is the effective equivalent, since it prevents any
-        future record from being connected to your prior visits.
+        You can review or withdraw analytics/advertising consent at any time using the &quot;Cookie settings&quot;
+        link in the footer of every page, which stops any future collection in the category you disable immediately.
+        Because our first-party analytics is not linked to your name, email, or any account, we have no way to
+        identify and delete one specific visitor&apos;s past records on request — withdrawing consent is the
+        effective equivalent, since it prevents any future record from being connected to your prior visits.
       </p>
       <p>Questions about this policy can be sent via the Contact page.</p>
     </LegalPage>
