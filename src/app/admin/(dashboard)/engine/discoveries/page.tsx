@@ -13,8 +13,16 @@ import {
 import { SubmitButton } from "@/components/admin/submit-button";
 import { computeConfidence } from "@/lib/engine/confidence";
 import type { ClaimStatus, DiscoveryType, EngineEvidence, PipelineState, TrustLevel } from "@/lib/engine/types";
-import { setDiscoveryState } from "../actions";
-import { ClaimStatusBadge, EngineTabs, StateBadge, TrustBadge, formatDateTime, humanise } from "../shared";
+import { overrideDiscoveryRelevance, setDiscoveryState } from "../actions";
+import {
+  ClaimStatusBadge,
+  EngineTabs,
+  RelevanceBadge,
+  StateBadge,
+  TrustBadge,
+  formatDateTime,
+  humanise,
+} from "../shared";
 
 const STATE_FILTERS: (PipelineState | "")[] = [
   "",
@@ -38,6 +46,30 @@ const TYPE_FILTERS: (DiscoveryType | "")[] = [
   "new_topic",
 ];
 
+const RELEVANCE_FILTERS = ["", "relevant", "uncertain", "rejected", "unclassified"] as const;
+
+// Declared explicitly because the select list below is a concatenated string,
+// which defeats supabase-js's literal-type inference of the returned row.
+type DiscoveryRow = {
+  id: string;
+  title: string;
+  summary: string | null;
+  discovery_type: string;
+  category_slug: string | null;
+  confidence: number;
+  claim_status: string;
+  state: string;
+  state_reason: string | null;
+  first_seen_at: string;
+  last_seen_at: string;
+  sighting_count: number;
+  relevance_verdict: string | null;
+  relevance_score: number | null;
+  relevance_explanation: string | null;
+  suggested_angle: string | null;
+  relevance_overridden_by_admin: boolean;
+};
+
 // Triage states an admin can move a candidate into from here. "published" is
 // deliberately absent — see the note on setDiscoveryState in actions.ts.
 const TRIAGE_STATES: PipelineState[] = [
@@ -52,16 +84,18 @@ const TRIAGE_STATES: PipelineState[] = [
 export default async function EngineDiscoveriesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ state?: string; type?: string }>;
+  searchParams: Promise<{ state?: string; type?: string; relevance?: string }>;
 }) {
   await requireAdmin();
-  const { state, type } = await searchParams;
+  const { state, type, relevance } = await searchParams;
   const supabase = await createClient();
 
   let query = supabase
     .from("engine_discoveries")
     .select(
-      "id, title, summary, discovery_type, category_slug, confidence, claim_status, state, state_reason, first_seen_at, last_seen_at, sighting_count"
+      "id, title, summary, discovery_type, category_slug, confidence, claim_status, state, state_reason, " +
+        "first_seen_at, last_seen_at, sighting_count, relevance_verdict, relevance_score, " +
+        "relevance_explanation, suggested_angle, relevance_overridden_by_admin"
     )
     .order("last_seen_at", { ascending: false })
     .limit(100);
@@ -71,9 +105,14 @@ export default async function EngineDiscoveriesPage({
   const validType = TYPE_FILTERS.find((f) => f !== "" && f === type);
   if (validType) query = query.eq("discovery_type", validType);
 
-  const { data: discoveries, error } = await query;
+  const validRelevance = RELEVANCE_FILTERS.find((f) => f !== "" && f === relevance);
+  if (validRelevance === "unclassified") query = query.is("relevance_verdict", null);
+  else if (validRelevance) query = query.eq("relevance_verdict", validRelevance);
 
-  const ids = (discoveries ?? []).map((d) => d.id);
+  const { data, error } = await query;
+  const discoveries = (data ?? []) as unknown as DiscoveryRow[];
+
+  const ids = discoveries.map((d) => d.id);
   const { data: evidence, error: evidenceError } =
     ids.length > 0
       ? await supabase
@@ -89,10 +128,11 @@ export default async function EngineDiscoveriesPage({
     evidenceByDiscovery.set(e.discovery_id, list);
   }
 
-  const filterHref = (nextState: string, nextType: string) => {
+  const filterHref = (nextState: string, nextType: string, nextRelevance: string) => {
     const params = new URLSearchParams();
     if (nextState) params.set("state", nextState);
     if (nextType) params.set("type", nextType);
+    if (nextRelevance) params.set("relevance", nextRelevance);
     const qs = params.toString();
     return `/admin/engine/discoveries${qs ? `?${qs}` : ""}`;
   };
@@ -107,10 +147,23 @@ export default async function EngineDiscoveriesPage({
 
       <div className="flex flex-col gap-2 mb-4">
         <div className="flex flex-wrap gap-2">
+          {RELEVANCE_FILTERS.map((f) => (
+            <a
+              key={f || "all"}
+              href={filterHref(state ?? "", type ?? "", f)}
+              className={`rounded-full px-3 py-1 text-xs font-medium ${
+                (relevance ?? "") === f ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-600"
+              }`}
+            >
+              {f ? humanise(f) : "All relevance"}
+            </a>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-2">
           {STATE_FILTERS.map((f) => (
             <a
               key={f || "all"}
-              href={filterHref(f, type ?? "")}
+              href={filterHref(f, type ?? "", relevance ?? "")}
               className={`rounded-full px-3 py-1 text-xs font-medium ${
                 (state ?? "") === f ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-600"
               }`}
@@ -123,7 +176,7 @@ export default async function EngineDiscoveriesPage({
           {TYPE_FILTERS.map((f) => (
             <a
               key={f || "all"}
-              href={filterHref(state ?? "", f)}
+              href={filterHref(state ?? "", f, relevance ?? "")}
               className={`rounded-full px-3 py-1 text-xs font-medium ${
                 (type ?? "") === f ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-600"
               }`}
@@ -137,7 +190,7 @@ export default async function EngineDiscoveriesPage({
       {error && <QueryErrorBanner message={`Failed to load discoveries: ${error.message}`} />}
       {evidenceError && <QueryErrorBanner message={`Failed to load evidence: ${evidenceError.message}`} />}
 
-      {!error && (discoveries ?? []).length === 0 ? (
+      {!error && discoveries.length === 0 ? (
         <EmptyState
           title="No discoveries"
           description="Scheduled discovery creates candidate records here once sources are registered and the engine is enabled."
@@ -145,7 +198,7 @@ export default async function EngineDiscoveriesPage({
       ) : (
         !error && (
           <div className="flex flex-col gap-3">
-            {(discoveries ?? []).map((d) => {
+            {discoveries.map((d) => {
               const rows = evidenceByDiscovery.get(d.id) ?? [];
               // Recomputed from live evidence rather than trusting the stored
               // number — so the page shows what the evidence currently
@@ -170,6 +223,7 @@ export default async function EngineDiscoveriesPage({
                       </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
+                      <RelevanceBadge verdict={d.relevance_verdict} />
                       <ClaimStatusBadge status={d.claim_status as ClaimStatus} />
                       <StateBadge state={d.state} />
                       <Badge tone="neutral">confidence {Number(d.confidence).toFixed(2)}</Badge>
@@ -178,6 +232,38 @@ export default async function EngineDiscoveriesPage({
 
                   {d.summary && <p className="text-sm text-neutral-700 mt-2">{d.summary}</p>}
                   {d.state_reason && <p className="text-xs text-neutral-500 mt-1">State reason: {d.state_reason}</p>}
+
+                  {/* Relevance decision. Rejected candidates are parked, never
+                      deleted, so the reasoning stays inspectable and an admin
+                      can disagree with it. */}
+                  <div
+                    className={`mt-3 rounded border p-3 ${
+                      d.relevance_verdict === "relevant"
+                        ? "border-green-200 bg-green-50"
+                        : d.relevance_verdict === "uncertain"
+                          ? "border-amber-200 bg-amber-50"
+                          : "border-neutral-200 bg-neutral-50"
+                    }`}
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-xs font-semibold text-neutral-900">
+                        Relevance: {d.relevance_verdict ? humanise(d.relevance_verdict) : "not yet classified"}
+                      </p>
+                      {d.relevance_score !== null && (
+                        <Badge tone="neutral">score {d.relevance_score}</Badge>
+                      )}
+                      {d.suggested_angle && <Badge tone="blue">{humanise(d.suggested_angle)}</Badge>}
+                      {d.relevance_overridden_by_admin && <Badge tone="blue">Human decision</Badge>}
+                    </div>
+                    <p className="text-xs text-neutral-700 mt-1">
+                      {d.relevance_explanation ?? "No relevance decision recorded yet."}
+                    </p>
+                    {d.relevance_overridden_by_admin && (
+                      <p className="text-[11px] text-neutral-500 mt-1">
+                        Locked to this verdict — the scheduled classifier will not overwrite a human decision.
+                      </p>
+                    )}
+                  </div>
 
                   <p className="text-xs text-neutral-400 mt-2">
                     First seen {formatDateTime(d.first_seen_at)} · last seen {formatDateTime(d.last_seen_at)}
@@ -230,6 +316,36 @@ export default async function EngineDiscoveriesPage({
                         ))}
                       </ul>
                     )}
+                  </details>
+
+                  <details className="mt-3">
+                    <summary className="cursor-pointer text-xs font-medium text-neutral-700">
+                      Override relevance
+                    </summary>
+                    <form action={overrideDiscoveryRelevance} className="flex flex-col gap-3 mt-3 max-w-md">
+                      <input type="hidden" name="id" value={d.id} />
+                      <Field
+                        label="Verdict"
+                        htmlFor={`relevance-${d.id}`}
+                        hint="Your decision permanently overrides the classifier for this candidate."
+                      >
+                        <Select
+                          id={`relevance-${d.id}`}
+                          name="relevance_verdict"
+                          defaultValue={d.relevance_verdict ?? "uncertain"}
+                        >
+                          <option value="relevant">Relevant</option>
+                          <option value="uncertain">Uncertain</option>
+                          <option value="rejected">Rejected</option>
+                        </Select>
+                      </Field>
+                      <Field label="Reason" htmlFor={`override-${d.id}`} hint="Why the classifier got this wrong.">
+                        <TextInput id={`override-${d.id}`} name="override_note" />
+                      </Field>
+                      <div>
+                        <SubmitButton pendingLabel="Saving...">Override verdict</SubmitButton>
+                      </div>
+                    </form>
                   </details>
 
                   <details className="mt-3">

@@ -12,7 +12,8 @@ const ENGINE_TABS: { href: string; label: string }[] = [
   { href: "/admin/engine/sources", label: "Sources" },
   { href: "/admin/engine/discoveries", label: "Discoveries" },
   { href: "/admin/engine/opportunities", label: "Opportunities" },
-  { href: "/admin/engine/briefs", label: "Pipeline" },
+  { href: "/admin/engine/briefs", label: "Review queue" },
+  { href: "/admin/engine/searches", label: "Searches" },
   { href: "/admin/engine/freshness", label: "Freshness" },
   { href: "/admin/engine/media-blockers", label: "Media blockers" },
 ];
@@ -118,4 +119,59 @@ const STATE_TONE: Record<string, Tone> = {
 
 export function StateBadge({ state }: { state: string }) {
   return <Badge tone={STATE_TONE[state] ?? "neutral"}>{humanise(state)}</Badge>;
+}
+
+// Relevance verdicts. "uncertain" is amber rather than neutral for the same
+// reason unverified media rights are: an undecided item is an open question
+// needing a human, not a settled default.
+const RELEVANCE_TONE: Record<string, Tone> = {
+  relevant: "green",
+  uncertain: "amber",
+  rejected: "neutral",
+};
+
+export function RelevanceBadge({ verdict }: { verdict: string | null }) {
+  if (!verdict) return <Badge tone="neutral">Not yet classified</Badge>;
+  return <Badge tone={RELEVANCE_TONE[verdict] ?? "neutral"}>{humanise(verdict)}</Badge>;
+}
+
+// Review states. Rejected is red here (unlike a rejected *discovery*, which is
+// merely parked) because rejecting a brief is an explicit human decision to
+// not cover something.
+const REVIEW_TONE: Record<string, Tone> = {
+  pending: "amber",
+  approved: "green",
+  rejected: "red",
+  snoozed: "blue",
+  research_requested: "blue",
+};
+
+export function ReviewStateBadge({ state }: { state: string }) {
+  return <Badge tone={REVIEW_TONE[state] ?? "neutral"}>{humanise(state)}</Badge>;
+}
+
+// Freshness sensitivity drives how quickly a brief loses value, so it reads as
+// urgency: breaking is red, evergreen is calm.
+const FRESHNESS_TONE: Record<string, Tone> = {
+  breaking: "red",
+  time_sensitive: "amber",
+  evergreen: "green",
+};
+
+export function FreshnessSensitivityBadge({ value }: { value: string | null }) {
+  if (!value) return null;
+  return <Badge tone={FRESHNESS_TONE[value] ?? "neutral"}>{humanise(value)}</Badge>;
+}
+
+export function BriefKindBadge({ kind }: { kind: string | null }) {
+  if (!kind) return <Badge tone="neutral">Kind not set</Badge>;
+  return <Badge tone="blue">{humanise(kind)}</Badge>;
+}
+
+/** Milliseconds -> short human duration, for job-run timings. */
+export function formatDuration(ms: number | null): string {
+  if (ms === null || !Number.isFinite(ms)) return "—";
+  if (ms < 1000) return `${Math.round(ms)}ms`;
+  if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
+  return `${Math.floor(ms / 60_000)}m ${Math.round((ms % 60_000) / 1000)}s`;
 }

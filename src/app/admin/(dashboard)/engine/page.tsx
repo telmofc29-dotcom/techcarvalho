@@ -13,9 +13,35 @@ import {
   Td,
 } from "@/components/admin/ui";
 import { SubmitButton } from "@/components/admin/submit-button";
+import { Badge } from "@/components/shared/ui";
 import type { EngineSettings, JobStatus } from "@/lib/engine/types";
 import { updateEngineSettings } from "./actions";
-import { EngineTabs, JobStatusBadge, formatDateTime } from "./shared";
+import { EngineTabs, JobStatusBadge, formatDateTime, formatDuration, humanise } from "./shared";
+
+type JobRun = {
+  id: string;
+  job_name: string;
+  status: JobStatus;
+  started_at: string;
+  finished_at: string | null;
+  items_examined: number;
+  items_created: number;
+  items_deduped: number;
+  items_failed: number;
+  detail: Record<string, unknown> | null;
+  error: string | null;
+};
+
+/** The tick records its wall-clock time in detail.durationMs. */
+function durationOf(run: JobRun): number | null {
+  const d = run.detail?.durationMs;
+  if (typeof d === "number") return d;
+  if (run.finished_at) {
+    const ms = new Date(run.finished_at).getTime() - new Date(run.started_at).getTime();
+    return Number.isFinite(ms) && ms >= 0 ? ms : null;
+  }
+  return null;
+}
 
 // Engine health + control surface. This is the page an admin opens to answer
 // "is the engine on, what has it been doing, and did anything break" — so the
@@ -25,7 +51,13 @@ export default async function EngineHealthPage() {
   await requireAdmin();
   const supabase = await createClient();
 
-  const [{ data: settings, error: settingsError }, { data: runs, error: runsError }] = await Promise.all([
+  const [
+    { data: settings, error: settingsError },
+    { data: runs, error: runsError },
+    { data: discoveryRows, error: discoveryCountError },
+    { data: briefRows, error: briefCountError },
+    { count: freshnessOpen, error: freshnessCountError },
+  ] = await Promise.all([
     supabase
       .from("engine_settings")
       .select(
@@ -36,13 +68,46 @@ export default async function EngineHealthPage() {
     supabase
       .from("engine_job_runs")
       .select(
-        "id, job_name, status, started_at, finished_at, items_examined, items_created, items_deduped, items_failed, error"
+        "id, job_name, status, started_at, finished_at, items_examined, items_created, items_deduped, items_failed, detail, error"
       )
       .order("started_at", { ascending: false })
-      .limit(30),
+      .limit(200),
+    supabase.from("engine_discoveries").select("relevance_verdict"),
+    supabase.from("engine_briefs").select("review_state"),
+    supabase
+      .from("engine_freshness_reviews")
+      .select("*", { count: "exact", head: true })
+      .eq("state", "open"),
   ]);
 
   const s = (settings ?? null) as EngineSettings | null;
+  const allRuns = (runs ?? []) as unknown as JobRun[];
+
+  // Per-job rollup. "Last successful" is tracked separately from "last run" on
+  // purpose: a job failing every night still has a recent run, and only the
+  // gap between those two reveals it.
+  const jobNames = [...new Set(allRuns.map((r) => r.job_name))].sort();
+  const jobSummaries = jobNames.map((name) => {
+    const history = allRuns.filter((r) => r.job_name === name);
+    const last = history[0];
+    const lastSuccess = history.find((r) => r.status === "success");
+    return { name, last, lastSuccess, history: history.slice(0, 10) };
+  });
+
+  const failingJobs = jobSummaries.filter(
+    (j) => j.last && (j.last.status === "failed" || j.last.status === "partial")
+  );
+
+  const relevanceCounts = new Map<string, number>();
+  for (const d of (discoveryRows ?? []) as { relevance_verdict: string | null }[]) {
+    const key = d.relevance_verdict ?? "unclassified";
+    relevanceCounts.set(key, (relevanceCounts.get(key) ?? 0) + 1);
+  }
+
+  const reviewCounts = new Map<string, number>();
+  for (const b of (briefRows ?? []) as { review_state: string }[]) {
+    reviewCounts.set(b.review_state, (reviewCounts.get(b.review_state) ?? 0) + 1);
+  }
 
   return (
     <div>
@@ -136,52 +201,206 @@ export default async function EngineHealthPage() {
         </>
       )}
 
+      {/* Pipeline volumes: what is sitting in each stage right now. */}
+      <h2 className="text-sm font-semibold text-neutral-900 mb-1">Pipeline</h2>
+      <p className="text-xs text-neutral-500 mb-3">
+        What the engine currently holds at each stage. Rejected discoveries are parked, never deleted.
+      </p>
+
+      {discoveryCountError && (
+        <QueryErrorBanner message={`Failed to count discoveries: ${discoveryCountError.message}`} />
+      )}
+      {briefCountError && <QueryErrorBanner message={`Failed to count briefs: ${briefCountError.message}`} />}
+      {freshnessCountError && (
+        <QueryErrorBanner message={`Failed to count freshness alerts: ${freshnessCountError.message}`} />
+      )}
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 mb-6">
+        <Card className="p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-neutral-500 mb-2">Discoveries by relevance</p>
+          {relevanceCounts.size === 0 ? (
+            <p className="text-sm text-neutral-500">None yet.</p>
+          ) : (
+            <ul className="flex flex-col gap-1">
+              {["relevant", "uncertain", "rejected", "unclassified"]
+                .filter((k) => relevanceCounts.has(k))
+                .map((k) => (
+                  <li key={k} className="flex items-center justify-between text-sm">
+                    <span className="text-neutral-700">{humanise(k)}</span>
+                    <span className="font-semibold text-neutral-900 tabular-nums">{relevanceCounts.get(k)}</span>
+                  </li>
+                ))}
+            </ul>
+          )}
+        </Card>
+
+        <Card className="p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-neutral-500 mb-2">Briefs by review state</p>
+          {reviewCounts.size === 0 ? (
+            <p className="text-sm text-neutral-500">None yet.</p>
+          ) : (
+            <ul className="flex flex-col gap-1">
+              {["pending", "approved", "research_requested", "snoozed", "rejected"]
+                .filter((k) => reviewCounts.has(k))
+                .map((k) => (
+                  <li key={k} className="flex items-center justify-between text-sm">
+                    <span className="text-neutral-700">{humanise(k)}</span>
+                    <span className="font-semibold text-neutral-900 tabular-nums">{reviewCounts.get(k)}</span>
+                  </li>
+                ))}
+            </ul>
+          )}
+        </Card>
+
+        <Card className={`p-4 ${(freshnessOpen ?? 0) > 0 ? "border-amber-300 bg-amber-50" : ""}`}>
+          <p className="text-xs font-medium uppercase tracking-wide text-neutral-500 mb-2">Open freshness alerts</p>
+          <p className="text-lg font-semibold text-neutral-900 tabular-nums">{freshnessOpen ?? 0}</p>
+          <p className="text-xs text-neutral-500 mt-1">Recommendations awaiting a human; nothing is auto-rewritten.</p>
+        </Card>
+      </div>
+
+      {/* Failures first and loud — a broken job must not be something you have
+          to scroll a table to notice. */}
+      {failingJobs.length > 0 && (
+        <Card className="p-4 mb-6 border-red-300 bg-red-50">
+          <p className="text-sm font-semibold text-neutral-900">
+            {failingJobs.length} job{failingJobs.length === 1 ? "" : "s"} last ran with problems
+          </p>
+          <ul className="flex flex-col gap-2 mt-2">
+            {failingJobs.map((j) => (
+              <li key={j.name} className="text-xs">
+                <span className="font-medium text-neutral-900">{j.name}</span>{" "}
+                <JobStatusBadge status={j.last!.status} /> — last ran {formatDateTime(j.last!.started_at)}
+                {j.lastSuccess ? (
+                  <>, last succeeded {formatDateTime(j.lastSuccess.started_at)}</>
+                ) : (
+                  <span className="text-red-800 font-medium"> — has never succeeded</span>
+                )}
+                {j.last!.error && <p className="text-red-800 mt-0.5 break-words">{j.last!.error}</p>}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
+      <h2 className="text-sm font-semibold text-neutral-900 mb-1">Jobs</h2>
+      <p className="text-xs text-neutral-500 mb-3">
+        One row per job: when it last ran, when it last actually succeeded, and how the last ten runs went.
+      </p>
+
+      {runsError && <QueryErrorBanner message={`Failed to load job runs: ${runsError.message}`} />}
+
+      {!runsError && jobSummaries.length > 0 && (
+        <div className="flex flex-col gap-2 mb-6">
+          {jobSummaries.map((j) => {
+            const staleSuccess =
+              j.lastSuccess && j.last && j.lastSuccess.id !== j.last.id ? true : !j.lastSuccess;
+            return (
+              <Card key={j.name} className="p-4">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-medium text-neutral-900">{j.name}</p>
+                    <p className="text-xs text-neutral-500 mt-0.5">
+                      Last run {formatDateTime(j.last?.started_at ?? null)}
+                      {j.last ? ` · ${formatDuration(durationOf(j.last))}` : ""}
+                    </p>
+                    <p className={`text-xs mt-0.5 ${staleSuccess ? "text-amber-800" : "text-neutral-500"}`}>
+                      {j.lastSuccess
+                        ? `Last success ${formatDateTime(j.lastSuccess.started_at)}`
+                        : "Never completed successfully"}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {j.last && <JobStatusBadge status={j.last.status} />}
+                    {j.last && (
+                      <Badge tone="neutral">
+                        {j.last.items_examined} examined · {j.last.items_created} created ·{" "}
+                        {j.last.items_deduped} deduped · {j.last.items_failed} failed
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+
+                {/* Compact run history — the shape of recent runs at a glance. */}
+                <div className="flex flex-wrap items-center gap-1 mt-3">
+                  <span className="text-[11px] text-neutral-400 mr-1">Last {j.history.length}:</span>
+                  {j.history
+                    .slice()
+                    .reverse()
+                    .map((r) => (
+                      <span
+                        key={r.id}
+                        title={`${r.status} — ${formatDateTime(r.started_at)}`}
+                        className={`inline-block h-3 w-3 rounded-sm ${
+                          r.status === "success"
+                            ? "bg-green-500"
+                            : r.status === "partial"
+                              ? "bg-amber-500"
+                              : r.status === "failed"
+                                ? "bg-red-500"
+                                : r.status === "running"
+                                  ? "bg-blue-400"
+                                  : "bg-neutral-300"
+                        }`}
+                      />
+                    ))}
+                </div>
+
+                {j.last?.error && (
+                  <p className="text-xs text-red-800 mt-2 break-words">Last error: {j.last.error}</p>
+                )}
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
       <h2 className="text-sm font-semibold text-neutral-900 mb-1">Recent job runs</h2>
       <p className="text-xs text-neutral-500 mb-3">
         Audit log of every scheduled run — what ran, what it did, and what failed.
       </p>
 
-      {runsError && <QueryErrorBanner message={`Failed to load job runs: ${runsError.message}`} />}
-
-      {!runsError && (runs ?? []).length === 0 ? (
+      {!runsError && allRuns.length === 0 ? (
         <EmptyState
           title="No job runs recorded yet"
           description="Scheduled engine jobs append a row here each time they run."
         />
       ) : (
         !runsError && (
-          <Table>
-            <thead>
-              <tr>
-                <Th>Job</Th>
-                <Th>Status</Th>
-                <Th>Started</Th>
-                <Th>Finished</Th>
-                <Th>Examined</Th>
-                <Th>Created</Th>
-                <Th>Deduped</Th>
-                <Th>Failed</Th>
-                <Th>Error</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {(runs ?? []).map((r) => (
-                <tr key={r.id}>
-                  <Td className="font-medium text-neutral-900 whitespace-nowrap">{r.job_name}</Td>
-                  <Td>
-                    <JobStatusBadge status={r.status as JobStatus} />
-                  </Td>
-                  <Td className="whitespace-nowrap text-neutral-600">{formatDateTime(r.started_at)}</Td>
-                  <Td className="whitespace-nowrap text-neutral-600">{formatDateTime(r.finished_at)}</Td>
-                  <Td className="tabular-nums">{r.items_examined}</Td>
-                  <Td className="tabular-nums">{r.items_created}</Td>
-                  <Td className="tabular-nums">{r.items_deduped}</Td>
-                  <Td className="tabular-nums">{r.items_failed}</Td>
-                  <Td className="text-red-700 max-w-xs">{r.error ?? ""}</Td>
+          <div className="overflow-x-auto">
+            <Table>
+              <thead>
+                <tr>
+                  <Th>Job</Th>
+                  <Th>Status</Th>
+                  <Th>Started</Th>
+                  <Th>Duration</Th>
+                  <Th>Examined</Th>
+                  <Th>Created</Th>
+                  <Th>Deduped</Th>
+                  <Th>Failed</Th>
+                  <Th>Error</Th>
                 </tr>
-              ))}
-            </tbody>
-          </Table>
+              </thead>
+              <tbody>
+                {allRuns.slice(0, 40).map((r) => (
+                  <tr key={r.id}>
+                    <Td className="font-medium text-neutral-900 whitespace-nowrap">{r.job_name}</Td>
+                    <Td>
+                      <JobStatusBadge status={r.status} />
+                    </Td>
+                    <Td className="whitespace-nowrap text-neutral-600">{formatDateTime(r.started_at)}</Td>
+                    <Td className="whitespace-nowrap text-neutral-600">{formatDuration(durationOf(r))}</Td>
+                    <Td className="tabular-nums">{r.items_examined}</Td>
+                    <Td className="tabular-nums">{r.items_created}</Td>
+                    <Td className="tabular-nums">{r.items_deduped}</Td>
+                    <Td className="tabular-nums">{r.items_failed}</Td>
+                    <Td className="text-red-700 max-w-xs">{r.error ?? ""}</Td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </div>
         )
       )}
     </div>
