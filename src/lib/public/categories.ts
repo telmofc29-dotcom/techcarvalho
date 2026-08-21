@@ -17,6 +17,9 @@ export const PLANNED_CATEGORIES: PlannedCategory[] = [
   { slug: "computing", label: "Computing", blurb: "PCs, components, and the software that runs on them." },
   { slug: "networking", label: "Networking", blurb: "Routers, mesh systems, and home network infrastructure." },
   { slug: "gaming", label: "Gaming", blurb: "Hardware and peripherals for playing games." },
+  { slug: "smartphones", label: "Smartphones", blurb: "Phones, from flagships to the upgrade question." },
+  { slug: "ai-hardware", label: "AI & AI Hardware", blurb: "AI features, on-device AI, and the hardware behind them." },
+  { slug: "smart-home-robots", label: "Smart Home & Robots", blurb: "Robot vacuums, smart displays, and connected home gear." },
 ];
 
 export function findPlannedCategory(slug: string): PlannedCategory | undefined {
