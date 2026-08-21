@@ -25,7 +25,12 @@ export function SiteHeader() {
             {SITE_NAME}
           </Link>
 
-          <SearchForm className="hidden md:block flex-1 max-w-sm" />
+          {/* Shares the lg breakpoint with the primary nav below, not md:
+              at md-to-lg (tablet) widths the hamburger menu is still the
+              only nav affordance shown, and it has its own SearchForm in
+              its dropdown — showing this one too in that range meant two
+              visible search inputs at once. */}
+          <SearchForm className="hidden lg:block flex-1 max-w-sm" />
 
           <nav aria-label="Primary" className="hidden lg:block">
             <ul className="flex flex-wrap items-center gap-5 text-sm font-medium text-zinc-600">

@@ -3,9 +3,9 @@ import Link from "next/link";
 // Shared body for segment-specific not-found.tsx files (products/articles/
 // manufacturers [slug] routes). Paired with each segment's own noindex
 // metadata (buildNotFoundMetadata) so a bad slug never inherits the root
-// layout's indexable metadata — see docs/analytics-adsense.md /
-// CLAUDE.md for the full explanation of why this exists as its own file
-// rather than falling back to the root not-found.tsx.
+// layout's indexable metadata — see the buildNotFoundMetadata comment in
+// src/lib/seo/metadata.ts for the full explanation of why this exists as
+// its own file rather than falling back to the root not-found.tsx.
 export function EntityNotFound({
   entityLabel,
   indexHref,

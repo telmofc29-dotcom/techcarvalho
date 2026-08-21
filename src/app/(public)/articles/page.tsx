@@ -14,6 +14,7 @@ const TYPE_FILTERS: { label: string; value: ContentType | "" }[] = [
   { label: "Guides", value: "guide" },
   { label: "Comparisons", value: "comparison" },
   { label: "News", value: "news" },
+  { label: "Troubleshooting", value: "troubleshooting" },
 ];
 
 export const metadata: Metadata = buildMetadata({

@@ -6,18 +6,10 @@ import { buildMetadata } from "@/lib/seo/metadata";
 import { articleJsonLd, safeJsonLdString } from "@/lib/seo/jsonld";
 import { getArticleDetail } from "@/lib/public/article-detail";
 import { Breadcrumbs } from "@/components/public/breadcrumbs";
-import { ContentCard } from "@/components/public/cards";
+import { ContentCard, CONTENT_TYPE_LABEL } from "@/components/public/cards";
 import { RelatedContentTracker } from "@/components/public/related-content-tracker";
 import { Badge } from "@/components/shared/ui";
 import { parseBodyBlocks } from "@/lib/content/body-format";
-
-const CONTENT_TYPE_LABEL: Record<string, string> = {
-  review: "Review",
-  guide: "Guide",
-  comparison: "Comparison",
-  news: "News",
-  troubleshooting: "Troubleshooting",
-};
 
 export async function generateMetadata({
   params,

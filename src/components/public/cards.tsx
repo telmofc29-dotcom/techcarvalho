@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Badge } from "@/components/shared/ui";
 
-const CONTENT_TYPE_LABEL: Record<string, string> = {
+export const CONTENT_TYPE_LABEL: Record<string, string> = {
   review: "Review",
   guide: "Guide",
   comparison: "Comparison",

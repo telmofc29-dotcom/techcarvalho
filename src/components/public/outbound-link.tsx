@@ -61,6 +61,7 @@ export function OutboundLink({
         }}
       >
         {children}
+        <span className="sr-only"> (opens in a new tab)</span>
       </a>
       {kind === "affiliate" && (
         <span
