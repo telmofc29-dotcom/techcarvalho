@@ -172,7 +172,7 @@ export default async function AdminAnalyticsPage() {
             product/article click-through counts need first-party tracking this app doesn&apos;t capture yet — both
             stay honestly blank rather than approximated.
           </p>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <StatTile label="Ad impressions" value={monetisation.adImpressions} />
             <StatTile label="Ad clicks" value={monetisation.adClicks} />
             <StatTile label="Affiliate clicks" value={monetisation.affiliateClicks} />
@@ -188,85 +188,95 @@ export default async function AdminAnalyticsPage() {
 
 function ContentTable({ rows }: { rows: ContentPerformanceRow[] }) {
   return (
-    <table className="w-full text-sm">
-      <tbody>
-        {rows.map((row) => (
-          <tr key={row.path}>
-            <td className="py-1 text-neutral-700">{row.title ?? row.path}</td>
-            <td className="py-1 text-right text-neutral-900 font-medium">{row.pageviews ?? "—"}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.path}>
+              <td className="py-1 text-neutral-700">{row.title ?? row.path}</td>
+              <td className="py-1 text-right text-neutral-900 font-medium">{row.pageviews ?? "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
 function AcquisitionTable({ rows }: { rows: AcquisitionRow[] }) {
   return (
-    <table className="w-full text-sm">
-      <tbody>
-        {rows.map((row) => (
-          <tr key={row.channel}>
-            <td className="py-1 text-neutral-700">{row.channel}</td>
-            <td className="py-1 text-right text-neutral-900 font-medium">{row.sessions ?? "—"}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.channel}>
+              <td className="py-1 text-neutral-700">{row.channel}</td>
+              <td className="py-1 text-right text-neutral-900 font-medium">{row.sessions ?? "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
 function GeographyTable({ rows }: { rows: GeographyRow[] }) {
   return (
-    <table className="w-full text-sm">
-      <tbody>
-        {rows.map((row) => (
-          <tr key={row.country}>
-            <td className="py-1 text-neutral-700">{row.country}</td>
-            <td className="py-1 text-right text-neutral-900 font-medium">{row.sessions ?? "—"}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.country}>
+              <td className="py-1 text-neutral-700">{row.country}</td>
+              <td className="py-1 text-right text-neutral-900 font-medium">{row.sessions ?? "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
 function TechnologyTable({ rows }: { rows: TechnologyRow[] }) {
   return (
-    <table className="w-full text-sm">
-      <tbody>
-        {rows.map((row) => (
-          <tr key={`${row.dimension}-${row.label}`}>
-            <td className="py-1 text-neutral-700">
-              {row.label} <span className="text-neutral-400">({row.dimension})</span>
-            </td>
-            <td className="py-1 text-right text-neutral-900 font-medium">{row.sessions ?? "—"}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <tbody>
+          {rows.map((row) => (
+            <tr key={`${row.dimension}-${row.label}`}>
+              <td className="py-1 text-neutral-700">
+                {row.label} <span className="text-neutral-400">({row.dimension})</span>
+              </td>
+              <td className="py-1 text-right text-neutral-900 font-medium">{row.sessions ?? "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
 function JourneysTable({ rows }: { rows: SiteJourneyRow[] }) {
   return (
-    <table className="w-full text-sm">
-      <thead>
-        <tr>
-          <th className="text-left font-medium text-neutral-500 pb-1">Page</th>
-          <th className="text-right font-medium text-neutral-500 pb-1">Entrances</th>
-          <th className="text-right font-medium text-neutral-500 pb-1">Exits</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row) => (
-          <tr key={row.path}>
-            <td className="py-1 text-neutral-700">{row.path}</td>
-            <td className="py-1 text-right text-neutral-900 font-medium">{row.entrances ?? "—"}</td>
-            <td className="py-1 text-right text-neutral-900 font-medium">{row.exits ?? "—"}</td>
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr>
+            <th className="text-left font-medium text-neutral-500 pb-1">Page</th>
+            <th className="text-right font-medium text-neutral-500 pb-1">Entrances</th>
+            <th className="text-right font-medium text-neutral-500 pb-1">Exits</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.path}>
+              <td className="py-1 text-neutral-700">{row.path}</td>
+              <td className="py-1 text-right text-neutral-900 font-medium">{row.entrances ?? "—"}</td>
+              <td className="py-1 text-right text-neutral-900 font-medium">{row.exits ?? "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

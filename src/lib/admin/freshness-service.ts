@@ -14,7 +14,10 @@ export async function getFreshnessOverview(): Promise<FreshnessItem[]> {
   const supabase = await createClient();
   const [{ data: products }, { data: content }, { data: logs }] = await Promise.all([
     supabase.from("products").select("id, name"),
-    supabase.from("content_items").select("id, title"),
+    // Archived content is deliberately excluded — 'archived' means it's no
+    // longer meant to be current, so nagging it for review is a false
+    // positive, not a genuine freshness gap.
+    supabase.from("content_items").select("id, title").neq("status", "archived"),
     supabase
       .from("freshness_log")
       .select("product_id, content_id, reviewed_at")

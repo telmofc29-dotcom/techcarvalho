@@ -3,8 +3,11 @@ import { requireAdmin } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { getRowById, listRows } from "@/lib/admin/reference-service";
 import { PageHeader, Card, Checkbox, Field, TextInput, Select, Badge, TextLink } from "@/components/admin/ui";
-import { SubmitButton } from "@/components/admin/submit-button";
+import { SubmitButton, ConfirmDeleteButton } from "@/components/admin/submit-button";
 import { ReferenceForm, type ReferenceFieldConfig } from "@/components/admin/reference-form";
+import { SourceRecordsCard, EvidenceRecordsCard } from "@/components/admin/source-evidence-cards";
+import { CannibalisationCheck } from "@/components/admin/cannibalisation-check";
+import { CONTENT_TYPE_OPTIONS, CONTENT_STATUS_OPTIONS } from "@/lib/admin/content-options";
 import {
   updateContentItem,
   updateContentTags,
@@ -12,7 +15,22 @@ import {
   updateContentSeo,
   logContentFreshnessReview,
   archiveContentItem,
+  addContentRelationship,
+  deleteContentRelationship,
 } from "../actions";
+import type { ContentRelationshipType } from "@/lib/types/database";
+
+const CONTENT_RELATIONSHIP_LABELS: Record<ContentRelationshipType, string> = {
+  pillar_of: "Pillar of",
+  supporting_of: "Supporting of",
+  related_to: "Related to",
+};
+
+const REVERSE_CONTENT_RELATIONSHIP_LABELS: Record<ContentRelationshipType, string> = {
+  pillar_of: "Has pillar",
+  supporting_of: "Has supporting content",
+  related_to: "Related to",
+};
 
 function toDatetimeLocal(iso: string | null): string {
   if (!iso) return "";
@@ -42,6 +60,10 @@ export default async function EditContentPage({
     { data: freshnessEntries },
     categories,
     { data: mediaLinks },
+    { data: sourceRecords },
+    { data: evidenceRecords },
+    { data: outgoingContentRel },
+    { data: incomingContentRel },
   ] = await Promise.all([
     supabase.from("taxonomy_tags").select("*").order("name"),
     supabase.from("content_tags").select("tag_id").eq("content_id", id),
@@ -51,7 +73,35 @@ export default async function EditContentPage({
     supabase.from("freshness_log").select("*").eq("content_id", id).order("reviewed_at", { ascending: false }),
     listRows("taxonomy_categories", { orderBy: "name" }),
     supabase.from("content_media").select("media_id, role").eq("content_id", id),
+    supabase
+      .from("source_records")
+      .select("id, url, publisher, reliability_tier, retrieved_at")
+      .eq("content_id", id)
+      .order("retrieved_at", { ascending: false }),
+    supabase
+      .from("evidence_records")
+      .select("id, test_type, conditions, result_summary, tested_at")
+      .eq("content_id", id)
+      .order("tested_at", { ascending: false }),
+    supabase.from("content_relationships").select("id, related_content_id, relationship_type").eq("content_id", id),
+    supabase.from("content_relationships").select("id, content_id, relationship_type").eq("related_content_id", id),
   ]);
+
+  const { data: otherContent } = await supabase
+    .from("content_items")
+    .select("id, title, primary_query, intent_fingerprint")
+    .neq("status", "archived")
+    .neq("id", id);
+
+  const relatedContentIds = [
+    ...(outgoingContentRel ?? []).map((r) => r.related_content_id),
+    ...(incomingContentRel ?? []).map((r) => r.content_id),
+  ];
+  const { data: relatedContentRows } =
+    relatedContentIds.length > 0
+      ? await supabase.from("content_items").select("id, title").in("id", relatedContentIds)
+      : { data: [] };
+  const contentTitleById = new Map((relatedContentRows ?? []).map((c) => [c.id, c.title]));
 
   const selectedTagIds = new Set((contentTagRows ?? []).map((r) => r.tag_id));
   const roleByProductId = new Map((contentProductRows ?? []).map((r) => [r.product_id, r.role]));
@@ -71,29 +121,30 @@ export default async function EditContentPage({
       kind: "select",
       required: true,
       allowEmpty: false,
-      options: [
-        { value: "review", label: "Review" },
-        { value: "guide", label: "Guide" },
-        { value: "comparison", label: "Comparison" },
-        { value: "news", label: "News" },
-      ],
+      options: CONTENT_TYPE_OPTIONS,
     },
     { key: "title", label: "Title", kind: "text", required: true },
     { key: "slug", label: "Slug", kind: "text" },
-    { key: "body", label: "Body", kind: "textarea" },
+    {
+      key: "body",
+      label: "Body",
+      kind: "textarea",
+      hint: "Plain text. Blank lines separate paragraphs; \"## \"/\"### \" for headings, \"- \" for a bullet list.",
+    },
     {
       key: "status",
       label: "Status",
       kind: "select",
       required: true,
       allowEmpty: false,
-      options: [
-        { value: "draft", label: "Draft" },
-        { value: "published", label: "Published" },
-        { value: "archived", label: "Archived" },
-      ],
+      options: CONTENT_STATUS_OPTIONS,
     },
-    { key: "published_at", label: "Publish at", kind: "datetime" },
+    {
+      key: "published_at",
+      label: "Publish at",
+      kind: "datetime",
+      hint: "Content is only public once status is Published and this time has passed. Leave blank when setting Status to Published and it's filled in automatically with the current time.",
+    },
     {
       key: "category_id",
       label: "Primary category",
@@ -135,12 +186,19 @@ export default async function EditContentPage({
             ) : undefined
           }
         />
-        <ReferenceForm
-          fields={fields}
-          defaultValues={defaultValues}
-          action={updateContentItem.bind(null, id)}
-          submitLabel="Save changes"
-        />
+        <CannibalisationCheck
+          existing={otherContent ?? []}
+          initialTitle={content.title}
+          initialPrimaryQuery={content.primary_query ?? ""}
+          initialIntentFingerprint={content.intent_fingerprint ?? ""}
+        >
+          <ReferenceForm
+            fields={fields}
+            defaultValues={defaultValues}
+            action={updateContentItem.bind(null, id)}
+            submitLabel="Save changes"
+          />
+        </CannibalisationCheck>
       </div>
 
       <Card className="p-5">
@@ -213,6 +271,68 @@ export default async function EditContentPage({
       </Card>
 
       <Card className="p-5">
+        <h2 className="text-sm font-semibold text-neutral-900 mb-3">Content relationships</h2>
+        {(outgoingContentRel ?? []).length === 0 && (incomingContentRel ?? []).length === 0 ? (
+          <p className="text-sm text-neutral-500 mb-4">No relationships yet.</p>
+        ) : (
+          <ul className="flex flex-col gap-2 mb-4">
+            {(outgoingContentRel ?? []).map((r) => (
+              <li key={r.id} className="flex items-center justify-between text-sm">
+                <span>
+                  <Badge>{CONTENT_RELATIONSHIP_LABELS[r.relationship_type]}</Badge>{" "}
+                  {contentTitleById.get(r.related_content_id) ?? "Unknown content"}
+                </span>
+                <form action={deleteContentRelationship}>
+                  <input type="hidden" name="id" value={r.id} />
+                  <input type="hidden" name="content_id" value={id} />
+                  <ConfirmDeleteButton confirmMessage="Remove this relationship?" label="Remove" />
+                </form>
+              </li>
+            ))}
+            {(incomingContentRel ?? []).map((r) => (
+              <li key={r.id} className="flex items-center justify-between text-sm">
+                <span>
+                  <Badge tone="blue">{REVERSE_CONTENT_RELATIONSHIP_LABELS[r.relationship_type]}</Badge>{" "}
+                  {contentTitleById.get(r.content_id) ?? "Unknown content"}
+                </span>
+                <form action={deleteContentRelationship}>
+                  <input type="hidden" name="id" value={r.id} />
+                  <input type="hidden" name="content_id" value={id} />
+                  <ConfirmDeleteButton confirmMessage="Remove this relationship?" label="Remove" />
+                </form>
+              </li>
+            ))}
+          </ul>
+        )}
+        {(otherContent ?? []).length === 0 ? (
+          <p className="text-sm text-neutral-500">No other content exists yet to relate this one to.</p>
+        ) : (
+          <form action={addContentRelationship.bind(null, id)} className="flex flex-wrap items-end gap-3">
+            <Field label="Related content" htmlFor="related_content_id">
+              <Select id="related_content_id" name="related_content_id" required className="w-56">
+                <option value="">Choose content</option>
+                {(otherContent ?? []).map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.title}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field label="Relationship" htmlFor="relationship_type">
+              <Select id="relationship_type" name="relationship_type" required className="w-48">
+                {Object.entries(CONTENT_RELATIONSHIP_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <SubmitButton pendingLabel="Adding...">Add relationship</SubmitButton>
+          </form>
+        )}
+      </Card>
+
+      <Card className="p-5">
         <h2 className="text-sm font-semibold text-neutral-900 mb-1">Media</h2>
         <p className="text-xs text-neutral-500 mb-3">
           Managed from the Media Registry — associate this content from a media asset&apos;s edit page.
@@ -241,6 +361,10 @@ export default async function EditContentPage({
           </ul>
         )}
       </Card>
+
+      <SourceRecordsCard parent={{ type: "content", id }} records={sourceRecords ?? []} />
+
+      <EvidenceRecordsCard parent={{ type: "content", id }} records={evidenceRecords ?? []} />
 
       <Card className="p-5">
         <h2 className="text-sm font-semibold text-neutral-900 mb-3">Freshness</h2>

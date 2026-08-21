@@ -6,6 +6,7 @@ import { ADMIN_PAGE_SIZE, parsePage } from "@/lib/admin/pagination";
 import { sanitizeSearchTerm } from "@/lib/search/sanitize";
 import { PageHeader, Table, Th, Td, LinkButton, TextLink, EmptyState, Badge, QueryErrorBanner } from "@/components/admin/ui";
 import { SearchBox } from "@/components/admin/search-box";
+import { AdminFilterSelect } from "@/components/admin/filter-select";
 import { Pagination } from "@/components/admin/pagination";
 import { ConfirmDeleteButton } from "@/components/admin/submit-button";
 import { deleteProduct } from "./actions";
@@ -19,10 +20,10 @@ const PUBLISH_FILTERS: { label: string; value: "" | "published" | "draft" }[] = 
 export default async function ProductsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string; published?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; published?: string; category?: string }>;
 }) {
   await requireAdmin();
-  const { q: rawQ, page: rawPage, published } = await searchParams;
+  const { q: rawQ, page: rawPage, published, category } = await searchParams;
   const q = rawQ ? sanitizeSearchTerm(rawQ) : "";
   const page = parsePage(rawPage);
   const from = (page - 1) * ADMIN_PAGE_SIZE;
@@ -37,6 +38,7 @@ export default async function ProductsPage({
   if (q) query = query.or(`name.ilike.%${q}%,model_number.ilike.%${q}%`);
   if (published === "published") query = query.eq("is_published", true);
   if (published === "draft") query = query.eq("is_published", false);
+  if (category) query = query.eq("category_id", category);
   const [{ data: products, count, error: productsError }, manufacturers, categories] = await Promise.all([
     query,
     listRows("manufacturers"),
@@ -69,6 +71,14 @@ export default async function ProductsPage({
             </Link>
           ))}
         </div>
+        <AdminFilterSelect
+          label="Category"
+          paramName="category"
+          value={category}
+          options={categories.map((c) => ({ value: c.id, label: c.name }))}
+          otherParams={{ q, published }}
+          action="/admin/products"
+        />
       </div>
 
       {productsError && <QueryErrorBanner message={productsError.message} />}
@@ -76,8 +86,8 @@ export default async function ProductsPage({
       {(products ?? []).length === 0 ? (
         !productsError && (
           <EmptyState
-            title={q || published ? "No products match your filters" : "No products yet"}
-            action={!q && !published ? <LinkButton href="/admin/products/new">New product</LinkButton> : undefined}
+            title={q || published || category ? "No products match your filters" : "No products yet"}
+            action={!q && !published && !category ? <LinkButton href="/admin/products/new">New product</LinkButton> : undefined}
           />
         )
       ) : (
@@ -120,7 +130,7 @@ export default async function ProductsPage({
               ))}
             </tbody>
           </Table>
-          <Pagination page={page} pageCount={pageCount} basePath="/admin/products" searchParams={{ q, published }} />
+          <Pagination page={page} pageCount={pageCount} basePath="/admin/products" searchParams={{ q, published, category }} />
         </>
       )}
     </div>

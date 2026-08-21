@@ -1,10 +1,10 @@
 import { requireAdmin } from "@/lib/dal";
-import { getDashboardCounts } from "@/lib/admin/dashboard-service";
+import { getDashboardCounts, getEditorialQualityCounts } from "@/lib/admin/dashboard-service";
 import { PageHeader, Card, TextLink, LinkButton, QueryErrorBanner } from "@/components/admin/ui";
 
 export default async function AdminDashboardPage() {
   const admin = await requireAdmin();
-  const counts = await getDashboardCounts();
+  const [counts, quality] = await Promise.all([getDashboardCounts(), getEditorialQualityCounts()]);
 
   const catalogTiles: { label: string; value: number; href: string }[] = [
     { label: "Products", value: counts.products, href: "/admin/products" },
@@ -24,6 +24,15 @@ export default async function AdminDashboardPage() {
     { label: "Media awaiting rights review", value: counts.mediaPendingRights, href: "/admin/media?rights=pending_verification" },
   ];
 
+  const editorialQualityTiles: { label: string; value: number; href: string }[] = [
+    { label: "Content missing sources", value: quality.missingSources, href: "/admin/source-records" },
+    { label: "Content missing evidence", value: quality.missingEvidence, href: "/admin/evidence-records" },
+    { label: "Content with no product links", value: quality.noProductRelationships, href: "/admin/content" },
+    { label: "Possible cannibalisation", value: quality.possibleCannibalisation, href: "/admin/content" },
+    { label: "Missing SEO description", value: quality.missingSeoDescription, href: "/admin/content" },
+    { label: "Missing category", value: quality.missingCategory, href: "/admin/content" },
+  ];
+
   return (
     <div>
       <PageHeader
@@ -41,9 +50,13 @@ export default async function AdminDashboardPage() {
       {counts.hasError && (
         <QueryErrorBanner message="One or more counts below failed to load and are showing as 0 — check server logs, this is not necessarily an empty registry." />
       )}
+      {quality.hasError && (
+        <QueryErrorBanner message="Editorial quality checks below failed to load and are showing as 0 — check server logs, this is not necessarily a clean registry." />
+      )}
 
       <TileSection title="Catalog" tiles={catalogTiles} />
       <TileSection title="Editorial" tiles={editorialTiles} />
+      <TileSection title="Editorial quality" tiles={editorialQualityTiles} />
       <TileSection title="Media" tiles={mediaTiles} />
     </div>
   );

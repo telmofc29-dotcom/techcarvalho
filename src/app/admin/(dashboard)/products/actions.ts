@@ -6,7 +6,7 @@ import { requireAdmin } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { insertRow, updateRow, deleteRow, type ValidationResult } from "@/lib/admin/reference-service";
 import { slugify } from "@/lib/admin/slugify";
-import type { ProductStatus, SpecDataType, RelationshipType, Insert } from "@/lib/types/database";
+import type { ProductStatus, SpecDataType, RelationshipType, AffiliateStatus, Insert } from "@/lib/types/database";
 import type { FormState } from "@/components/admin/reference-form";
 
 const VALID_STATUSES: ProductStatus[] = ["active", "discontinued", "rumored"];
@@ -17,6 +17,7 @@ const VALID_RELATIONSHIP_TYPES: RelationshipType[] = [
   "compatible_with",
   "requires",
 ];
+const VALID_AFFILIATE_STATUSES: AffiliateStatus[] = ["affiliate", "non_affiliate", "pending"];
 
 function readProductPayload(formData: FormData): ValidationResult<Insert<"products">> {
   const name = String(formData.get("name") ?? "").trim();
@@ -161,6 +162,72 @@ export async function deleteProductRelationship(formData: FormData): Promise<voi
   if (error) throw new Error(error.message);
 
   if (productId) revalidatePath(`/admin/products/${productId}`);
+}
+
+// product_offers — "where to buy" links. See
+// supabase/migrations/20260820_product_offers.sql: affiliate_status
+// defaults to non_affiliate and is never auto-assumed here either — an
+// admin must deliberately pick "Affiliate" for a link to render/disclose
+// as one (src/lib/monetisation/affiliate.ts).
+export async function addProductOffer(productId: string, formData: FormData): Promise<void> {
+  await requireAdmin();
+  const retailer = String(formData.get("retailer") ?? "").trim();
+  const url = String(formData.get("url") ?? "").trim();
+  const affiliateStatus = String(formData.get("affiliate_status") ?? "non_affiliate").trim();
+  const priceNote = String(formData.get("price_note") ?? "").trim();
+  const isActive = formData.get("is_active") === "on";
+
+  if (!retailer || !url) return;
+  if (!VALID_AFFILIATE_STATUSES.includes(affiliateStatus as AffiliateStatus)) return;
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("product_offers").insert({
+    product_id: productId,
+    retailer,
+    url,
+    affiliate_status: affiliateStatus as AffiliateStatus,
+    price_note: priceNote || null,
+    is_active: isActive,
+  });
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/admin/products/${productId}`);
+}
+
+export async function deleteProductOffer(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  const productId = String(formData.get("product_id") ?? "");
+  if (!id) return;
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("product_offers").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+
+  if (productId) revalidatePath(`/admin/products/${productId}`);
+}
+
+export async function updateProductSeo(productId: string, formData: FormData): Promise<void> {
+  await requireAdmin();
+  const metaTitle = String(formData.get("meta_title") ?? "").trim();
+  const metaDescription = String(formData.get("meta_description") ?? "").trim();
+  const canonicalUrl = String(formData.get("canonical_url") ?? "").trim();
+  const noindex = formData.get("noindex") === "on";
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("seo_metadata").upsert(
+    {
+      product_id: productId,
+      meta_title: metaTitle || null,
+      meta_description: metaDescription || null,
+      canonical_url: canonicalUrl || null,
+      noindex,
+    },
+    { onConflict: "product_id" }
+  );
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/admin/products/${productId}`);
 }
 
 function coerceSpecValue(dataType: SpecDataType, raw: string): unknown | undefined {

@@ -6,11 +6,33 @@ import { requireAdmin } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { insertRow, updateRow, deleteRow, type ValidationResult } from "@/lib/admin/reference-service";
 import { slugify } from "@/lib/admin/slugify";
-import type { ContentType, ContentStatus, ContentProductRole, SearchIntent, Insert } from "@/lib/types/database";
+import type {
+  ContentType,
+  ContentStatus,
+  ContentProductRole,
+  ContentRelationshipType,
+  SearchIntent,
+  Insert,
+} from "@/lib/types/database";
 import type { FormState } from "@/components/admin/reference-form";
 
-const VALID_TYPES: ContentType[] = ["review", "guide", "comparison", "news"];
-const VALID_STATUSES: ContentStatus[] = ["draft", "published", "archived"];
+const VALID_CONTENT_RELATIONSHIP_TYPES: ContentRelationshipType[] = ["pillar_of", "supporting_of", "related_to"];
+
+// Must match CONTENT_TYPE_OPTIONS/CONTENT_STATUS_OPTIONS in
+// src/lib/admin/content-options.ts (the dropdowns these validate) — both
+// widened by supabase/migrations/20260820_content_troubleshooting_type.sql
+// and 20260820_editorial_workflow_statuses.sql, applied to production.
+const VALID_TYPES: ContentType[] = ["review", "guide", "comparison", "news", "troubleshooting"];
+const VALID_STATUSES: ContentStatus[] = [
+  "idea",
+  "planned",
+  "draft",
+  "review",
+  "ready",
+  "published",
+  "needs_update",
+  "archived",
+];
 const VALID_ROLES: ContentProductRole[] = ["primary_subject", "mentioned", "compared_against"];
 const VALID_SEARCH_INTENTS: SearchIntent[] = ["informational", "commercial", "transactional", "navigational"];
 
@@ -35,6 +57,24 @@ function readContentPayload(
     return { error: "Choose a valid search intent." };
   }
 
+  // The published_at weakness this closes: RLS requires status = 'published'
+  // AND published_at <= now() for public visibility (see
+  // 20260819202305_rls_policies.sql) — published_at is a fully separate
+  // form field with no prior auto-fill, so setting Status to Published
+  // without also remembering to fill in Publish At silently produced a
+  // "Published" record that stayed completely invisible on the public
+  // site, with nothing in the admin UI making that obvious. Auto-filling
+  // to now() ONLY when the field was left blank AND status is being set to
+  // published preserves a deliberately-set historical/backdated date (an
+  // admin who explicitly typed one keeps exactly what they typed) while
+  // making the common case — flip to Published, forget the date — safe by
+  // default instead of silently broken.
+  const publishedAt = publishedAtInput
+    ? new Date(publishedAtInput).toISOString()
+    : status === "published"
+      ? new Date().toISOString()
+      : null;
+
   return {
     payload: {
       type: type as ContentType,
@@ -42,7 +82,7 @@ function readContentPayload(
       slug: slugify(slugInput || title),
       body: body || null,
       status: status as ContentStatus,
-      published_at: publishedAtInput ? new Date(publishedAtInput).toISOString() : null,
+      published_at: publishedAt,
       category_id: categoryId || null,
       search_intent: (searchIntent as SearchIntent) || null,
       primary_query: primaryQuery || null,
@@ -177,6 +217,44 @@ export async function updateContentSeo(contentId: string, formData: FormData): P
   if (error) throw new Error(error.message);
 
   revalidatePath(`/admin/content/${contentId}`);
+}
+
+// content_relationships — pillar/supporting/related content-to-content
+// structure. See supabase/migrations/20260820_content_relationships.sql:
+// directional, mirrors product_relationships — only ever insert the
+// forward-direction row; the app infers the reverse at query time.
+export async function addContentRelationship(contentId: string, formData: FormData): Promise<void> {
+  await requireAdmin();
+  const relatedContentId = String(formData.get("related_content_id") ?? "").trim();
+  const relationshipType = String(formData.get("relationship_type") ?? "").trim();
+
+  if (!relatedContentId || relatedContentId === contentId) return;
+  if (!VALID_CONTENT_RELATIONSHIP_TYPES.includes(relationshipType as ContentRelationshipType)) return;
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("content_relationships").insert({
+    content_id: contentId,
+    related_content_id: relatedContentId,
+    relationship_type: relationshipType as ContentRelationshipType,
+  });
+  // Ignore duplicate-relationship conflicts (unique constraint) rather than
+  // surfacing a confusing error for re-adding the same pair/type.
+  if (error && error.code !== "23505") throw new Error(error.message);
+
+  revalidatePath(`/admin/content/${contentId}`);
+}
+
+export async function deleteContentRelationship(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  const contentId = String(formData.get("content_id") ?? "");
+  if (!id) return;
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("content_relationships").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+
+  if (contentId) revalidatePath(`/admin/content/${contentId}`);
 }
 
 export async function logContentFreshnessReview(contentId: string, formData: FormData): Promise<void> {

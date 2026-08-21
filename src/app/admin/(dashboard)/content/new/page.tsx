@@ -1,12 +1,21 @@
 import { requireAdmin } from "@/lib/dal";
 import { listRows } from "@/lib/admin/reference-service";
+import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/admin/ui";
 import { ReferenceForm, type ReferenceFieldConfig } from "@/components/admin/reference-form";
+import { CannibalisationCheck } from "@/components/admin/cannibalisation-check";
+import { CONTENT_TYPE_OPTIONS, CONTENT_STATUS_OPTIONS } from "@/lib/admin/content-options";
 import { createContentItem } from "../actions";
 
 export default async function NewContentPage() {
   await requireAdmin();
   const categories = await listRows("taxonomy_categories", { orderBy: "name" });
+
+  const supabase = await createClient();
+  const { data: existingContent } = await supabase
+    .from("content_items")
+    .select("id, title, primary_query, intent_fingerprint")
+    .neq("status", "archived");
 
   const fields: ReferenceFieldConfig[] = [
     {
@@ -15,33 +24,29 @@ export default async function NewContentPage() {
       kind: "select",
       required: true,
       allowEmpty: false,
-      options: [
-        { value: "review", label: "Review" },
-        { value: "guide", label: "Guide" },
-        { value: "comparison", label: "Comparison" },
-        { value: "news", label: "News" },
-      ],
+      options: CONTENT_TYPE_OPTIONS,
     },
     { key: "title", label: "Title", kind: "text", required: true },
     { key: "slug", label: "Slug", kind: "text", hint: "Leave blank to generate from the title." },
-    { key: "body", label: "Body", kind: "textarea" },
+    {
+      key: "body",
+      label: "Body",
+      kind: "textarea",
+      hint: "Plain text. Blank lines separate paragraphs; \"## \"/\"### \" for headings, \"- \" for a bullet list.",
+    },
     {
       key: "status",
       label: "Status",
       kind: "select",
       required: true,
       allowEmpty: false,
-      options: [
-        { value: "draft", label: "Draft" },
-        { value: "published", label: "Published" },
-        { value: "archived", label: "Archived" },
-      ],
+      options: CONTENT_STATUS_OPTIONS,
     },
     {
       key: "published_at",
       label: "Publish at",
       kind: "datetime",
-      hint: "Content is only public once status is Published and this time has passed.",
+      hint: "Content is only public once status is Published and this time has passed. Leave blank when setting Status to Published and it's filled in automatically with the current time — only set this yourself for a specific past/future date.",
     },
     {
       key: "category_id",
@@ -77,7 +82,9 @@ export default async function NewContentPage() {
         title="New content"
         description="Tags, product associations, SEO, and freshness tracking can be added after creation."
       />
-      <ReferenceForm fields={fields} action={createContentItem} submitLabel="Create content" />
+      <CannibalisationCheck existing={existingContent ?? []}>
+        <ReferenceForm fields={fields} action={createContentItem} submitLabel="Create content" />
+      </CannibalisationCheck>
     </div>
   );
 }

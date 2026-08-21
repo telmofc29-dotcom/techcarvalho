@@ -5,15 +5,19 @@ import { getRowById, listRows } from "@/lib/admin/reference-service";
 import { PageHeader, Card, Checkbox, Field, TextInput, Select, Badge, TextLink } from "@/components/admin/ui";
 import { SubmitButton, ConfirmDeleteButton } from "@/components/admin/submit-button";
 import { ReferenceForm, type ReferenceFieldConfig } from "@/components/admin/reference-form";
+import { SourceRecordsCard, EvidenceRecordsCard } from "@/components/admin/source-evidence-cards";
 import {
   updateProduct,
   updateProductTags,
   updateProductSpecs,
+  updateProductSeo,
   logProductFreshnessReview,
   addProductRelationship,
   deleteProductRelationship,
+  addProductOffer,
+  deleteProductOffer,
 } from "../actions";
-import type { RelationshipType } from "@/lib/types/database";
+import type { RelationshipType, AffiliateStatus } from "@/lib/types/database";
 
 const RELATIONSHIP_LABELS: Record<RelationshipType, string> = {
   successor_of: "Successor of",
@@ -21,6 +25,12 @@ const RELATIONSHIP_LABELS: Record<RelationshipType, string> = {
   accessory_for: "Accessory for",
   compatible_with: "Compatible with",
   requires: "Requires",
+};
+
+const AFFILIATE_STATUS_LABELS: Record<AffiliateStatus, string> = {
+  non_affiliate: "Not affiliate",
+  affiliate: "Affiliate",
+  pending: "Pending affiliate setup",
 };
 
 const REVERSE_RELATIONSHIP_LABELS: Record<RelationshipType, string> = {
@@ -54,21 +64,41 @@ export default async function EditProductPage({
     { data: productTagRows },
     { data: allSpecs },
     { data: productSpecRows },
+    { data: seo },
     { data: freshnessEntries },
     { data: outgoingRel },
     { data: incomingRel },
     { data: allProducts },
     { data: mediaLinks },
+    { data: sourceRecords },
+    { data: evidenceRecords },
+    { data: productOffers },
   ] = await Promise.all([
     supabase.from("taxonomy_tags").select("*").order("name"),
     supabase.from("product_tags").select("tag_id").eq("product_id", id),
     supabase.from("spec_definitions").select("*").order("name"),
     supabase.from("product_specs").select("*").eq("product_id", id),
+    supabase.from("seo_metadata").select("*").eq("product_id", id).maybeSingle(),
     supabase.from("freshness_log").select("*").eq("product_id", id).order("reviewed_at", { ascending: false }),
     supabase.from("product_relationships").select("id, related_product_id, relationship_type").eq("product_id", id),
     supabase.from("product_relationships").select("id, product_id, relationship_type").eq("related_product_id", id),
     supabase.from("products").select("id, name").neq("id", id).order("name"),
     supabase.from("product_media").select("media_id, role").eq("product_id", id),
+    supabase
+      .from("source_records")
+      .select("id, url, publisher, reliability_tier, retrieved_at")
+      .eq("product_id", id)
+      .order("retrieved_at", { ascending: false }),
+    supabase
+      .from("evidence_records")
+      .select("id, test_type, conditions, result_summary, tested_at")
+      .eq("product_id", id)
+      .order("tested_at", { ascending: false }),
+    supabase
+      .from("product_offers")
+      .select("id, retailer, url, affiliate_status, price_note, is_active")
+      .eq("product_id", id)
+      .order("retailer"),
   ]);
 
   const selectedTagIds = new Set((productTagRows ?? []).map((r) => r.tag_id));
@@ -219,6 +249,25 @@ export default async function EditProductPage({
       </Card>
 
       <Card className="p-5">
+        <h2 className="text-sm font-semibold text-neutral-900 mb-3">SEO metadata</h2>
+        <form action={updateProductSeo.bind(null, id)} className="flex flex-col gap-4">
+          <Field label="Meta title" htmlFor="meta_title">
+            <TextInput id="meta_title" name="meta_title" defaultValue={seo?.meta_title ?? ""} />
+          </Field>
+          <Field label="Meta description" htmlFor="meta_description">
+            <TextInput id="meta_description" name="meta_description" defaultValue={seo?.meta_description ?? ""} />
+          </Field>
+          <Field label="Canonical URL" htmlFor="canonical_url">
+            <TextInput id="canonical_url" name="canonical_url" type="url" defaultValue={seo?.canonical_url ?? ""} />
+          </Field>
+          <Checkbox name="noindex" label="noindex" defaultChecked={seo?.noindex ?? false} />
+          <div>
+            <SubmitButton pendingLabel="Saving SEO...">Save SEO metadata</SubmitButton>
+          </div>
+        </form>
+      </Card>
+
+      <Card className="p-5">
         <h2 className="text-sm font-semibold text-neutral-900 mb-3">Relationships</h2>
         {(outgoingRel ?? []).length === 0 && (incomingRel ?? []).length === 0 ? (
           <p className="text-sm text-neutral-500 mb-4">No relationships yet.</p>
@@ -281,6 +330,62 @@ export default async function EditProductPage({
       </Card>
 
       <Card className="p-5">
+        <h2 className="text-sm font-semibold text-neutral-900 mb-1">Where to buy</h2>
+        <p className="text-xs text-neutral-500 mb-3">
+          Retailer offers shown on the public product page (only when active and the product is published). Marking
+          an offer &quot;Affiliate&quot; makes it render with the affiliate disclosure — only pick that once a real
+          affiliate relationship with the retailer exists.
+        </p>
+        {(productOffers ?? []).length === 0 ? (
+          <p className="text-sm text-neutral-500 mb-4">No offers yet.</p>
+        ) : (
+          <ul className="flex flex-col gap-2 mb-4">
+            {(productOffers ?? []).map((offer) => (
+              <li key={offer.id} className="flex items-center justify-between text-sm gap-3">
+                <span className="flex items-center gap-2 min-w-0">
+                  <Badge tone={offer.affiliate_status === "affiliate" ? "amber" : "neutral"}>
+                    {AFFILIATE_STATUS_LABELS[offer.affiliate_status]}
+                  </Badge>
+                  {!offer.is_active && <Badge tone="blue">Inactive</Badge>}
+                  <span className="truncate">
+                    {offer.retailer}
+                    {offer.price_note ? ` — ${offer.price_note}` : ""}
+                  </span>
+                </span>
+                <form action={deleteProductOffer}>
+                  <input type="hidden" name="id" value={offer.id} />
+                  <input type="hidden" name="product_id" value={id} />
+                  <ConfirmDeleteButton confirmMessage="Remove this offer?" label="Remove" />
+                </form>
+              </li>
+            ))}
+          </ul>
+        )}
+        <form action={addProductOffer.bind(null, id)} className="flex flex-wrap items-end gap-3">
+          <Field label="Retailer" htmlFor="retailer">
+            <TextInput id="retailer" name="retailer" required className="w-40" />
+          </Field>
+          <Field label="URL" htmlFor="offer_url">
+            <TextInput id="offer_url" name="url" type="url" required className="w-64" />
+          </Field>
+          <Field label="Affiliate status" htmlFor="affiliate_status">
+            <Select id="affiliate_status" name="affiliate_status" defaultValue="non_affiliate" className="w-44">
+              {Object.entries(AFFILIATE_STATUS_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Price note" htmlFor="price_note" hint="Optional, e.g. &quot;around $900&quot; — never a live price.">
+            <TextInput id="price_note" name="price_note" className="w-40" />
+          </Field>
+          <Checkbox name="is_active" label="Active" defaultChecked />
+          <SubmitButton pendingLabel="Adding...">Add offer</SubmitButton>
+        </form>
+      </Card>
+
+      <Card className="p-5">
         <h2 className="text-sm font-semibold text-neutral-900 mb-1">Media</h2>
         <p className="text-xs text-neutral-500 mb-3">
           Managed from the Media Registry — associate this product from a media asset&apos;s edit page.
@@ -309,6 +414,10 @@ export default async function EditProductPage({
           </ul>
         )}
       </Card>
+
+      <SourceRecordsCard parent={{ type: "product", id }} records={sourceRecords ?? []} />
+
+      <EvidenceRecordsCard parent={{ type: "product", id }} records={evidenceRecords ?? []} />
 
       <Card className="p-5">
         <h2 className="text-sm font-semibold text-neutral-900 mb-3">Freshness</h2>

@@ -3,31 +3,39 @@ import { requireAdmin } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { sanitizeSearchTerm } from "@/lib/search/sanitize";
 import { ADMIN_PAGE_SIZE, parsePage } from "@/lib/admin/pagination";
+import { listRows } from "@/lib/admin/reference-service";
 import { PageHeader, Table, Th, Td, LinkButton, TextLink, EmptyState, Badge, QueryErrorBanner } from "@/components/admin/ui";
 import { SearchBox } from "@/components/admin/search-box";
+import { AdminFilterSelect } from "@/components/admin/filter-select";
 import { Pagination } from "@/components/admin/pagination";
 import { ConfirmDeleteButton } from "@/components/admin/submit-button";
+import { CONTENT_STATUS_OPTIONS } from "@/lib/admin/content-options";
 import { deleteContentItem } from "./actions";
 import type { ContentStatus } from "@/lib/types/database";
 
+// Was previously missing 5 of the 8 valid statuses (idea/planned/review/
+// ready/needs_update) — the edit form already exposed the full pipeline
+// via CONTENT_STATUS_OPTIONS, but this list page's quick-filter chips
+// hadn't been updated to match after the status enum was widened, so
+// content set to those statuses had no way to be filtered to here. Now
+// generated from the same single source of truth as the edit form.
 const STATUS_FILTERS: { label: string; value: ContentStatus | "" }[] = [
   { label: "All", value: "" },
-  { label: "Draft", value: "draft" },
-  { label: "Published", value: "published" },
-  { label: "Archived", value: "archived" },
+  ...CONTENT_STATUS_OPTIONS.map((o) => ({ label: o.label, value: o.value as ContentStatus })),
 ];
 
 export default async function ContentListPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; page?: string; category?: string }>;
 }) {
   await requireAdmin();
-  const { q: rawQ, status, page: rawPage } = await searchParams;
+  const { q: rawQ, status, page: rawPage, category } = await searchParams;
   const q = rawQ ? sanitizeSearchTerm(rawQ) : "";
   const page = parsePage(rawPage);
   const from = (page - 1) * ADMIN_PAGE_SIZE;
   const to = from + ADMIN_PAGE_SIZE - 1;
+  const validStatuses = new Set(CONTENT_STATUS_OPTIONS.map((o) => o.value));
 
   const supabase = await createClient();
   let query = supabase
@@ -36,8 +44,9 @@ export default async function ContentListPage({
     .order("updated_at", { ascending: false })
     .range(from, to);
   if (q) query = query.ilike("title", `%${q}%`);
-  if (status === "draft" || status === "published" || status === "archived") query = query.eq("status", status);
-  const { data: content, count, error } = await query;
+  if (status && validStatuses.has(status)) query = query.eq("status", status as ContentStatus);
+  if (category) query = query.eq("category_id", category);
+  const [{ data: content, count, error }, categories] = await Promise.all([query, listRows("taxonomy_categories")]);
   const pageCount = Math.max(1, Math.ceil((count ?? 0) / ADMIN_PAGE_SIZE));
 
   return (
@@ -63,6 +72,14 @@ export default async function ContentListPage({
             </Link>
           ))}
         </div>
+        <AdminFilterSelect
+          label="Category"
+          paramName="category"
+          value={category}
+          options={categories.map((c) => ({ value: c.id, label: c.name }))}
+          otherParams={{ q, status }}
+          action="/admin/content"
+        />
       </div>
 
       {error && <QueryErrorBanner message={error.message} />}
@@ -70,13 +87,13 @@ export default async function ContentListPage({
       {(content ?? []).length === 0 ? (
         !error && (
           <EmptyState
-            title={q || status ? "No content matches your filters" : "No content yet"}
+            title={q || status || category ? "No content matches your filters" : "No content yet"}
             description={
-              q || status
+              q || status || category
                 ? undefined
                 : "Nothing has been written yet — the public site will honestly show an empty state until content is published."
             }
-            action={!q && !status ? <LinkButton href="/admin/content/new">New content</LinkButton> : undefined}
+            action={!q && !status && !category ? <LinkButton href="/admin/content/new">New content</LinkButton> : undefined}
           />
         )
       ) : (
@@ -104,7 +121,19 @@ export default async function ContentListPage({
                     </Badge>
                   </Td>
                   <Td className="text-neutral-500">
-                    {c.published_at ? new Date(c.published_at).toLocaleString() : "—"}
+                    {c.published_at ? (
+                      new Date(c.published_at).toLocaleString()
+                    ) : c.status === "published" ? (
+                      // Belt-and-suspenders: createContentItem/updateContentItem now
+                      // auto-fill published_at whenever Status is saved as Published,
+                      // so this shouldn't be reachable going forward — surfaced anyway
+                      // in case a row predates that fix, since status='published' with
+                      // no published_at is invisible on the public site despite the
+                      // status badge saying otherwise (RLS requires both).
+                      <Badge tone="amber">Published but no date — invisible publicly</Badge>
+                    ) : (
+                      "—"
+                    )}
                   </Td>
                   <Td>
                     <div className="flex items-center gap-3 justify-end">
@@ -119,7 +148,7 @@ export default async function ContentListPage({
               ))}
             </tbody>
           </Table>
-          <Pagination page={page} pageCount={pageCount} basePath="/admin/content" searchParams={{ q, status }} />
+          <Pagination page={page} pageCount={pageCount} basePath="/admin/content" searchParams={{ q, status, category }} />
         </>
       )}
     </div>
