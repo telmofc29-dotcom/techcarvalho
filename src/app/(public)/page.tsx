@@ -5,6 +5,9 @@ import { PLANNED_CATEGORIES } from "@/lib/public/categories";
 import { getLatestPublishedContent, getLatestPublishedProducts, getLatestPublishedGuides } from "@/lib/public/queries";
 import { Badge, EmptyState } from "@/components/shared/ui";
 import { ContentCard, ProductCard, SectionHeading } from "@/components/public/cards";
+import { PageViewTracker } from "@/components/analytics/page-view-tracker";
+import { InternalLinkTracker } from "@/components/analytics/internal-link-tracker";
+import { CtaLink } from "@/components/analytics/cta-link";
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -38,6 +41,7 @@ export default async function HomePage() {
 
   return (
     <div>
+      <PageViewTracker />
       <section className="border-b border-border-subtle bg-gradient-to-b from-accent-soft/60 to-white">
         <div className="mx-auto max-w-6xl px-6 py-20 sm:py-28">
           <p className="text-xs font-semibold uppercase tracking-widest text-accent mb-4">{SITE_NAME}</p>
@@ -63,35 +67,39 @@ export default async function HomePage() {
       <div className="mx-auto max-w-6xl px-6">
         <section className="py-16 border-b border-border-subtle">
           <SectionHeading>Subject areas</SectionHeading>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {PLANNED_CATEGORIES.map((category) => {
-              const isLive = liveSlugSet.has(category.slug);
-              return (
-                <Link
-                  key={category.slug}
-                  href={`/${category.slug}`}
-                  id={`home-category-${category.slug}`}
-                  className="group rounded-xl border border-border-subtle bg-white p-5 transition-colors hover:border-accent/40"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-display font-semibold text-zinc-900 group-hover:text-accent">
-                      {category.label}
-                    </h3>
-                    {!isLive && <Badge>Coming soon</Badge>}
-                  </div>
-                  <p className="text-sm text-zinc-500">{category.blurb}</p>
-                </Link>
-              );
-            })}
-          </div>
+          <InternalLinkTracker linkPosition="home">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {PLANNED_CATEGORIES.map((category) => {
+                const isLive = liveSlugSet.has(category.slug);
+                return (
+                  <Link
+                    key={category.slug}
+                    href={`/${category.slug}`}
+                    id={`home-category-${category.slug}`}
+                    data-entity-type="category"
+                    data-category-slug={category.slug}
+                    className="group rounded-xl border border-border-subtle bg-white p-5 transition-colors hover:border-accent/40"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-display font-semibold text-zinc-900 group-hover:text-accent">
+                        {category.label}
+                      </h3>
+                      {!isLive && <Badge>Coming soon</Badge>}
+                    </div>
+                    <p className="text-sm text-zinc-500">{category.blurb}</p>
+                  </Link>
+                );
+              })}
+            </div>
+          </InternalLinkTracker>
         </section>
 
         <section className="py-16 border-b border-border-subtle">
           <SectionHeading
             action={
-              <Link href="/articles" className="text-sm font-medium text-accent hover:underline">
+              <CtaLink href="/articles" ctaId="home_view_all_articles" linkPosition="home" className="text-sm font-medium text-accent hover:underline">
                 View all articles →
-              </Link>
+              </CtaLink>
             }
           >
             Latest
@@ -102,21 +110,23 @@ export default async function HomePage() {
               description="Reviews, guides, comparisons, and news will appear here as they're published — nothing is shown until it's real."
             />
           ) : (
-            <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {latestContent.map((item) => (
-                <li key={item.id}>
-                  <ContentCard
-                    href={`/articles/${item.slug}`}
-                    type={item.type}
-                    title={item.title}
-                    publishedAt={item.published_at}
-                    excerpt={item.excerpt}
-                    imageUrl={item.heroImage?.url}
-                    imageAlt={item.heroImage?.alt}
-                  />
-                </li>
-              ))}
-            </ul>
+            <InternalLinkTracker linkPosition="home">
+              <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {latestContent.map((item) => (
+                  <li key={item.id} data-entity-type="content" data-entity-id={item.id}>
+                    <ContentCard
+                      href={`/articles/${item.slug}`}
+                      type={item.type}
+                      title={item.title}
+                      publishedAt={item.published_at}
+                      excerpt={item.excerpt}
+                      imageUrl={item.heroImage?.url}
+                      imageAlt={item.heroImage?.alt}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </InternalLinkTracker>
           )}
         </section>
 
@@ -124,37 +134,39 @@ export default async function HomePage() {
           <section className="py-16 border-b border-border-subtle">
             <SectionHeading
               action={
-                <Link href="/articles?type=guide" className="text-sm font-medium text-accent hover:underline">
+                <CtaLink href="/articles?type=guide" ctaId="home_view_all_guides" linkPosition="home" className="text-sm font-medium text-accent hover:underline">
                   View all guides →
-                </Link>
+                </CtaLink>
               }
             >
               Buying guides
             </SectionHeading>
-            <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {latestGuides.map((item) => (
-                <li key={item.id}>
-                  <ContentCard
-                    href={`/articles/${item.slug}`}
-                    type={item.type}
-                    title={item.title}
-                    publishedAt={item.published_at}
-                    excerpt={item.excerpt}
-                    imageUrl={item.heroImage?.url}
-                    imageAlt={item.heroImage?.alt}
-                  />
-                </li>
-              ))}
-            </ul>
+            <InternalLinkTracker linkPosition="home">
+              <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {latestGuides.map((item) => (
+                  <li key={item.id} data-entity-type="content" data-entity-id={item.id}>
+                    <ContentCard
+                      href={`/articles/${item.slug}`}
+                      type={item.type}
+                      title={item.title}
+                      publishedAt={item.published_at}
+                      excerpt={item.excerpt}
+                      imageUrl={item.heroImage?.url}
+                      imageAlt={item.heroImage?.alt}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </InternalLinkTracker>
           </section>
         )}
 
         <section className="py-16">
           <SectionHeading
             action={
-              <Link href="/products" className="text-sm font-medium text-accent hover:underline">
+              <CtaLink href="/products" ctaId="home_view_all_products" linkPosition="home" className="text-sm font-medium text-accent hover:underline">
                 View all products →
-              </Link>
+              </CtaLink>
             }
           >
             Recently updated products
@@ -165,20 +177,22 @@ export default async function HomePage() {
               description="Products will appear here as they're added and published to the catalog."
             />
           ) : (
-            <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {latestProducts.map((p) => (
-                <li key={p.id}>
-                  <ProductCard
-                    href={`/products/${p.slug}`}
-                    name={p.name}
-                    summary={p.summary}
-                    status={p.status}
-                    imageUrl={p.heroImage?.url}
-                    imageAlt={p.heroImage?.alt}
-                  />
-                </li>
-              ))}
-            </ul>
+            <InternalLinkTracker linkPosition="home">
+              <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {latestProducts.map((p) => (
+                  <li key={p.id} data-entity-type="product" data-entity-id={p.id}>
+                    <ProductCard
+                      href={`/products/${p.slug}`}
+                      name={p.name}
+                      summary={p.summary}
+                      status={p.status}
+                      imageUrl={p.heroImage?.url}
+                      imageAlt={p.heroImage?.alt}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </InternalLinkTracker>
           )}
         </section>
       </div>

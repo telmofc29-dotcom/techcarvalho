@@ -11,6 +11,9 @@ import { ContentCard, CONTENT_TYPE_LABEL } from "@/components/public/cards";
 import { RelatedContentTracker } from "@/components/public/related-content-tracker";
 import { Badge } from "@/components/shared/ui";
 import { parseBodyBlocks } from "@/lib/content/body-format";
+import { PageViewTracker } from "@/components/analytics/page-view-tracker";
+import { ScrollDepthTracker } from "@/components/analytics/scroll-depth-tracker";
+import { InternalLinkTracker } from "@/components/analytics/internal-link-tracker";
 
 export async function generateMetadata({
   params,
@@ -51,6 +54,8 @@ export default async function ArticlePage({
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-12">
+      <PageViewTracker entityType="content" entityId={content.id} />
+      <ScrollDepthTracker contentId={content.id} contentSlug={content.slug} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLdString(jsonLd) }}
@@ -97,17 +102,21 @@ export default async function ArticlePage({
       {products.length > 0 && (
         <div className="rounded-xl border border-border-subtle bg-accent-soft/40 p-4 mb-8">
           <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2">Products covered</p>
-          <div className="flex flex-wrap gap-2">
-            {products.map((p) => (
-              <Link
-                key={p.id}
-                href={`/products/${p.slug}`}
-                className="rounded-full border border-border-subtle bg-white px-3 py-1 text-sm hover:border-accent/40"
-              >
-                {p.name}
-              </Link>
-            ))}
-          </div>
+          <InternalLinkTracker linkPosition="article_top">
+            <div className="flex flex-wrap gap-2">
+              {products.map((p) => (
+                <Link
+                  key={p.id}
+                  href={`/products/${p.slug}`}
+                  data-entity-type="product"
+                  data-entity-id={p.id}
+                  className="rounded-full border border-border-subtle bg-white px-3 py-1 text-sm hover:border-accent/40"
+                >
+                  {p.name}
+                </Link>
+              ))}
+            </div>
+          </InternalLinkTracker>
         </div>
       )}
 

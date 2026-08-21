@@ -5,6 +5,7 @@ import { searchSite } from "@/lib/public/search";
 import { Breadcrumbs } from "@/components/public/breadcrumbs";
 import { ContentCard, ProductCard, SectionHeading } from "@/components/public/cards";
 import { SearchTracker } from "@/components/public/search-tracker";
+import { PageViewTracker } from "@/components/analytics/page-view-tracker";
 import { EmptyState } from "@/components/shared/ui";
 
 export async function generateMetadata({
@@ -35,6 +36,7 @@ export default async function SearchPage({
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-12">
+      <PageViewTracker />
       <Breadcrumbs items={[{ name: "Home", path: "/" }, { name: "Search", path: "/search" }]} />
 
       <form action="/search" method="get" className="max-w-md mb-10">

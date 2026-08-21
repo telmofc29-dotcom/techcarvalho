@@ -6,6 +6,8 @@ import { Breadcrumbs } from "@/components/public/breadcrumbs";
 import { ContentCard } from "@/components/public/cards";
 import { PublicPagination } from "@/components/public/pagination";
 import { EmptyState } from "@/components/shared/ui";
+import { PageViewTracker } from "@/components/analytics/page-view-tracker";
+import { InternalLinkTracker } from "@/components/analytics/internal-link-tracker";
 import type { ContentType } from "@/lib/types/database";
 
 const TYPE_FILTERS: { label: string; value: ContentType | "" }[] = [
@@ -35,6 +37,7 @@ export default async function ArticlesIndexPage({
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-12">
+      <PageViewTracker />
       <Breadcrumbs items={[{ name: "Home", path: "/" }, { name: "Articles", path: "/articles" }]} />
       <h1 className="font-display text-3xl font-bold tracking-tight text-zinc-900 mb-2">Articles</h1>
       <p className="text-zinc-500 mb-6">{total > 0 ? `${total} published piece${total === 1 ? "" : "s"}` : "Nothing published yet."}</p>
@@ -60,21 +63,23 @@ export default async function ArticlesIndexPage({
         />
       ) : (
         <>
-          <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {content.map((item) => (
-              <li key={item.id}>
-                <ContentCard
-                  href={`/articles/${item.slug}`}
-                  type={item.type}
-                  title={item.title}
-                  publishedAt={item.published_at}
-                  excerpt={item.excerpt}
-                  imageUrl={item.heroImage?.url}
-                  imageAlt={item.heroImage?.alt}
-                />
-              </li>
-            ))}
-          </ul>
+          <InternalLinkTracker linkPosition="category_page">
+            <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {content.map((item) => (
+                <li key={item.id} data-entity-type="content" data-entity-id={item.id}>
+                  <ContentCard
+                    href={`/articles/${item.slug}`}
+                    type={item.type}
+                    title={item.title}
+                    publishedAt={item.published_at}
+                    excerpt={item.excerpt}
+                    imageUrl={item.heroImage?.url}
+                    imageAlt={item.heroImage?.alt}
+                  />
+                </li>
+              ))}
+            </ul>
+          </InternalLinkTracker>
           <PublicPagination page={page} pageCount={pageCount} basePath="/articles" searchParams={{ type }} />
         </>
       )}

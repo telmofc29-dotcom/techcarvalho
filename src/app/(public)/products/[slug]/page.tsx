@@ -13,6 +13,9 @@ import { OutboundLink } from "@/components/public/outbound-link";
 import { LaunchPricingDisplay } from "@/components/public/launch-pricing";
 import { outboundLinkKindFor, destinationDomainOf } from "@/lib/monetisation/affiliate";
 import { Badge, EmptyState } from "@/components/shared/ui";
+import { PageViewTracker } from "@/components/analytics/page-view-tracker";
+import { ScrollDepthTracker } from "@/components/analytics/scroll-depth-tracker";
+import { TrackedLink } from "@/components/analytics/tracked-link";
 
 export async function generateMetadata({
   params,
@@ -54,6 +57,8 @@ export default async function ProductPage({
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-12">
+      <PageViewTracker entityType="product" entityId={product.id} categorySlug={category?.slug} />
+      <ScrollDepthTracker />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLdString(jsonLd) }}
@@ -100,9 +105,13 @@ export default async function ProductPage({
 
           <div className="flex items-center gap-2 mb-3">
             {manufacturer && (
-              <Link href={`/manufacturers/${manufacturer.slug}`} className="text-sm font-medium text-zinc-500 hover:text-accent">
+              <TrackedLink
+                href={`/manufacturers/${manufacturer.slug}`}
+                linkPosition="product_page"
+                className="text-sm font-medium text-zinc-500 hover:text-accent"
+              >
                 {manufacturer.name}
-              </Link>
+              </TrackedLink>
             )}
             {product.status !== "active" && <Badge tone={product.status === "rumored" ? "amber" : "neutral"}>{product.status}</Badge>}
           </div>

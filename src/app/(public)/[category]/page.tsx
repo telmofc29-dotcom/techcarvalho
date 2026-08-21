@@ -13,6 +13,8 @@ import {
 import { Breadcrumbs } from "@/components/public/breadcrumbs";
 import { ContentCard, ProductCard, SectionHeading } from "@/components/public/cards";
 import { EmptyState } from "@/components/shared/ui";
+import { PageViewTracker } from "@/components/analytics/page-view-tracker";
+import { InternalLinkTracker } from "@/components/analytics/internal-link-tracker";
 
 export async function generateMetadata({
   params,
@@ -54,6 +56,7 @@ export default async function CategoryPage({
 
   return (
     <div>
+      <PageViewTracker entityType="category" categorySlug={slug} />
       <div className="border-b border-border-subtle bg-zinc-50">
         <div className="mx-auto max-w-6xl px-6 py-12">
           <Breadcrumbs items={[{ name: "Home", path: "/" }, { name: label, path: `/${slug}` }]} />
@@ -73,77 +76,85 @@ export default async function CategoryPage({
             {subcategories.length > 0 && (
               <section>
                 <SectionHeading>Subcategories</SectionHeading>
-                <ul className="flex flex-wrap gap-3">
-                  {subcategories.map((sc) => (
-                    <li key={sc.id}>
-                      <Link
-                        href={`/${sc.slug}`}
-                        className="rounded-full border border-border-subtle bg-white px-4 py-2 text-sm font-medium hover:border-accent/40"
-                      >
-                        {sc.name}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
+                <InternalLinkTracker linkPosition="category_page">
+                  <ul className="flex flex-wrap gap-3">
+                    {subcategories.map((sc) => (
+                      <li key={sc.id} data-entity-type="category" data-category-slug={sc.slug}>
+                        <Link
+                          href={`/${sc.slug}`}
+                          className="rounded-full border border-border-subtle bg-white px-4 py-2 text-sm font-medium hover:border-accent/40"
+                        >
+                          {sc.name}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </InternalLinkTracker>
               </section>
             )}
 
             {content.length > 0 && (
               <section>
                 <SectionHeading>Latest articles</SectionHeading>
-                <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {content.map((item) => (
-                    <li key={item.id}>
-                      <ContentCard
-                        href={`/articles/${item.slug}`}
-                        type={item.type}
-                        title={item.title}
-                        publishedAt={item.published_at}
-                        excerpt={item.excerpt}
-                        imageUrl={item.heroImage?.url}
-                        imageAlt={item.heroImage?.alt}
-                      />
-                    </li>
-                  ))}
-                </ul>
+                <InternalLinkTracker linkPosition="category_page" categorySlug={slug}>
+                  <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {content.map((item) => (
+                      <li key={item.id} data-entity-type="content" data-entity-id={item.id}>
+                        <ContentCard
+                          href={`/articles/${item.slug}`}
+                          type={item.type}
+                          title={item.title}
+                          publishedAt={item.published_at}
+                          excerpt={item.excerpt}
+                          imageUrl={item.heroImage?.url}
+                          imageAlt={item.heroImage?.alt}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                </InternalLinkTracker>
               </section>
             )}
 
             {products.length > 0 && (
               <section>
                 <SectionHeading>Products</SectionHeading>
-                <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {products.map((p) => (
-                    <li key={p.id}>
-                      <ProductCard
-                        href={`/products/${p.slug}`}
-                        name={p.name}
-                        summary={p.summary}
-                        status={p.status}
-                        imageUrl={p.heroImage?.url}
-                        imageAlt={p.heroImage?.alt}
-                      />
-                    </li>
-                  ))}
-                </ul>
+                <InternalLinkTracker linkPosition="category_page" categorySlug={slug}>
+                  <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {products.map((p) => (
+                      <li key={p.id} data-entity-type="product" data-entity-id={p.id}>
+                        <ProductCard
+                          href={`/products/${p.slug}`}
+                          name={p.name}
+                          summary={p.summary}
+                          status={p.status}
+                          imageUrl={p.heroImage?.url}
+                          imageAlt={p.heroImage?.alt}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                </InternalLinkTracker>
               </section>
             )}
 
             {manufacturers.length > 0 && (
               <section>
                 <SectionHeading>Manufacturers</SectionHeading>
-                <ul className="flex flex-wrap gap-3">
-                  {manufacturers.map((m) => (
-                    <li key={m.id}>
-                      <Link
-                        href={`/manufacturers/${m.slug}`}
-                        className="rounded-full border border-border-subtle bg-white px-4 py-2 text-sm font-medium hover:border-accent/40"
-                      >
-                        {m.name}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
+                <InternalLinkTracker linkPosition="category_page" categorySlug={slug}>
+                  <ul className="flex flex-wrap gap-3">
+                    {manufacturers.map((m) => (
+                      <li key={m.id} data-entity-type="manufacturer" data-entity-id={m.id}>
+                        <Link
+                          href={`/manufacturers/${m.slug}`}
+                          className="rounded-full border border-border-subtle bg-white px-4 py-2 text-sm font-medium hover:border-accent/40"
+                        >
+                          {m.name}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </InternalLinkTracker>
               </section>
             )}
           </div>

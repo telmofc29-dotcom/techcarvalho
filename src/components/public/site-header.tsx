@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SITE_NAME } from "@/lib/seo/site";
 import { PLANNED_CATEGORIES } from "@/lib/public/categories";
+import { NavClickTracker } from "@/components/analytics/nav-click-tracker";
 
 function SearchForm({ className = "" }: { className?: string }) {
   return (
@@ -33,15 +34,17 @@ export function SiteHeader() {
           <SearchForm className="hidden lg:block flex-1 max-w-sm" />
 
           <nav aria-label="Primary" className="hidden lg:block">
-            <ul className="flex flex-wrap items-center gap-5 text-sm font-medium text-zinc-600">
-              {PLANNED_CATEGORIES.map((category) => (
-                <li key={category.slug}>
-                  <Link href={`/${category.slug}`} id={`nav-${category.slug}`} className="hover:text-accent">
-                    {category.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            <NavClickTracker>
+              <ul className="flex flex-wrap items-center gap-5 text-sm font-medium text-zinc-600">
+                {PLANNED_CATEGORIES.map((category) => (
+                  <li key={category.slug}>
+                    <Link href={`/${category.slug}`} id={`nav-${category.slug}`} className="hover:text-accent">
+                      {category.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </NavClickTracker>
           </nav>
 
           <details className="mobile-nav lg:hidden">
@@ -53,19 +56,21 @@ export function SiteHeader() {
             </summary>
             <div className="absolute inset-x-0 top-16 border-b border-border-subtle bg-white px-6 py-4 shadow-lg">
               <SearchForm className="mb-4" />
-              <ul className="flex flex-col gap-1 text-sm font-medium text-zinc-700">
-                {PLANNED_CATEGORIES.map((category) => (
-                  <li key={category.slug}>
-                    <Link
-                      href={`/${category.slug}`}
-                      id={`nav-mobile-${category.slug}`}
-                      className="block rounded-md px-2 py-2 hover:bg-zinc-50 hover:text-accent"
-                    >
-                      {category.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+              <NavClickTracker>
+                <ul className="flex flex-col gap-1 text-sm font-medium text-zinc-700">
+                  {PLANNED_CATEGORIES.map((category) => (
+                    <li key={category.slug}>
+                      <Link
+                        href={`/${category.slug}`}
+                        id={`nav-mobile-${category.slug}`}
+                        className="block rounded-md px-2 py-2 hover:bg-zinc-50 hover:text-accent"
+                      >
+                        {category.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </NavClickTracker>
             </div>
           </details>
         </div>

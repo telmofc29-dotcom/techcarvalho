@@ -7,6 +7,8 @@ import { ProductCard } from "@/components/public/cards";
 import { PublicPagination } from "@/components/public/pagination";
 import { FilterSelect } from "@/components/public/filter-select";
 import { EmptyState } from "@/components/shared/ui";
+import { PageViewTracker } from "@/components/analytics/page-view-tracker";
+import { InternalLinkTracker } from "@/components/analytics/internal-link-tracker";
 
 export const metadata: Metadata = buildMetadata({
   title: "Products",
@@ -31,6 +33,7 @@ export default async function ProductsIndexPage({
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-12">
+      <PageViewTracker />
       <Breadcrumbs items={[{ name: "Home", path: "/" }, { name: "Products", path: "/products" }]} />
       <h1 className="font-display text-3xl font-bold tracking-tight text-zinc-900 mb-2">Products</h1>
       <p className="text-zinc-500 mb-6">{total > 0 ? `${total} published product${total === 1 ? "" : "s"}` : "Nothing published yet."}</p>
@@ -76,21 +79,23 @@ export default async function ProductsIndexPage({
         />
       ) : (
         <>
-          <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {products.map((p) => (
-              <li key={p.id}>
-                <ProductCard
-                  href={`/products/${p.slug}`}
-                  name={p.name}
-                  manufacturerName={p.manufacturerName}
-                  summary={p.summary}
-                  status={p.status}
-                  imageUrl={p.heroImage?.url}
-                  imageAlt={p.heroImage?.alt}
-                />
-              </li>
-            ))}
-          </ul>
+          <InternalLinkTracker linkPosition="category_page">
+            <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {products.map((p) => (
+                <li key={p.id} data-entity-type="product" data-entity-id={p.id}>
+                  <ProductCard
+                    href={`/products/${p.slug}`}
+                    name={p.name}
+                    manufacturerName={p.manufacturerName}
+                    summary={p.summary}
+                    status={p.status}
+                    imageUrl={p.heroImage?.url}
+                    imageAlt={p.heroImage?.alt}
+                  />
+                </li>
+              ))}
+            </ul>
+          </InternalLinkTracker>
           <PublicPagination page={page} pageCount={pageCount} basePath="/products" searchParams={activeFilters} />
         </>
       )}

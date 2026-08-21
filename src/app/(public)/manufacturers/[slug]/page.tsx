@@ -9,6 +9,8 @@ import { ProductCard, SectionHeading } from "@/components/public/cards";
 import { EmptyState } from "@/components/shared/ui";
 import { OutboundLink } from "@/components/public/outbound-link";
 import { destinationDomainOf } from "@/lib/monetisation/affiliate";
+import { PageViewTracker } from "@/components/analytics/page-view-tracker";
+import { InternalLinkTracker } from "@/components/analytics/internal-link-tracker";
 
 export async function generateMetadata({
   params,
@@ -39,6 +41,7 @@ export default async function ManufacturerPage({
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-12">
+      <PageViewTracker entityType="manufacturer" entityId={manufacturer.id} />
       <Breadcrumbs
         items={[
           { name: "Home", path: "/" },
@@ -90,20 +93,22 @@ export default async function ManufacturerPage({
             description={`Products from ${manufacturer.name} will appear here once they're published.`}
           />
         ) : (
-          <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {products.map((p) => (
-              <li key={p.id}>
-                <ProductCard
-                  href={`/products/${p.slug}`}
-                  name={p.name}
-                  summary={p.summary}
-                  status={p.status}
-                  imageUrl={p.heroImage?.url}
-                  imageAlt={p.heroImage?.alt}
-                />
-              </li>
-            ))}
-          </ul>
+          <InternalLinkTracker linkPosition="manufacturer_page">
+            <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {products.map((p) => (
+                <li key={p.id} data-entity-type="product" data-entity-id={p.id}>
+                  <ProductCard
+                    href={`/products/${p.slug}`}
+                    name={p.name}
+                    summary={p.summary}
+                    status={p.status}
+                    imageUrl={p.heroImage?.url}
+                    imageAlt={p.heroImage?.alt}
+                  />
+                </li>
+              ))}
+            </ul>
+          </InternalLinkTracker>
         )}
       </div>
 
