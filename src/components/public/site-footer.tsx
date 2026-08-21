@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SITE_NAME, SITE_TAGLINE } from "@/lib/seo/site";
 import { PLANNED_CATEGORIES } from "@/lib/public/categories";
+import { CookieSettingsButton } from "@/components/consent/cookie-settings-button";
 
 const BROWSE_LINKS = [
   { href: "/products", label: "All products" },
@@ -62,6 +63,9 @@ export function SiteFooter() {
                   </Link>
                 </li>
               ))}
+              <li>
+                <CookieSettingsButton />
+              </li>
             </ul>
           </div>
         </div>

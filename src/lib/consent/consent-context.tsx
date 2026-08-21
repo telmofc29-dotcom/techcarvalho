@@ -30,6 +30,14 @@ type ConsentContextValue = {
   setConsent: (next: Partial<Record<ConsentCategory, boolean>>) => void;
   acceptAll: () => void;
   rejectAll: () => void;
+  // Lets a control anywhere in the tree (the footer's permanent "Cookie
+  // settings" link, in particular — see site-footer.tsx) reopen the
+  // preferences panel on demand, independent of hasChosen. ConsentBanner
+  // renders the initial prompt when !hasChosen, the full manage-preferences
+  // panel when isPreferencesOpen, and nothing otherwise.
+  isPreferencesOpen: boolean;
+  openPreferences: () => void;
+  closePreferences: () => void;
 };
 
 const ConsentContext = createContext<ConsentContextValue | null>(null);
@@ -51,6 +59,7 @@ function applyConsentModeSignal(consent: ConsentState) {
 export function ConsentProvider({ children }: { children: ReactNode }) {
   const [consent, setConsentState] = useState<ConsentState>(DEFAULT_CONSENT);
   const [hasChosen, setHasChosen] = useState(false);
+  const [isPreferencesOpen, setIsPreferencesOpen] = useState(false);
 
   useEffect(() => {
     // Deliberately not read during the initial render/lazy useState
@@ -83,6 +92,7 @@ export function ConsentProvider({ children }: { children: ReactNode }) {
   const persist = (next: ConsentState) => {
     setConsentState(next);
     setHasChosen(true);
+    setIsPreferencesOpen(false);
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     } catch {
@@ -99,8 +109,11 @@ export function ConsentProvider({ children }: { children: ReactNode }) {
       setConsent: (next) => persist({ ...consent, ...next, necessary: true }),
       acceptAll: () => persist({ necessary: true, analytics: true, advertising: true }),
       rejectAll: () => persist({ necessary: true, analytics: false, advertising: false }),
+      isPreferencesOpen,
+      openPreferences: () => setIsPreferencesOpen(true),
+      closePreferences: () => setIsPreferencesOpen(false),
     }),
-    [consent, hasChosen]
+    [consent, hasChosen, isPreferencesOpen]
   );
 
   return <ConsentContext.Provider value={value}>{children}</ConsentContext.Provider>;
