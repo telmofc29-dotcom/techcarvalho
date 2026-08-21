@@ -6,6 +6,7 @@ import { PageHeader, Card, Checkbox, Field, TextInput, Select, Badge, TextLink }
 import { SubmitButton, ConfirmDeleteButton } from "@/components/admin/submit-button";
 import { ReferenceForm, type ReferenceFieldConfig } from "@/components/admin/reference-form";
 import { SourceRecordsCard, EvidenceRecordsCard } from "@/components/admin/source-evidence-cards";
+import { MediaRequirementCard } from "@/components/admin/media-requirement-card";
 import { CannibalisationCheck } from "@/components/admin/cannibalisation-check";
 import { CONTENT_TYPE_OPTIONS, CONTENT_STATUS_OPTIONS } from "@/lib/admin/content-options";
 import {
@@ -110,9 +111,19 @@ export default async function EditContentPage({
   const mediaIds = (mediaLinks ?? []).map((m) => m.media_id);
   const { data: mediaRows } =
     mediaIds.length > 0
-      ? await supabase.from("media_assets").select("id, alt_text, storage_path, publication_status").in("id", mediaIds)
+      ? await supabase
+          .from("media_assets")
+          .select("id, alt_text, storage_path, publication_status, rights_status, owned, source_type")
+          .in("id", mediaIds)
       : { data: [] };
   const mediaById = new Map((mediaRows ?? []).map((m) => [m.id, m]));
+  const heroLink = (mediaLinks ?? []).find((m) => m.role === "hero");
+  const heroAsset = heroLink ? (mediaById.get(heroLink.media_id) ?? null) : null;
+  const { data: mediaRequirement } = await supabase
+    .from("media_requirements")
+    .select("id, sourcing_status, target_source_type, notes, resolved_media_id")
+    .eq("content_id", id)
+    .maybeSingle();
 
   const fields: ReferenceFieldConfig[] = [
     {
@@ -361,6 +372,16 @@ export default async function EditContentPage({
           </ul>
         )}
       </Card>
+
+      <MediaRequirementCard
+        target={{ contentId: id }}
+        requirement={mediaRequirement ?? null}
+        heroAsset={heroAsset}
+        associatedMedia={(mediaRows ?? []).map((m) => ({
+          id: m.id,
+          label: m.alt_text ?? m.storage_path.split("/").pop() ?? m.id,
+        }))}
+      />
 
       <SourceRecordsCard parent={{ type: "content", id }} records={sourceRecords ?? []} />
 

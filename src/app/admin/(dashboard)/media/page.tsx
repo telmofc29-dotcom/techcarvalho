@@ -80,7 +80,12 @@ export default async function MediaListPage({
       <PageHeader
         title="Media"
         description="Images and video referenced by products, content, and site branding. Uploads are private until explicitly published."
-        action={<LinkButton href="/admin/media/new">Upload media</LinkButton>}
+        action={
+          <div className="flex gap-2">
+            <LinkButton href="/admin/media/requirements">Awaiting media</LinkButton>
+            <LinkButton href="/admin/media/new">Upload media</LinkButton>
+          </div>
+        }
       />
 
       <div className="flex flex-col gap-3 mb-4">
