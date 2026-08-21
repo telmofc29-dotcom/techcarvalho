@@ -1,8 +1,27 @@
--- DRAFTED, NOT YET APPLIED TO PRODUCTION. Lives in migrations_pending/ per
--- this project's convention until the coordinator confirms it has actually
--- been run in the Supabase SQL editor — move to supabase/migrations/ only
--- after that, following the exact same review-then-verify-then-move
--- process already used for 20260821_product_launch_pricing.sql.
+-- APPLIED TO PRODUCTION 2026-08-21. Tables/RLS/policies as written below
+-- are correct and unchanged from the original draft, but this migration
+-- ALONE was not sufficient to make the system work — three follow-up
+-- migrations in this same directory were required after independent live
+-- verification (tested as the real anon/authenticated roles against
+-- production, not just service/admin access, which is what let the first
+-- two gaps go unnoticed):
+--   1. 20260821_first_party_analytics_grants_fix.sql — RLS policies alone
+--      don't grant anything; the base GRANTs anon/authenticated need to
+--      even attempt these policies' operations were missing entirely.
+--   2. 20260821_first_party_analytics_rate_limit_fn.sql — the ingestion
+--      endpoint's rate-limit check needed a SELECT against analytics_events
+--      that anon can never be granted (raw analytics must never be
+--      publicly readable) — replaced with a SECURITY DEFINER RPC.
+--   3. 20260821_first_party_analytics_touch_fn.sql — visitor/session
+--      upsert() also implicitly needs SELECT to detect the ON CONFLICT
+--      branch, same underlying tension — replaced with a second SECURITY
+--      DEFINER RPC, and the grants fix's INSERT/UPDATE grants on
+--      analytics_visitors/analytics_sessions were revoked as no longer
+--      used by anything.
+-- Read all four files together to understand the table's actual, final
+-- production shape — this file alone undersells what anon can actually do
+-- (effectively nothing directly; every real write goes through one of the
+-- two RPC functions added afterward).
 --
 -- Purpose: TechCarvalho's own first-party analytics/event system, separate
 -- from and complementary to GA4 — so content-interest intelligence (which

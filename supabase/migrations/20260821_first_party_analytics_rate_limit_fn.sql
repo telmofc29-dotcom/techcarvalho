@@ -1,4 +1,5 @@
--- DRAFTED, NOT YET APPLIED. Fixes a second real bug found during live
+-- APPLIED TO PRODUCTION 2026-08-21, verified via a real POST to the live
+-- ingestion endpoint landing a row. Fixes a second real bug found during live
 -- verification, after the grants fix (20260821_first_party_analytics_grants_fix.sql)
 -- resolved the first one: /api/analytics/track's per-session rate-limit
 -- check did `select count(*) ... from analytics_events where session_id = ...`

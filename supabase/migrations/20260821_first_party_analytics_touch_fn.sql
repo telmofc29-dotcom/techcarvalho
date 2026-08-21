@@ -1,4 +1,7 @@
--- DRAFTED, NOT YET APPLIED. Fixes a third real bug found during live
+-- APPLIED TO PRODUCTION 2026-08-21, verified end-to-end: single event,
+-- 5-step journey, duplicate-session prevention, rate limiting, bot
+-- exclusion, anon read denial, and constraint enforcement all confirmed
+-- against production after this ran. Fixes a third real bug found during live
 -- production verification (after the grants fix and the rate-limit fix):
 -- the ingestion route's visitor/session "touch" used upsert() — which
 -- compiles to `INSERT ... ON CONFLICT (id) DO UPDATE` — against

@@ -1,4 +1,5 @@
--- DRAFTED, NOT YET APPLIED. Fixes a real bug found during live verification
+-- APPLIED TO PRODUCTION 2026-08-21, verified via a real anon-role insert/
+-- select round-trip. Fixes a real bug found during live verification
 -- of 20260821_first_party_analytics.sql (applied 2026-08-21): that
 -- migration created RLS policies for anon/authenticated but never issued
 -- the base GRANTs those policies depend on. RLS only ever RESTRICTS an
