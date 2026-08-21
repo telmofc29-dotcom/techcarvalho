@@ -9,11 +9,36 @@ export default function CookiesPage() {
   return (
     <LegalPage title="Cookie Policy" crumbLabel="Cookies" crumbPath="/cookies">
       <p>
-        {SITE_NAME} uses a small number of cookies required for the site and admin login to function. Analytics
-        and advertising cookies are not active by default and, once available, will only load after you grant
-        consent through a consent banner.
+        {SITE_NAME} uses a small number of cookies and similar browser storage. Some are required for the site to
+        function; others are only used after you grant consent through the consent banner. You can change your
+        choice at any time by clearing this site&apos;s cookies and local storage in your browser.
       </p>
-      <p>A full breakdown of individual cookies will be published here once analytics or advertising are enabled.</p>
+      <h2 className="font-display text-base font-semibold text-zinc-900 mt-2">Strictly necessary</h2>
+      <p>
+        A session cookie is used to keep an administrator signed in to the {SITE_NAME} admin area. This is required
+        for the admin app to work and is exempt from consent requirements — it is never set for ordinary visitors
+        browsing the public site.
+      </p>
+      <h2 className="font-display text-base font-semibold text-zinc-900 mt-2">Analytics — only after consent</h2>
+      <p>
+        With your consent, {SITE_NAME} uses Google Analytics (GA4), which sets its own cookies, and its own
+        first-party analytics: a random session identifier stored in your browser&apos;s <em>session storage</em>{" "}
+        (cleared automatically when you close the tab or after 30 minutes of inactivity) and a random visitor
+        identifier stored in <em>local storage</em> (kept until you clear it) so we can distinguish new and
+        returning visits. Neither identifier is linked to your name, email, or any account, and neither is ever
+        shared outside {SITE_NAME}&apos;s own database except with Google for the GA4 portion. We do not store your
+        IP address or full browser user-agent string for analytics purposes.
+      </p>
+      <p>
+        Separately, when you click a retailer or affiliate link, we record that a click happened (which page, which
+        retailer) without any visitor or session identifier attached at all — this anonymous count exists regardless
+        of your cookie choice, since it cannot be linked to you or your browsing across the site.
+      </p>
+      <h2 className="font-display text-base font-semibold text-zinc-900 mt-2">Advertising — only after consent</h2>
+      <p>
+        With your consent, the Google AdSense library loads so {SITE_NAME}&apos;s advertising account can be
+        verified. No individual ad placements are live on the site yet.
+      </p>
     </LegalPage>
   );
 }
