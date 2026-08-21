@@ -1,0 +1,52 @@
+-- APPLIED TO PRODUCTION 2026-08-20. Moved here from
+-- supabase/migrations_pending/ after the user confirmed it was run.
+--
+-- Purpose (Phase 19 — monetisation metadata): the spec calls for classifying
+-- content as informational / product-relevant / comparison / buying-guide /
+-- troubleshooting, "without redundant fields". Checked what already exists
+-- before proposing anything new:
+--   * content_items.type ('review' | 'guide' | 'comparison' | 'news')
+--   * content_items.search_intent ('informational' | 'commercial' |
+--     'transactional' | 'navigational')
+--   * "product-relevant" needs no field at all — it's already derivable as
+--     "this content has >=1 content_products row", exactly how
+--     src/lib/admin/dashboard-service.ts's getEditorialQualityCounts()
+--     already queries it.
+--   * "comparison" already maps 1:1 onto type = 'comparison'.
+--   * "buying-guide" already maps adequately onto type = 'guide' combined
+--     with search_intent in ('commercial', 'transactional') — a genuine
+--     buying guide naturally carries that intent. No new field needed here.
+--   * "informational" already maps onto search_intent = 'informational'.
+--
+-- The one genuine gap: "troubleshooting" ("how do I fix X") has no home in
+-- either field. Under the current type enum it would have to be squeezed
+-- into 'guide', which conflates it with genuine buying guides — a real
+-- problem specifically for monetisation, since troubleshooting content
+-- typically has low buying intent and is a poor fit for affiliate/product
+-- placements, unlike a buying guide. This is the one addition below: a
+-- single new enum value on the existing `type` column (reusing the
+-- existing dimension, not adding a parallel classification field).
+
+-- Constraint-name note: unlike content_items_status_check (explicitly
+-- (re)named by 20260819_content_media_extensions_and_storage.sql, so its
+-- name is certain), the `type` column's CHECK has never been touched since
+-- its inline declaration in 20260819202304_initial_schema.sql — its name
+-- relies on Postgres's default single-column CHECK naming convention
+-- (`<table>_<column>_check`), which is standard/deterministic but was never
+-- explicitly confirmed by a prior migration. Recommended: run this first,
+-- read-only, and confirm it returns exactly one row named
+-- content_items_type_check before running the ALTER below:
+--
+--   select conname from pg_constraint
+--   where conrelid = 'public.content_items'::regclass and contype = 'c';
+--
+-- If the type constraint's name differs from content_items_type_check, drop
+-- constraint if exists below will silently no-op (no error) and the ADD
+-- CONSTRAINT will then create a second, independently-enforced CHECK —
+-- meaning the OLD constraint (still active under its real name) would keep
+-- rejecting 'troubleshooting' even though this migration "succeeded".
+-- Update the name in both lines below to match if it differs.
+
+alter table public.content_items drop constraint if exists content_items_type_check;
+alter table public.content_items
+  add constraint content_items_type_check check (type in ('review', 'guide', 'comparison', 'news', 'troubleshooting'));

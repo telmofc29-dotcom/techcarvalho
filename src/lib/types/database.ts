@@ -11,9 +11,40 @@ export type RelationshipType =
   | "compatible_with"
   | "requires";
 export type SpecDataType = "text" | "number" | "boolean" | "enum";
-export type ContentType = "review" | "guide" | "comparison" | "news";
-export type ContentStatus = "draft" | "published" | "archived";
+// 'troubleshooting' added by supabase/migrations/20260820_content_troubleshooting_type.sql.
+export type ContentType = "review" | "guide" | "comparison" | "news" | "troubleshooting";
+// Widened by supabase/migrations/20260820_editorial_workflow_statuses.sql — the original
+// 'draft' | 'published' | 'archived' remain valid; the five new values are pre-publication
+// pipeline states. Only status = 'published' is ever publicly readable (see RLS).
+export type ContentStatus =
+  | "idea"
+  | "planned"
+  | "draft"
+  | "review"
+  | "ready"
+  | "published"
+  | "needs_update"
+  | "archived";
 export type ContentProductRole = "primary_subject" | "mentioned" | "compared_against";
+// Added by supabase/migrations/20260820_content_relationships.sql.
+export type ContentRelationshipType = "pillar_of" | "supporting_of" | "related_to";
+// Added by supabase/migrations/20260820_product_offers.sql.
+export type AffiliateStatus = "affiliate" | "non_affiliate" | "pending";
+// Added by supabase/migrations/20260820_outbound_click_events.sql. Mirrors LinkPosition in
+// src/lib/analytics/events.ts — keep both in sync if either changes.
+export type OutboundClickLinkPosition =
+  | "article_top"
+  | "article_body"
+  | "article_end"
+  | "sidebar"
+  | "product_page"
+  | "manufacturer_page"
+  | "category_page"
+  | "nav"
+  | "footer"
+  | "search_results"
+  | "related_content";
+export type OutboundClickKind = "affiliate" | "outbound";
 export type MediaRole = "hero" | "gallery" | "thumbnail";
 export type ReliabilityTier = "primary" | "secondary" | "community";
 export type MediaSourceType =
@@ -234,6 +265,33 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["product_tags"]["Insert"]>;
         Relationships: [];
       };
+      // Added by supabase/migrations/20260820_product_offers.sql, applied to production.
+      product_offers: {
+        Row: {
+          id: string;
+          product_id: string;
+          retailer: string;
+          url: string;
+          affiliate_status: AffiliateStatus;
+          price_note: string | null;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          product_id: string;
+          retailer: string;
+          url: string;
+          affiliate_status?: AffiliateStatus;
+          price_note?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["product_offers"]["Insert"]>;
+        Relationships: [];
+      };
       spec_definitions: {
         Row: {
           id: string;
@@ -316,6 +374,27 @@ export interface Database {
         Row: { content_id: string; tag_id: string };
         Insert: { content_id: string; tag_id: string };
         Update: Partial<Database["public"]["Tables"]["content_tags"]["Insert"]>;
+        Relationships: [];
+      };
+      // Added by supabase/migrations/20260820_content_relationships.sql, applied to
+      // production. Directional, mirrors product_relationships — reverse direction is
+      // inferred at query time (content_id = X OR related_content_id = X), never inserted.
+      content_relationships: {
+        Row: {
+          id: string;
+          content_id: string;
+          related_content_id: string;
+          relationship_type: ContentRelationshipType;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          content_id: string;
+          related_content_id: string;
+          relationship_type: ContentRelationshipType;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["content_relationships"]["Insert"]>;
         Relationships: [];
       };
       content_products: {
@@ -472,6 +551,33 @@ export interface Database {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["seo_metadata"]["Insert"]>;
+        Relationships: [];
+      };
+      // Added by supabase/migrations/20260820_outbound_click_events.sql, applied to
+      // production. Anonymous-insert-only, admin-read-only — see the migration's header
+      // comment for the full RLS/abuse-mitigation design. No PII columns.
+      outbound_click_events: {
+        Row: {
+          id: string;
+          created_at: string;
+          kind: OutboundClickKind;
+          retailer: string | null;
+          destination_domain: string;
+          link_position: OutboundClickLinkPosition;
+          product_id: string | null;
+          content_id: string | null;
+        };
+        Insert: {
+          id?: string;
+          created_at?: string;
+          kind: OutboundClickKind;
+          retailer?: string | null;
+          destination_domain: string;
+          link_position: OutboundClickLinkPosition;
+          product_id?: string | null;
+          content_id?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["outbound_click_events"]["Insert"]>;
         Relationships: [];
       };
     };
