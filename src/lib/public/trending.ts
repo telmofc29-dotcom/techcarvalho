@@ -174,16 +174,37 @@ export const getTrendingContent = cache(
       return { lead: null, supporting: [], isRecencyFallback: true };
     }
 
-    // Overrides and relationships in parallel — both are publicly readable.
-    const [overridesResult, relationshipsResult] = await Promise.all([
-      supabase.from("homepage_overrides").select("content_id, mode"),
+    // Admin overrides are NOT publicly readable — homepage_overrides has no
+    // anon grant (see 20260822_phase5_secure_homepage.sql). Exposing it would
+    // publish editorial intent: a `suppress` row reveals that an admin chose
+    // to hide a specific published article.
+    //
+    // Instead the final selection comes from public_homepage_selection(), a
+    // SECURITY DEFINER function that reads overrides inside the security
+    // barrier and returns only the resulting set. We use it to learn WHICH
+    // items are eligible and pinned; the richer presentation data (hero
+    // images, excerpts, category labels) is still assembled here from
+    // publicly-readable tables.
+    const [selectionResult, relationshipsResult] = await Promise.all([
+      supabase.rpc("public_homepage_selection", { p_supporting: 8 }),
       supabase.from("content_relationships").select("content_id, related_content_id"),
     ]);
-    logQueryError("getTrendingContent overrides", overridesResult.error);
     logQueryError("getTrendingContent relationships", relationshipsResult.error);
 
-    const overrideMode = new Map(
-      (overridesResult.data ?? []).map((o) => [o.content_id, o.mode as string])
+    // The RPC is the authority on suppression and pinning. If it is
+    // unavailable (not yet deployed), fall back to ranking WITHOUT overrides
+    // rather than attempting to read the table directly — a fallback that
+    // tried the table would fail closed to "no rows" under RLS and silently
+    // look like "nothing is pinned" forever.
+    const selectionRows = (selectionResult.data ?? []) as { content_id: string; role: string }[];
+    const selectionAvailable = !selectionResult.error && selectionRows.length > 0;
+    if (selectionResult.error) {
+      logQueryError("getTrendingContent public_homepage_selection", selectionResult.error);
+    }
+
+    const allowedIds = selectionAvailable ? new Set(selectionRows.map((r) => r.content_id)) : null;
+    const overrideMode = new Map<string, string>(
+      selectionRows.filter((r) => r.role === "lead").map((r) => [r.content_id, "pin_lead"])
     );
 
     // Degree = how many published relationships touch this item, in either
@@ -194,8 +215,10 @@ export const getTrendingContent = cache(
       degree.set(rel.related_content_id, (degree.get(rel.related_content_id) ?? 0) + 1);
     }
 
-    // Suppressed items are removed entirely before ranking.
-    const candidates = rows.filter((r) => overrideMode.get(r.id) !== "suppress");
+    // Suppression is enforced by the RPC: anything it omitted is either
+    // suppressed or did not rank, and we cannot (and need not) tell which.
+    // When the RPC is unavailable we rank everything rather than guessing.
+    const candidates = allowedIds ? rows.filter((r) => allowedIds.has(r.id)) : rows;
     if (candidates.length === 0) {
       return { lead: null, supporting: [], isRecencyFallback: true };
     }

@@ -1388,6 +1388,21 @@ export interface Database {
         Returns: string;
       };
       // ---- Phase 5 RPCs ----
+      // Returns ONLY the final homepage selection. Overrides are read inside
+      // the security barrier and never returned — see
+      // 20260822_phase5_secure_homepage.sql.
+      public_homepage_selection: {
+        Args: { p_supporting?: number };
+        Returns: {
+          content_id: string;
+          slug: string;
+          title: string;
+          content_type: string;
+          category_slug: string | null;
+          published_at: string;
+          role: string;
+        }[];
+      };
       engine_trend_inputs: {
         Args: { p_days?: number };
         Returns: {
