@@ -1,6 +1,12 @@
--- DRAFTED, NOT YET APPLIED TO PRODUCTION. Lives in migrations_pending/ per
--- this project's convention until the coordinator confirms it has actually
--- been run — move to supabase/migrations/ only after that.
+-- APPLIED TO PRODUCTION 2026-08-21 (run manually by the user via the
+-- Supabase SQL editor, per this project's convention — moved here from
+-- migrations_pending/ after independent verification: table/columns,
+-- both CHECK constraints, the unique (product_id, currency) constraint,
+-- RLS (anon blocked from writing, anon can read pricing only for a
+-- published product, admin full read/write), and the updated_at trigger
+-- were all confirmed live against production with a real, immediately-
+-- deleted test row — see that verification's own commit for detail. The
+-- existing 22 live products were confirmed unaffected before and after.
 --
 -- Purpose: historical launch-MSRP pricing, structured per currency
 -- (USD/GBP/EUR), replacing the ad-hoc single "launch-msrp-usd" spec_definition
