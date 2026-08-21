@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { checkCronAuth } from "@/lib/engine/cron";
 
 // Triggered by Vercel Cron (see vercel.json) once daily. Rolls up
 // *yesterday's* UTC day — never today's, which is still accumulating —
@@ -14,13 +15,12 @@ import { createClient } from "@/lib/supabase/server";
 // — checked here so this endpoint can't be triggered by an arbitrary
 // public request to re-run (and pointlessly re-cost) the rollup.
 export async function GET(request: NextRequest) {
-  const secret = process.env.CRON_SECRET;
-  if (secret) {
-    const auth = request.headers.get("authorization");
-    if (auth !== `Bearer ${secret}`) {
-      return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
-    }
-  }
+  // Shared fail-closed cron auth (see src/lib/engine/cron.ts). This route
+  // previously allowed unauthenticated calls whenever CRON_SECRET was unset;
+  // it now refuses instead, so an unconfigured deployment stops doing
+  // scheduled work rather than doing it for anyone who asks.
+  const unauthorized = checkCronAuth(request);
+  if (unauthorized) return unauthorized;
 
   const targetDayParam = request.nextUrl.searchParams.get("day");
   const targetDay =

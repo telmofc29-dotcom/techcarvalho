@@ -1,61 +1,68 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { checkCronAuth, newCounters, recordJobRun, isFlagEnabled } from "@/lib/engine/cron";
+import { checkCronAuth, newCounters, recordJobRun } from "@/lib/engine/cron";
 import { runDiscovery } from "@/lib/engine/jobs/discovery";
+import { runRelevance } from "@/lib/engine/jobs/relevance-job";
+import { runBriefGeneration } from "@/lib/engine/jobs/brief-job";
 import { runOpportunityScoring } from "@/lib/engine/jobs/opportunity-job";
+import { runSearchIntelligence } from "@/lib/engine/jobs/search-job";
 import { runFreshness } from "@/lib/engine/jobs/freshness-job";
 
 const JOB = "engine_tick";
 
-// Single scheduled entry point that runs the whole engine pass in order:
-//   discover -> score opportunities -> check freshness
+// The single orchestrated engine pass. ONE Vercel Cron entry drives every
+// engine capability, in pipeline order:
 //
-// Consolidated into one cron deliberately. Vercel's Hobby plan allows only two
-// cron jobs, and this project already spends one on the nightly analytics
-// rollup — four separate engine crons would exceed that and block deployment
-// entirely. One tick is also a better fit for the pipeline: opportunity
-// scoring wants to run *after* discovery in the same pass, not on an
-// independent schedule that might interleave arbitrarily.
+//   discover -> relevance -> brief -> search intelligence -> opportunity -> freshness
 //
-// Each stage is independently flag-gated and independently failure-isolated:
-// a stage that is switched off, or that throws, does not prevent the others
-// from running. The per-stage routes (/api/engine/discover, /opportunities,
-// /freshness) still exist and remain individually callable for manual
-// operation and debugging.
+// This is the deliberate answer to the Hobby-plan two-cron limit: capabilities
+// are added as stages here, never as new cron entries, so the architecture
+// scales to many jobs without needing one schedule per capability.
+//
+// Each stage is independently flag-gated (so any can be disabled without
+// touching the others) and independently failure-isolated in its own try/catch
+// (so one throwing stage cannot abort the pass). Every stage writes its own
+// engine_job_runs row, and the tick writes a summary row — failures are
+// recorded rather than swallowed.
+//
+// Stages run in dependency order on purpose: relevance must see the
+// discoveries this pass created, and briefs must see this pass's relevance
+// verdicts. Running them on independent schedules would introduce a lag of a
+// full cycle between each stage.
+const STAGES = [
+  ["discovery", runDiscovery],
+  ["relevance", runRelevance],
+  ["briefs", runBriefGeneration],
+  ["search_intelligence", runSearchIntelligence],
+  ["opportunities", runOpportunityScoring],
+  ["freshness", runFreshness],
+] as const;
+
 export async function GET(request: NextRequest) {
   const unauthorized = checkCronAuth(request);
   if (unauthorized) return unauthorized;
 
   const supabase = await createClient();
-
-  // Master switch first: if the engine is off, do nothing at all and say so.
-  // Every underlying RPC re-checks this too, so this is a fast path rather
-  // than the actual security boundary.
-  if (!(await isFlagEnabled(supabase, "discovery")) &&
-      !(await isFlagEnabled(supabase, "opportunity")) &&
-      !(await isFlagEnabled(supabase, "freshness"))) {
-    await recordJobRun(supabase, JOB, "skipped", newCounters(), { reason: "all_stages_disabled_or_master_off" });
-    return NextResponse.json({ ok: true, status: "skipped", reason: "engine disabled" });
-  }
-
+  const startedAt = Date.now();
   const stages: Record<string, unknown> = {};
   let anyFailed = false;
+  let anySkipped = false;
 
-  for (const [name, run] of [
-    ["discovery", runDiscovery],
-    ["opportunities", runOpportunityScoring],
-    ["freshness", runFreshness],
-  ] as const) {
+  for (const [name, run] of STAGES) {
     try {
-      stages[name] = await run(supabase);
+      const result = await run(supabase);
+      stages[name] = result;
+      if (result.status === "failed") anyFailed = true;
+      if (result.status === "skipped") anySkipped = true;
     } catch (e) {
-      // One stage blowing up must not abort the pass — the others still have
-      // useful work to do, and the failure is recorded rather than swallowed.
       anyFailed = true;
       stages[name] = { status: "error", error: e instanceof Error ? e.message : String(e) };
     }
   }
 
-  await recordJobRun(supabase, JOB, anyFailed ? "partial" : "success", newCounters(), stages);
-  return NextResponse.json({ ok: !anyFailed, status: anyFailed ? "partial" : "success", stages });
+  const durationMs = Date.now() - startedAt;
+  const status = anyFailed ? "partial" : anySkipped ? "success" : "success";
+  await recordJobRun(supabase, JOB, status, newCounters(), { stages, durationMs });
+
+  return NextResponse.json({ ok: !anyFailed, status, durationMs, stages });
 }

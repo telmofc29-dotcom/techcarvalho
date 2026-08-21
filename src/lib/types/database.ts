@@ -948,6 +948,12 @@ export interface Database {
           sighting_count: number;
           created_at: string;
           updated_at: string;
+          // Phase 4 relevance stage.
+          relevance_verdict: "relevant" | "rejected" | "uncertain" | null;
+          relevance_score: number | null;
+          relevance_explanation: string | null;
+          suggested_angle: string | null;
+          relevance_overridden_by_admin: boolean;
         };
         Insert: Partial<Database["public"]["Tables"]["engine_discoveries"]["Row"]> & {
           dedupe_key: string;
@@ -1021,6 +1027,20 @@ export interface Database {
           content_id: string | null;
           created_at: string;
           updated_at: string;
+          // Phase 4 structured-brief fields.
+          primary_question: string | null;
+          supporting_questions: string[];
+          verified_facts: string[];
+          uncertainties: string[];
+          source_urls: string[];
+          suggested_structure: string[];
+          freshness_sensitivity: "breaking" | "time_sensitive" | "evergreen" | null;
+          brief_kind: string | null;
+          priority: number | null;
+          review_state: "pending" | "approved" | "rejected" | "snoozed" | "research_requested";
+          review_note: string | null;
+          snoozed_until: string | null;
+          reviewed_at: string | null;
         };
         Insert: Partial<Database["public"]["Tables"]["engine_briefs"]["Row"]> & {
           proposed_title: string;
@@ -1044,6 +1064,24 @@ export interface Database {
           reason: string;
         };
         Update: Partial<Database["public"]["Tables"]["engine_freshness_reviews"]["Row"]>;
+        Relationships: [];
+      };
+      search_intelligence: {
+        Row: {
+          id: string;
+          normalised_query: string;
+          display_query: string;
+          search_count: number;
+          zero_result_count: number;
+          click_count: number;
+          last_seen_at: string;
+          first_seen_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["search_intelligence"]["Row"]> & {
+          normalised_query: string;
+          display_query: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["search_intelligence"]["Row"]>;
         Relationships: [];
       };
       engine_job_runs: {
@@ -1180,6 +1218,68 @@ export interface Database {
           age_days: number;
           source_count: number;
         }[];
+      };
+      // ---- Phase 4 pipeline RPCs ----
+      engine_aggregate_searches: {
+        Args: { p_days?: number };
+        Returns: number;
+      };
+      engine_unclassified_discoveries: {
+        Args: { p_limit?: number };
+        Returns: { id: string; title: string; summary: string | null }[];
+      };
+      engine_set_relevance: {
+        Args: {
+          p_id: string;
+          p_verdict: string;
+          p_score: number;
+          p_explanation: string;
+          p_angle: string | null;
+        };
+        Returns: string;
+      };
+      engine_briefable_discoveries: {
+        Args: { p_limit?: number };
+        Returns: {
+          id: string;
+          title: string;
+          summary: string | null;
+          discovery_type: string;
+          category_slug: string | null;
+          claim_status: string;
+          suggested_angle: string | null;
+          sighting_count: number;
+        }[];
+      };
+      engine_evidence_for: {
+        Args: { p_discovery_id: string };
+        Returns: {
+          url: string;
+          publisher: string | null;
+          claim_status: string;
+          trust_level: string;
+          originates_from_url: string | null;
+        }[];
+      };
+      engine_create_brief: {
+        Args: {
+          p_discovery_id: string;
+          p_title: string;
+          p_rationale: string;
+          p_primary_question: string;
+          p_supporting_questions: string[];
+          p_verified_facts: string[];
+          p_uncertainties: string[];
+          p_source_urls: string[];
+          p_suggested_structure: string[];
+          p_brief_kind: string;
+          p_freshness: string;
+          p_category_slug: string | null;
+          p_content_type: string;
+          p_priority: number;
+          p_media_note: string;
+        };
+        Returns: string;
       };
       engine_upsert_freshness: {
         Args: {

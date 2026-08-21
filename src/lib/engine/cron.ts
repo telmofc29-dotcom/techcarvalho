@@ -13,11 +13,54 @@ import { createClient } from "@/lib/supabase/server";
 // cannot bypass the switch.
 
 /** Same CRON_SECRET convention the analytics rollup already uses. */
+/**
+ * Constant-time string comparison. A plain `!==` on a secret leaks length and
+ * prefix information through timing; negligible over the public internet, but
+ * free to avoid.
+ */
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+/**
+ * Cron authentication. FAILS CLOSED.
+ *
+ * Previously this returned null (i.e. allowed the request) when CRON_SECRET
+ * was unset, which meant every scheduled endpoint was publicly callable in
+ * production — anyone could trigger engine passes and burn function budget.
+ * Now a missing secret in production refuses the request with 503 rather than
+ * silently running: an unconfigured deployment stops doing scheduled work,
+ * which is visible and safe, instead of doing it for anyone who asks.
+ *
+ * Vercel Cron sends `Authorization: Bearer ${CRON_SECRET}` automatically once
+ * the env var exists, so configuring it is the only step needed.
+ *
+ * Outside production (local dev) the check is skipped so the endpoints stay
+ * usable without secret plumbing.
+ */
 export function checkCronAuth(request: NextRequest): NextResponse | null {
   const secret = process.env.CRON_SECRET;
-  if (!secret) return null; // Not configured: behave as the rollup route does.
-  const auth = request.headers.get("authorization");
-  if (auth !== `Bearer ${secret}`) {
+  const isProduction = process.env.NODE_ENV === "production";
+
+  if (!secret) {
+    if (!isProduction) return null;
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "cron_secret_not_configured",
+        detail:
+          "CRON_SECRET is not set in this environment. Scheduled endpoints refuse to run rather than being publicly callable.",
+      },
+      { status: 503 }
+    );
+  }
+
+  const auth = request.headers.get("authorization") ?? "";
+  const expected = `Bearer ${secret}`;
+  if (!timingSafeEqual(auth, expected)) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
   return null;
