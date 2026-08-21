@@ -379,6 +379,7 @@ export type FpSearchIntelligence = {
   zeroResultSearches: FpSearchTermRow[];
   noClickSearches: FpSearchTermRow[]; // had results, nobody clicked a result in the same session
   risingSearches: FpSearchTermRow[];
+  newSearches: FpSearchTermRow[]; // searched this period, never searched in the previous period at all
 };
 
 function normalizeQuery(raw: unknown): string | null {
@@ -400,7 +401,7 @@ function searchCounts(events: FpEventRow[]): Map<string, number> {
 
 export async function getSearchIntelligence(range: FpDateRange, limit = 10): Promise<{ data: FpSearchIntelligence; hasError: boolean }> {
   const [current, previous] = await Promise.all([loadRangeData(range), loadRangeData(previousPeriod(range))]);
-  const empty: FpSearchIntelligence = { topSearches: [], zeroResultSearches: [], noClickSearches: [], risingSearches: [] };
+  const empty: FpSearchIntelligence = { topSearches: [], zeroResultSearches: [], noClickSearches: [], risingSearches: [], newSearches: [] };
   if (current.hasError || previous.hasError) return { data: empty, hasError: true };
 
   const currentCounts = searchCounts(current.events);
@@ -462,7 +463,17 @@ export async function getSearchIntelligence(range: FpDateRange, limit = 10): Pro
     .sort((a, b) => (b.trend ?? 0) - (a.trend ?? 0))
     .slice(0, limit);
 
-  return { data: { topSearches, zeroResultSearches, noClickSearches, risingSearches }, hasError: false };
+  // Distinct from "rising" (which requires the term to have existed
+  // previously to compute a % change) — a genuinely new term this period,
+  // with a real minimum-volume floor so a single one-off query doesn't
+  // register as a meaningful "new search" signal.
+  const newSearches = [...currentCounts.entries()]
+    .filter(([query, count]) => count >= MIN_TREND_VOLUME && !previousCounts.has(query))
+    .map(([query, count]) => ({ query, count, trend: null }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit);
+
+  return { data: { topSearches, zeroResultSearches, noClickSearches, risingSearches, newSearches }, hasError: false };
 }
 
 // ---- User Journeys (page A -> page B transition pairs) ----
@@ -562,6 +573,244 @@ export async function getEngagement(data: FpRangeData, range: FpDateRange): Prom
   const returningVisitorRate = Math.round((returning / visitorRows.length) * 100);
 
   return { pagesPerSession, eventsPerSession, returningVisitorRate };
+}
+
+// ---- Daily series (sparklines / traffic time-series) ----
+
+export type FpDailyPoint = { day: string; value: number };
+
+// One shared day-bucketing helper for every sparkline/time-series on the
+// dashboard, rather than each caller re-deriving its own date math. `pick`
+// decides what counts as "one" for a given event (e.g. sessions counts
+// distinct session_id per day, not one point per event) — passed a Map so
+// callers needing session-uniqueness-per-day can dedupe correctly.
+function dailyBuckets(range: FpDateRange): string[] {
+  const days: string[] = [];
+  let d = new Date(startIso(range.startDate));
+  const end = new Date(startIso(range.endDate));
+  while (d <= end) {
+    days.push(isoDate(d));
+    d = new Date(d.getTime() + 86_400_000);
+  }
+  return days;
+}
+
+export function getDailyEventCounts(
+  data: FpRangeData,
+  range: FpDateRange,
+  filter: (e: FpEventRow) => boolean
+): FpDailyPoint[] {
+  const days = dailyBuckets(range);
+  const counts = new Map(days.map((d) => [d, 0]));
+  for (const e of data.events) {
+    if (!filter(e)) continue;
+    const day = e.created_at.slice(0, 10);
+    if (counts.has(day)) counts.set(day, (counts.get(day) ?? 0) + 1);
+  }
+  return days.map((day) => ({ day, value: counts.get(day) ?? 0 }));
+}
+
+// Sessions-per-day needs distinct session_id per bucket, not raw event
+// count, so it's a separate function rather than a `filter` case of the
+// one above.
+export function getDailySessionCounts(data: FpRangeData, range: FpDateRange): FpDailyPoint[] {
+  const days = dailyBuckets(range);
+  const seenPerDay = new Map(days.map((d) => [d, new Set<string>()]));
+  for (const e of data.events) {
+    const day = e.created_at.slice(0, 10);
+    const set = seenPerDay.get(day);
+    if (set) set.add(e.session_id);
+  }
+  return days.map((day) => ({ day, value: seenPerDay.get(day)?.size ?? 0 }));
+}
+
+// ---- KPI cards (current/previous/trend/sparkline) ----
+
+export type FpKpi = { label: string; current: number; previous: number; trend: number | null; sparkline: number[] };
+
+export async function getKpis(range: FpDateRange): Promise<{ kpis: FpKpi[]; hasError: boolean }> {
+  const [current, previous] = await Promise.all([loadRangeData(range), loadRangeData(previousPeriod(range))]);
+  if (current.hasError || previous.hasError) return { kpis: [], hasError: true };
+
+  const curHeadline = computeHeadlineMetrics(current);
+  const prevHeadline = computeHeadlineMetrics(previous);
+  const [curEngagement, prevEngagement] = await Promise.all([
+    getEngagement(current, range),
+    getEngagement(previous, previousPeriod(range)),
+  ]);
+
+  const curVisitors = new Set([...current.sessionsById.values()].map((s) => s.visitor_id).filter(Boolean)).size;
+  const prevVisitors = new Set([...previous.sessionsById.values()].map((s) => s.visitor_id).filter(Boolean)).size;
+
+  const sessionsSeries = getDailySessionCounts(current, range).map((p) => p.value);
+  const pageViewsSeries = getDailyEventCounts(current, range, (e) => e.event_type === "page_view").map((p) => p.value);
+
+  const make = (label: string, cur: number, prev: number, sparkline: number[]): FpKpi => ({
+    label,
+    current: cur,
+    previous: prev,
+    trend: getTrend(cur, prev),
+    sparkline,
+  });
+
+  const kpis: FpKpi[] = [
+    make("Unique visitors", curVisitors, prevVisitors, sessionsSeries),
+    make("Sessions", curHeadline.sessions, prevHeadline.sessions, sessionsSeries),
+    make("Page views", curHeadline.pageViews, prevHeadline.pageViews, pageViewsSeries),
+    make(
+      "Pages / session",
+      curEngagement.pagesPerSession ?? 0,
+      prevHeadline.sessions > 0 ? Math.round((prevHeadline.pageViews / prevHeadline.sessions) * 10) / 10 : 0,
+      []
+    ),
+    make("Article views", curHeadline.articleViews, prevHeadline.articleViews, []),
+    make("Product views", curHeadline.productViews, prevHeadline.productViews, []),
+    make("Searches", curHeadline.searches, prevHeadline.searches, []),
+    make("Outbound clicks", curHeadline.outboundClicks, prevHeadline.outboundClicks, []),
+    make("Affiliate clicks", curHeadline.affiliateClicks, prevHeadline.affiliateClicks, []),
+    make(
+      "Returning visitors",
+      curEngagement.returningVisitorRate ?? 0,
+      prevEngagement.returningVisitorRate ?? 0,
+      []
+    ),
+  ];
+
+  return { kpis, hasError: false };
+}
+
+// ---- Top manufacturers ----
+
+export type FpTopManufacturerRow = { id: string; views: number; sessions: number };
+
+export function getTopManufacturers(data: FpRangeData, limit = 10): FpTopManufacturerRow[] {
+  const stats = new Map<string, { views: number; sessions: Set<string> }>();
+  for (const e of data.events) {
+    if (!e.manufacturer_id) continue;
+    let row = stats.get(e.manufacturer_id);
+    if (!row) {
+      row = { views: 0, sessions: new Set() };
+      stats.set(e.manufacturer_id, row);
+    }
+    row.sessions.add(e.session_id);
+    if (e.event_type === "page_view" || e.event_type === "internal_link_click") row.views++;
+  }
+  return [...stats.entries()]
+    .map(([id, v]) => ({ id, views: v.views, sessions: v.sessions.size }))
+    .sort((a, b) => b.views - a.views)
+    .slice(0, limit);
+}
+
+// ---- Most-clicked homepage/category elements ----
+
+export type FpClickedElementRow = { destination: string; linkPosition: string; count: number };
+
+export function getMostClickedElements(data: FpRangeData, limit = 10): FpClickedElementRow[] {
+  const counts = new Map<string, number>();
+  for (const e of data.events) {
+    if (e.event_type !== "internal_link_click") continue;
+    const destination = typeof e.metadata?.destination === "string" ? e.metadata.destination : null;
+    const linkPosition = typeof e.metadata?.link_position === "string" ? e.metadata.link_position : "unknown";
+    if (!destination) continue;
+    const key = `${destination} ${linkPosition}`;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([key, count]) => {
+      const [destination, linkPosition] = key.split(" ");
+      return { destination, linkPosition, count };
+    })
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit);
+}
+
+// ---- Entry/exit depth: high-exit-rate pages, pages that push readers deeper ----
+
+export type FpPageDepthRow = { path: string; entries: number; exits: number; exitRate: number };
+
+// A page's "exit rate" here = (times it was the LAST event of a session) /
+// (times it appeared anywhere in a session at all) — not entries-only,
+// since a page reached deep into a journey (never an entry page) can still
+// meaningfully be "where people give up". Requires a minimum appearance
+// count (same MIN_TREND_VOLUME floor) before its rate is shown, so a page
+// seen once that happened to be an exit doesn't register as "100% exit".
+export function getPageDepth(data: FpRangeData, limit = 10): { highExit: FpPageDepthRow[]; lowExit: FpPageDepthRow[] } {
+  const appearances = new Map<string, number>();
+  for (const e of data.events) {
+    appearances.set(e.path, (appearances.get(e.path) ?? 0) + 1);
+  }
+  const exitCounts = new Map<string, number>();
+  const lastPathBySession = new Map<string, { path: string; at: string }>();
+  for (const e of data.events) {
+    const existing = lastPathBySession.get(e.session_id);
+    if (!existing || e.created_at > existing.at) lastPathBySession.set(e.session_id, { path: e.path, at: e.created_at });
+  }
+  for (const { path } of lastPathBySession.values()) {
+    exitCounts.set(path, (exitCounts.get(path) ?? 0) + 1);
+  }
+
+  const rows: FpPageDepthRow[] = [...appearances.entries()]
+    .filter(([, count]) => count >= MIN_TREND_VOLUME)
+    .map(([path, entries]) => {
+      const exits = exitCounts.get(path) ?? 0;
+      return { path, entries, exits, exitRate: Math.round((exits / entries) * 100) };
+    });
+
+  return {
+    highExit: [...rows].sort((a, b) => b.exitRate - a.exitRate).slice(0, limit),
+    lowExit: [...rows].sort((a, b) => a.exitRate - b.exitRate).slice(0, limit),
+  };
+}
+
+// ---- Monetisation: time-series + top commercial pages/products ----
+
+export function getMonetisationSeries(data: FpRangeData, range: FpDateRange): { affiliate: FpDailyPoint[]; outbound: FpDailyPoint[] } {
+  return {
+    affiliate: getDailyEventCounts(data, range, (e) => e.event_type === "affiliate_click"),
+    outbound: getDailyEventCounts(data, range, (e) => e.event_type === "outbound_link_click"),
+  };
+}
+
+export type FpCommercialRow = { id: string; kind: "product" | "content"; clicks: number; viewSessions: number; ctr: number | null };
+
+// CTR here = commercial clicks on this product/article / sessions that
+// viewed that same product/article's page in range — a real, defensible
+// denominator (not "clicks / all sessions site-wide", which would
+// understate every page equally and isn't a rate anyone could act on).
+// Omitted (null) when there were zero viewing sessions, since a rate over
+// zero is not a rate.
+export function getTopCommercialPages(data: FpRangeData, limit = 10): FpCommercialRow[] {
+  const viewSessions = new Map<string, Set<string>>(); // id -> sessions that viewed it
+  const clicks = new Map<string, { count: number; kind: "product" | "content" }>();
+
+  for (const e of data.events) {
+    if (e.event_type === "page_view" && (e.entity_type === "product" || e.entity_type === "content")) {
+      const id = e.entity_type === "product" ? e.product_id : e.content_id;
+      if (!id) continue;
+      let set = viewSessions.get(id);
+      if (!set) {
+        set = new Set();
+        viewSessions.set(id, set);
+      }
+      set.add(e.session_id);
+    }
+    if (e.event_type === "affiliate_click" || e.event_type === "outbound_link_click") {
+      const id = e.product_id ?? e.content_id;
+      if (!id) continue;
+      const kind: "product" | "content" = e.product_id ? "product" : "content";
+      const row = clicks.get(id) ?? { count: 0, kind };
+      row.count++;
+      clicks.set(id, row);
+    }
+  }
+
+  return [...clicks.entries()]
+    .map(([id, { count, kind }]) => {
+      const sessions = viewSessions.get(id)?.size ?? 0;
+      return { id, kind, clicks: count, viewSessions: sessions, ctr: sessions > 0 ? Math.round((count / sessions) * 100) : null };
+    })
+    .sort((a, b) => b.clicks - a.clicks)
+    .slice(0, limit);
 }
 
 // ---- Monetisation funnel (session-correlated, complements outbound_click_events) ----

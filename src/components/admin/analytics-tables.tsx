@@ -1,4 +1,5 @@
-import { Card, EmptyState } from "@/components/admin/ui";
+import { Card, EmptyState, Badge } from "@/components/admin/ui";
+import type { Insight, OpportunityScore } from "@/lib/analytics/insights-engine";
 import type {
   FpHeadlineMetrics,
   FpCategoryRow,
@@ -8,6 +9,12 @@ import type {
   FpPathCountRow,
   FpEngagement,
   FpMonetisationFunnel,
+  FpKpi,
+  FpDailyPoint,
+  FpTopManufacturerRow,
+  FpClickedElementRow,
+  FpPageDepthRow,
+  FpCommercialRow,
 } from "@/lib/analytics/first-party-dashboard";
 
 // Presentational table/grid components for the TechCarvalho-first-party
@@ -277,5 +284,268 @@ export function MonetisationFunnelCard({ funnel }: { funnel: FpMonetisationFunne
         </div>
       )}
     </Card>
+  );
+}
+
+// ---- Sparkline / time-series (plain inline SVG — no charting library) ----
+
+function Sparkline({ values, width = 96, height = 28 }: { values: number[]; width?: number; height?: number }) {
+  if (values.length < 2 || values.every((v) => v === 0)) {
+    return <div style={{ width, height }} className="flex items-center justify-center text-[10px] text-neutral-300">no data</div>;
+  }
+  const max = Math.max(...values, 1);
+  const step = width / (values.length - 1);
+  const points = values.map((v, i) => `${(i * step).toFixed(1)},${(height - (v / max) * height).toFixed(1)}`).join(" ");
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="text-accent" aria-hidden="true">
+      <polyline points={points} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function KpiGrid({ kpis }: { kpis: FpKpi[] }) {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      {kpis.map((k) => (
+        <div key={k.label} className="rounded-lg border border-neutral-200 bg-white p-4 flex flex-col gap-2">
+          <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">{k.label}</p>
+          <div className="flex items-end justify-between gap-2">
+            <p className="text-lg font-semibold text-neutral-900">{k.current}</p>
+            <Trend value={k.trend} />
+          </div>
+          {k.sparkline.length > 0 && <Sparkline values={k.sparkline} />}
+          <p className="text-[11px] text-neutral-400">was {k.previous} last period</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// A named line chart with up to 3 series, plain SVG — the traffic
+// time-series. Each series gets its own polyline; a legend lists series
+// name + period total so the previous-period comparison is a real number,
+// not just a shape overlaid without scale context.
+export function TrafficChart({
+  series,
+}: {
+  series: { label: string; points: FpDailyPoint[]; previousTotal?: number; color: string }[];
+}) {
+  const width = 640;
+  const height = 160;
+  const padding = 24;
+  const allValues = series.flatMap((s) => s.points.map((p) => p.value));
+  const max = Math.max(...allValues, 1);
+  const dayCount = series[0]?.points.length ?? 0;
+  if (dayCount < 2) return <p className="text-sm text-neutral-500">Not enough days in this range to chart.</p>;
+  const step = (width - padding * 2) / (dayCount - 1);
+
+  return (
+    <div>
+      <svg width="100%" viewBox={`0 0 ${width} ${height}`} className="max-w-full">
+        <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#e5e5e5" strokeWidth="1" />
+        {series.map((s) => {
+          const points = s.points
+            .map((p, i) => {
+              const x = padding + i * step;
+              const y = height - padding - (p.value / max) * (height - padding * 2);
+              return `${x.toFixed(1)},${y.toFixed(1)}`;
+            })
+            .join(" ");
+          return <polyline key={s.label} points={points} fill="none" stroke={s.color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />;
+        })}
+      </svg>
+      <div className="flex flex-wrap gap-4 mt-2">
+        {series.map((s) => {
+          const total = s.points.reduce((sum, p) => sum + p.value, 0);
+          return (
+            <div key={s.label} className="flex items-center gap-1.5 text-xs text-neutral-600">
+              <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: s.color }} />
+              {s.label}: <span className="font-medium text-neutral-900">{total}</span>
+              {s.previousTotal !== undefined && (
+                <span className="text-neutral-400">(was {s.previousTotal} last period)</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+export function ManufacturerTable({ rows, nameById }: { rows: FpTopManufacturerRow[]; nameById: Map<string, { label: string; href: string }> }) {
+  if (rows.length === 0) return <p className="text-sm text-neutral-500">No manufacturer-attributed activity in this range yet.</p>;
+  return (
+    <table className="w-full text-sm">
+      <tbody>
+        {rows.map((r) => {
+          const m = nameById.get(r.id);
+          return (
+            <tr key={r.id}>
+              <td className="py-1 text-neutral-700">
+                {m ? (
+                  <a href={m.href} className="hover:text-accent underline decoration-neutral-300">
+                    {m.label}
+                  </a>
+                ) : (
+                  <span className="text-neutral-400">Unknown ({r.id.slice(0, 8)})</span>
+                )}
+              </td>
+              <td className="py-1 text-right text-neutral-900 font-medium">{r.views}</td>
+              <td className="py-1 text-right text-neutral-500">{r.sessions} sessions</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
+export function ClickedElementsTable({ rows }: { rows: FpClickedElementRow[] }) {
+  if (rows.length === 0) return <p className="text-sm text-neutral-500">No card/link clicks in this range yet.</p>;
+  return (
+    <table className="w-full text-sm">
+      <tbody>
+        {rows.map((r) => (
+          <tr key={`${r.destination}-${r.linkPosition}`}>
+            <td className="py-1 text-neutral-700">{r.destination}</td>
+            <td className="py-1 text-right text-neutral-400 text-xs">{r.linkPosition}</td>
+            <td className="py-1 text-right text-neutral-900 font-medium pl-3">{r.count}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+export function PageDepthTable({ rows, showRate = true }: { rows: FpPageDepthRow[]; showRate?: boolean }) {
+  if (rows.length === 0) return <p className="text-xs text-neutral-400">Not enough data yet.</p>;
+  return (
+    <table className="w-full text-sm">
+      <tbody>
+        {rows.map((r) => (
+          <tr key={r.path}>
+            <td className="py-1 text-neutral-700">{r.path}</td>
+            {showRate && <td className="py-1 text-right text-neutral-900 font-medium">{r.exitRate}%</td>}
+            <td className="py-1 text-right text-neutral-400 text-xs pl-3">{r.entries} seen</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+export function MonetisationSeriesChart({ affiliate, outbound }: { affiliate: FpDailyPoint[]; outbound: FpDailyPoint[] }) {
+  const total = affiliate.reduce((s, p) => s + p.value, 0) + outbound.reduce((s, p) => s + p.value, 0);
+  if (total === 0) return <p className="text-sm text-neutral-500">No affiliate/outbound clicks in this range yet.</p>;
+  return (
+    <TrafficChart
+      series={[
+        { label: "Affiliate clicks", points: affiliate, color: "#ea580c" },
+        { label: "Outbound clicks", points: outbound, color: "#71717a" },
+      ]}
+    />
+  );
+}
+
+// ---- Analytics Insights (deterministic, see insights-engine.ts) ----
+
+export function InsightsPanel({ briefing, insights }: { briefing: string | null; insights: Insight[] }) {
+  if (insights.length === 0) {
+    return (
+      <EmptyState
+        title="No insights yet"
+        description="Insights are only generated once real activity crosses a meaningful volume threshold for the selected range — this is expected on a young or low-traffic period, not a bug."
+      />
+    );
+  }
+  return (
+    <div className="flex flex-col gap-4">
+      {briefing && (
+        <div className="rounded-lg bg-accent-soft/40 border border-accent/20 p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-accent mb-1">TechCarvalho Today</p>
+          <p className="text-sm text-neutral-800">{briefing}</p>
+        </div>
+      )}
+      <ul className="flex flex-col gap-2">
+        {insights.map((insight, i) => (
+          <li key={i} className="flex items-start gap-2 text-sm">
+            <Badge tone={insight.kind === "observation" ? "neutral" : "amber"}>
+              {insight.kind === "observation" ? "Observed" : "Suggested"}
+            </Badge>
+            <span className="text-neutral-700 flex-1">{insight.text}</span>
+            <span className="text-[10px] uppercase tracking-wide text-neutral-400 shrink-0 mt-0.5">{insight.confidence}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export function OpportunityScoreTable({ scores }: { scores: OpportunityScore[] }) {
+  const scored = scores.filter((s) => s.score !== null);
+  if (scored.length === 0) {
+    return <p className="text-sm text-neutral-500">Not enough traffic/search volume in this range to score any category yet.</p>;
+  }
+  return (
+    <div className="flex flex-col gap-3">
+      {[...scored]
+        .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+        .map((s) => (
+          <div key={s.key} className="rounded-lg border border-neutral-200 p-3">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-sm font-medium text-neutral-900">{s.label}</p>
+              <p className="text-sm font-semibold text-neutral-900">
+                {s.score}
+                <span className="text-neutral-400 font-normal">/100</span>
+              </p>
+            </div>
+            <div className="h-1.5 rounded-full bg-neutral-100 overflow-hidden mb-2">
+              <div className="h-full bg-accent" style={{ width: `${s.score}%` }} />
+            </div>
+            <ul className="text-xs text-neutral-500 list-disc list-inside">
+              {s.reasons.map((r, i) => (
+                <li key={i}>{r}</li>
+              ))}
+            </ul>
+          </div>
+        ))}
+    </div>
+  );
+}
+
+export function CommercialPagesTable({ rows, nameById }: { rows: FpCommercialRow[]; nameById: Map<string, { label: string; href: string }> }) {
+  if (rows.length === 0) return <p className="text-sm text-neutral-500">No commercial (affiliate/outbound) clicks attributed to a product or article yet.</p>;
+  return (
+    <table className="w-full text-sm">
+      <thead>
+        <tr>
+          <th className="text-left font-medium text-neutral-500 pb-1">Page</th>
+          <th className="text-right font-medium text-neutral-500 pb-1">Clicks</th>
+          <th className="text-right font-medium text-neutral-500 pb-1">CTR</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r) => {
+          const entity = nameById.get(r.id);
+          return (
+            <tr key={r.id}>
+              <td className="py-1 text-neutral-700">
+                {entity ? (
+                  <a href={entity.href} className="hover:text-accent underline decoration-neutral-300">
+                    {entity.label}
+                  </a>
+                ) : (
+                  <span className="text-neutral-400">
+                    Unknown {r.kind} ({r.id.slice(0, 8)})
+                  </span>
+                )}
+              </td>
+              <td className="py-1 text-right text-neutral-900 font-medium">{r.clicks}</td>
+              <td className="py-1 text-right text-neutral-500">{r.ctr !== null ? `${r.ctr}%` : "—"}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
   );
 }

@@ -24,8 +24,26 @@ import {
   getExitPages,
   getEngagement,
   getMonetisationFunnel,
+  getKpis,
+  getDailyEventCounts,
+  getDailySessionCounts,
+  getTopManufacturers,
+  getMostClickedElements,
+  getPageDepth,
+  getMonetisationSeries,
+  getTopCommercialPages,
   type FpDateRangeSelection,
 } from "@/lib/analytics/first-party-dashboard";
+import {
+  categoryTrendInsights,
+  searchGapInsights,
+  engagementInsights,
+  exitPageInsights,
+  prominenceMismatchInsights,
+  computeOpportunityScores,
+  buildTodayBriefing,
+  type Insight,
+} from "@/lib/analytics/insights-engine";
 import { PLANNED_CATEGORIES } from "@/lib/public/categories";
 import { PageHeader, Card, Badge, QueryErrorBanner } from "@/components/admin/ui";
 import {
@@ -37,6 +55,15 @@ import {
   PathCountTable,
   EngagementGrid,
   MonetisationFunnelCard,
+  KpiGrid,
+  TrafficChart,
+  ManufacturerTable,
+  ClickedElementsTable,
+  PageDepthTable,
+  MonetisationSeriesChart,
+  CommercialPagesTable,
+  InsightsPanel,
+  OpportunityScoreTable,
 } from "@/components/admin/analytics-tables";
 
 const RANGE_OPTIONS: { value: FpDateRangeSelection["preset"]; label: string }[] = [
@@ -134,6 +161,55 @@ export default async function AdminAnalyticsPage({
   const categoryLabelBySlug = new Map(PLANNED_CATEGORIES.map((c) => [c.slug, c.label]));
 
   const fpHasError = rangeData.hasError || categoryComparison.hasError || searchIntel.hasError;
+
+  // ---- KPIs, traffic series, extended intelligence, insights ----
+  // Kept as a self-contained block/section (own data fetch, own render
+  // block below) rather than interleaved with the sections above, since
+  // this dashboard file may be edited concurrently elsewhere.
+  const [{ kpis, hasError: kpisHasError }, topManufacturers] = await Promise.all([
+    getKpis(fpRange),
+    Promise.resolve(getTopManufacturers(rangeData)),
+  ]);
+  const pageViewsSeries = getDailyEventCounts(rangeData, fpRange, (e) => e.event_type === "page_view");
+  const sessionsSeries = getDailySessionCounts(rangeData, fpRange);
+  const clickedElements = getMostClickedElements(rangeData);
+  const { highExit, lowExit } = getPageDepth(rangeData);
+  const monetisationSeries = getMonetisationSeries(rangeData, fpRange);
+  const topCommercial = getTopCommercialPages(rangeData);
+
+  const manufacturerIds = topManufacturers.map((r) => r.id);
+  const commercialContentIds = topCommercial.filter((r) => r.kind === "content").map((r) => r.id);
+  const commercialProductIds = topCommercial.filter((r) => r.kind === "product").map((r) => r.id);
+  const [{ data: manufacturerRows }, { data: commercialContentRows }, { data: commercialProductRows }] = await Promise.all([
+    manufacturerIds.length > 0
+      ? supabase.from("manufacturers").select("id, name, slug").in("id", manufacturerIds)
+      : Promise.resolve({ data: [] as { id: string; name: string; slug: string }[] }),
+    commercialContentIds.length > 0
+      ? supabase.from("content_items").select("id, title, slug").in("id", commercialContentIds)
+      : Promise.resolve({ data: [] as { id: string; title: string; slug: string }[] }),
+    commercialProductIds.length > 0
+      ? supabase.from("products").select("id, name, slug").in("id", commercialProductIds)
+      : Promise.resolve({ data: [] as { id: string; name: string; slug: string }[] }),
+  ]);
+  const manufacturerNameById = new Map(
+    (manufacturerRows ?? []).map((m) => [m.id, { label: m.name, href: `/manufacturers/${m.slug}` }])
+  );
+  const commercialNameById = new Map<string, { label: string; href: string }>([
+    ...((commercialContentRows ?? []).map((c) => [c.id, { label: c.title, href: `/articles/${c.slug}` }] as const)),
+    ...((commercialProductRows ?? []).map((p) => [p.id, { label: p.name, href: `/products/${p.slug}` }] as const)),
+  ]);
+
+  const contentLabelById = new Map([...contentNameById].map(([id, v]) => [id, v.label]));
+  const allInsights: Insight[] = [
+    ...categoryTrendInsights(categoryComparison.rows, categoryLabelBySlug),
+    ...searchGapInsights(searchIntel.data),
+    ...engagementInsights(topContent, contentLabelById),
+    ...exitPageInsights(highExit),
+    ...prominenceMismatchInsights(categoryComparison.rows, categoryLabelBySlug),
+  ];
+  const briefing = buildTodayBriefing(allInsights);
+  const opportunityScores = await computeOpportunityScores(categoryComparison.rows, categoryLabelBySlug);
+  const insightsHasError = kpisHasError;
 
   // ---- GA4 (unchanged, existing) ----
   const configured = isAnalyticsConfiguredServer();
@@ -278,6 +354,100 @@ export default async function AdminAnalyticsPage({
             <EngagementGrid engagement={engagement} sessions={headline.sessions} />
           </Card>
           <MonetisationFunnelCard funnel={monetisationFunnel} />
+        </div>
+      </section>
+
+      {/* ================= KPIs, traffic, intelligence & insights ================= */}
+      <section className="mb-10">
+        <div className="flex items-center gap-2 mb-1">
+          <h2 className="text-base font-semibold text-neutral-900">Command centre</h2>
+          <Badge tone="green">First-party — no GA4 required</Badge>
+        </div>
+        <p className="text-sm text-neutral-500 mb-4">
+          Same range as above ({fpRange.startDate === fpRange.endDate ? fpRange.startDate : `${fpRange.startDate} – ${fpRange.endDate}`}
+          ). KPI cards, traffic over time, extended content/search intelligence, and a deterministic insights layer —
+          every statement here traces back to a real query, documented in{" "}
+          <code className="text-xs bg-neutral-100 rounded px-1 py-0.5">docs/analytics-insights-scoring.md</code>.
+        </p>
+
+        {insightsHasError && (
+          <QueryErrorBanner message="One or more KPI queries failed — see server logs. Numbers below may be incomplete." />
+        )}
+
+        <KpiGrid kpis={kpis} />
+
+        <div className="mt-6">
+          <Card className="p-5">
+            <h3 className="text-sm font-semibold text-neutral-900 mb-3">Traffic over time</h3>
+            <TrafficChart
+              series={[
+                { label: "Page views", points: pageViewsSeries, color: "#2563eb" },
+                { label: "Sessions", points: sessionsSeries, color: "#16a34a" },
+              ]}
+            />
+          </Card>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2 mt-4">
+          <Card className="p-5">
+            <h3 className="text-sm font-semibold text-neutral-900 mb-3">Top manufacturers</h3>
+            <ManufacturerTable rows={topManufacturers} nameById={manufacturerNameById} />
+          </Card>
+          <Card className="p-5">
+            <h3 className="text-sm font-semibold text-neutral-900 mb-3">Most-clicked elements</h3>
+            <ClickedElementsTable rows={clickedElements} />
+          </Card>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2 mt-4">
+          <Card className="p-5">
+            <h3 className="text-sm font-semibold text-neutral-900 mb-1">Highest-exit pages</h3>
+            <p className="text-xs text-neutral-500 mb-3">Pages most likely to be the last one a visitor sees.</p>
+            <PageDepthTable rows={highExit} />
+          </Card>
+          <Card className="p-5">
+            <h3 className="text-sm font-semibold text-neutral-900 mb-1">Lowest-exit pages</h3>
+            <p className="text-xs text-neutral-500 mb-3">Pages most likely to push visitors deeper into the site.</p>
+            <PageDepthTable rows={lowExit} />
+          </Card>
+        </div>
+
+        <div className="mt-4">
+          <Card className="p-5">
+            <h3 className="text-sm font-semibold text-neutral-900 mb-1">Monetisation over time</h3>
+            <p className="text-xs text-neutral-500 mb-3">Affiliate and outbound clicks by day, consent-gated first-party events.</p>
+            <MonetisationSeriesChart affiliate={monetisationSeries.affiliate} outbound={monetisationSeries.outbound} />
+          </Card>
+        </div>
+
+        <div className="mt-4">
+          <Card className="p-5">
+            <h3 className="text-sm font-semibold text-neutral-900 mb-1">Top commercial pages</h3>
+            <p className="text-xs text-neutral-500 mb-3">
+              CTR = affiliate/outbound clicks ÷ sessions that viewed the same page. Shown only where a real viewing
+              session count exists.
+            </p>
+            <CommercialPagesTable rows={topCommercial} nameById={commercialNameById} />
+          </Card>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2 mt-4">
+          <Card className="p-5">
+            <h3 className="text-sm font-semibold text-neutral-900 mb-1">TechCarvalho Today</h3>
+            <p className="text-xs text-neutral-500 mb-3">
+              Deterministic, evidence-based observations and recommendations — never fabricated. See methodology in{" "}
+              <code className="text-xs bg-neutral-100 rounded px-1 py-0.5">docs/analytics-insights-scoring.md</code>.
+            </p>
+            <InsightsPanel briefing={briefing} insights={allInsights} />
+          </Card>
+          <Card className="p-5">
+            <h3 className="text-sm font-semibold text-neutral-900 mb-1">Opportunity score</h3>
+            <p className="text-xs text-neutral-500 mb-3">
+              0–100, relative to this batch of categories, weighted demand/growth/engagement/commercial/supply. “—”
+              means insufficient data, not zero opportunity.
+            </p>
+            <OpportunityScoreTable scores={opportunityScores} />
+          </Card>
         </div>
       </section>
 
