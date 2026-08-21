@@ -16,6 +16,9 @@ export type ContentType = "review" | "guide" | "comparison" | "news" | "troubles
 // Widened by supabase/migrations/20260820_editorial_workflow_statuses.sql — the original
 // 'draft' | 'published' | 'archived' remain valid; the five new values are pre-publication
 // pipeline states. Only status = 'published' is ever publicly readable (see RLS).
+// 'awaiting_media' added by supabase/migrations_pending/20260821_content_awaiting_media_status.sql
+// — flags a record that is otherwise ready but blocked specifically on
+// lacking legitimately-usable media (see the media-first publishing rule).
 export type ContentStatus =
   | "idea"
   | "planned"
@@ -24,6 +27,7 @@ export type ContentStatus =
   | "ready"
   | "published"
   | "needs_update"
+  | "awaiting_media"
   | "archived";
 export type ContentProductRole = "primary_subject" | "mentioned" | "compared_against";
 // Added by supabase/migrations/20260820_content_relationships.sql.

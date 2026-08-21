@@ -2,15 +2,7 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { isAnalyticsConfiguredServer } from "@/lib/analytics/server-status";
-import {
-  getAnalyticsDataProvider,
-  getDefaultDateRanges,
-  type ContentPerformanceRow,
-  type AcquisitionRow,
-  type GeographyRow,
-  type TechnologyRow,
-  type SiteJourneyRow,
-} from "@/lib/analytics/dashboard-types";
+import { getAnalyticsDataProvider, getDefaultDateRanges } from "@/lib/analytics/dashboard-types";
 import {
   resolveDateRangeSelection,
   loadRangeData,
@@ -65,6 +57,7 @@ import {
   InsightsPanel,
   OpportunityScoreTable,
 } from "@/components/admin/analytics-tables";
+import { RankedBarChart, DeviceDonut, JourneyBars } from "@/components/admin/ga4-charts";
 
 const RANGE_OPTIONS: { value: FpDateRangeSelection["preset"]; label: string }[] = [
   { value: "today", label: "Today" },
@@ -525,19 +518,55 @@ export default async function AdminAnalyticsPage({
 
         <div className="grid gap-4 lg:grid-cols-2">
           <SectionCard title="Content performance" connected={connected} hasRows={content.length > 0} emptyLabel="Top content by pageviews">
-            <ContentTable rows={content} />
+            <RankedBarChart
+              rows={content.map((row) => ({ key: row.path, label: row.title ?? row.path, value: row.pageviews }))}
+            />
           </SectionCard>
           <SectionCard title="Acquisition" connected={connected} hasRows={acquisition.length > 0} emptyLabel="Traffic by channel">
-            <AcquisitionTable rows={acquisition} />
+            <RankedBarChart
+              rows={acquisition.map((row) => ({ key: row.channel, label: row.channel, value: row.sessions }))}
+              color="#16a34a"
+            />
           </SectionCard>
           <SectionCard title="Geography" connected={connected} hasRows={geography.length > 0} emptyLabel="Sessions by country">
-            <GeographyTable rows={geography} />
+            <RankedBarChart
+              rows={geography.map((row) => ({
+                key: `${row.country}-${row.city ?? ""}`,
+                label: row.country,
+                sublabel: row.city ?? undefined,
+                value: row.sessions,
+              }))}
+              color="#7c3aed"
+            />
           </SectionCard>
-          <SectionCard title="Technology" connected={connected} hasRows={technology.length > 0} emptyLabel="Sessions by device and browser">
-            <TechnologyTable rows={technology} />
+          <SectionCard title="Technology" connected={connected} hasRows={technology.length > 0} emptyLabel="Sessions by device, browser and OS">
+            <div className="flex flex-col gap-5">
+              <div>
+                <p className="text-xs font-medium text-neutral-500 mb-2">Device</p>
+                <DeviceDonut rows={technology.filter((r) => r.dimension === "device").map((r) => ({ label: r.label, value: r.sessions }))} />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-neutral-500 mb-2">Browser</p>
+                <RankedBarChart
+                  rows={technology
+                    .filter((r) => r.dimension === "browser")
+                    .map((r) => ({ key: r.label, label: r.label, value: r.sessions }))}
+                  color="#0891b2"
+                />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-neutral-500 mb-2">Operating system</p>
+                <RankedBarChart
+                  rows={technology
+                    .filter((r) => r.dimension === "os")
+                    .map((r) => ({ key: r.label, label: r.label, value: r.sessions }))}
+                  color="#ea580c"
+                />
+              </div>
+            </div>
           </SectionCard>
           <SectionCard title="Site journeys (GA4)" connected={connected} hasRows={ga4Journeys.length > 0} emptyLabel="Top entry and exit pages">
-            <GA4JourneysTable rows={ga4Journeys} />
+            <JourneyBars rows={ga4Journeys} />
           </SectionCard>
           <Card className="p-5">
             <div className="flex items-center gap-2 mb-3">
@@ -570,97 +599,3 @@ export default async function AdminAnalyticsPage({
   );
 }
 
-function ContentTable({ rows }: { rows: ContentPerformanceRow[] }) {
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.path}>
-              <td className="py-1 text-neutral-700">{row.title ?? row.path}</td>
-              <td className="py-1 text-right text-neutral-900 font-medium">{row.pageviews ?? "—"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function AcquisitionTable({ rows }: { rows: AcquisitionRow[] }) {
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.channel}>
-              <td className="py-1 text-neutral-700">{row.channel}</td>
-              <td className="py-1 text-right text-neutral-900 font-medium">{row.sessions ?? "—"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function GeographyTable({ rows }: { rows: GeographyRow[] }) {
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.country}>
-              <td className="py-1 text-neutral-700">{row.country}</td>
-              <td className="py-1 text-right text-neutral-900 font-medium">{row.sessions ?? "—"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function TechnologyTable({ rows }: { rows: TechnologyRow[] }) {
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <tbody>
-          {rows.map((row) => (
-            <tr key={`${row.dimension}-${row.label}`}>
-              <td className="py-1 text-neutral-700">
-                {row.label} <span className="text-neutral-400">({row.dimension})</span>
-              </td>
-              <td className="py-1 text-right text-neutral-900 font-medium">{row.sessions ?? "—"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function GA4JourneysTable({ rows }: { rows: SiteJourneyRow[] }) {
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr>
-            <th className="text-left font-medium text-neutral-500 pb-1">Page</th>
-            <th className="text-right font-medium text-neutral-500 pb-1">Entrances</th>
-            <th className="text-right font-medium text-neutral-500 pb-1">Exits</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.path}>
-              <td className="py-1 text-neutral-700">{row.path}</td>
-              <td className="py-1 text-right text-neutral-900 font-medium">{row.entrances ?? "—"}</td>
-              <td className="py-1 text-right text-neutral-900 font-medium">{row.exits ?? "—"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}

@@ -1,15 +1,20 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { ImageResponse } from "next/og";
 
-// TEMPORARY placeholder brand asset — a plain "TC" monogram in the site's
-// existing accent color, standing in until the real Canva-designed logo
-// (full logo / compact mark / favicon exports) is dropped in. Swap this
-// file's JSX (or replace it with a real icon.png export) once that's
-// ready; nothing else in the app needs to change to pick it up, since
-// every page inherits this favicon via Next's file-convention metadata.
+// Real TechCarvalho brand mark (Media asset id 4e62a81c-e32a-4775-99b1-c822949c09f1 /
+// 502a294a-1dc4-444d-a402-9905a23072ef — "mark" brand_role), trimmed to its
+// visible content and stored as a static derivative at public/brand/mark-trimmed.png
+// (see that file's sibling generation script for how it was cropped — a
+// lossless trim, no distortion). Replaces the earlier placeholder "TC" box.
 export const size = { width: 32, height: 32 };
 export const contentType = "image/png";
 
-export default function Icon() {
+export default async function Icon() {
+  const markPath = join(process.cwd(), "public", "brand", "mark-trimmed.png");
+  const markData = await readFile(markPath);
+  const markSrc = `data:image/png;base64,${markData.toString("base64")}`;
+
   return new ImageResponse(
     (
       <div
@@ -19,15 +24,12 @@ export default function Icon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#b45309",
-          color: "#ffffff",
-          fontSize: 18,
-          fontWeight: 700,
-          fontFamily: "sans-serif",
+          background: "#ffffff",
           borderRadius: 6,
         }}
       >
-        TC
+        {/* eslint-disable-next-line @next/next/no-img-element -- ImageResponse (Satori) requires a plain <img>, not next/image */}
+        <img src={markSrc} width={26} height={18} alt="" />
       </div>
     ),
     { ...size }

@@ -24,5 +24,6 @@ export const CONTENT_STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: "ready", label: "Ready" },
   { value: "published", label: "Published" },
   { value: "needs_update", label: "Needs update" },
+  { value: "awaiting_media", label: "Awaiting media" },
   { value: "archived", label: "Archived" },
 ];

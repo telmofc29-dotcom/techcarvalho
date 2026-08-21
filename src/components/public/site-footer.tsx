@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { SITE_NAME, SITE_TAGLINE } from "@/lib/seo/site";
+import Image from "next/image";
+import { SITE_NAME } from "@/lib/seo/site";
 import { PLANNED_CATEGORIES } from "@/lib/public/categories";
 import { CookieSettingsButton } from "@/components/consent/cookie-settings-button";
 
@@ -26,8 +27,13 @@ export function SiteFooter() {
       <div className="mx-auto max-w-6xl px-6 py-12">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-10 mb-10">
           <div className="col-span-2 sm:col-span-1">
-            <p className="font-display text-lg font-bold text-zinc-900 mb-2">{SITE_NAME}</p>
-            <p className="text-sm text-zinc-500">{SITE_TAGLINE}</p>
+            <Image
+              src="/brand/logo-full-trimmed.png"
+              alt={SITE_NAME}
+              width={1400}
+              height={367}
+              className="h-12 w-auto"
+            />
           </div>
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-3">Browse</p>

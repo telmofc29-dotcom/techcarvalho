@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { SITE_NAME } from "@/lib/seo/site";
 import { PLANNED_CATEGORIES } from "@/lib/public/categories";
 import { NavClickTracker } from "@/components/analytics/nav-click-tracker";
@@ -22,8 +23,15 @@ export function SiteHeader() {
     <header className="sticky top-0 z-20 border-b border-border-subtle bg-white/90 backdrop-blur">
       <div className="mx-auto max-w-6xl px-6">
         <div className="flex h-16 items-center justify-between gap-6">
-          <Link href="/" id="nav-home" className="font-display text-lg font-bold tracking-tight text-zinc-900 shrink-0">
-            {SITE_NAME}
+          <Link href="/" id="nav-home" className="flex shrink-0 items-center" aria-label={`${SITE_NAME} home`}>
+            <Image
+              src="/brand/wordmark-trimmed.png"
+              alt={SITE_NAME}
+              width={900}
+              height={149}
+              priority
+              className="h-6 w-auto sm:h-7"
+            />
           </Link>
 
           {/* Shares the lg breakpoint with the primary nav below, not md:

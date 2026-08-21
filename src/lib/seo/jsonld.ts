@@ -19,6 +19,7 @@ export function organizationJsonLd() {
     "@type": "Organization",
     name: SITE_NAME,
     url: SITE_URL,
+    logo: absoluteUrl("/brand/logo-full-trimmed.png"),
   };
 }
 
