@@ -1,5 +1,6 @@
 import "server-only";
-import { createClient } from "@/lib/supabase/server";
+import { Ga4DataApiProvider, getGa4Credentials } from "./ga4-provider";
+import { getFirstPartyMonetisation } from "./first-party-monetisation";
 
 // Shapes the admin analytics dashboard renders, independent of where the
 // numbers eventually come from. Every numeric field is nullable — `null`
@@ -115,51 +116,11 @@ export class NullAnalyticsProvider implements AnalyticsDataProvider {
   }
 }
 
-// Real, first-party monetisation counts from public.outbound_click_events —
-// no GA4/Google credentials involved, this table is entirely our own and
-// already applied to production (supabase/migrations/20260820_outbound_
-// click_events.sql). Only affiliateClicks/outboundClicks are backed by a
-// real table today: adImpressions/adClicks (no ad network wired up yet) and
-// productClicks/articleClicks (no first-party internal-navigation-click
-// table exists — only outbound/affiliate clicks are captured) stay null,
-// honestly, rather than being approximated from a column that doesn't
-// actually measure them.
-export async function getFirstPartyMonetisation(range: DateRange): Promise<MonetisationSummary> {
-  const supabase = await createClient();
-  const endExclusive = new Date(`${range.endDate}T00:00:00.000Z`);
-  endExclusive.setUTCDate(endExclusive.getUTCDate() + 1);
-
-  const [{ count: affiliateClicks, error: affiliateError }, { count: outboundClicks, error: outboundError }] =
-    await Promise.all([
-      supabase
-        .from("outbound_click_events")
-        .select("id", { count: "exact", head: true })
-        .eq("kind", "affiliate")
-        .gte("created_at", `${range.startDate}T00:00:00.000Z`)
-        .lt("created_at", endExclusive.toISOString()),
-      supabase
-        .from("outbound_click_events")
-        .select("id", { count: "exact", head: true })
-        .eq("kind", "outbound")
-        .gte("created_at", `${range.startDate}T00:00:00.000Z`)
-        .lt("created_at", endExclusive.toISOString()),
-    ]);
-
-  // RLS restricts SELECT on this table to admins (see the migration's own
-  // header comment) — a query failure here (e.g. called without an admin
-  // session) degrades to "not available", never a fabricated 0, same
-  // honesty rule as every other field on this type.
-  const failed = Boolean(affiliateError || outboundError);
-
-  return {
-    adImpressions: null,
-    adClicks: null,
-    affiliateClicks: failed ? null : (affiliateClicks ?? 0),
-    outboundClicks: failed ? null : (outboundClicks ?? 0),
-    productClicks: null,
-    articleClicks: null,
-  };
-}
+// getFirstPartyMonetisation() moved to first-party-monetisation.ts (still
+// re-exported here for existing callers) — see that file's header for why:
+// breaking a circular import between this file and ga4-provider.ts, both
+// of which need it for their respective getMonetisation() delegation.
+export { getFirstPartyMonetisation } from "./first-party-monetisation";
 
 // Fixed set of selectable date ranges for the (currently inert) date-range
 // selector — real values once a real provider computes them.
@@ -179,9 +140,17 @@ export function getDefaultDateRanges(): DateRange[] {
 }
 
 // Single place that decides which provider implementation backs the
-// dashboard. Today this always returns the null provider — swap this
-// function's body for a GA4 Data API–backed provider once credentials
-// exist; nothing else in the dashboard needs to change.
+// dashboard. Automatically switches to Ga4DataApiProvider (src/lib/analytics/ga4-provider.ts)
+// once GA4_PROPERTY_ID/GA4_SERVICE_ACCOUNT_EMAIL/GA4_SERVICE_ACCOUNT_PRIVATE_KEY
+// are configured (see docs/analytics-architecture.md for exact setup
+// steps) — falls back to the honest "not connected" null provider
+// otherwise. Nothing else in the dashboard needs to change either way.
+// This whole file is server-only (see the import at the top), so importing
+// Ga4DataApiProvider unconditionally never reaches a client bundle — the
+// only cost of not gating the import itself is a marginally larger server
+// module graph when GA4 isn't configured, which is fine.
 export function getAnalyticsDataProvider(): AnalyticsDataProvider {
+  const credentials = getGa4Credentials();
+  if (credentials) return new Ga4DataApiProvider(credentials);
   return new NullAnalyticsProvider();
 }

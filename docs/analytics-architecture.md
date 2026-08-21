@@ -46,18 +46,72 @@ To turn on collection:
 - Set `NEXT_PUBLIC_GA_MEASUREMENT_ID=G-XXXXXXX` in the Vercel production
   environment.
 
-To turn on the admin dashboard's real numbers:
-- Create a Google Cloud service account, grant it Viewer access to the GA4
-  property, and enable the GA4 Data API.
-- Implement a new `AnalyticsDataProvider` (e.g. `Ga4DataApiProvider`) in
-  `src/lib/analytics/dashboard-types.ts`-adjacent code that calls the Data
-  API using that service account's credentials (stored as a server-only env
-  var, never exposed to the client — see `isAnalyticsConfiguredServer()` in
-  `src/lib/analytics/server-status.ts` for the existing server/client
-  credential-shape split).
-- Swap the body of `getAnalyticsDataProvider()` to return it. Nothing else
-  in `/admin/analytics` changes — every section already renders through the
-  adapter interface.
+To turn on the admin dashboard's real GA4-derived numbers (geography,
+acquisition, device/browser/OS, GA4-side content performance): the
+application side is fully built and waiting — `Ga4DataApiProvider`
+(`src/lib/analytics/ga4-provider.ts`) implements the same
+`AnalyticsDataProvider` interface `NullAnalyticsProvider` does, and
+`getAnalyticsDataProvider()` already switches to it automatically the
+moment the three env vars below exist — no further code change needed.
+It is **untested against a real property** (no credentials exist in this
+environment to exercise it) — do one real smoke test once configured
+(open `/admin/analytics`, confirm the GA4 zone shows real numbers instead
+of "not connected").
+
+**Exact manual steps required (Google Cloud side — cannot be done from
+this repository):**
+
+1. **Google Cloud project**: use an existing one or create a new one at
+   https://console.cloud.google.com — any project you control is fine,
+   this doesn't need to be named after TechCarvalho specifically.
+2. **Enable the GA4 Data API**: in that project, APIs & Services → Library
+   → search "Google Analytics Data API" → Enable.
+3. **Create a service account**: APIs & Services → Credentials → Create
+   Credentials → Service account. Give it any name (e.g.
+   `techcarvalho-analytics-reader`). No project-level IAM role is needed —
+   access is granted at the GA4 property level in the next step, not via
+   Cloud IAM.
+4. **Create a key for that service account**: on the service account's
+   page → Keys → Add key → Create new key → JSON. This downloads a JSON
+   file containing `client_email` and `private_key` — these are the two
+   values needed below. Treat this file as a secret; do not commit it, do
+   not paste its contents anywhere public.
+5. **Grant that service account access to the GA4 property**: in Google
+   Analytics (analytics.google.com) → Admin → Property Access Management
+   (for the TechCarvalho GA4 property specifically) → add the service
+   account's email address (the `client_email` value, looks like
+   `...@...iam.gserviceaccount.com`) → role **Viewer** (read-only —
+   sufficient for everything this dashboard needs; do not grant Editor or
+   Administrator).
+6. **Find the GA4 property ID**: Google Analytics → Admin → Property
+   Settings → the numeric Property ID at the top (not the Measurement ID
+   `G-XXXXXXX` already configured for collection — a different, purely
+   numeric identifier, e.g. `123456789`).
+
+**Exactly which environment variables to set, and where:** in Vercel,
+**Production environment only** (matching the existing
+`NEXT_PUBLIC_GA_MEASUREMENT_ID` convention — no reason for a preview/dev
+deployment to read the real property):
+- `GA4_PROPERTY_ID` — the numeric property ID from step 6.
+- `GA4_SERVICE_ACCOUNT_EMAIL` — the `client_email` value from the
+  downloaded JSON key.
+- `GA4_SERVICE_ACCOUNT_PRIVATE_KEY` — the `private_key` value from the
+  same JSON file, pasted exactly as-is (it will contain literal `\n`
+  sequences and `-----BEGIN PRIVATE KEY-----`/`-----END PRIVATE KEY-----`
+  markers — `ga4-provider.ts`'s `getGa4Credentials()` un-escapes the `\n`
+  sequences automatically, so paste the JSON value verbatim, don't try to
+  reformat it into real newlines yourself).
+
+**Critical — none of these three may ever be prefixed `NEXT_PUBLIC_`.**
+That prefix tells Next.js to inline the value into every visitor's browser
+JavaScript bundle. These three are read only inside `ga4-provider.ts`,
+which is `server-only` (see that file's own import guard) and is never
+imported by any Client Component — keep it that way in any future change.
+
+**Production/deployment implications:** setting these three vars and
+redeploying is the only step required after the Google-side configuration
+above — `getAnalyticsDataProvider()` picks them up automatically, no code
+change, no other environment (Preview/Development) needs them.
 
 ## Event taxonomy
 
