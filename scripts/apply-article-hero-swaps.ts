@@ -127,10 +127,46 @@ const SWAPS: Swap[] = [
   },
 ];
 
+
+// A live article that leads with a CC BY Commons photograph. If the hero
+// renders its credit here, it renders it everywhere — the component is shared.
+const CREDIT_PROBE_URL = "https://www.techcarvalho.com/articles/canon-dslr-buying-guide";
+
+async function articleHeroRendersCredit(): Promise<boolean> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    const res = await fetch(CREDIT_PROBE_URL, {
+      headers: { "User-Agent": "TechCarvalhoBot/1.0 (+https://www.techcarvalho.com)" },
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if (!res.ok) return false;
+    const html = await res.text();
+    // Both are required by CC BY: a link to the licence, and a link to the
+    // material. The creator's name alone is not enough.
+    return html.includes("creativecommons.org/licenses/") && html.includes("commons.wikimedia.org/wiki/File:");
+  } catch {
+    return false;
+  }
+}
+
 async function main() {
   loadEnvLocal();
   const apply = process.argv.includes("--apply");
-  const allowUncredited = process.argv.includes("--allow-uncredited");
+  // The gate that used to be a manual --allow-uncredited flag.
+  //
+  // A flag asserting "the credit line renders now" is a promise, and a promise
+  // is the wrong instrument for a licence condition. This FETCHES a live
+  // article that leads with a CC BY photograph and confirms the rendered HTML
+  // actually contains a link to the licence deed and a link to the source —
+  // the two things CC BY requires beyond the creator's name, and exactly what
+  // the article hero was missing when these swaps were staged.
+  //
+  // If the check cannot be made, attribution-required swaps stay held. Failing
+  // closed costs a re-run; failing open publishes someone's photograph without
+  // the credit their licence requires.
+  const creditRenders = await articleHeroRendersCredit();
   const db = await createAdminClient();
   const plan = new IngestPlan();
 
@@ -149,7 +185,7 @@ async function main() {
       continue;
     }
 
-    if (swap.attributionRequired && !allowUncredited) {
+    if (swap.attributionRequired && !creditRenders) {
       plan.record({
         entity: "article",
         identifier: swap.slug,
@@ -241,7 +277,7 @@ async function main() {
   }
 
   plan.print(apply ? "apply" : "dry-run");
-  if (!allowUncredited) {
+  if (!creditRenders) {
     const held = SWAPS.filter((s) => s.attributionRequired).length;
     console.log(
       `${held} swap(s) held back — their licences require a credit line the article hero did not render when this was written.\n` +
