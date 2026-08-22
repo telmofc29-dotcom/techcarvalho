@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { checkCronAuth, newCounters, recordJobRun } from "@/lib/engine/cron";
 import { beginRun, buildGuard, completeRun, loadTelemetry } from "@/lib/engine/guard";
 import { idempotencyKeyFor } from "@/lib/engine/concurrency";
+import { STAGE_JOB_NAMES } from "@/lib/engine/stages";
 import { runDiscovery } from "@/lib/engine/jobs/discovery";
 import { runRelevance } from "@/lib/engine/jobs/relevance-job";
 import { runBriefGeneration } from "@/lib/engine/jobs/brief-job";
@@ -90,35 +91,10 @@ const STAGES = [
   ["shadow_evaluation", runShadowEvaluation],
 ] as const;
 
-/**
- * Stage name -> the engine_job_runs job name it records under.
- *
- * The guard reasons in job names (that is what capability, budget and health
- * telemetry are keyed by) while this route reasons in stage names. Mapping them
- * explicitly beats deriving one from the other, because a stage whose job name
- * this map does not know would otherwise silently receive no gate at all — an
- * unguarded stage that looks exactly like a guarded one.
- */
-const STAGE_JOB_NAMES: Record<string, string> = {
-  discovery: "engine_discover",
-  relevance: "engine_relevance",
-  update_proposals: "engine_update_proposals",
-  product_assembly: "engine_product_assembly",
-  briefs: "engine_briefs",
-  draft_assembly: "engine_draft_assembly",
-  search_intelligence: "engine_search_intelligence",
-  opportunities: "engine_opportunities",
-  trends: "engine_trends",
-  media_acquisition: "engine_media_acquisition",
-  freshness: "engine_freshness",
-  internal_links: "engine_internal_links",
-  hero_media: "engine_hero_media",
-  // "engine_shadow", NOT "engine_shadow_evaluation". shadow-job.ts records
-  // under "engine_shadow", and this map named a third string that existed
-  // nowhere else — so the gate looked up a job that could never be found, and
-  // capabilityOf() returned null for it.
-  shadow_evaluation: "engine_shadow",
-};
+// Stage -> job-name mapping lives in src/lib/engine/stages.ts so it can be
+// unit tested: this file transitively imports `server-only`, which throws
+// outside Next.js, and an untestable safety map is one that drifts. It already
+// had — see that file's header.
 
 export async function GET(request: NextRequest) {
   const unauthorized = checkCronAuth(request);
