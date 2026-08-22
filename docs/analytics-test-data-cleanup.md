@@ -72,12 +72,63 @@ delete from public.analytics_sessions s
 select public.compute_analytics_rollup('2026-08-21'::date);
 ```
 
-## Afterwards
+## Afterwards — DONE
 
-Real sample size drops to roughly **88 events across 14 sessions on one day**,
-which is still far too small to infer anything about reader behaviour — but it
-will at least be *honest* about being small, rather than dominated by traffic
-we generated ourselves.
+Cleanup was run on 2026-08-22 and independently verified against production.
 
-Future verification runs should use a path prefix that is filtered at ingestion
-rather than cleaned up afterwards.
+| | Before | After |
+|---|---|---|
+| `analytics_events` | 155 | **26** |
+| `analytics_sessions` | 14 | **8** |
+| Sessions with no events | — | **0** |
+
+The real figure came out lower than the ~88 estimated here, because the
+inspection found considerably more `/verify-*` traffic than this document had
+anticipated — particularly `verify-finalratelimit-*` paths. **26 events across
+8 sessions is the clean starting dataset.** No attempt has been made to restore
+or compensate for the difference.
+
+### Two paths the cleanup did not catch
+
+`/retest-no-select` and `/repro-full-shape` (one event each) are still present.
+They are plainly synthetic but matched none of the patterns above, which is the
+whole argument against cleaning up after the fact: **you cannot reliably
+enumerate names nobody has invented yet.** They have been left in place rather
+than chasing them, and they are ~8% of the remaining set — worth remembering
+before drawing any conclusion from 26 events.
+
+## The permanent fix — implemented 2026-08-22
+
+Synthetic traffic is now dropped at **write time**, in
+`src/app/api/analytics/track/route.ts`, via `src/lib/analytics/path-filter.ts`.
+Nothing needs cleaning up afterwards, because nothing is written.
+
+### The convention
+
+> **Any path beginning `/__test` is never recorded.**
+
+Verification runs, Playwright journeys and reproduction scripts must navigate
+paths under that prefix. It is a 404 on the public site, deliberately: a test
+path should not resolve to real content, or it would be exercising the wrong
+thing.
+
+### What else is excluded
+
+- The historical shapes (`verify-`, `_rls-`, `retest-`, `repro-`, `e2e-`,
+  `smoke-`, `playwright-`), matched in any path segment — so re-running an old
+  script cannot reintroduce the problem.
+- Any path ending in a 13-digit epoch timestamp. That suffix is what made the
+  old paths unique per run and therefore impossible to clean in bulk; real
+  routes are human-authored slugs and never carry one.
+- `localhost`, `127.0.0.1`, `*.local` and `*.vercel.app` hosts. There is one
+  Supabase instance shared by local development and preview deployments, so
+  without this a developer clicking around localhost lands in production
+  analytics.
+
+The filter is deliberately conservative in one direction only: recording fake
+traffic silently corrupts every later conclusion, whereas dropping a genuine
+hit costs one row. Real slugs containing the word "verify"
+(`/articles/how-to-verify-your-gpu-drivers`) are explicitly tested and kept.
+
+All six synthetic paths that actually reached production are permanent
+regression tests in `src/lib/analytics/path-filter.test.ts`.

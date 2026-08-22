@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentAdmin } from "@/lib/dal";
 import { sanitizeEventText, sanitizeSlug } from "@/lib/analytics/events";
 import type { AnalyticsDeviceType, AnalyticsEntityType } from "@/lib/types/database";
+import { isSyntheticPath, isSyntheticHost } from "@/lib/analytics/path-filter";
 
 // Ingestion endpoint for src/lib/analytics/session-events.ts. Deliberately
 // a server route rather than the client inserting into Supabase directly
@@ -119,6 +120,18 @@ export async function POST(request: NextRequest) {
 
     if (!VALID_EVENT_TYPES.has(eventType) || !isUuid(sessionId) || !isUuid(visitorId) || !path) {
       return ok({ ok: false, skipped: "invalid_payload" });
+    }
+
+    // Synthetic traffic is dropped HERE, at write time, rather than cleaned up
+    // afterwards. Verification runs had grown to 43% of the entire dataset and
+    // needed manual SQL to remove, because these tables are deliberately
+    // admin-read-only. Two of those paths still survived the cleanup, because
+    // its patterns could not anticipate names nobody had invented yet.
+    //
+    // Checked after payload validation so a genuinely malformed request is
+    // still reported as malformed rather than mislabelled as a test.
+    if (isSyntheticPath(path) || isSyntheticHost(request.headers.get("host"))) {
+      return ok({ ok: true, skipped: "synthetic" });
     }
 
     const supabase = await createClient();
