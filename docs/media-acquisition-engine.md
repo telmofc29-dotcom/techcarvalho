@@ -128,7 +128,7 @@ write is `pending_verification`, held in the constant `ENGINE_MAX_RIGHTS_STATUS`
 | Stage | Refuses |
 |---|---|
 | Query expansion | any query that drops a discriminator — `Canon EOS` for a 60D, `PlayStation 5` for a PS5 Pro. Brand-only searches are generated and explicitly declined, and the refusal is logged. |
-| Entity validation | wrong model number in the title; files whose only categories are capturing-device categories; files whose title says "taken with"; logo SVGs; die micrographs; **anything ambiguous** |
+| Entity validation | wrong model number in the title; **a title naming two products at once** (capped at `ambiguous`, see below); files whose only categories are capturing-device categories; files whose title says "taken with"; logo SVGs; die micrographs; **anything ambiguous** |
 | Provenance | a source page that could not be resolved. An unavailable check is a stop, never a skip. |
 | Media type | anything that is not JPEG, PNG or WebP. A correctly-licensed `.stl` mesh, PDF, vector logo or video of the right product is not a photograph of it. |
 | Rights verification | NC/ND/all-rights-reserved; conflicting licence reads; **a licence readable only from generated metadata**; **an upload sourced from a video platform or social post without a confirmed licence review**; missing creator under an attribution licence; no primary licence evidence at all |
@@ -158,6 +158,15 @@ Every one was searched end to end. **Nothing was acquired, and that is the hones
 Control, run identically against a product with known-good Commons photography:
 
 | GoPro HERO13 Black | `resolved` | 60 examined, 8 cleared every gate — including the accented `Category:GoPro Héro 13 black` that a name search cannot reach. |
+
+Those statuses are the legacy four-value vocabulary that run predated the outcome taxonomy. In
+today's states the two TP-Link rows are `NO_RESULTS` and the six
+`no_acceptable_candidate` rows resolve to `WRONG_ENTITY_RESULTS` (Roborock, Echo Show, PS5 Pro,
+RTX 5080, Core Ultra 285K) and `RIGHTS_UNCERTAIN` (Ryzen 9800X3D). **The re-run is worth doing:**
+the Ryzen row — 48 of 56 candidates refused on the same two codes — is close enough to the
+uniform-refusal shape that it is exactly the sort of result the plausibility check exists to
+make somebody look at, and the whole point of this change is that nobody has to notice it by
+reading sixty candidate blocks.
 
 The eight remain blocked **on photography, not on permission**, which is what
 `docs/product-media-strategy.md` §3a concluded by hand. The engine reached the same conclusion
@@ -333,4 +342,56 @@ It failed in the safe direction, and that is exactly why it was nearly invisible
 line read "candidates were found and every one was rejected", which is indistinguishable from
 a genuinely unusable set. Only the per-candidate reason showed that the search had worked and
 the parser had not. **A fail-closed system still has to be right, or it fails closed on
-everything.** There is now a test for a field name containing a space.
+everything.**
+
+Three defences now exist, and the third is the one that generalises:
+
+1. **The regex is correct**, and there is a test for a field name containing a space.
+2. **The extracted value is checked for the signature of having been extracted wrongly.**
+   `fieldValueAnomaly()` asks whether a permission field could plausibly say what it says: a
+   `|name=` at brace depth zero inside a value means a neighbouring field was swallowed, and an
+   unbalanced `{{` means the value was cut mid-template. Depth matters — a legitimate
+   `{{fr|1=Caméra GoPro}}` contains `|1=` and is fine. The regression test feeds it the exact
+   string the old parser produced, `|other versions=`, so if that bug ever returns it fires on
+   its output. An ambiguous field makes `resolve()` return `malformed`, which becomes
+   `PROVIDER_PARSE_FAILURE` — a refusal that says *fix this parser*, not *read this file's
+   permission note*.
+3. **The outcome is checked for being one bug repeated.** Even if 1 and 2 both fail, a whole
+   search refused for a single parser-derived reason reports `PROVIDER_PARSE_FAILURE` rather
+   than a clean negative. See the plausibility rule above.
+
+## A second bug of the same family: a photograph of two products
+
+Found by adversarial testing on 2026-08-22, in `entity-match.ts` rather than in a parser, and
+worth recording beside the one above because the failure direction is the opposite and the
+lesson is identical.
+
+`assessEntityMatch()` hard-rejects a title carrying a foreign model number — *unless* this
+product's own discriminators are in the title too, in which case the rejection was downgraded
+to a -0.05 nudge on the reasoning that the extra number is probably a sequence number ("(03)")
+or a resolution ("2160p"). That reasoning is correct for those cases and wrong for the one
+that matters:
+
+| File | Was | Now |
+|---|---|---|
+| `File:NVIDIA GeForce RTX 5080 and RTX 5090 side by side.jpg` | confirmed **0.99 for the 5080 *and* 0.99 for the 5090** | ambiguous 0.74 for both |
+| `File:Intel Core Ultra 9 285K and Core Ultra 7 265K.jpg` | confirmed **1.00 for both chips** | ambiguous 0.74 for both |
+| `File:Nvidia RTX 5080 5090 FE coolers.png` | confirmed 0.99 | ambiguous 0.74 |
+| `File:RTX 5070 5080 5090 lineup.jpg` | confirmed 0.80 | rejected 0.05 |
+
+The real production trap named in `docs/product-media-strategy.md`,
+`File:Nvidia RTX 5080 5090 FE PCB.png`, failed closed **only by luck**: the word "pcb" carries
+-0.5, which dragged it into the ambiguous band. Change one word — as the "coolers" variant of
+the identical two-card frame shows — and it confirmed at 0.99. The consequence would have been
+one image published on two product pages, each caption implying it depicts that product, which
+is a false claim about a product.
+
+A foreign number is now treated as a **sibling model** when it has the same digit width as one
+of our own model numbers (5090 against 5080, 265 against 285) or when it is led by the same
+alphabetic token that leads ours ("HERO9" beside "HERO13", "Ultra 7" beside "Ultra 9"). Such a
+title is capped at `MULTI_PRODUCT_CEILING`, one hundredth below the confirmation threshold, so
+it can never confirm however good everything else looks. The cap is applied to the confidence
+NUMBER and not only to the verdict, so no future re-weighting can lift a composite back over
+the line. `File:2024 Dron DJI Mini 4 Pro (03).jpg`, `File:GoPro Héro 13 Black - 01.jpg` and a
+PS5 Pro photographed "with 2 controllers" all still confirm — the fix distinguishes a sibling
+model from a quantity, a date and a sequence number rather than refusing every extra digit.

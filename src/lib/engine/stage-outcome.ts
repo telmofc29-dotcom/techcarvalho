@@ -887,10 +887,24 @@ export function classifyStageOutcome(evidence: StageEvidence): StageVerdict {
     const probe = evidence.inputProbe ?? null;
     if (c.examined === 0 && c.failed === 0) {
       if (!probe) {
-        ambiguity = "emptiness_unproven";
+        // A stage that reported literally nothing about itself gets the more
+        // specific complaint, because the fix differs: one needs a stronger
+        // emptiness proof, the other needs any instrumentation at all.
+        const silent =
+          c.created === 0 &&
+          c.deduplicated === 0 &&
+          c.rejected === 0 &&
+          !post &&
+          mutations.length === 0 &&
+          providers.length === 0 &&
+          items.length === 0;
+        ambiguity = silent ? "no_evidence" : "emptiness_unproven";
         because.push(
-          "The stage examined nothing and supplied no input probe, so there is no evidence that its queue was ever " +
-            "read. An unread queue and an empty one are the same numbers."
+          silent
+            ? "The stage supplied no counters, no input probe, no postconditions, no mutations and no provider " +
+              "episodes. It has not demonstrated that it ran at all."
+            : "The stage examined nothing and supplied no input probe, so there is no evidence that its queue was " +
+              "ever read. An unread queue and an empty one are the same numbers."
         );
         return "UNCLASSIFIED";
       }
@@ -938,24 +952,6 @@ export function classifyStageOutcome(evidence: StageEvidence): StageVerdict {
     }
 
     // --- 12. The default branch is the incident -----------------------------
-    if (
-      c.examined === 0 &&
-      c.created === 0 &&
-      c.deduplicated === 0 &&
-      c.rejected === 0 &&
-      c.failed === 0 &&
-      !probe &&
-      !post &&
-      mutations.length === 0 &&
-      providers.length === 0
-    ) {
-      ambiguity = "no_evidence";
-      because.push(
-        "The stage supplied no counters, no input probe, no postconditions, no mutations and no provider episodes. " +
-          "It has not demonstrated that it ran at all."
-      );
-      return "UNCLASSIFIED";
-    }
     if (post && post.unverifiable > 0) {
       ambiguity = "mutation_unverifiable";
       because.push(

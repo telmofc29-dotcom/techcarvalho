@@ -17,9 +17,12 @@
 // identity must fail CLOSED, and `ambiguous` counts as closed — it is never
 // rounded up to "confirmed".
 //
-// One test in here is marked `todo` because it FAILS: it pins an unfixed
-// defect in providers/entity-match.ts, described in full at the test itself.
-// It is marked rather than deleted so the defect stays executable.
+// (Historical note: one test here was once marked `todo`, because it pinned a
+// real defect in providers/entity-match.ts that was found by this suite and
+// reported rather than patched — the owning file was under concurrent edit.
+// Writing it as an executable `todo` rather than prose is what made it
+// verifiable when the fix landed. It has, so the marker is gone and the case
+// now runs on every commit. It is described in full at the test itself.)
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
@@ -206,11 +209,16 @@ describe("wrong-object traps: right subject matter, wrong object", () => {
 });
 
 // ---------------------------------------------------------------------------
-// UNFIXED DEFECT — reported, not patched.
+// FIXED 2026-08-22 — kept as a regression test.
 //
-// providers/entity-match.ts is being edited concurrently by another agent, so
-// this case is recorded here as an executable `todo` rather than fixed in
-// place. Remove the `todo` marker once the defect below is closed.
+// This was found by adversarial testing, reported rather than patched (the
+// owning file was under concurrent edit), and has since been fixed in
+// providers/entity-match.ts. A title naming a sibling model is now capped at
+// MULTI_PRODUCT_CEILING (0.74), and the cap is applied to the CONFIDENCE
+// NUMBER rather than only the verdict, so no later re-weighting can lift a
+// composite back over the line.
+//
+// The `todo` marker is removed: this now runs and passes on every commit.
 //
 // THE DEFECT
 // ----------
@@ -227,7 +235,7 @@ describe("wrong-object traps: right subject matter, wrong object", () => {
 // when the extra number is a SIBLING MODEL, which is precisely the composite
 // and comparison shot: two products in one frame, both named in the title.
 //
-// Measured today:
+// Measured BEFORE the fix:
 //   File:NVIDIA GeForce RTX 5080 and RTX 5090 side by side.jpg
 //     -> confirmed 0.99 for the RTX 5080, AND confirmed 0.99 for the RTX 5090
 //   File:Intel Core Ultra 9 285K and Core Ultra 7 265K.jpg
@@ -254,8 +262,7 @@ describe("wrong-object traps: right subject matter, wrong object", () => {
 // score at most `ambiguous` and never `confirmed`.
 // ---------------------------------------------------------------------------
 test(
-  "UNFIXED BUG: a file naming TWO sibling products must not confirm for either",
-  { todo: "providers/entity-match.ts downgrades a sibling model number to -0.05 when ours is also in the title; see the note above. Owned by another agent, reported not patched." },
+  "REGRESSION: a file naming TWO sibling products must not confirm for either",
   () => {
     const both = "File:NVIDIA GeForce RTX 5080 and RTX 5090 side by side.jpg";
     assertNotConfirmed(S.rtx5080, { title: both, categories: ["Category:GeForce RTX 5080"] }, "The frame contains two cards.");
