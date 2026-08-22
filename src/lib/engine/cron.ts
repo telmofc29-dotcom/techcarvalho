@@ -121,7 +121,13 @@ export async function recordJobRun(
   counters: JobCounters,
   detail: Record<string, unknown> = {},
   error?: string,
-  writes?: WriteCounts
+  writes?: WriteCounts,
+  /**
+   * The stage's own classification of what it did. Optional because a stage
+   * that does not classify itself must record NULL — which means UNMEASURED,
+   * never "fine". See src/lib/engine/stage-outcome.ts.
+   */
+  outcome?: { stageOutcome: string; ambiguity: string | null }
 ): Promise<void> {
   const base = {
     p_job_name: jobName,
@@ -140,6 +146,11 @@ export async function recordJobRun(
     p_unverified_writes: writes?.unverified ?? null,
     p_blind_writes: writes?.blind ?? null,
   };
+  const withOutcome = {
+    ...withTelemetry,
+    p_stage_outcome: outcome?.stageOutcome ?? null,
+    p_outcome_ambiguity: outcome?.ambiguity ?? null,
+  };
 
   try {
     // Attempt the instrumented shape first, then fall back.
@@ -154,7 +165,33 @@ export async function recordJobRun(
     //
     // The fallback is NOT silent. Losing the counters is itself reported, so
     // "telemetry is missing" cannot be mistaken for "telemetry says zero".
-    let { data, error: writeError } = await supabase.rpc("engine_record_job_run", withTelemetry);
+    // A LADDER, newest signature first, each rung reporting its own downgrade.
+    //
+    // Migrations here are applied by hand, out of band from a deploy, so there
+    // is always a window where the code and the database disagree about which
+    // signature exists. Assuming the newest would mean that during that window
+    // EVERY call answers PGRST202 and no job records an audit row at all —
+    // starving health.ts, the breakers and the SILENT_SUCCESS detector at once.
+    // Losing two columns is a far better outcome than losing the row.
+    //
+    // Each downgrade is LOGGED. "telemetry is missing" must never be mistaken
+    // for "telemetry says zero".
+    let { data, error: writeError } = await supabase.rpc("engine_record_job_run", withOutcome);
+
+    if (writeError && writeError.code === "PGRST202") {
+      const twelve = await supabase.rpc("engine_record_job_run", withTelemetry);
+      data = twelve.data;
+      writeError = twelve.error;
+      if (!writeError) {
+        logQueryError(
+          `engine_record_job_run(${jobName}) — audit row written WITHOUT the stage-outcome columns. ` +
+            `The 14-argument signature does not exist yet, so stage_outcome and outcome_ambiguity ` +
+            `for this run are NULL (unmeasured), not "fine". Apply ` +
+            `supabase/migrations_pending/20260823b_queue_probe_fixes.sql`,
+          { message: "stage_outcome_signature_absent" }
+        );
+      }
+    }
 
     if (writeError && writeError.code === "PGRST202") {
       const legacy = await supabase.rpc("engine_record_job_run", base);

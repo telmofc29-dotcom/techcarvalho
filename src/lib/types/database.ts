@@ -1345,6 +1345,11 @@ export interface Database {
           p_silent_no_ops?: number | null;
           p_unverified_writes?: number | null;
           p_blind_writes?: number | null;
+          // Added by 20260823b_queue_probe_fixes.sql. Optional for the same
+          // reason as the four above: cron.ts walks a fallback ladder while the
+          // migration is pending, so every rung must typecheck.
+          p_stage_outcome?: string | null;
+          p_outcome_ambiguity?: string | null;
         };
         // `string` once the telemetry migration lands ('recorded' /
         // 'rejected_invalid_status' / 'rejected_invalid_job_name' /
@@ -1644,6 +1649,10 @@ export interface Database {
           silent_no_ops?: number | null;
           unverified_writes?: number | null;
           blind_writes?: number | null;
+          // Added by 20260823b_queue_probe_fixes.sql. `null` means UNMEASURED —
+          // the run predates the column or the stage does not classify itself.
+          stage_outcome?: string | null;
+          outcome_ambiguity?: string | null;
         }[];
       };
       // Added by 20260822_silent_success_telemetry.sql. Not yet applied.
