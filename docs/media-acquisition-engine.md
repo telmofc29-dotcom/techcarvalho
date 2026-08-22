@@ -163,18 +163,67 @@ The eight remain blocked **on photography, not on permission**, which is what
 `docs/product-media-strategy.md` §3a concluded by hand. The engine reached the same conclusion
 independently, from the same sources, with the working written down.
 
-## Finding nothing is a result
+## Finding nothing is a result — and it has to prove it
 
-The pipeline reports four statuses and they are deliberately not interchangeable:
+The pipeline reports **one of seven states**, defined in
+`src/lib/media/providers/outcome.ts` and printed at the top of every subject block in
+`scripts/engine-media-search.ts`. They exist because the four statuses this section used to
+describe were not fine-grained enough to distinguish "the material is unsuitable" from "our
+parser is broken" — see the bug at the end of this document, which lived in exactly that gap.
 
-- `resolved` — a candidate cleared every gate.
-- `no_acceptable_candidate` — candidates were found and every one was refused. **The search
-  worked and the material is unsuitable.**
-- `no_results` — every query ran successfully and returned nothing. Blocked on photography,
-  not on permission; worth a scheduled recheck, not a negotiation.
-- `provider_unavailable` — **the search did not happen.** Never recorded as a candidate row,
-  never counted as "nothing found". This is the 2026-08 empty-vs-failed lesson from CLAUDE.md
-  applied to searches instead of queries.
+| State | Means | Established by |
+|---|---|---|
+| `USABLE_CANDIDATE_FOUND` | at least one candidate cleared every automated check | an accepted evaluation, plus a proposed row the publication gate still refuses |
+| `NO_RESULTS` | the provider was reached, understood, and genuinely has nothing | zero candidates **and** a `ProviderAttestation` showing responses parsed > 0, responses failed = 0, no parse anomalies |
+| `WRONG_ENTITY_RESULTS` | candidates found, none is the exact subject | every refusal in the `entity` family — wrong model, `.stl` mesh, vector logo, AI render, below the quality floor |
+| `RIGHTS_UNCERTAIN` | right subject, rights not establishable | a refusal whose blockers name the licence: absent, unrecognised, prohibitive, badge-only, conflicting, unreviewed third-party re-licence |
+| `PROVENANCE_INCOMPLETE` | rights adequate, a required provenance field missing | blockers are exactly `creator_absent` / `source_page_absent` / `original_file_absent`, or the source page would not resolve |
+| `PROVIDER_OUTAGE` | the provider could not be reached, or no approved provider existed | a non-answer status (`outage`, `rate_limited`), or nothing was searched at all |
+| `PROVIDER_PARSE_FAILURE` | we got something we could not read, or read implausibly | a `malformed` response, a parse anomaly, a uniform parser-derived refusal, **or the classifier being unable to prove any other state** |
+
+Three properties of that table are the whole point.
+
+**1. `NO_RESULTS` is never a fallback.** It is reachable through exactly one branch, and that
+branch demands positive proof: the provider answered, we counted the responses we parsed, none
+failed, and no reader reported an implausible value. A provider that returns `ok` with an empty
+array and cannot attest to a single response it read reports `PROVIDER_PARSE_FAILURE`, because
+an empty shelf and a reader that never read anything are the same picture from the outside.
+`SearchResult.attestation` (`src/lib/media/providers/types.ts`) is where that proof lives, and
+the Commons provider fills it by routing every API call through one counted wrapper.
+
+**2. A response we do not recognise is not an empty one.** `r.data.query?.search ?? []` was the
+old shape of this failure: MediaWiki returns `query.search: []` for a search with no hits, so an
+*absent* key is a body we do not understand. It is now recorded as a parse anomaly, and a search
+carrying any anomaly cannot classify as `NO_RESULTS`.
+
+**3. When the code cannot say which state applies, the answer is `PROVIDER_PARSE_FAILURE`.**
+Not "no acceptable candidate", not "nothing found". Uncertainty about our own reading of a
+response is a defect in us, and a reported defect is one somebody investigates.
+
+The four legacy statuses (`resolved` / `no_acceptable_candidate` / `no_results` /
+`provider_unavailable`) still exist and are still what the engine job and the admin surfaces
+read, but they are now **derived** from the state above via `legacyStatusFor()` rather than
+computed separately, so the coarse and the precise answer cannot drift apart. Both
+`PROVIDER_PARSE_FAILURE` and `PROVIDER_OUTAGE` map to `provider_unavailable`, which the engine
+job records **nowhere** as a candidate — a run whose reader may be broken must not deposit
+"no source found" rows that are later read as evidence somebody looked.
+
+### The plausibility check: one bug repeated does not look like a clean negative
+
+`assessRefusalPlausibility()` asks a question no per-candidate check can: **if every single
+candidate was refused for the same parser-derived reason, is that a fact about the world?**
+
+Four or more candidates, none accepted, all sharing one refusal signature (rejection code plus
+its blocker codes), and that code derived from parsing provider markup — `rights_conflicting`,
+`rights_incomplete`, `unsupported_media_type`, `provenance_unresolvable` — is reported as
+`PROVIDER_PARSE_FAILURE`, not as a clean negative. **This is what would have caught the 2026-08
+bug automatically**: eight files in one category, eight identical `rights_conflicting`
+refusals, one broken regex underneath all of them.
+
+`entity_mismatch` is deliberately excluded. Sixty candidates all refused as the wrong product is
+the normal, correct shape of a PlayStation 5 Pro search, and an alarm that fires on the ordinary
+case is an alarm nobody reads — which is the same mistake as the ten false-alarm credit
+comparisons recorded further down this document.
 
 ## Three rules the first live run forced, and what each cost
 

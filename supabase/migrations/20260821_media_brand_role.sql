@@ -1,4 +1,10 @@
--- DRAFTED, NOT YET APPLIED. Audited whether media_assets already
+-- STATUS 2026-08-22: APPLIED IN PRODUCTION.
+-- Verified BEHAVIOURALLY (probed as `anon` against production), not from this
+-- filename and not from an SQL-editor result message. Both have been wrong in
+-- this project before: a migration once reported "Success" without applying,
+-- and these headers said NOT APPLIED while the functions were live -- which
+-- cost real time during the 2026-08-22 security audit.
+-- (An earlier revision of this header claimed it was not applied. It is.)
 -- distinguishes site-brand assets (logo/mark/favicon/OG source files) from
 -- normal product/article/editorial media — it does not; nothing in the
 -- existing schema (media_type, source_type, rights_status, etc.)

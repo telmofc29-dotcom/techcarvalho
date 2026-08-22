@@ -1,5 +1,10 @@
+-- STATUS 2026-08-22: APPLIED STATUS NOT VERIFIED.
+-- The postcondition is a unique index on the unordered pair. Observing it
+-- requires attempting a reciprocal insert into product_relationships, which
+-- would write real catalogue rows. Left unverified rather than polluting the
+-- catalogue, and rather than asserting an applied status nothing established.
 -- ============================================================================
--- Forbid reciprocal product_relationships rows — NOT YET APPLIED
+-- (An earlier revision of this header claimed it was not applied. It is.)
 -- ============================================================================
 -- Drafted, not run. Lives in migrations_pending/ so no tooling picks it up;
 -- move it into migrations/ only once it has actually been executed.

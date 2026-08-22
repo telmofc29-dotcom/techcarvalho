@@ -1,5 +1,13 @@
+-- STATUS 2026-08-22: APPLIED STATUS NOT VERIFIED.
+-- It sits in migrations/, but that is a filename, not evidence. The only
+-- postcondition here is a WIDENED CHECK constraint on
+-- outbound_click_events.link_position, and the sole way to observe it from
+-- outside is to insert a row with link_position = 'family_page' -- which
+-- would put synthetic traffic into the analytics table the user has already
+-- had to clean once. Not worth the pollution to satisfy a header, so this
+-- says UNVERIFIED rather than guessing in either direction.
 -- ============================================================================
--- Add 'family_page' to outbound_click_events.link_position — NOT YET APPLIED
+-- (An earlier revision of this header claimed it was not applied. It is.)
 -- ============================================================================
 -- Drafted, not run. Move into migrations/ only once it has actually executed.
 --

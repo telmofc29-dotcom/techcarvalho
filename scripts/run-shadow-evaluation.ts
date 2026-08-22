@@ -8,9 +8,13 @@
 // --------------------------------------
 // src/lib/engine/jobs/shadow-job.ts is the real path: it runs as `anon` inside
 // the tick and reaches the database only through the SECURITY DEFINER RPCs in
-// supabase/migrations_pending/20260822_engine_shadow_evaluation.sql. That
-// migration has NOT been applied, so those RPCs do not exist yet and the cron
-// path cannot run.
+// 20260822_engine_shadow_evaluation.sql.
+//
+// STATUS 2026-08-22: that migration IS APPLIED. Verified behaviourally, not
+// from the filename — engine_shadow_ledger/_candidates/_escapes/_sources/
+// _content_signals/_proof_runs all answer 200 as anon, and
+// engine_shadow_record_decision executes its body. The file is still sitting in
+// migrations_pending/, which is what made the header below wrong for a while.
 //
 // This script exists so the evaluation can be run TODAY, against genuine
 // current candidates, without applying anything. It authenticates as a real
@@ -54,6 +58,7 @@ import {
 } from "../src/lib/engine/shadow-io.ts";
 import { assessComposition, type CompositionEntry } from "../src/lib/engine/shadow-composition.ts";
 import { assessShadowReadiness, type LedgerRow } from "../src/lib/engine/shadow-readiness.ts";
+import { loadProofRecords } from "../src/lib/engine/proof-store.ts";
 
 loadEnvLocal();
 
@@ -328,7 +333,30 @@ async function main(): Promise<void> {
   }
 
   // --- Readiness, from what is actually RECORDED ---------------------------
-  const ledger: LedgerRow[] = ((ledgerProbe.data ?? []) as {
+  //
+  // RE-READ. The earlier probe at the top of this function is a BEFORE picture:
+  // it exists to find which candidates were already recorded so this run does
+  // not re-attempt them. Reusing it here was a real bug — the first --persist
+  // run against the applied schema recorded 118 decisions and then reported
+  // "0/500 credited", because readiness was computed from a snapshot taken
+  // before those writes. The section was labelled "from what is RECORDED",
+  // which made the wrong number look authoritative rather than stale.
+  //
+  // It failed in the conservative direction, which is why it survived review:
+  // an understated readiness number does not unlock anything. It is still a
+  // reporting bug, and a readiness figure that cannot see today's work is not
+  // measuring readiness.
+  const ledgerAfter = await client.rpc("engine_shadow_ledger", { p_limit: 20000 });
+  if (ledgerAfter.error) {
+    console.log(
+      `LEDGER RE-READ FAILED: ${ledgerAfter.error.message}\n` +
+        "  Readiness below is computed from the PRE-RUN snapshot and therefore excludes " +
+        "anything recorded by this run.\n"
+    );
+  }
+  const ledgerSource = ledgerAfter.error ? ledgerProbe : ledgerAfter;
+
+  const ledger: LedgerRow[] = ((ledgerSource.data ?? []) as {
     candidate_identity: string; title: string; publisher: string | null; decided_on: string;
     record_kind: string; outcome: string | null; terminal_stage: string; reached_gate: boolean; dimensions: string[];
   }[]).map((r) => ({
@@ -359,9 +387,21 @@ async function main(): Promise<void> {
       humanReviewed: escapeRow?.human_reviewed ?? 0,
       humanDisagreed: escapeRow?.human_disagreed ?? 0,
     },
-    // No proof has been recorded by this run. Nothing was deliberately broken
-    // here, so nothing is proven, and an empty list is the honest input.
-    proofRecords: [],
+    // The repository's proof records, NOT an empty list and NOT the
+    // engine_shadow_proof_runs table.
+    //
+    // Empty was wrong: it made every proof read "Never exercised" here while
+    // /admin/engine/autonomy — reading the same records — correctly showed one
+    // proven. Two readiness figures that disagree are worse than one that is
+    // merely conservative, because it is no longer clear which to believe.
+    //
+    // The database table is deliberately NOT the source. A security audit of
+    // the anon RPC surface found engine_shadow_record_proof_run is executable
+    // by any holder of the publishable key, with p_level accepting
+    // 'production_proven' and free-text evidence. Proof records live in the
+    // repository precisely so that changing one takes a reviewable commit
+    // rather than an HTTP request.
+    proofRecords: loadProofRecords(),
     ledgerAvailable,
     ledgerUnavailableReason: ledgerProbe.error?.message,
   });

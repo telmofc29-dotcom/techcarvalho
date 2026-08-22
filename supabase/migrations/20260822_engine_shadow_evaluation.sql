@@ -1,8 +1,14 @@
+-- STATUS 2026-08-22: APPLIED IN PRODUCTION.
+-- Verified BEHAVIOURALLY (probed as `anon` against production), not from this
+-- filename and not from an SQL-editor result message. Both have been wrong in
+-- this project before: a migration once reported "Success" without applying,
+-- and these headers said NOT APPLIED while the functions were live -- which
+-- cost real time during the 2026-08-22 security audit.
 -- ============================================================================
 -- SHADOW EVALUATION STORE — the record on which autonomy would later be granted
 -- ============================================================================
 --
--- NOT YET APPLIED. Drafted only. This file lives in supabase/migrations_pending/
+-- (An earlier revision of this header claimed it was not applied. It is.)
 -- specifically so no tooling picks it up. Move it into supabase/migrations/
 -- only once it has actually been run in production.
 --

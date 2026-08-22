@@ -279,11 +279,49 @@ export type ProviderOutcome =
   | { status: "malformed"; detail: string }
   | { status: "not_found"; detail: string };
 
+/**
+ * What a provider can PROVE about the requests it just made.
+ *
+ * The reason this exists: `{ status: "no_results" }` is a CLAIM, and the whole
+ * point of the outcome taxonomy in outcome.ts is that "the provider genuinely
+ * has nothing" must be POSITIVELY established rather than inferred from an
+ * empty array. A provider that answers "no results" without being able to say
+ * how many responses it actually read and parsed is indistinguishable from a
+ * provider whose reader is broken — which is precisely the `|other versions=`
+ * bug, one layer up.
+ *
+ * Optional on `SearchResult` so a provider that cannot attest is not forced to
+ * lie. It is not, however, free to omit it and still be believed: an empty
+ * search with no attestation classifies as PROVIDER_PARSE_FAILURE, not
+ * NO_RESULTS.
+ */
+export type ProviderAttestation = {
+  /** Responses that arrived AND parsed into the shape this code expects. */
+  responsesParsed: number;
+  /** Responses that failed, or arrived in a shape this code does not know. */
+  responsesFailed: number;
+  /**
+   * Places where a parse SUCCEEDED but produced something implausible — the
+   * class of failure that has no exception to catch and no error to log.
+   */
+  parseAnomalies: ParseAnomaly[];
+};
+
+/** A parse that returned a value nobody should believe. */
+export type ParseAnomaly = {
+  /** Which reader produced it, e.g. `informationField(permission)`. */
+  where: string;
+  /** What was implausible about the result, quoting it where practical. */
+  detail: string;
+};
+
 export type SearchResult = {
   outcome: ProviderOutcome;
   candidates: DiscoveredCandidate[];
   /** Every query actually issued, in order, with what it returned. */
   queryLog: { query: ProviderQuery; hits: number; note: string }[];
+  /** What the provider can prove about the responses behind the above. */
+  attestation?: ProviderAttestation;
 };
 
 export type ResolveResult =

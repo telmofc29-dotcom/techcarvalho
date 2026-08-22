@@ -140,6 +140,7 @@ export function assessShadowReadiness(input: ShadowReadinessInput): ShadowReadin
     bypassedHardBlockers: input.escapes.bypassedHardBlockers,
     duplicateLeakageRate,
     humanDisagreementRate,
+    humanReviewCount: input.escapes.humanReviewed,
     proofRecords: input.proofRecords,
   };
 

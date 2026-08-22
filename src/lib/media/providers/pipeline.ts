@@ -34,6 +34,13 @@ import { evaluateProvenance, type ProvenanceAsset } from "../provenance.ts";
 import { assessEntityMatch, type CandidateDescriptor, type EntityMatchAssessment } from "./entity-match.ts";
 import { verifyRights, licencesAgree } from "./rights-verification.ts";
 import { rankCandidates, type RankableCandidate, type RankingContext, type RankingResult } from "./ranking.ts";
+import {
+  classifySearchOutcome,
+  legacyStatusFor,
+  OUTCOME_MEANINGS,
+  type ProviderEpisode,
+  type SearchOutcome,
+} from "./outcome.ts";
 import type { SubjectIdentity } from "./query-expansion.ts";
 import { expandQueries } from "./query-expansion.ts";
 import {
@@ -508,6 +515,17 @@ export function buildProposedRow(input: {
 // Orchestration
 // ---------------------------------------------------------------------------
 
+/**
+ * The legacy four-value status, kept because the engine job, the admin surfaces
+ * and the requirement notes all read it.
+ *
+ * It is now DERIVED from `PipelineReport.outcome` (see `legacyStatusFor`)
+ * rather than computed independently, so the coarse and the precise answer
+ * cannot drift apart. The seven-state taxonomy in outcome.ts is the real one:
+ * this collapses `WRONG_ENTITY_RESULTS` / `RIGHTS_UNCERTAIN` /
+ * `PROVENANCE_INCOMPLETE` into one bucket, and that collapse is exactly what
+ * made the `|other versions=` parser bug invisible.
+ */
 export type PipelineStatus =
   /** Ran to completion, at least one candidate accepted. */
   | "resolved"
@@ -521,6 +539,11 @@ export type PipelineStatus =
 export type PipelineReport = {
   identity: SubjectIdentity;
   status: PipelineStatus;
+  /**
+   * Which of the seven outcome states this search ended in, and the positive
+   * evidence for that state. Read this in preference to `status`.
+   */
+  outcome: SearchOutcome;
   /** Every query issued, and what it returned. */
   queryLog: { query: ProviderQuery; hits: number; note: string }[];
   /** Expansions generated and refused before any request was made. */
@@ -559,8 +582,15 @@ export async function runAcquisitionPipeline(
   const queryLog: PipelineReport["queryLog"] = [];
   const refusedQueries: PipelineReport["refusedQueries"] = [];
   const evaluations: CandidateEvaluation[] = [];
-  let anyProviderUsable = false;
-  let sawResults = false;
+  /**
+   * What each provider did, recorded as it happens.
+   *
+   * This is what makes NO_RESULTS provable rather than assumed: the classifier
+   * is not handed "there are no candidates" and left to infer why, it is handed
+   * each provider's own answer plus what that provider can attest about the
+   * responses behind it.
+   */
+  const episodes: ProviderEpisode[] = [];
 
   const plan = expandQueries(identity);
   refusedQueries.push(...plan.rejected.map((r) => ({ value: r.value, strategy: r.strategy as string, reason: r.reason })));
@@ -572,12 +602,28 @@ export async function runAcquisitionPipeline(
         hits: 0,
         note: `${provider.approval.label} is NOT approved for search: ${provider.approval.rationale}`,
       });
+      episodes.push({
+        approval: provider.approval,
+        searched: false,
+        // No request was issued, so there is no answer to record. `searched`
+        // is what the classifier reads; this status is never inspected for an
+        // unsearched provider, and an unsearched source is never an empty one.
+        outcome: { status: "outage", detail: "not approved for search — no request was issued" },
+        attestation: null,
+        candidates: 0,
+      });
       continue;
     }
-    anyProviderUsable = true;
 
     const search = await provider.search([...plan.strict, ...plan.broad], { maxCandidates: options.maxCandidates });
     queryLog.push(...search.queryLog);
+    episodes.push({
+      approval: provider.approval,
+      searched: true,
+      outcome: search.outcome,
+      attestation: search.attestation ?? null,
+      candidates: search.candidates.length,
+    });
 
     if (search.outcome.status !== "ok" && search.outcome.status !== "no_results") {
       // A provider failure must never look like "found nothing".
@@ -598,8 +644,6 @@ export async function runAcquisitionPipeline(
       });
       continue;
     }
-
-    if (search.candidates.length > 0) sawResults = true;
 
     for (const candidate of search.candidates) {
       const descriptor = descriptorOf(candidate);
@@ -660,26 +704,24 @@ export async function runAcquisitionPipeline(
     publicationSafety = validateEnginePublicationSafety(proposedRow);
   }
 
-  const status: PipelineStatus = !anyProviderUsable
-    ? "provider_unavailable"
-    : reconciled.some((e) => e.rejection?.code === "provider_outage" || e.rejection?.code === "provider_malformed") && accepted.length === 0
-      ? "provider_unavailable"
-      : accepted.length > 0
-        ? "resolved"
-        : sawResults
-          ? "no_acceptable_candidate"
-          : "no_results";
+  // The single classification point. There is no other place in this function
+  // where an outcome is decided, and no branch that falls through to "found
+  // nothing" — `classifySearchOutcome` either establishes a state positively or
+  // returns PROVIDER_PARSE_FAILURE.
+  const outcome = classifySearchOutcome({ episodes, evaluations: reconciled });
+  const status: PipelineStatus = legacyStatusFor(outcome.state);
 
   return {
     identity,
     status,
+    outcome,
     queryLog,
     refusedQueries,
     evaluations: reconciled,
     ranking,
     proposedRow,
     publicationSafety,
-    narrative: buildNarrative(identity, status, reconciled, ranking),
+    narrative: buildNarrative(identity, status, outcome, reconciled, ranking),
   };
 }
 
@@ -714,6 +756,23 @@ function enrichDescriptor(d: CandidateDescriptor, p: ProvenanceRecord): Candidat
 }
 
 function buildNarrative(
+  identity: SubjectIdentity,
+  status: PipelineStatus,
+  outcome: SearchOutcome,
+  evaluations: CandidateEvaluation[],
+  ranking: RankingResult | null
+): string {
+  // The state and its justification lead, because the coarse status below is
+  // the thing that once read identically for "nothing exists" and "our parser
+  // is broken".
+  const head =
+    `OUTCOME ${outcome.state} — ${OUTCOME_MEANINGS[outcome.state]}\n` +
+    outcome.because.map((b) => `  · ${b}`).join("\n");
+
+  return `${head}\n${legacyNarrative(identity, status, evaluations, ranking)}`;
+}
+
+function legacyNarrative(
   identity: SubjectIdentity,
   status: PipelineStatus,
   evaluations: CandidateEvaluation[],

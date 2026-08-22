@@ -46,8 +46,10 @@ import { isCapturingDeviceCategory, matchCategoryTitle, type SubjectIdentity } f
 import type {
   DiscoveredCandidate,
   MediaProvider,
+  ParseAnomaly,
   ProvenanceRecord,
   ProviderApproval,
+  ProviderAttestation,
   ProviderOutcome,
   ProviderQuery,
   ResolveResult,
@@ -297,7 +299,103 @@ export function licenceFromWikitext(wikitext: string): { licence: string | null;
 }
 
 /**
- * Pull a named field out of an {{Information}} template.
+ * A value a reader produced that nobody should believe.
+ *
+ * The whole reason this type exists: the `|other versions=` bug produced a
+ * PERFECTLY WELL-FORMED string. No exception, no null, no error to log — just
+ * the wrong answer, delivered confidently, in the safe direction. There is
+ * nothing to catch. The only defence is to look at what came out and ask
+ * whether a permission field could plausibly say that.
+ */
+export type FieldParse =
+  /** The field is not in the wikitext at all. */
+  | { status: "absent" }
+  /** The field is present and empty — the healthy state for `permission=`. */
+  | { status: "empty" }
+  | { status: "parsed"; value: string }
+  /**
+   * The field was found and what came out is not believable. NEVER silently
+   * downgraded to "absent" or "empty": that is how a parser bug becomes an
+   * honest-looking result.
+   */
+  | { status: "ambiguous"; value: string; anomaly: ParseAnomaly };
+
+/**
+ * Is this extracted value evidence that the extractor lost its place?
+ *
+ * Two checks, both derived from the real incident rather than invented:
+ *
+ * 1. **A sibling field inside the value.** When `informationField()` looked
+ *    ahead for `\n|<name>=` with `<name>` matching `[a-zA-Z_]+`, it could not
+ *    see `other versions` — the space — so `permission=` returned the literal
+ *    string `|other versions=`. Any `|name=` sitting at brace depth ZERO in a
+ *    value means a neighbouring field was swallowed. Depth matters: a legitimate
+ *    `{{fr|1=Caméra GoPro}}` contains `|1=` at depth one and is fine.
+ *
+ * 2. **Unbalanced `{{`/`[[`.** A value that opens a template and never closes
+ *    it was cut in the wrong place, so whatever it says is a fragment.
+ *
+ * Exported because the regression test feeds it the exact string the old parser
+ * produced. If that bug ever returns, this fires on its output.
+ */
+export function fieldValueAnomaly(field: string, value: string): ParseAnomaly | null {
+  const swallowed = swallowedSiblingField(value);
+  if (swallowed) {
+    return {
+      where: `informationField(${field})`,
+      detail:
+        `the extracted value contains the start of another template field ("|${swallowed}=") at brace depth zero, ` +
+        `so the reader ran past the end of "${field}=" and captured its neighbour. Extracted: "${truncate(value)}". ` +
+        "This is the shape of the `|other versions=` regression, which refused four correctly-licensed photographs.",
+    };
+  }
+
+  const unbalanced = unbalancedDelimiters(value);
+  if (unbalanced) {
+    return {
+      where: `informationField(${field})`,
+      detail:
+        `the extracted value has ${unbalanced}, so it is a fragment of a template rather than a field value. ` +
+        `Extracted: "${truncate(value)}".`,
+    };
+  }
+  return null;
+}
+
+function truncate(value: string): string {
+  return value.length > 120 ? `${value.slice(0, 117)}…` : value;
+}
+
+/** Name of a `|name=` found at brace depth zero inside a value, if any. */
+function swallowedSiblingField(value: string): string | null {
+  let braces = 0;
+  let brackets = 0;
+  for (let i = 0; i < value.length; i++) {
+    if (value.startsWith("{{", i)) { braces++; i++; continue; }
+    if (value.startsWith("}}", i)) { braces = Math.max(0, braces - 1); i++; continue; }
+    if (value.startsWith("[[", i)) { brackets++; i++; continue; }
+    if (value.startsWith("]]", i)) { brackets = Math.max(0, brackets - 1); i++; continue; }
+    if (value[i] !== "|" || braces > 0 || brackets > 0) continue;
+    // A pipe at depth zero followed by a plausible field name and an "=".
+    const m = /^\|\s*([A-Za-z][A-Za-z0-9 _-]{0,30}?)\s*=/.exec(value.slice(i));
+    if (m) return m[1].trim();
+  }
+  return null;
+}
+
+function unbalancedDelimiters(value: string): string | null {
+  const opens = (value.match(/\{\{/g) ?? []).length;
+  const closes = (value.match(/\}\}/g) ?? []).length;
+  if (opens !== closes) return `${opens} "{{" against ${closes} "}}"`;
+  const openLinks = (value.match(/\[\[/g) ?? []).length;
+  const closeLinks = (value.match(/\]\]/g) ?? []).length;
+  if (openLinks !== closeLinks) return `${openLinks} "[[" against ${closeLinks} "]]"`;
+  return null;
+}
+
+/**
+ * Pull a named field out of an {{Information}} template, and say how confident
+ * the extraction is.
  *
  * A field's value runs to the next line beginning with `|` or `}`. An earlier
  * version instead looked ahead for `\n|<name>=` with `<name>` matching
@@ -312,13 +410,67 @@ export function licenceFromWikitext(wikitext: string): { licence: string | null;
  * found", which is exactly what a genuinely empty search reports. Only reading
  * the per-candidate reason showed the search had worked and the parser had not.
  * A fail-closed system still has to be right, or it fails closed on everything.
+ *
+ * So the fix is two-part and the second part is the one that generalises: the
+ * regex is correct now, AND the result is checked for the signature of having
+ * been extracted wrongly. A future parser bug of the same family produces an
+ * `ambiguous` parse, which resolve() turns into an explicit
+ * PROVIDER_PARSE_FAILURE instead of a quiet refusal.
+ */
+export function parseInformationField(wikitext: string, field: string): FieldParse {
+  const re = new RegExp(`\\|\\s*${field}\\s*=([^\\n]*(?:\\n(?!\\s*[|}])[^\\n]*)*)`, "gi");
+  const values: string[] = [];
+  for (const m of wikitext.matchAll(re)) values.push(m[1].replace(/\s+/g, " ").trim());
+
+  if (values.length === 0) return { status: "absent" };
+
+  // The same field declared twice with different content: MediaWiki resolves
+  // this by taking the last, we have no way to know which the uploader meant,
+  // and guessing about a rights field is the thing this module refuses to do.
+  //
+  // Empty counts as a value here: one declaration saying nothing and another
+  // pointing at a VRT ticket is the WORST version of this, not an exception to
+  // it — the empty one is the reading that would let the file through.
+  const distinct = new Set(values);
+  if (distinct.size > 1) {
+    return {
+      status: "ambiguous",
+      value: values[0],
+      anomaly: {
+        where: `informationField(${field})`,
+        detail:
+          `"${field}=" appears ${values.length} times with ${distinct.size} different values ` +
+          `(${[...distinct].map((v) => `"${truncate(v)}"`).join(", ")}). Which one the uploader meant is not readable from here.`,
+      },
+    };
+  }
+
+  const value = values[0];
+  if (!value) return { status: "empty" };
+
+  const anomaly = fieldValueAnomaly(field, value);
+  if (anomaly) return { status: "ambiguous", value, anomaly };
+  return { status: "parsed", value };
+}
+
+/**
+ * Value-or-null convenience over `parseInformationField`.
+ *
+ * An `ambiguous` parse returns its raw value here rather than null, so a caller
+ * that does not ask about ambiguity behaves exactly as before — conservatively.
+ * Callers that make a RIGHTS decision must use `parseInformationField` and
+ * treat `ambiguous` as a parse failure; resolve() does.
  */
 export function informationField(wikitext: string, field: string): string | null {
-  const re = new RegExp(`\\|\\s*${field}\\s*=([^\\n]*(?:\\n(?!\\s*[|}])[^\\n]*)*)`, "i");
-  const m = re.exec(wikitext);
-  if (!m) return null;
-  const value = m[1].replace(/\s+/g, " ").trim();
-  return value || null;
+  const parsed = parseInformationField(wikitext, field);
+  switch (parsed.status) {
+    case "absent":
+    case "empty":
+      return null;
+    case "parsed":
+    case "ambiguous":
+      return parsed.value || null;
+  }
 }
 
 /**
@@ -409,12 +561,55 @@ export function createCommonsProvider(options: CommonsProviderOptions): MediaPro
   const maxCategories = options.maxCategories ?? 8;
   const maxPerCategory = options.maxPerCategory ?? 200;
 
+  // --- What this provider can PROVE about the responses it read -------------
+  //
+  // `{ status: "no_results" }` is a claim, and a claim from the component whose
+  // reader might be the broken thing. So every call is counted, and every
+  // response that arrives in a shape this code does not recognise is recorded
+  // as an anomaly rather than quietly coalescing to an empty array — which is
+  // what `r.data.query?.search ?? []` did, and which is indistinguishable from
+  // Commons genuinely having nothing.
+  let responsesParsed = 0;
+  let responsesFailed = 0;
+  let parseAnomalies: ParseAnomaly[] = [];
+
+  function resetAttestation(): void {
+    responsesParsed = 0;
+    responsesFailed = 0;
+    parseAnomalies = [];
+  }
+
+  function attestation(): ProviderAttestation {
+    return { responsesParsed, responsesFailed, parseAnomalies: [...parseAnomalies] };
+  }
+
+  /** Every API call goes through here so nothing can be read without being counted. */
+  async function call<T>(params: Record<string, string>): Promise<ApiResult<T>> {
+    const r = await client.call<T>(params);
+    if (r.ok) responsesParsed++;
+    else responsesFailed++;
+    return r;
+  }
+
+  /**
+   * A response that parsed as JSON but does not contain the key we asked for.
+   *
+   * MediaWiki returns `query.search: []` for a search with no hits, so an
+   * ABSENT key is not "no hits" — it is a response we do not understand.
+   * Recorded as an anomaly and reported as zero rows: the search continues (a
+   * later query may still find something) but the run can no longer classify
+   * as NO_RESULTS, because NO_RESULTS means we read the answer.
+   */
+  function noteShapeAnomaly(where: string, detail: string): void {
+    parseAnomalies.push({ where, detail });
+  }
+
   async function searchTitles(
     srsearch: string,
     namespace: 6 | 14,
     limit: number
   ): Promise<ApiResult<{ title: string; snippet?: string }[]>> {
-    const r = await client.call<SearchResponse>({
+    const r = await call<SearchResponse>({
       action: "query",
       list: "search",
       srsearch,
@@ -422,7 +617,16 @@ export function createCommonsProvider(options: CommonsProviderOptions): MediaPro
       srlimit: String(limit),
     });
     if (!r.ok) return r;
-    return { ok: true, data: r.data.query?.search ?? [] };
+    if (!Array.isArray(r.data.query?.search)) {
+      noteShapeAnomaly(
+        "commons list=search",
+        `the response to srsearch="${srsearch}" (ns ${namespace}) carried no query.search array. MediaWiki returns an ` +
+          "EMPTY array for a search with no hits, so a missing one is a response shape this code does not understand — " +
+          "not a finding that nothing matched."
+      );
+      return { ok: true, data: [] };
+    }
+    return { ok: true, data: r.data.query.search };
   }
 
   /** Enumerate a category IN FULL, following continuations. */
@@ -441,9 +645,17 @@ export function createCommonsProvider(options: CommonsProviderOptions): MediaPro
         cmlimit: "500",
       };
       if (cmcontinue) params.cmcontinue = cmcontinue;
-      const r = await client.call<CategoryMembersResponse>(params);
+      const r = await call<CategoryMembersResponse>(params);
       if (!r.ok) return r;
-      for (const m of r.data.query?.categorymembers ?? []) titles.push(m.title);
+      if (!Array.isArray(r.data.query?.categorymembers)) {
+        noteShapeAnomaly(
+          "commons list=categorymembers",
+          `enumerating ${categoryTitle} (${type}) returned a body with no query.categorymembers array. An empty ` +
+            "category yields an empty array, so this is an unrecognised response rather than an empty category."
+        );
+        break;
+      }
+      for (const m of r.data.query.categorymembers) titles.push(m.title);
       cmcontinue = r.data.continue?.cmcontinue;
       if (!cmcontinue || titles.length >= maxPerCategory) break;
     }
@@ -455,7 +667,7 @@ export function createCommonsProvider(options: CommonsProviderOptions): MediaPro
     const out = new Map<string, PageInfo>();
     for (let i = 0; i < titles.length; i += 50) {
       const batch = titles.slice(i, i + 50);
-      const r = await client.call<PagesResponse>({
+      const r = await call<PagesResponse>({
         action: "query",
         titles: batch.join("|"),
         prop: "categories|imageinfo",
@@ -464,7 +676,15 @@ export function createCommonsProvider(options: CommonsProviderOptions): MediaPro
         iiprop: "size|mime",
       });
       if (!r.ok) return r;
-      for (const p of r.data.query?.pages ?? []) out.set(p.title, p);
+      if (!Array.isArray(r.data.query?.pages)) {
+        noteShapeAnomaly(
+          "commons prop=categories|imageinfo",
+          `the metadata batch for ${batch.length} title(s) carried no query.pages array. Every candidate in this ` +
+            "batch would proceed with a title-only descriptor, which weakens the entity gate silently."
+        );
+        continue;
+      }
+      for (const p of r.data.query.pages) out.set(p.title, p);
     }
     return { ok: true, data: out };
   }
@@ -473,6 +693,7 @@ export function createCommonsProvider(options: CommonsProviderOptions): MediaPro
     approval: COMMONS_APPROVAL,
 
     async search(queries: ProviderQuery[], limits): Promise<SearchResult> {
+      resetAttestation();
       const queryLog: SearchResult["queryLog"] = [];
       const fileTitles = new Map<string, ProviderQuery>();
       const acceptedCategories = new Map<string, ProviderQuery>();
@@ -576,10 +797,17 @@ export function createCommonsProvider(options: CommonsProviderOptions): MediaPro
       }
 
       if (fileTitles.size === 0) {
+        // `no_results` here is a POSITIVE claim — "every query ran and Commons
+        // has nothing" — so it ships with the count of responses actually read
+        // and parsed, and with any response whose shape this code did not
+        // recognise. Without that, an empty shelf and a broken reader produce
+        // the identical line in a summary, which is the bug this whole taxonomy
+        // exists to make impossible.
         return {
           outcome: hardFailure ?? { status: "no_results" },
           candidates: [],
           queryLog,
+          attestation: attestation(),
         };
       }
 
@@ -609,14 +837,14 @@ export function createCommonsProvider(options: CommonsProviderOptions): MediaPro
         };
       });
 
-      return { outcome: { status: "ok" }, candidates, queryLog };
+      return { outcome: { status: "ok" }, candidates, queryLog, attestation: attestation() };
     },
 
     async resolve(candidate: DiscoveredCandidate): Promise<ResolveResult> {
       // ONE request, carrying everything needed to cross-check a claim:
       // structured licence metadata, the raw wikitext the badge is generated
       // from, the embedded EXIF, and the file's own sha1.
-      const r = await client.call<PagesResponse>({
+      const r = await call<PagesResponse>({
         action: "query",
         titles: candidate.providerRef,
         prop: "imageinfo|revisions|categories",
@@ -628,7 +856,22 @@ export function createCommonsProvider(options: CommonsProviderOptions): MediaPro
       });
       if (!r.ok) return { outcome: r.outcome, provenance: null };
 
-      const page = r.data.query?.pages?.[0];
+      // A body with no `query.pages` array at all is not "the page is missing"
+      // — MediaWiki reports a missing page AS a page, with `missing: true`. The
+      // two must not collapse: one is a fact about Commons, the other is a
+      // response we did not understand.
+      if (!Array.isArray(r.data.query?.pages)) {
+        return {
+          outcome: {
+            status: "malformed",
+            detail:
+              `The resolve response for ${candidate.providerRef} carried no query.pages array. A missing file is ` +
+              "reported by MediaWiki as a page object with missing:true, so this is an unrecognised response shape.",
+          },
+          provenance: null,
+        };
+      }
+      const page = r.data.query.pages[0];
       if (!page || page.missing) {
         return {
           outcome: { status: "not_found", detail: `Commons file page missing: ${candidate.providerRef}` },
@@ -652,6 +895,33 @@ export function createCommonsProvider(options: CommonsProviderOptions): MediaPro
 
       const evidence: ProvenanceRecord["evidence"] = [];
       const conflicts: string[] = [];
+
+      // --- Can we read this page's own {{Information}} template at all? -----
+      //
+      // THE CHECK THE `|other versions=` BUG NEEDED. Every field this module
+      // makes a rights decision from is parsed here first, and a parse that
+      // produced something implausible stops the candidate as an explicit
+      // PARSE FAILURE rather than flowing on as a "populated permission field"
+      // — which is a rights CONFLICT, a refusal, and indistinguishable in the
+      // summary from a file that genuinely carries a condition.
+      //
+      // Both are refusals; the difference is entirely in what they tell a
+      // human. One says "read this file's permission note", the other says
+      // "fix this parser". The first bug cost four photographs because it only
+      // ever said the first thing.
+      for (const field of ["permission", "author", "source"] as const) {
+        const parsed = parseInformationField(wikitext, field);
+        if (parsed.status !== "ambiguous") continue;
+        return {
+          outcome: {
+            status: "malformed",
+            detail:
+              `Could not read {{Information|${field}=}} on ${candidate.providerRef}: ${parsed.anomaly.detail} ` +
+              "Refused as a PARSE FAILURE, not as a rights finding — this says the reader is wrong, not the file.",
+          },
+          provenance: null,
+        };
+      }
 
       // --- Licence: the template, read from raw wikitext -------------------
       const fromText = licenceFromWikitext(wikitext);

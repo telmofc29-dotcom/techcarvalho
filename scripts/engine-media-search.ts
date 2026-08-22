@@ -16,6 +16,18 @@
 // how those four were done; this is the machine doing the same job with its
 // reasoning written down.
 //
+// WHAT THE OUTPUT LEADS WITH, AND WHY
+// -----------------------------------
+// Every subject reports one of the seven states in
+// src/lib/media/providers/outcome.ts, at the TOP of its block and again in the
+// summary table. That is not presentation: in 2026-08 a parser bug refused four
+// correctly-licensed photographs, and the line this script printed was
+// identical to the line it prints for a product that genuinely has no
+// photography anywhere. The states exist so that a search which failed closed
+// cannot impersonate a search which came back empty, and the summary ends by
+// naming any subject whose outcome is a statement about THIS CODE rather than
+// about the catalogue.
+//
 // MODES
 //   (default)    Search and report. Reads only. Writes nothing anywhere.
 //   --acquire    Additionally download the winning file into media-private and
@@ -44,6 +56,12 @@ import { createHash } from "node:crypto";
 import { loadEnvLocal, createAdminClient, type IngestClient } from "./_shared";
 import { MEDIA_PRIVATE_BUCKET } from "../src/lib/media/constants";
 import { runAcquisitionPipeline, type PipelineReport } from "../src/lib/media/providers/pipeline.ts";
+import {
+  isEngineFault,
+  OUTCOME_MEANINGS,
+  SEARCH_OUTCOME_STATES,
+  type SearchOutcomeState,
+} from "../src/lib/media/providers/outcome.ts";
 import { buildEnabledProviders, ALL_PROVIDER_APPROVALS } from "../src/lib/media/providers/registry.ts";
 import { DEFAULT_RANKING_CONTEXT } from "../src/lib/media/providers/ranking.ts";
 import { detectRightsDrift } from "../src/lib/media/providers/rights-verification.ts";
@@ -248,7 +266,33 @@ async function loadSubjects(client: IngestClient, options: Options): Promise<Sub
 
 function printReport(subject: Subject, report: PipelineReport): void {
   const line = "=".repeat(78);
-  console.log(`\n${line}\n${subject.identity.canonicalName}  [${subject.slug}]  status=${report.status}\n${line}`);
+  console.log(
+    `\n${line}\n${subject.identity.canonicalName}  [${subject.slug}]  ${report.outcome.state}\n` +
+      `  (legacy status=${report.status})\n${line}`
+  );
+
+  // FIRST, not last. The 2026-08 parser bug survived because the interesting
+  // sentence was at the bottom of sixty candidate blocks and the line at the
+  // top said the same thing it says for a genuinely empty search.
+  console.log(`\n-- OUTCOME: ${report.outcome.state} --`);
+  console.log(`  ${report.outcome.headline}`);
+  console.log(`  ${OUTCOME_MEANINGS[report.outcome.state]}`);
+  console.log("  established by:");
+  for (const b of report.outcome.because) console.log(`    · ${b}`);
+  const ev = report.outcome.evidence;
+  console.log(
+    `  evidence: providers ${ev.providersSearched}/${ev.providersOffered} searched, ` +
+      `${ev.responsesParsed} response(s) parsed, ${ev.responsesFailed} failed, ` +
+      `${ev.parseAnomalies.length} parse anomal(ies), ${ev.candidates} candidate(s), ${ev.accepted} accepted.`
+  );
+  for (const a of ev.parseAnomalies) console.log(`    PARSE ANOMALY [${a.where}]: ${a.detail}`);
+  for (const s of report.outcome.suspicions) console.log(`    SUSPICION [${s.kind}]: ${s.detail}`);
+  if (isEngineFault(report.outcome.state)) {
+    console.log(
+      "  THIS IS NOT A FINDING ABOUT THE CATALOGUE. The search either did not happen or was not understood, and " +
+        "nothing here may be recorded as 'no photograph exists'."
+    );
+  }
 
   console.log(`\n-- QUERIES ISSUED (${report.queryLog.length}) --`);
   for (const q of report.queryLog) {
@@ -304,7 +348,10 @@ function notesFor(report: PipelineReport): string {
     .map((e) => `  REJECTED ${e.rejection?.code}: ${e.descriptor.title} — ${e.rejection?.message}`)
     .join("\n");
   return [
-    `AUTOMATED PROVIDER SEARCH ${new Date().toISOString()} — status=${report.status}`,
+    `AUTOMATED PROVIDER SEARCH ${new Date().toISOString()} — OUTCOME ${report.outcome.state} (status=${report.status})`,
+    OUTCOME_MEANINGS[report.outcome.state],
+    ...report.outcome.because.map((b) => `  · ${b}`),
+    ...report.outcome.suspicions.map((s) => `  SUSPICION [${s.kind}]: ${s.detail}`),
     "Providers approved for search: " +
       ALL_PROVIDER_APPROVALS.filter((a) => a.approvedForSearch).map((a) => a.label).join(", "),
     "",
@@ -539,7 +586,13 @@ async function main() {
   );
   console.log(`\n${subjects.length} subject(s) to search. ${existingSourceUrls.size} source URL(s) already in the library.\n`);
 
-  const summary: { slug: string; status: string; accepted: number; rejected: number }[] = [];
+  const summary: {
+    slug: string;
+    outcome: SearchOutcomeState;
+    status: string;
+    accepted: number;
+    rejected: number;
+  }[] = [];
 
   for (const subject of subjects) {
     const report = await runAcquisitionPipeline(subject.identity, buildEnabledProviders(subject.identity), {
@@ -556,12 +609,13 @@ async function main() {
     printReport(subject, report);
     summary.push({
       slug: subject.slug,
+      outcome: report.outcome.state,
       status: report.status,
       accepted: report.evaluations.filter((e) => e.accepted).length,
       rejected: report.evaluations.filter((e) => !e.accepted).length,
     });
 
-    if ((options.acquire || options.dryAcquire) && report.status === "resolved") {
+    if ((options.acquire || options.dryAcquire) && report.outcome.state === "USABLE_CANDIDATE_FOUND") {
       await acquire(client, subject, report, options.dryAcquire && !options.acquire);
     }
     else if (options.notes && subject.requirementId) {
@@ -575,14 +629,47 @@ async function main() {
   }
 
   console.log(`\n${"=".repeat(78)}\nSUMMARY\n${"=".repeat(78)}`);
-  console.log("slug".padEnd(36) + "status".padEnd(26) + "acc".padStart(5) + "rej".padStart(5));
+  console.log("slug".padEnd(32) + "outcome".padEnd(24) + "legacy status".padEnd(24) + "acc".padStart(5) + "rej".padStart(5));
   for (const s of summary) {
-    console.log(s.slug.padEnd(36) + s.status.padEnd(26) + String(s.accepted).padStart(5) + String(s.rejected).padStart(5));
+    console.log(
+      s.slug.padEnd(32) +
+        s.outcome.padEnd(24) +
+        s.status.padEnd(24) +
+        String(s.accepted).padStart(5) +
+        String(s.rejected).padStart(5)
+    );
   }
-  console.log(
-    "\nFinding nothing is a legitimate result. A 'no_results' row means every query ran and the photograph " +
-      "does not exist at an approved provider yet — blocked on photography, not on permission."
-  );
+
+  // The seven states, spelled out, because a summary table nobody can decode
+  // is the same as no summary at all.
+  console.log("\nOUTCOME STATES");
+  for (const state of SEARCH_OUTCOME_STATES) {
+    const n = summary.filter((s) => s.outcome === state).length;
+    console.log(`  ${state.padEnd(24)}${String(n).padStart(3)}  ${OUTCOME_MEANINGS[state]}`);
+  }
+
+  // The line that matters most, and the one the 2026-08 bug had no way to
+  // produce: a run can now say "some of these answers are about ME".
+  const faults = summary.filter((s) => isEngineFault(s.outcome));
+  if (faults.length > 0) {
+    console.log(
+      `\n${faults.length} of ${summary.length} subject(s) ended in a state that is NOT a finding about the ` +
+        "catalogue — the search either did not happen or was not understood:"
+    );
+    for (const f of faults) console.log(`  ${f.outcome}  ${f.slug}`);
+    console.log(
+      "Do not record any of these as 'no source found'. Read the per-subject OUTCOME block above: a " +
+        "PROVIDER_PARSE_FAILURE is a defect in this code, and the whole reason the taxonomy exists is that in " +
+        "2026-08 exactly this shape reported as a clean negative for weeks while four good photographs sat unused."
+    );
+  } else {
+    console.log(
+      "\nEvery subject ended in a state established positively from what the providers actually returned. Finding " +
+        "nothing is a legitimate result: a NO_RESULTS row means every query ran, the responses were read and " +
+        "parsed, and the photograph does not exist at an approved provider yet — blocked on photography, not on " +
+        "permission."
+    );
+  }
 }
 
 main().catch((e) => {

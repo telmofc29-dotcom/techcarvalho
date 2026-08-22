@@ -1,5 +1,11 @@
+-- STATUS 2026-08-22: APPLIED IN PRODUCTION.
+-- Verified BEHAVIOURALLY (probed as `anon` against production), not from this
+-- filename and not from an SQL-editor result message. Both have been wrong in
+-- this project before: a migration once reported "Success" without applying,
+-- and these headers said NOT APPLIED while the functions were live -- which
+-- cost real time during the 2026-08-22 security audit.
 -- ============================================================================
--- Trend decay and expiry — NOT YET APPLIED
+-- (An earlier revision of this header claimed it was not applied. It is.)
 -- ============================================================================
 -- Drafted, not run. Lives in migrations_pending/ so no tooling picks it up;
 -- move it into migrations/ only once it has actually been executed.

@@ -73,6 +73,22 @@ export const MATCH_CONFIRMED = 0.75;
 export const MATCH_REJECTED = 0.4;
 
 /**
+ * Ceiling imposed on a title that names TWO products.
+ *
+ * A comparison or composite shot — "RTX 5080 and RTX 5090 side by side", "Core
+ * Ultra 9 285K and Core Ultra 7 265K" — contains every discriminator of both
+ * products, a curated category for one of them, and the brand. It therefore
+ * scored 0.99 for BOTH, and the same image would have been published on two
+ * product pages, each caption implying it depicts that product.
+ *
+ * Kept just below `MATCH_CONFIRMED` rather than at zero because the file is not
+ * evidence AGAINST either product — it genuinely contains both. It simply
+ * cannot be evidence FOR either one, and `ambiguous` is the verdict this module
+ * already has for "plausible, not evidenced". It fails closed.
+ */
+export const MULTI_PRODUCT_CEILING = MATCH_CONFIRMED - 0.01;
+
+/**
  * Tokens that mean "this depicts something ADJACENT to the product".
  *
  * Not automatically disqualifying — a box shot is still the product, sort of —
@@ -135,6 +151,76 @@ const VIDEO_FRAME_PATTERNS: RegExp[] = [
 const NON_PHOTOGRAPHIC_MIME = new Set(["image/svg+xml", "image/gif", "application/pdf"]);
 
 /**
+ * Alphabetic tokens that IMMEDIATELY PRECEDE a number in this product's own
+ * name — "rtx" in "GeForce RTX 5080", "ultra" in "Core Ultra 9 285K",
+ * "hero" in "GoPro HERO13", "playstation" in "PlayStation 5 Pro".
+ *
+ * A number wearing one of these is a MODEL number in this product's own family.
+ * That is the difference between "RTX 5090" appearing in a title and "2160p" or
+ * "(03)" appearing in one, and it is the distinction the composite-image defect
+ * turned on.
+ */
+function modelLeadTokens(identity: SubjectIdentity): Set<string> {
+  const out = new Set<string>();
+  for (const name of [identity.canonicalName, ...identity.aliases, identity.family ?? ""]) {
+    if (!name) continue;
+    const stream = identityTokens(name);
+    for (let i = 1; i < stream.length; i++) {
+      if (/^\d+$/.test(stream[i]) && /^[a-z]+$/.test(stream[i - 1])) out.add(stream[i - 1]);
+    }
+  }
+  return out;
+}
+
+/**
+ * Which foreign numbers in a title are SIBLING MODEL numbers rather than
+ * incidental ones?
+ *
+ * Two independent tests, both derived from measured failures rather than
+ * invented:
+ *
+ * 1. **Same digit length as one of our own model numbers.** 5090 against 5080,
+ *    265 against 285, 9700 against 9800. Sibling model numbers within a family
+ *    are minted to the same width, which is exactly what makes them confusable
+ *    in the first place. Restricted to two digits or more: a lone "2" next to a
+ *    PlayStation 5 is a quantity, not a PlayStation 2.
+ * 2. **Led by the same alphabetic token that leads ours.** "HERO9" beside
+ *    "HERO13", "Ultra 7" beside "Ultra 9", "EOS R6" beside "EOS R5". This is
+ *    the case single-digit models fall into, and the one the earlier
+ *    `length >= 2` filter could not see at all.
+ */
+function siblingModelNumbers(input: {
+  foreign: string[];
+  requiredNumbers: string[];
+  titleStream: string[];
+  leads: Set<string>;
+}): { token: string; why: string }[] {
+  const hits: { token: string; why: string }[] = [];
+  for (const token of input.foreign) {
+    // "(03)" and friends are sequence numbers in every catalogue on Commons.
+    if (/^0\d$/.test(token)) continue;
+
+    if (token.length >= 2 && input.requiredNumbers.some((n) => n.length === token.length)) {
+      hits.push({
+        token,
+        why: `"${token}" has the same digit width as this product's own model number (${input.requiredNumbers.join(", ")}), which is what a sibling model in the same family looks like`,
+      });
+      continue;
+    }
+
+    const index = input.titleStream.indexOf(token);
+    const lead = index > 0 ? input.titleStream[index - 1] : null;
+    if (lead && input.leads.has(lead)) {
+      hits.push({
+        token,
+        why: `"${lead} ${token}" repeats the model-name shape of this product ("${lead}" leads our own number too), so it names another model in the same family`,
+      });
+    }
+  }
+  return hits;
+}
+
+/**
  * How well does this item's own description match the product's identity?
  *
  * The discriminator rule is absolute in both directions:
@@ -160,7 +246,8 @@ export function assessEntityMatch(
     };
   }
 
-  const titleToks = new Set(identityTokens(descriptor.title));
+  const titleStream = identityTokens(descriptor.title);
+  const titleToks = new Set(titleStream);
   const fileToks = new Set(identityTokens(descriptor.fileName ?? ""));
   const descToks = new Set(identityTokens(descriptor.descriptionText ?? ""));
   const productToks = new Set(identityTokens(identity.canonicalName));
@@ -181,6 +268,33 @@ export function assessEntityMatch(
   // Only a numeric token adjacent to a shared alphabetic token is a model
   // conflict; a stray "03" in "(03)" is a sequence number.
   const foreignModelNumbers = foreign.filter((t) => t.length >= 2 && !/^0\d$/.test(t));
+
+  // --- Hard cap: a title that names TWO products evidences NEITHER ----------
+  //
+  // THE DEFECT THIS CLOSES, measured 2026-08-22 before the fix:
+  //   File:NVIDIA GeForce RTX 5080 and RTX 5090 side by side.jpg
+  //     -> confirmed 0.99 for the 5080 AND confirmed 0.99 for the 5090
+  //   File:Intel Core Ultra 9 285K and Core Ultra 7 265K.jpg  -> 1.00 for BOTH
+  //   File:Nvidia RTX 5080 5090 FE coolers.png                -> 0.99
+  //
+  // The escape hatch below ("ours is present too, so the extra number is
+  // probably a sequence or a resolution") is sound for "(03)" and "2160p" and
+  // wrong for a sibling model, which is precisely what a comparison or
+  // composite photograph puts in its title. The real production trap,
+  // File:Nvidia RTX 5080 5090 FE PCB.png, failed closed only because the word
+  // "pcb" carries -0.5; the "coolers" variant of the same two-card frame sailed
+  // through at 0.99.
+  //
+  // A composite is not a photograph of either product for the purposes of a
+  // product page, so it is capped at `ambiguous` — recorded, explained, and not
+  // acquired.
+  const siblings = siblingModelNumbers({
+    foreign,
+    requiredNumbers: required.filter((t) => /^\d+$/.test(t)),
+    titleStream,
+    leads: modelLeadTokens(identity),
+  });
+
   if (foreignModelNumbers.length > 0) {
     // Distinguish "extra number that could be a model" from "the product's own
     // number is present too". If ours IS present, the extra is likelier a
@@ -202,10 +316,24 @@ export function assessEntityMatch(
           "the most dangerous candidate there is, so this rejects rather than scores.",
       };
     }
+    const incidental = foreignModelNumbers.filter((t) => !siblings.some((s) => s.token === t));
+    if (incidental.length > 0) {
+      signals.push({
+        name: "extra_number_in_title",
+        weight: -0.05,
+        detail: `Extra numeric token(s) ${incidental.join(", ")} alongside this product's own — likely a sequence or resolution, noted not trusted.`,
+      });
+    }
+  }
+
+  if (siblings.length > 0) {
     signals.push({
-      name: "extra_number_in_title",
-      weight: -0.05,
-      detail: `Extra numeric token(s) ${foreignModelNumbers.join(", ")} alongside this product's own — likely a sequence or resolution, noted not trusted.`,
+      name: "sibling_model_in_title",
+      weight: -0.3,
+      detail:
+        `The title also names ${siblings.map((s) => s.token).join(", ")}: ${siblings.map((s) => s.why).join("; ")}. ` +
+        `A frame containing two products cannot evidence either one, so confidence is capped at ` +
+        `${MULTI_PRODUCT_CEILING} and this can never confirm.`,
     });
   }
 
@@ -363,7 +491,12 @@ export function assessEntityMatch(
   }
 
   const raw = signals.reduce((acc, s) => acc + s.weight, 0);
-  const confidence = Math.max(0, Math.min(1, raw));
+  // The ceiling is applied to the NUMBER, not only to the verdict, so that
+  // every downstream consumer — ranking included — sees a confidence that
+  // agrees with the verdict. A weights change can never lift a two-product
+  // composite back over the line.
+  const ceiling = siblings.length > 0 ? MULTI_PRODUCT_CEILING : 1;
+  const confidence = Math.max(0, Math.min(ceiling, raw));
 
   let verdict: EntityMatchVerdict;
   let reason: string;
@@ -376,9 +509,14 @@ export function assessEntityMatch(
   } else {
     verdict = "ambiguous";
     reason =
-      `Confidence ${confidence.toFixed(2)} sits between ${MATCH_REJECTED} and ${MATCH_CONFIRMED}. ` +
-      "AMBIGUOUS FAILS CLOSED — it is not acquired and not proposed. 'Probably the right model' is exactly " +
-      "how a HERO12 ends up on a HERO13 page.";
+      siblings.length > 0
+        ? `The title names another model in the same family (${siblings.map((s) => s.token).join(", ")}), so ` +
+          `confidence is capped at ${MULTI_PRODUCT_CEILING} however well everything else matches. A comparison or ` +
+          "composite shot depicts two products and evidences neither; publishing it on one product's page would " +
+          "caption a picture of two things as a picture of one. AMBIGUOUS FAILS CLOSED."
+        : `Confidence ${confidence.toFixed(2)} sits between ${MATCH_REJECTED} and ${MATCH_CONFIRMED}. ` +
+          "AMBIGUOUS FAILS CLOSED — it is not acquired and not proposed. 'Probably the right model' is exactly " +
+          "how a HERO12 ends up on a HERO13 page.";
   }
 
   return { verdict, confidence, signals, reason };

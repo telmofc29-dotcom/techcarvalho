@@ -105,6 +105,17 @@ export type ReadinessEvidence = {
   bypassedHardBlockers: number;
   duplicateLeakageRate: number;
   humanDisagreementRate: number;
+  /**
+   * How many decisions a human actually reviewed, if known.
+   *
+   * REPORTING ONLY — it changes no verdict. With nothing reviewed the rate is
+   * computed as 1 so it fails closed, which is right. But printing "actual
+   * 1.0000" states a measurement that was never taken: it reads as "editors
+   * disagreed with every decision" when the truth is "no editor has looked at
+   * one". This project's own rule is that unmeasured must never be presentable
+   * as measured, and a readiness dashboard is the last place to break it.
+   */
+  humanReviewCount?: number;
   /** Recorded proof EXECUTIONS. Not a list of names — see the note above.
    *  Which of these actually count is decided by evaluateProof(). */
   proofRecords: ProofRecord[];
@@ -150,8 +161,16 @@ export function evaluateReadiness(evidence: ReadinessEvidence): ReadinessReport 
     evidence.bypassedHardBlockers <= READINESS.maxBypassedHardBlockers);
   need("Duplicate leakage rate", `<= ${READINESS.maxDuplicateLeakageRate}`, evidence.duplicateLeakageRate.toFixed(4),
     evidence.duplicateLeakageRate <= READINESS.maxDuplicateLeakageRate);
-  need("Human disagreement rate", `<= ${READINESS.maxHumanDisagreementRate}`, evidence.humanDisagreementRate.toFixed(4),
-    evidence.humanDisagreementRate <= READINESS.maxHumanDisagreementRate);
+  need(
+    "Human disagreement rate",
+    `<= ${READINESS.maxHumanDisagreementRate}`,
+    // Same verdict either way; only the wording changes. See humanReviewCount.
+    evidence.humanReviewCount === 0
+      ? "UNMEASURED — no decision has been reviewed by a human yet, so there is no " +
+        "observation to support any agreement rate. Blocks, as an unmeasured criterion must."
+      : evidence.humanDisagreementRate.toFixed(4),
+    evidence.humanDisagreementRate <= READINESS.maxHumanDisagreementRate
+  );
 
   // Derived, not asserted. A proof counts only if a recorded execution reached
   // the level that kind requires, passed, carried a real observation, and has
