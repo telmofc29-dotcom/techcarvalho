@@ -40,6 +40,9 @@ export async function runFreshness(supabase: Client): Promise<StageResult> {
     source_count: number;
   }[];
 
+  let bridged = 0;
+  const bridgeRejections: string[] = [];
+
   for (const c of candidates) {
     counters.examined++;
 
@@ -90,7 +93,13 @@ export async function runFreshness(supabase: Client): Promise<StageResult> {
       // (target, reason), so a nightly pass refreshes rather than accumulates.
       if (check.severity !== "high") continue;
 
-      await supabase.rpc("engine_upsert_update_proposal", {
+      // The RETURN VALUE IS CHECKED. It was not, and that is exactly how this
+      // bridge silently never worked: the RPC's guard list omitted
+      // 'stale_content', it answered 'rejected_invalid' every time, the job
+      // discarded the answer, and engine_job_runs recorded success. An
+      // operation that reports success while doing nothing is the failure
+      // class this project treats as its own bug category.
+      const { data: proposalResult, error: proposalError } = await supabase.rpc("engine_upsert_update_proposal", {
         p_content_id: c.kind === "content" ? c.entity_id : null,
         p_product_id: c.kind === "product" ? c.entity_id : null,
         p_discovery_id: null,
@@ -109,6 +118,16 @@ export async function runFreshness(supabase: Client): Promise<StageResult> {
         // the update-proposal job assigns.
         p_confidence: 0.3,
       });
+
+      if (proposalError) {
+        counters.failed++;
+      } else if (proposalResult === "rejected_invalid" || proposalResult === null) {
+        // A rejection is a real failure, not a no-op to shrug at.
+        counters.failed++;
+        bridgeRejections.push(`${c.kind}:${c.slug} reason=${check.reason === "broken_source_link" ? "broken_source" : "stale_content"} -> ${String(proposalResult)}`);
+      } else {
+        bridged++;
+      }
     }
   }
 
@@ -120,6 +139,6 @@ export async function runFreshness(supabase: Client): Promise<StageResult> {
       : counters.created > 0 || counters.deduped > 0
         ? "partial"
         : "failed";
-  await recordJobRun(supabase, JOB, status, counters, { staleDays: STALE_DAYS });
-  return { status, ...counters, detail: { staleDays: STALE_DAYS } };
+  await recordJobRun(supabase, JOB, status, counters, { staleDays: STALE_DAYS, bridged, bridgeRejections });
+  return { status, ...counters, detail: { staleDays: STALE_DAYS, bridged, bridgeRejections } };
 }
