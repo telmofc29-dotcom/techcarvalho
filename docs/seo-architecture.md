@@ -455,3 +455,438 @@ canonical override, OG article times), `src/lib/seo/jsonld.test.ts` (SearchActio
 `sku`, no Review/rating for `type='review'`, Organization authorship, `ItemList` counts, no
 fabricated price/offer fields), `src/lib/content/body-format.test.ts` (`excerptFromBody` word-boundary
 truncation and null-rather-than-fragment behaviour).
+
+---
+
+# Hub architecture and cannibalisation — pass 2, 2026-08-22
+
+Second pass, picking up the four gaps the first one named as unfinished: cannibalisation was never
+analysed, topic hubs were thin, product-family hubs did not exist, and the comparison articles were
+not grouped. Corpus at the time of writing: **81 published articles across 10 categories, 161
+`content_relationships` rows, 250 `content_tags` rows.** The product catalogue moved underneath this
+pass — from 6 published products to 36 — while other agents cleared media rights concurrently, which
+turned out to be a useful live test that every gate here is data-driven rather than hardcoded.
+
+## 7A. The measurement that changed the design: `anon` sees a different site
+
+Everything below was measured twice — once with an authenticated admin client and once with a plain
+`anon` client — because the two disagree badly, and the admin view is the misleading one.
+
+| Table | admin rows | `anon` rows | Rule |
+|---|---|---|---|
+| `content_relationships` | 161 | **161** | no publish gate |
+| `content_tags` | 250 | **250** | tags of published content |
+| `taxonomy_tags` | 59 | **59** | world-readable |
+| `product_families` | 7 | **7** | world-readable (`using (true)`) |
+| `content_products` | 123 | **9** (101 after the catalogue publish wave) | readable only when **both** sides are published |
+| `product_relationships` | 10 | **3** (18 after) | both sides published |
+| `product_tags` | 0 | **0** | tags of published products |
+
+The `content_products` line is the one that mattered. The obvious way to build a brand hub is
+"articles linked to this brand's products", and as an admin it returns real numbers — NVIDIA 9,
+Sony 9, DJI 6. As `anon` it returned **nothing** for every brand except Canon, because
+`"public can read content-product links when both published"`
+(`20260819202305_rls_policies.sql`) hid every row whose product was still unpublished.
+
+A hub built on that source would have looked complete in every admin preview and rendered an empty
+state in production — the exact "failure that looks like empty" shape this project has been bitten
+by before, except worse, because RLS denies by **returning zero rows, not an error**, so
+`logQueryError` would have had nothing to report. Brand coverage is therefore sourced from
+`content_tags` (§9.2), which is fully readable.
+
+## 8. Cannibalisation analysis
+
+Method: every published pair scored on shared **content tokens** in `primary_query` (stopwords
+stripped), cross-referenced against `search_intent`, content type, category, and the existing
+`content_relationships` graph. `intent_fingerprint` remains sparse — **34 of 81 (42%)** — so it
+confirms conflicts but cannot find them.
+
+The governing principle: **two pieces cannibalise only when they answer the same question for the
+same reader.** A shared entity is not a conflict, and a shared title formula is not a conflict.
+Nothing here recommends deleting a published article.
+
+### 8.1 The detector was flagging grammar, and missing the real thing
+
+`src/lib/admin/cannibalisation.ts` scores title-token overlap against the **shorter** title's token
+count, which makes short titles collide on structural words. Over the full published corpus it
+produced two flagged pairs, and **both were false positives**:
+
+```
+canon-6d-vs-6d-mark-ii                ↔  ps5-vs-ps5-pro-worth-it
+    shared: "vs", "worth", "it"
+do-you-need-rtx-5090-for-1440p-gaming ↔  psu-wattage-for-rtx-5090-build
+    shared: "rtx", "5090", "for"
+```
+
+Both are artefacts of this publication's two most common title shapes — `X vs Y: Is It Worth It?`
+and `Do You Actually Need X?`. **Fixed**: `tokenize()` now strips a conservative stopword list
+(structural words only — `pro`, `air`, `mini` and `max` are deliberately *not* in it, because they
+are model names in this catalogue). Re-run over the same 81 items:
+
+```
+before:  2 flagged pairs, 2 false positives, 0 real
+after:   2 flagged pairs, 0 false positives, 2 real
+```
+
+and the pair it now surfaces is the strongest genuine conflict on the site (§8.2). Locked in by four
+regression tests in `cannibalisation.test.ts`, including one asserting that `Mini`/`Pro` do not
+collapse onto `Air`.
+
+### 8.2 Confirmed conflicts, with recommendations
+
+**None of these are recommendations to delete or merge a published article.** Each is a
+relationship or targeting change, which is what actually consolidates a duplicate signal.
+
+#### Conflict 1 — Networking / mesh. The strongest overlap on the site. Verdict: **differentiate + declare**
+
+| Piece | Target | Type |
+|---|---|---|
+| `mesh-wifi-vs-single-router` | "mesh wifi vs single router" | comparison |
+| `mesh-router-buying-guide-2026` | "best mesh wifi router 2026" | comparison |
+
+Same category, same content type, 0.75 query-token overlap, and both bodies answer *"should I buy a
+mesh system"*. They are **not currently related to each other in any way**: the first is declared
+`supporting_of` `home-wifi-troubleshooting-before-buying-hardware`, and the second is a pillar for
+two entirely different pieces.
+
+**Recommend: differentiate, do not merge.** These are a genuine decide-then-choose pair — "do I need
+mesh at all" and "which mesh system" are different questions with different commercial value. The fix
+is one relationship row and one query retarget:
+
+- add `mesh-wifi-vs-single-router --supporting_of--> mesh-router-buying-guide-2026`, making the
+  buying guide the pillar for mesh purchase intent;
+- retarget `mesh-router-buying-guide-2026`'s `primary_query` away from the generic "best mesh wifi
+  router 2026" toward the Wi-Fi 6E-vs-7 framing its own title already promises, so the two stop
+  bidding for the same head term.
+
+Until the relationship exists, the two pages keep splitting one signal. This is the finding that is
+costing something today. (The comparison-cluster work in §9.3 already links the two on-page — they
+now appear in each other's "Related comparisons" — but that is a navigational fix, not a targeting
+one, and does not substitute for the relationship row.)
+
+#### Conflict 2 — Wi-Fi generations. Verdict: **differentiate + re-parent**
+
+`wifi-7-explained-what-changes` ("what is Wi-Fi 7") vs `wifi-generations-explained-wifi-4-to-wifi-7`
+("wifi generations explained"). The generations piece covers Wi-Fi 7 as its closing section, so it
+competes with the dedicated piece on the narrower term.
+
+**Recommend: differentiate.** Keep both — the history explainer and the current-generation deep dive
+are different reader needs. But `wifi-7-explained-what-changes` is currently declared `supporting_of`
+**`mesh-router-buying-guide-2026`**, which is the wrong parent: it is a technology explainer, not a
+purchase-support piece. Re-point it to `wifi-generations-explained-wifi-4-to-wifi-7`.
+
+Secondary, same cluster: `wifi-connected-but-no-internet` and
+`home-wifi-troubleshooting-before-buying-hardware` overlap on diagnostic intent. The broader piece
+should be the pillar; recommend
+`wifi-connected-but-no-internet --supporting_of--> home-wifi-troubleshooting-before-buying-hardware`.
+
+#### Conflict 3 — Smartphones. Verdict: **retarget** (and the only place a merge is defensible)
+
+`which-flagship-phone-should-you-buy-2026` (guide) vs
+`iphone-17-pro-vs-galaxy-s26-ultra-vs-pixel-10-pro` (comparison). The comparison **is** the answer to
+the guide's query, and the pillar relationship is already declared in the right direction — the
+comparison is the pillar.
+
+**Recommend: retarget the guide first.** Its own subtitle promises "A Use-Case Guide", so point
+`primary_query` at a use-case term ("best phone for photography 2026" or similar) rather than "which
+flagship phone should I buy 2026", which the comparison owns. If no distinct intent survives that
+retarget, this is the single case on the site where folding the guide into the comparison would be
+defensible — but retargeting is the cheaper, reversible move and should be tried first.
+
+#### Conflict 4 — Canon DSLR buying. Verdict: **no action; already resolved by structure**
+
+`canon-dslr-buying-guide` vs `best-used-canon-dslr-beginners`, and (newly surfaced by the fixed
+detector) `canon-dslr-buying-guide` vs `canon-eos-60d-still-worth-it`. Both supporting pieces are
+already declared `supporting_of` the buying guide, and "used" / "for beginners" / "is the 60D still
+worth it" are real intent modifiers, not restatements.
+
+**Recommend: no change.** This is what a correctly-resolved conflict looks like, and it is the model
+for conflicts 1–3. The one thing that was missing — the supporting pieces visibly deferring to the
+pillar, with the pillar's own title as anchor text — is now rendered (§9.4).
+
+#### Conflict 5 — Computing / RTX 5090. Verdict: **no action**
+
+The three 5090 pieces named in the brief are **not cannibalising**:
+
+| Piece | Target query | Intent |
+|---|---|---|
+| `rtx-5090-vs-rtx-5080-worth-the-upgrade` | "rtx 5090 vs rtx 5080" | which card |
+| `do-you-need-rtx-5090-for-1440p-gaming` | "is rtx 5090 overkill for 1440p" | is it overkill at my resolution |
+| `psu-wattage-for-rtx-5090-build` | "what power supply do I need for RTX 5090" | what PSU do I need |
+
+Three distinct questions sharing one entity. The vs-piece is already the declared pillar of the 1440p
+piece, and the PSU piece correctly belongs to `pc-building-basics-first-build-guide`. The old
+detector's flag on the 1440p ↔ PSU pair was pure stopword noise (§8.1). **Recommend: no change.**
+
+#### Conflict 6 — the Canon comparison set. Verdict: **differentiate one title; group the rest**
+
+Six comparisons: `canon-6d-vs-6d-mark-ii`, `canon-70d-80d-90d-generation-differences`,
+`canon-90d-vs-eos-r10`, `canon-eos-r-vs-rp`, `canon-eos-r10-vs-r7`, `canon-eos-r5-vs-r6`. Each targets
+a distinct model pair, so this is **not** an intent conflict. The real defect was structural: three of
+the six had no `content_relationships` row connecting them to any of the others, and nothing gathered
+them into a hub. Fixed in §9.1 and §9.3.
+
+One genuine targeting risk remains. `canon-90d-vs-eos-r10` is titled *"Canon 90D vs Entry
+Mirrorless"* but targets `canon 90d vs r10`. Because the title never names the R10, it reads in a
+SERP as another "Canon 90D" page and competes with `canon-70d-80d-90d-generation-differences` on that
+term. **Recommend: rename the title to name the R10 explicitly.** It is the only Canon comparison
+whose title and target query disagree.
+
+#### Conflict 7 — the "Do You Actually Need X" family. Verdict: **no consolidation**
+
+The brief flagged these as suspects. **They are not a cannibalisation cluster.** Seventeen published
+pieces share the formula, and they name seventeen different decisions: mesh, a yearly phone upgrade,
+an RTX 5090, 4K/8K video, PSU wattage, a star tracker, an editing PC, a PS5 Pro, an entry mirrorless
+body. The only thing they share is grammar — which is precisely what produced both of the detector's
+historical false positives.
+
+**Recommend: no consolidation.** Two smaller, real risks worth acting on:
+
+- SERP self-similarity: seventeen titles opening with the same five words are hard to tell apart in a
+  results page. Where the entity does not already lead the title, lead with it.
+- The formula hides the intent from the detector, which is why the stopword fix (§8.1) mattered more
+  here than the overlap threshold did.
+
+### 8.3 A data-integrity finding: 33 relationship pairs are stored twice
+
+`content_relationships` is documented — in its own migration header, and in `CLAUDE.md` — as
+directional, with the reverse inferred at query time and **never inserted**. Production does not
+match:
+
+```
+content_relationships rows:        161
+distinct pairs:                    128
+pairs stored in BOTH directions:    33
+```
+
+Thirty of those are a `pillar_of` row plus its mirrored `supporting_of` row (e.g.
+`ps5-vs-ps5-pro-worth-it --pillar_of--> ps5-digital-vs-disc-edition` *and*
+`ps5-digital-vs-disc-edition --supporting_of--> ps5-vs-ps5-pro-worth-it`); three are mirrored
+`related_to` pairs.
+
+The admin Server Action is **not** the cause — `addContentRelationship`
+(`src/app/admin/(dashboard)/content/actions.ts`) inserts only the forward row and says so. The
+duplicates came in through the content ingestion data files, which declare both directions.
+
+Both spellings assert the same thing, so nothing is *contradictory*, but the redundancy is a live
+hazard: any consumer that queries both directions and concatenates gets each such piece twice.
+`classifyClusterEdges()` (`src/lib/public/content-cluster.ts`) normalises them to one edge per pair
+and is unit-tested on exactly this case, so the public site is safe. **Recommend: dedupe the rows and
+drop the mirrored declarations from the ingestion data files**, so the table matches its own
+documented contract. Not executed here — this pass does not write to content tables.
+
+### 8.4 Topic hubs that were evaluated and rejected
+
+The brief asked for topic hubs. A `/topics/[slug]` page per tag was evaluated against every tag
+carrying five or more published pieces, and **every candidate was rejected**, because each duplicated
+a hub that already exists. Publishing them would have been internal cannibalisation dressed up as
+coverage — and the brief's own rule is that a hub must earn its existence.
+
+The measurement is "what fraction of an existing category hub's articles would this topic hub
+restate":
+
+| Tag | Published | Max category coverage | Verdict |
+|---|---|---|---|
+| `buying-guide` | 22 | spans 9 categories | format tag — duplicates `/articles?type=guide` |
+| `comparison` | 20 | spans 8 categories | format tag — duplicates `/articles?type=comparison` |
+| `gaming` | 15 | **93% of `/gaming`** | duplicates the category hub |
+| `pc-hardware` | 14 | 56% of `/computing` | 80% of `amd` — would compete with the brand hubs |
+| `canon` | 11 | **85% of `/cameras-photography`** | owned by `/manufacturers/canon` |
+| `astrophotography` | 10 | **100% of `/astrophotography`** | exact duplicate of the category hub |
+| `playstation` | 10 | 67% of `/gaming` | 87% overlap with `xbox`; brand intent owned by `/manufacturers/sony` |
+| `gpu` | 9 | 38% of `/computing` | fully contains `nvidia` — would compete with the brand hubs |
+| `networking` | 8 | **100% of `/networking`** | exact duplicate |
+| `xbox` | 8 | 53% of `/gaming` | 87% overlap with `playstation` |
+| `troubleshooting` | 8 | spans 5 categories | format tag |
+| `wifi` | 7 | **100% of `/networking`** | exact duplicate — the same seven articles |
+| `smartphones` | 6 | **100% of `/smartphones`** | exact duplicate |
+| `ai` | 6 | **100% of `/ai-hardware`** | exact duplicate |
+| `nvidia` / `amd` | 6 / 5 | — | brand tags — owned by `/manufacturers/*` |
+| `smart-home` | 5 | **100% of `/smart-home-robots`** | exact duplicate |
+
+`/topics/wifi` would have listed the same seven articles as `/networking`, under a different URL,
+competing with it. `/topics/canon` would have restated 85% of `/cameras-photography` while competing
+with `/manufacturers/canon` for the brand term. The two cross-cutting candidates that survived the
+category test — `pc-hardware` and `gpu` — fail the second test instead: `gpu` fully contains the
+`nvidia` tag and `pc-hardware` covers 80% of `amd`, so both would have competed with the brand hubs
+built in §9.2.
+
+**The topic layer is therefore delivered by hubs that map onto entities the database already models**
+— categories, content types, brands, product lines — rather than by a new tag-URL space. See §9. If a
+genuinely cross-cutting topic ever accumulates coverage that no existing hub owns, the gate to apply
+is the one in this table, not a raw article count.
+
+## 9. What was built
+
+### 9.1 Product-family hubs — `/families/[slug]` (closes §6.1)
+
+New route, plus `src/lib/public/family-detail.ts`. Each hub lists the line's **published** bodies in
+release order (oldest first, so generational differences read in sequence) and the published articles
+covering them.
+
+The hard requirement was that a hub must be correct for a family whose members are *mostly
+unpublished*, since most of this catalogue is gated on media rights and other agents were publishing
+into it live:
+
+- every product query filters `is_published = true`, so an unpublished body is never linked — it
+  would be a public 404, because `/products/[slug]` filters the same way;
+- the page never states or implies how many members the line has in total, only what it shows;
+- indexability is computed from live rows (§9.5), so a family flips from empty to populated to
+  indexable on its own.
+
+That last point was verified accidentally and conclusively: mid-pass the catalogue went from 6 to 36
+published products, and the family hubs went from 3 qualifying to 7 with no code change. A
+link-integrity sweep across all 7 family hubs, all 15 brand hubs, 7 article pages and 2 product pages
+then confirmed **zero links to an unpublished product or article**.
+
+Two-way linking: product sidebar to family (the family name was previously plain text linking
+nowhere), product **breadcrumb** to family (the line is the product's real parent level), brand hub to
+family, article to family, and family back out to products, articles, brand and category.
+
+### 9.2 Brand hubs — `/manufacturers/[slug]` becomes a real hub (the topic-hub layer)
+
+Manufacturer pages previously listed products and nothing else, so a brand with an unpublished
+catalogue rendered "No published products yet" and was `noindex` — 14 of 15 brands, per §4.
+
+They now also carry that brand's published coverage. **Sourced from the brand tag, matched by slug
+equality with the manufacturer** — not from `content_products`, for the reason in §7A: as `anon` that
+source was empty for every brand but Canon.
+
+Slug equality is deliberate, and its cost is documented rather than papered over. There is no
+hand-written manufacturer-to-tag mapping table, because a mapping is a place where someone later
+writes "DJI → drone" and thereby claims every drone article as DJI coverage. The consequence is that
+brands with no matching tag (Sony, Microsoft, DJI, GoPro, TP-Link, Roborock, Amazon) get no coverage
+list until an editor creates the tag — a content decision, correctly left to an editor. **Recommend:
+create `sony`, `microsoft` and `dji` tags**; the coverage exists (9, 6 and 6 pieces respectively, via
+product links) and only the tag is missing.
+
+Live effect: NVIDIA (6 published articles) and AMD (5) went from empty `noindex` shells to genuine
+hubs. `intel` (1 article), `tp-link`, `roborock` and `amazon` (0) correctly stay `noindex`.
+
+### 9.3 Comparison clusters
+
+The site publishes 20 "X vs Y" pieces and each one was an island. They are now grouped by shared
+**subject** tags, ranked by shared-tag count then recency (`rankComparisonSiblings`,
+`src/lib/public/content-cluster.ts`).
+
+Format tags (`comparison`, `buying-guide`, `troubleshooting`, …) are excluded from the scoring, and
+that exclusion is the whole mechanism: every comparison on the site carries the `comparison` tag, so
+counting it would make every comparison a sibling of every other one, and `buying-guide` alone spans
+nine categories. Pieces sharing no subject tag are used only to top the rail up from within the same
+category, and are returned with an empty `sharedTags` so the page labels them honestly ("Other
+comparisons in Computing") rather than implying a subject relationship that is not there.
+
+Each comparison also links up to the hub that owns it — family, then brand, then category. Verified
+live: `canon-eos-r5-vs-r6` now surfaces four sibling comparisons plus
+`/families/canon-eos-r-full-frame`, `/manufacturers/canon` and `/cameras-photography`.
+
+### 9.4 Pillar clusters are finally rendered (the consolidation half of §8)
+
+The highest-signal data on the site was being thrown away. `content_relationships` records **77**
+curated pillar/supporting rows, and `getArticleDetail` flattened all three relationship types into
+one undifferentiated bucket, **capped it at three**, and mixed it with same-type recency filler at the
+very bottom of the page. `relationship_type` was selected and then discarded.
+
+Now:
+
+- a **pillar** renders its whole cluster ("More in this guide series", with an `ItemList`).
+  `astrophotography-for-beginners` went from 3 of its 9 supporting pieces to all 9;
+  `canon-dslr-buying-guide` from 3 of 7 to all 7;
+- a **supporting piece** renders a "Part of" link high on the page, using the pillar's real title as
+  the anchor text. Descriptive anchor text is the point — a generic "read more" passes no signal about
+  what the target is about. This is what makes a supporting piece stop competing with its own pillar,
+  and it is the mechanism §6.3 proposed but never implemented.
+
+Verified live: `do-you-need-rtx-5090-for-1440p-gaming` now opens with *Part of our guide to: "RTX 5090
+vs RTX 5080: Is the Extra $1,000 Worth It?"*, and `tripod-vs-star-tracker` defers to the
+astrophotography pillar.
+
+A cluster of one is not rendered as a series (`MIN_CLUSTER_MEMBERS = 2`) — labelling a single link as
+a "series" overstates what exists.
+
+### 9.5 One definition of "this hub earned its place"
+
+`src/lib/public/hub-eligibility.ts` holds the thresholds, shared by the page (which sets `noindex`)
+and by `sitemap.ts` (which decides whether to submit). Two copies would drift, and the failure mode of
+drift is a sitemap advertising a URL that renders `noindex` — the fastest way to teach a crawler to
+distrust the file.
+
+| Hub | Indexable when |
+|---|---|
+| Manufacturer | ≥1 published product **or** ≥3 published articles |
+| Product family | ≥2 published products **or** (≥1 published product **and** ≥2 published articles) |
+
+Articles alone never qualify a family hub: a page whose only content is two article links duplicates
+the category hub. The manufacturer rule is a widening of the products-only rule from §4, which called
+NVIDIA and AMD thin while both carried real published coverage.
+
+### 9.6 Structured data added
+
+| Type | Where | Fields | Backed by |
+|---|---|---|---|
+| `CollectionPage` (+ nested `ItemList` under `mainEntity`) | `/families/[slug]`, `/manufacturers/[slug]` | `name`, `description`, `url`, `isPartOf`, `mainEntity` | the published products and articles the hub actually links to, in render order |
+| `ItemList` | pillar articles | `numberOfItems`, positioned `ListItem`s | the `content_relationships` cluster the page renders |
+
+`ItemList` alone says "here is a list"; `CollectionPage` says "this page **is** the collection", which
+is what makes the hub — rather than one of its members — the entity a crawler associates with the
+line. The list is nested under `mainEntity` rather than emitted as a second free-floating node, so the
+graph states which page owns it, and the nested node does not restate `@context`.
+
+Emitted only when the collection is non-empty: a `CollectionPage` declaring a collection of nothing is
+a worse claim than no markup at all, the same rule that already keeps `ItemList` off the "Coming soon"
+category hubs. The honesty rule is unchanged and re-asserted by test — **no `aggregateRating`,
+`review`, `reviewCount`, `price`, `offers` or `availability` on any hub** — and `numberOfItems` is the
+length of the list on that page, never a catalogue-wide total.
+
+### 9.7 Sitemap
+
+**160 URLs**, up from 104, and every addition is a real page that passes the same four rules as the
+rest of the file. New: 7 product-family hubs, and 10 more manufacturer hubs as brands acquired
+published products and coverage. `intel`, `tp-link`, `roborock` and `amazon` are excluded and are
+`noindex` on the page — verified to agree, entry by entry.
+
+## 10. Genuine bugs found in this pass
+
+1. **`relationship_type` was queried and discarded** (`article-detail.ts`). The site recorded which
+   piece is the hub of a cluster and then rendered every cluster as a flat list of three. Fixed.
+2. **33 relationship pairs stored in both directions**, against the documented contract (§8.3). A data
+   fix — recommended, not executed; the public site is defended against it in code and by test.
+3. **The cannibalisation detector matched on stopwords** (§8.1), giving a 100% false-positive rate over
+   the real corpus while missing the site's strongest conflict. Fixed.
+4. **`priority` on `next/image` is deprecated in Next 16** in favour of `preload`
+   (`node_modules/next/dist/docs/01-app/02-guides/upgrading/version-16.md`). Pre-existing, still used in
+   `[category]/page.tsx` and `cards.tsx`; new code in this pass avoids it. Not changed here — it is a
+   deprecation rather than a break, and both files were being edited concurrently by another agent.
+
+Two constrained-vocabulary notes, recorded as near-misses rather than bugs:
+
+- Adding `family_page` to the `LinkPosition` union failed the type check in `outbound-link.tsx`, whose
+  `Exclude<LinkPosition, "home">` exists specifically to stop that union drifting past the
+  `outbound_click_events` CHECK constraint. The guard worked exactly as designed. It was resolved by
+  widening `OutboundClickLinkPosition` and drafting
+  `supabase/migrations_pending/20260822_outbound_family_page_position.sql` — **drafted, not applied**,
+  so until it runs a family-hub outbound click is rejected at insert and logged rather than lost
+  silently. Nothing is affected today: family hubs carry no outbound links.
+- `analytics_events.entity_type` is a CHECK-constrained vocabulary with no `product_family` member, so
+  family hubs record a path-and-category `page_view` rather than an entity one. Widening it is a
+  production migration, which this pass has no mandate to run.
+
+## 11. Verification
+
+```
+npm test          398 passed, 0 failed   (+86 in this pass)
+npx tsc --noEmit  clean
+npx eslint .      0 errors, 0 warnings
+npm run build     succeeded
+```
+
+Plus a live `next start` sweep against the production database: all 7 family hubs, all 15 brand hubs,
+7 article pages, 2 product pages and 1 category hub fetched and parsed, asserting that **every**
+`/products/*` and `/articles/*` link on every one of them resolves to a row the `anon` role can
+actually see. Result: zero links to unpublished content.
+
+New tests: `src/lib/public/content-cluster.test.ts` (reciprocal-row normalisation, contradictory-pair
+resolution, format-tag exclusion, sibling ranking, same-category filler labelling),
+`src/lib/public/hub-eligibility.test.ts` (both thresholds, and the gap between "worth rendering" and
+"worth indexing"), plus additions to `cannibalisation.test.ts` (stopword regressions, model names that
+look like stopwords) and `jsonld.test.ts` (`CollectionPage` nesting, no fabricated fields).

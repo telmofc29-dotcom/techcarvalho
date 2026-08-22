@@ -9,17 +9,21 @@ import { AFFILIATE_DISCLOSURE_LABEL, AFFILIATE_DISCLOSURE_TOOLTIP, relFor } from
 type BaseProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "rel" | "target"> & {
   href: string;
   destinationDomain: string;
-  // Excludes "home" and "family_page" — neither currently carries any
-  // outbound/affiliate link, and OutboundClickLinkPosition (the
-  // outbound_click_events table's own CHECK constraint, see
-  // src/lib/types/database.ts) doesn't include either. Narrowing here keeps
-  // that DB-level constraint enforced at compile time without widening the
-  // constraint itself for positions no outbound link actually uses. This is
-  // the guard working as designed: adding "family_page" to LinkPosition for
-  // internal-link tracking failed the type check here until it was
-  // explicitly acknowledged as a non-outbound position, rather than silently
-  // becoming a value the database would later reject at insert time.
-  linkPosition: Exclude<LinkPosition, "home" | "family_page">;
+  // Excludes "home" — no outbound/affiliate link currently lives on the
+  // homepage, and OutboundClickLinkPosition (the outbound_click_events
+  // table's own CHECK constraint, see src/lib/types/database.ts) doesn't
+  // include it either. Narrowing here keeps that DB-level constraint
+  // enforced at compile time without widening the constraint itself for a
+  // position no outbound link actually uses.
+  //
+  // "family_page" IS permitted: it was added to OutboundClickLinkPosition
+  // alongside the /families/ hub routes, and the CHECK constraint is widened
+  // to match by supabase/migrations_pending/20260822_outbound_family_page_position.sql.
+  // Until that migration is applied a family-hub outbound click is rejected
+  // at insert — recordOutboundClick() logs the rejection rather than losing
+  // it silently. Family hubs carry no outbound links today, so nothing is
+  // affected in the meantime.
+  linkPosition: Exclude<LinkPosition, "home">;
   contentId?: string;
   productId?: string;
 };
