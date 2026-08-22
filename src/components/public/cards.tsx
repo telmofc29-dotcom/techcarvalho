@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Badge } from "@/components/shared/ui";
+import type { MediaFit } from "@/lib/media/presentation";
 
 export const CONTENT_TYPE_LABEL: Record<string, string> = {
   review: "Review",
@@ -18,6 +19,24 @@ export const CONTENT_TYPE_LABEL: Record<string, string> = {
  */
 export const CARD_FOCUS =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-white";
+
+// `sizes` for the standard index/listing grid: a 3-column grid inside the
+// site's `max-w-6xl px-6` shell (1104px of content, so ~352px per column once
+// the gaps come out), collapsing to 2 columns at 640px and 1 below that.
+//
+// The fixed 360px top stop matters. Without it the declaration read
+// "(min-width: 1024px) 33vw", which is only true while the container is still
+// growing — past 1200px the container is pinned at its max width and the real
+// column stays ~352px, but the browser keeps believing 33vw and on a 1600px
+// screen fetches a 528px-wide file (1056px at 2x DPR) for a 352px slot.
+export const CARD_SIZES =
+  "(min-width: 1200px) 360px, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, calc(100vw - 48px)";
+
+/** Same grid but inside the `max-w-3xl` article column: 3 up, ~230px each. */
+export const CARD_SIZES_ARTICLE_3 = "(min-width: 640px) 240px, calc(100vw - 48px)";
+
+/** `max-w-3xl` article column, 2 up: ~350px each. */
+export const CARD_SIZES_ARTICLE_2 = "(min-width: 640px) 352px, calc(100vw - 48px)";
 
 export function ArrowGlyph({ className }: { className: string }) {
   return (
@@ -61,12 +80,23 @@ function PlaceholderGlyph({ kind, className }: { kind: "product" | "content"; cl
 // broken", and it never stands in for a photograph that does not exist. The
 // honest "we have no photograph of this product" statement is a separate,
 // explicit panel — see src/components/public/product-lead-media.tsx.
+//
+// `fit` is the mixed-media half. A card frame has to be a fixed shape for the
+// grid to line up, but the images going into it do not all tolerate being
+// cropped to that shape: a photograph does, and a comparison chart, timeline
+// or title card does not — those are designed 1600x900 rectangles whose
+// content runs to the edges. `fit="contain"` puts such an asset on a neutral
+// ground at its own proportions instead of trimming its sides off, and drops
+// the hover zoom, because magnifying a chart past the frame crops it again.
+// The decision itself comes from classifyMediaTier() via mediaFit() — never
+// from the filename at the call site.
 export function MediaFrame({
   src,
   alt,
   kind,
   sizes,
-  priority = false,
+  preload = false,
+  fit = "cover",
   // Callers own the frame's size and rounding, including width — MediaFrame
   // must not hardcode `w-full`, because a Tailwind width class passed in here
   // would then collide with it and resolve by stylesheet order rather than by
@@ -77,21 +107,40 @@ export function MediaFrame({
   src?: string | null;
   alt: string;
   kind: "product" | "content";
+  /**
+   * Must describe the width the frame is ACTUALLY rendered at, per breakpoint.
+   * `sizes` is what the browser picks a srcset entry with, before any CSS has
+   * been applied — an over-declared value silently downloads a file several
+   * times larger than the slot needs.
+   */
   sizes: string;
-  priority?: boolean;
+  /**
+   * Preload this image via a `<link rel=preload>` in the head. At most ONE
+   * image per page should set it — the LCP candidate. `priority` did this
+   * before and is deprecated in Next 16 in favour of this prop.
+   */
+  preload?: boolean;
+  fit?: MediaFit;
   className?: string;
   iconClassName?: string;
 }) {
   if (src) {
+    const contained = fit === "contain";
     return (
-      <div className={`relative overflow-hidden bg-zinc-100 ${className}`}>
+      <div
+        className={`relative overflow-hidden ${contained ? "bg-zinc-50" : "bg-zinc-100"} ${className}`}
+      >
         <Image
           src={src}
           alt={alt}
           fill
           sizes={sizes}
-          priority={priority}
-          className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+          preload={preload}
+          className={
+            contained
+              ? "object-contain p-1.5"
+              : "object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+          }
         />
       </div>
     );
@@ -121,6 +170,8 @@ export function ContentCard({
   excerpt,
   imageUrl,
   imageAlt,
+  imageFit = "cover",
+  sizes = CARD_SIZES,
   categoryLabel,
 }: {
   href: string;
@@ -135,6 +186,10 @@ export function ContentCard({
   excerpt?: string | null;
   imageUrl?: string | null;
   imageAlt?: string | null;
+  /** From mediaFit(classifiable(heroImage)) — chart vs photograph. */
+  imageFit?: MediaFit;
+  /** Override when this card sits in a narrower column than the default grid. */
+  sizes?: string;
   categoryLabel?: string | null;
 }) {
   const shownDate =
@@ -150,9 +205,16 @@ export function ContentCard({
     >
       <MediaFrame
         src={imageUrl}
-        alt={imageAlt ?? title}
+        alt={imageAlt ?? ""}
         kind="content"
-        sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+        fit={imageFit}
+        sizes={sizes}
+        // 16:9, not 4:3. Every editorial graphic this site produces is a
+        // 1600x900 canvas, and article heroes are overwhelmingly those — a 4:3
+        // frame cropped 25% off both sides of a two-column comparison chart,
+        // which is precisely the half of each column a reader needs. Matching
+        // the frame to the library means the common case is not cropped at all.
+        className="aspect-[16/9] w-full rounded-t-xl"
       />
       <div className="flex flex-1 flex-col gap-2 p-5 pt-4">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -183,6 +245,8 @@ export function ProductCard({
   status,
   imageUrl,
   imageAlt,
+  imageFit = "cover",
+  sizes = CARD_SIZES,
   meta,
 }: {
   href: string;
@@ -192,6 +256,10 @@ export function ProductCard({
   status?: string;
   imageUrl?: string | null;
   imageAlt?: string | null;
+  /** From mediaFit(classifiable(heroImage)) — chart vs photograph. */
+  imageFit?: MediaFit;
+  /** Override when this card sits in a narrower column than the default grid. */
+  sizes?: string;
   /** Extra factual line (e.g. a real release date). Never a price or rating. */
   meta?: string | null;
 }) {
@@ -202,9 +270,14 @@ export function ProductCard({
     >
       <MediaFrame
         src={imageUrl}
-        alt={imageAlt ?? name}
+        alt={imageAlt ?? ""}
         kind="product"
-        sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+        fit={imageFit}
+        sizes={sizes}
+        // Stays 4:3 while ContentCard moved to 16:9: product heroes are all
+        // photographs, and 4:3 or 3:2 is what the great majority of them
+        // actually are, so this is the frame that crops them least.
+        className="aspect-[4/3] w-full rounded-t-xl"
       />
       <div className="flex flex-1 flex-col gap-2 p-5 pt-4">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">

@@ -3,6 +3,8 @@ import { Badge } from "@/components/shared/ui";
 import { InternalLinkTracker } from "@/components/analytics/internal-link-tracker";
 import { CONTENT_TYPE_LABEL, MediaFrame, SectionHeading, CARD_FOCUS, ArrowGlyph } from "@/components/public/cards";
 import { findPlannedCategory } from "@/lib/public/categories";
+import { mediaFit } from "@/lib/media/presentation";
+import { classifiable } from "@/lib/public/hero-image";
 import type { CategorySection, HomeQuestion, HomeStory, SubjectArea } from "@/lib/public/homepage";
 
 // Front-page section components.
@@ -29,10 +31,14 @@ export function StoryRow({ story }: { story: HomeStory }) {
     <Link href={`/articles/${story.slug}`} className={`group flex gap-4 rounded-lg py-4 ${CARD_FOCUS}`}>
       <MediaFrame
         src={story.heroImage?.url}
-        alt={story.heroImage?.alt ?? story.title}
+        // The story title is the link's own text, two inches to the right.
+        // Repeating it as alt made every one of these rows announce itself
+        // twice to a screen reader.
+        alt={story.heroImage?.alt ?? ""}
         kind="content"
-        sizes="96px"
-        className="aspect-[4/3] w-20 shrink-0 rounded-lg border border-border-subtle sm:w-24"
+        fit={mediaFit(classifiable(story.heroImage))}
+        sizes="(min-width: 640px) 96px, 80px"
+        className="aspect-[16/9] w-20 shrink-0 rounded-lg border border-border-subtle sm:w-24"
         iconClassName="h-5 w-5"
       />
       <div className="flex min-w-0 flex-col gap-1.5">
@@ -60,9 +66,12 @@ function FeatureStory({ story }: { story: HomeStory }) {
     <Link href={`/articles/${story.slug}`} className={`group block rounded-xl ${CARD_FOCUS}`}>
       <MediaFrame
         src={story.heroImage?.url}
-        alt={story.heroImage?.alt ?? story.title}
+        alt={story.heroImage?.alt ?? ""}
         kind="content"
-        sizes="(min-width: 1024px) 46vw, 100vw"
+        fit={mediaFit(classifiable(story.heroImage))}
+        // 6 of 12 columns of the `max-w-6xl` shell: ~532px at full width, and
+        // it stops there. "46vw" carried on growing past the container cap.
+        sizes="(min-width: 1280px) 532px, (min-width: 1024px) 46vw, calc(100vw - 48px)"
         className="aspect-[16/9] w-full rounded-xl border border-border-subtle"
         iconClassName="h-12 w-12"
       />

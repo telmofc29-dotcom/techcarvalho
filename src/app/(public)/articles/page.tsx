@@ -4,6 +4,8 @@ import { buildMetadata, canonicalPathWithParams } from "@/lib/seo/metadata";
 import { itemListJsonLd, safeJsonLdString } from "@/lib/seo/jsonld";
 import { getPublishedContentPage } from "@/lib/public/content-list";
 import { Breadcrumbs } from "@/components/public/breadcrumbs";
+import { mediaFit } from "@/lib/media/presentation";
+import { classifiable } from "@/lib/public/hero-image";
 import { ContentCard } from "@/components/public/cards";
 import { PublicPagination } from "@/components/public/pagination";
 import { EmptyState } from "@/components/shared/ui";
@@ -135,6 +137,7 @@ export default async function ArticlesIndexPage({
                     excerpt={item.excerpt}
                     imageUrl={item.heroImage?.url}
                     imageAlt={item.heroImage?.alt}
+                    imageFit={mediaFit(classifiable(item.heroImage))}
                   />
                 </li>
               ))}

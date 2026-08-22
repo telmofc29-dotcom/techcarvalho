@@ -23,7 +23,57 @@ export type HeroImage = {
   /** Recorded licence string, e.g. 'CC BY-SA 4.0'. Needed to link the deed,
    *  which CC BY/BY-SA require alongside the creator's name. */
   license?: string | null;
+  /** Editor-written caption. A chart's caption says what the chart shows and
+   *  cites its source — dropping it turns a sourced graphic into a picture. */
+  caption?: string | null;
+  // The three fields below exist so a CARD can decide how to fit the image,
+  // not just a detail page. classifyMediaTier() needs storage_path and
+  // asset_role to tell a comparison chart from a photograph; without them
+  // every list view had to assume "photograph" and crop accordingly, which is
+  // how 16:9 charts ended up cropped 25% narrower in 4:3 card frames.
+  storagePath?: string | null;
+  assetRole?: string | null;
+  /** Intrinsic pixel size. Drives the frame's aspect ratio so the frame is
+   *  built around the image rather than the image forced into the frame. */
+  width?: number | null;
+  height?: number | null;
 };
+
+/**
+ * Adapts the camelCase shape the public layer passes around into the snake_case
+ * row shape classifyMediaTier()/mediaFit() expect.
+ *
+ * Structurally typed rather than taking `HeroImage` so a `GalleryImage` — which
+ * carries exactly the same provenance fields but declares the nullable ones as
+ * `T | null` instead of `T | undefined` — goes through the same path. The two
+ * kinds of image get identical fit decisions because they are the same assets;
+ * only the slot differs.
+ */
+export function classifiable(
+  image:
+    | {
+        sourceType?: MediaSourceType | null;
+        assetRole?: string | null;
+        owned?: boolean | null;
+        aiGenerated?: boolean | null;
+        storagePath?: string | null;
+        sourceUrl?: string | null;
+        license?: string | null;
+      }
+    | null
+    | undefined
+) {
+  if (!image) return null;
+  return {
+    source_type: image.sourceType ?? null,
+    asset_role: image.assetRole ?? null,
+    owned: image.owned ?? null,
+    ai_generated: image.aiGenerated ?? null,
+    storage_path: image.storagePath ?? null,
+    source_url: image.sourceUrl ?? null,
+    license: image.license ?? null,
+  };
+}
 
 export type GalleryImage = {
   url: string;
@@ -36,6 +86,15 @@ export type GalleryImage = {
   /** Recorded licence string. CC BY/BY-SA require a link to the licence
    *  itself, not only to the material and the creator's name. */
   license: string | null;
+  // Same purpose as on HeroImage: a gallery slot has to know whether it is
+  // holding a diagram or a photograph before it decides to crop.
+  storagePath: string | null;
+  assetRole: string | null;
+  sourceType: MediaSourceType | null;
+  owned: boolean | null;
+  aiGenerated: boolean | null;
+  width: number | null;
+  height: number | null;
 };
 
 // Degrades to "no image" on any error rather than crashing product/article
@@ -60,7 +119,7 @@ export async function getPublishedHeroImage(
     const { data: asset, error: assetError } = await supabase
       .from("media_assets")
       .select(
-        "alt_text, publication_status, public_storage_path, source_type, owned, ai_generated, attribution, attribution_required, creator, source_url, license"
+        "alt_text, caption, publication_status, storage_path, public_storage_path, source_type, asset_role, owned, ai_generated, attribution, attribution_required, creator, source_url, license, width, height"
       )
       .eq("id", link.media_id)
       .maybeSingle();
@@ -85,6 +144,11 @@ export async function getPublishedHeroImage(
       // the hero path lost it.
       sourceUrl: asset.source_url,
       license: asset.license,
+      caption: asset.caption,
+      storagePath: asset.storage_path,
+      assetRole: asset.asset_role,
+      width: asset.width,
+      height: asset.height,
     };
   } catch (e) {
     console.error(`[query-error] getPublishedHeroImage(${kind}, ${id}) threw`, e);
@@ -123,7 +187,14 @@ export async function attachHeroImages<T extends { id: string }>(
     const mediaIds = [...new Set(links.map((l) => l.media_id))];
     const { data: assets, error: assetError } = await supabase
       .from("media_assets")
-      .select("id, alt_text, publication_status, public_storage_path")
+      // storage_path/asset_role/source_type/owned/ai_generated let the CARD
+      // classify the asset (chart vs photograph) and so choose contain vs
+      // cover; width/height let it size the frame. Same single round trip —
+      // these are extra columns on a query that already ran, not extra
+      // queries.
+      .select(
+        "id, alt_text, publication_status, storage_path, public_storage_path, source_type, asset_role, owned, ai_generated, source_url, license, width, height"
+      )
       .in("id", mediaIds);
     logQueryError(`attachHeroImages(${kind}) assets`, assetError);
 
@@ -133,7 +204,19 @@ export async function attachHeroImages<T extends { id: string }>(
       if (heroByEntityId.has(link.entityId)) continue;
       const asset = assetById.get(link.media_id);
       if (!asset || asset.publication_status !== "published" || !asset.public_storage_path) continue;
-      heroByEntityId.set(link.entityId, { url: mediaPublicUrl(asset.public_storage_path), alt: asset.alt_text });
+      heroByEntityId.set(link.entityId, {
+        url: mediaPublicUrl(asset.public_storage_path),
+        alt: asset.alt_text,
+        sourceType: asset.source_type,
+        owned: asset.owned,
+        aiGenerated: asset.ai_generated,
+        sourceUrl: asset.source_url,
+        license: asset.license,
+        storagePath: asset.storage_path,
+        assetRole: asset.asset_role,
+        width: asset.width,
+        height: asset.height,
+      });
     }
 
     return rows.map((r) => ({ ...r, heroImage: heroByEntityId.get(r.id) ?? null }));
@@ -163,7 +246,9 @@ export async function getPublishedGallery(kind: "product" | "content", id: strin
     const mediaIds = links.map((l) => l.media_id);
     const { data: assets, error: assetError } = await supabase
       .from("media_assets")
-      .select("id, alt_text, caption, attribution, attribution_required, creator, source_url, publication_status, public_storage_path, license")
+      .select(
+        "id, alt_text, caption, attribution, attribution_required, creator, source_url, publication_status, storage_path, public_storage_path, license, asset_role, source_type, owned, ai_generated, width, height"
+      )
       .in("id", mediaIds);
     logQueryError(`getPublishedGallery(${kind}, ${id}) assets`, assetError);
 
@@ -181,6 +266,13 @@ export async function getPublishedGallery(kind: "product" | "content", id: strin
         creator: asset.creator,
         sourceUrl: asset.source_url,
         license: asset.license,
+        storagePath: asset.storage_path,
+        assetRole: asset.asset_role,
+        sourceType: asset.source_type,
+        owned: asset.owned,
+        aiGenerated: asset.ai_generated,
+        width: asset.width,
+        height: asset.height,
       });
     }
     return images;

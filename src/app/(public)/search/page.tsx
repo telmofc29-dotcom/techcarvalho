@@ -3,6 +3,8 @@ import Link from "next/link";
 import { buildMetadata } from "@/lib/seo/metadata";
 import { searchSite } from "@/lib/public/search";
 import { Breadcrumbs } from "@/components/public/breadcrumbs";
+import { mediaFit } from "@/lib/media/presentation";
+import { classifiable } from "@/lib/public/hero-image";
 import { ContentCard, ProductCard, SectionHeading } from "@/components/public/cards";
 import { SearchTracker } from "@/components/public/search-tracker";
 import { PageViewTracker } from "@/components/analytics/page-view-tracker";
@@ -71,6 +73,7 @@ export default async function SearchPage({
                           excerpt={item.excerpt}
                           imageUrl={item.heroImage?.url}
                           imageAlt={item.heroImage?.alt}
+                          imageFit={mediaFit(classifiable(item.heroImage))}
                         />
                       </li>
                     ))}
@@ -90,6 +93,7 @@ export default async function SearchPage({
                           summary={p.summary}
                           imageUrl={p.heroImage?.url}
                           imageAlt={p.heroImage?.alt}
+                          imageFit={mediaFit(classifiable(p.heroImage))}
                         />
                       </li>
                     ))}

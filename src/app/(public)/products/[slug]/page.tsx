@@ -5,9 +5,10 @@ import { notFound } from "next/navigation";
 import { buildMetadata } from "@/lib/seo/metadata";
 import { productJsonLd, safeJsonLdString } from "@/lib/seo/jsonld";
 import { getProductDetail } from "@/lib/public/product-detail";
-import { getPublishedGallery } from "@/lib/public/hero-image";
+import { getPublishedGallery, classifiable } from "@/lib/public/hero-image";
+import { mediaFit } from "@/lib/media/presentation";
 import { Breadcrumbs } from "@/components/public/breadcrumbs";
-import { ContentCard } from "@/components/public/cards";
+import { ContentCard, CARD_SIZES_ARTICLE_2 } from "@/components/public/cards";
 import { RelatedContentTracker } from "@/components/public/related-content-tracker";
 import { OutboundLink } from "@/components/public/outbound-link";
 import { LaunchPricingDisplay } from "@/components/public/launch-pricing";
@@ -107,14 +108,26 @@ export default async function ProductPage({
           {gallery.length > 0 && (
             <div className="mb-6">
               <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
-                {gallery.map((img, i) => (
-                  <div
-                    key={i}
-                    className="relative shrink-0 w-32 sm:w-40 aspect-[4/3] rounded-lg overflow-hidden bg-zinc-100 snap-start"
-                  >
-                    <Image src={img.url} alt={img.alt ?? product.name} fill sizes="160px" className="object-cover" loading="lazy" />
-                  </div>
-                ))}
+                {gallery.map((img, i) => {
+                  const fit = mediaFit(classifiable(img));
+                  return (
+                    <div
+                      key={i}
+                      className={`relative shrink-0 w-32 sm:w-40 aspect-[4/3] rounded-lg overflow-hidden snap-start ${
+                        fit === "contain" ? "bg-zinc-50" : "bg-zinc-100"
+                      }`}
+                    >
+                      <Image
+                        src={img.url}
+                        alt={img.alt ?? ""}
+                        fill
+                        sizes="(min-width: 640px) 160px, 128px"
+                        className={fit === "contain" ? "object-contain p-1" : "object-cover"}
+                        loading="lazy"
+                      />
+                    </div>
+                  );
+                })}
               </div>
               {gallery.some((img) => img.attributionRequired && (img.attribution || img.creator)) && (
                 <p className="mt-1 text-xs text-zinc-400">
@@ -220,6 +233,11 @@ export default async function ProductPage({
                         title={a.title}
                         imageUrl={a.heroImage?.url}
                         imageAlt={a.heroImage?.alt}
+                        imageFit={mediaFit(classifiable(a.heroImage))}
+                        // 2-up inside the 2-of-3 product column (~723px), so
+                        // each card is ~350px — the same width as the 2-up
+                        // rails in the article column.
+                        sizes={CARD_SIZES_ARTICLE_2}
                       />
                     </li>
                   ))}

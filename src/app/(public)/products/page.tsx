@@ -4,6 +4,8 @@ import { buildMetadata, canonicalPathWithParams } from "@/lib/seo/metadata";
 import { itemListJsonLd, safeJsonLdString } from "@/lib/seo/jsonld";
 import { getPublishedProductsPage, getProductFilterOptions } from "@/lib/public/product-list";
 import { Breadcrumbs } from "@/components/public/breadcrumbs";
+import { mediaFit } from "@/lib/media/presentation";
+import { classifiable } from "@/lib/public/hero-image";
 import { ProductCard } from "@/components/public/cards";
 import { PublicPagination } from "@/components/public/pagination";
 import { FilterSelect } from "@/components/public/filter-select";
@@ -181,6 +183,7 @@ export default async function ProductsIndexPage({
                     status={p.status}
                     imageUrl={p.heroImage?.url}
                     imageAlt={p.heroImage?.alt}
+                    imageFit={mediaFit(classifiable(p.heroImage))}
                   />
                 </li>
               ))}

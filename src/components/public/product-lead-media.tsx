@@ -1,7 +1,15 @@
-import Image from "next/image";
 import type { HeroImage } from "@/lib/public/hero-image";
 import { classifyProductMedia } from "@/lib/media/presentation";
+import { LeadMediaFrame } from "./lead-media-frame";
 import { MediaCredit } from "./media-credit";
+
+// The lead slot sits in the 2-of-3 column of the product page's `max-w-6xl`
+// grid: ~723px once the container padding and the 40px gutter come out. Below
+// `lg` the grid is a single column, so the slot is the full container width.
+// Declaring 100vw here (which is what omitting `sizes` on a `fill` image
+// silently does) made every desktop visitor download a viewport-wide file for
+// a slot that is never wider than 723px.
+const LEAD_SIZES = "(min-width: 1024px) 723px, calc(100vw - 48px)";
 
 // The lead (hero) slot on a product page, rendered honestly in all three
 // states — see src/lib/media/presentation.ts for the reasoning.
@@ -59,18 +67,17 @@ export function ProductLeadMedia({
   if (presentation.kind === "original_graphic") {
     return (
       <figure className="mb-6">
-        <div className="relative w-full aspect-video overflow-hidden rounded-xl bg-zinc-100">
-          <Image
-            src={heroImage.url}
-            alt={heroImage.alt ?? `Original TechCarvalho graphic for the ${productName}`}
-            fill
-            priority
-            // `contain`, not `cover`: a spec table or comparison chart carries
-            // information at its edges. Cropping it to fill the frame would
-            // cut off the very content that justifies showing it.
-            className="object-contain"
-          />
-        </div>
+        {/* `contain` on a neutral ground, and a frame cut to the graphic's own
+            proportions: a spec table or comparison chart carries information at
+            its edges, so cropping it to fill a fixed frame would cut off the
+            very content that justifies showing it. LeadMediaFrame derives both
+            from the asset rather than being told. */}
+        <LeadMediaFrame
+          image={heroImage}
+          alt={heroImage.alt ?? `Original TechCarvalho graphic for the ${productName}`}
+          sizes={LEAD_SIZES}
+          preload
+        />
         {/* Deliberately above the fold of the caption stack and not muted into
             invisibility — this label is the thing that keeps the graphic
             honest, so it has to actually be readable. */}
@@ -80,21 +87,21 @@ export function ProductLeadMedia({
           </span>
           <span>{presentation.label}</span>
         </figcaption>
+        {heroImage.caption && (
+          <figcaption className="mt-1 text-xs leading-relaxed text-zinc-500">
+            {heroImage.caption}
+          </figcaption>
+        )}
       </figure>
     );
   }
 
   return (
     <figure className="mb-6">
-      <div className="relative w-full aspect-video overflow-hidden rounded-xl bg-zinc-100">
-        <Image
-          src={heroImage.url}
-          alt={heroImage.alt ?? productName}
-          fill
-          priority
-          className="object-cover"
-        />
-      </div>
+      <LeadMediaFrame image={heroImage} alt={heroImage.alt ?? productName} sizes={LEAD_SIZES} preload />
+      {heroImage.caption && (
+        <figcaption className="mt-2 text-xs leading-relaxed text-zinc-500">{heroImage.caption}</figcaption>
+      )}
       {/* A CC BY / CC BY-SA credit is a licence CONDITION, not decoration.
           The licence requires the creator's name AND a link to the licence AND
           a link to the material — plain text satisfied only the first. */}

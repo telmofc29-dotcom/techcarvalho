@@ -5,9 +5,16 @@ import { notFound } from "next/navigation";
 import { buildMetadata } from "@/lib/seo/metadata";
 import { articleJsonLd, itemListJsonLd, safeJsonLdString } from "@/lib/seo/jsonld";
 import { getArticleDetail } from "@/lib/public/article-detail";
-import { getPublishedGallery } from "@/lib/public/hero-image";
+import { getPublishedGallery, classifiable } from "@/lib/public/hero-image";
+import { mediaFit, frameAspectRatio, dimensionsUnknown } from "@/lib/media/presentation";
 import { Breadcrumbs } from "@/components/public/breadcrumbs";
-import { ContentCard, CONTENT_TYPE_LABEL } from "@/components/public/cards";
+import { ArticleLeadMedia } from "@/components/public/article-lead-media";
+import {
+  ContentCard,
+  CONTENT_TYPE_LABEL,
+  CARD_SIZES_ARTICLE_2,
+  CARD_SIZES_ARTICLE_3,
+} from "@/components/public/cards";
 import { RelatedContentTracker } from "@/components/public/related-content-tracker";
 import { Badge } from "@/components/shared/ui";
 import { parseBodyBlocks, excerptFromBody } from "@/lib/content/body-format";
@@ -15,6 +22,12 @@ import { PageViewTracker } from "@/components/analytics/page-view-tracker";
 import { ScrollDepthTracker } from "@/components/analytics/scroll-depth-tracker";
 import { InternalLinkTracker } from "@/components/analytics/internal-link-tracker";
 import { MediaCredit } from "@/components/public/media-credit";
+
+// The article column is `max-w-3xl px-6` — 720px of content once the padding
+// comes out, and never wider. Omitting `sizes` on a `fill` image makes Next
+// fall back to 100vw, so a 1600px-wide desktop was fetching a 1600px (or 3200px
+// at 2x DPR) rendition for a 720px slot.
+const ARTICLE_BODY_SIZES = "(min-width: 768px) 720px, calc(100vw - 48px)";
 
 export async function generateMetadata({
   params,
@@ -164,11 +177,7 @@ export default async function ArticlePage({
         </nav>
       )}
 
-      {heroImage && (
-        <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-zinc-100 mb-8">
-          <Image src={heroImage.url} alt={heroImage.alt ?? content.title} fill className="object-cover" />
-        </div>
-      )}
+      {heroImage && <ArticleLeadMedia heroImage={heroImage} />}
 
       {products.length > 0 && (
         <div className="rounded-xl border border-border-subtle bg-accent-soft/40 p-4 mb-8">
@@ -220,10 +229,31 @@ export default async function ArticlePage({
 
       {gallery.length > 0 && (
         <div className="mt-8 flex flex-col gap-6">
-          {gallery.map((img, i) => (
+          {gallery.map((img, i) => {
+            // Same reasoning as the lead image: the in-body gallery is where
+            // the diagrams that did NOT win the hero slot end up, so a fixed
+            // 16:9 centre crop is exactly the wrong default here. Frame and fit
+            // both come from the asset.
+            const fit =
+              mediaFit(classifiable(img)) === "contain" || dimensionsUnknown(img.width, img.height)
+                ? "contain"
+                : "cover";
+            return (
             <figure key={i} className="flex flex-col gap-2">
-              <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-zinc-100">
-                <Image src={img.url} alt={img.alt ?? content.title} fill className="object-cover" loading="lazy" />
+              <div
+                className={`relative w-full rounded-xl overflow-hidden ${
+                  fit === "contain" ? "bg-zinc-50" : "bg-zinc-100"
+                }`}
+                style={{ aspectRatio: frameAspectRatio(img.width, img.height) }}
+              >
+                <Image
+                  src={img.url}
+                  alt={img.alt ?? ""}
+                  fill
+                  sizes={ARTICLE_BODY_SIZES}
+                  className={fit === "contain" ? "object-contain" : "object-cover"}
+                  loading="lazy"
+                />
               </div>
               {img.caption && (
                 <figcaption className="text-xs text-zinc-500">{img.caption}</figcaption>
@@ -241,7 +271,8 @@ export default async function ArticlePage({
                 />
               )}
             </figure>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -288,6 +319,8 @@ export default async function ArticlePage({
                     excerpt={item.excerpt}
                     imageUrl={item.heroImage?.url}
                     imageAlt={item.heroImage?.alt}
+                    imageFit={mediaFit(classifiable(item.heroImage))}
+                    sizes={CARD_SIZES_ARTICLE_3}
                   />
                 </li>
               ))}
@@ -324,6 +357,8 @@ export default async function ArticlePage({
                     excerpt={article.excerpt}
                     imageUrl={article.heroImage?.url}
                     imageAlt={article.heroImage?.alt}
+                    imageFit={mediaFit(classifiable(article.heroImage))}
+                    sizes={CARD_SIZES_ARTICLE_2}
                   />
                 </li>
               ))}
@@ -376,6 +411,8 @@ export default async function ArticlePage({
                     publishedAt={item.published_at}
                     imageUrl={item.heroImage?.url}
                     imageAlt={item.heroImage?.alt}
+                    imageFit={mediaFit(classifiable(item.heroImage))}
+                    sizes={CARD_SIZES_ARTICLE_3}
                   />
                 </li>
               ))}

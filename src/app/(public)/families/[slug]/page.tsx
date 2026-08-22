@@ -6,6 +6,8 @@ import { collectionPageJsonLd, safeJsonLdString } from "@/lib/seo/jsonld";
 import { getFamilyDetail } from "@/lib/public/family-detail";
 import { isFamilyHubIndexable, hubHasContent } from "@/lib/public/hub-eligibility";
 import { Breadcrumbs } from "@/components/public/breadcrumbs";
+import { mediaFit } from "@/lib/media/presentation";
+import { classifiable } from "@/lib/public/hero-image";
 import { ContentCard, ProductCard, SectionHeading } from "@/components/public/cards";
 import { EmptyState } from "@/components/shared/ui";
 import { PageViewTracker } from "@/components/analytics/page-view-tracker";
@@ -163,6 +165,7 @@ export default async function FamilyPage({ params }: { params: Promise<{ slug: s
                         }
                         imageUrl={p.heroImage?.url}
                         imageAlt={p.heroImage?.alt}
+                        imageFit={mediaFit(classifiable(p.heroImage))}
                       />
                     </li>
                   ))}
@@ -186,6 +189,7 @@ export default async function FamilyPage({ params }: { params: Promise<{ slug: s
                         excerpt={a.excerpt}
                         imageUrl={a.heroImage?.url}
                         imageAlt={a.heroImage?.alt}
+                        imageFit={mediaFit(classifiable(a.heroImage))}
                       />
                     </li>
                   ))}

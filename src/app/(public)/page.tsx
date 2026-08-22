@@ -4,6 +4,8 @@ import { buildMetadata } from "@/lib/seo/metadata";
 import { getHomepageData, composeHomepage } from "@/lib/public/homepage";
 import { getTrendingContent } from "@/lib/public/trending";
 import { EmptyState } from "@/components/shared/ui";
+import { mediaFit } from "@/lib/media/presentation";
+import { classifiable } from "@/lib/public/hero-image";
 import { ContentCard, ProductCard, SectionHeading, CARD_FOCUS, ArrowGlyph } from "@/components/public/cards";
 import { TrendingSection } from "@/components/public/trending";
 import {
@@ -187,6 +189,7 @@ export default async function HomePage() {
                           excerpt={item.excerpt}
                           imageUrl={item.heroImage?.url}
                           imageAlt={item.heroImage?.alt}
+                          imageFit={mediaFit(classifiable(item.heroImage))}
                           categoryLabel={item.categoryLabel}
                         />
                       </li>
@@ -246,6 +249,7 @@ export default async function HomePage() {
                           meta={product.releaseLabel ? `Released ${product.releaseLabel}` : null}
                           imageUrl={product.heroImage?.url}
                           imageAlt={product.heroImage?.alt}
+                          imageFit={mediaFit(classifiable(product.heroImage))}
                         />
                       </li>
                     ))}
@@ -288,6 +292,7 @@ export default async function HomePage() {
                           meta={product.releaseLabel ? `Released ${product.releaseLabel}` : null}
                           imageUrl={product.heroImage?.url}
                           imageAlt={product.heroImage?.alt}
+                          imageFit={mediaFit(classifiable(product.heroImage))}
                         />
                       </li>
                     ))}

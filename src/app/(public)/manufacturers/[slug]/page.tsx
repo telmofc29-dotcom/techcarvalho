@@ -8,6 +8,8 @@ import { getManufacturerDetail } from "@/lib/public/manufacturer-detail";
 import { listFamiliesWithPublishedMaterial } from "@/lib/public/family-detail";
 import { isManufacturerHubIndexable, hubHasContent } from "@/lib/public/hub-eligibility";
 import { Breadcrumbs } from "@/components/public/breadcrumbs";
+import { mediaFit } from "@/lib/media/presentation";
+import { classifiable } from "@/lib/public/hero-image";
 import { ContentCard, ProductCard, SectionHeading } from "@/components/public/cards";
 import { EmptyState } from "@/components/shared/ui";
 import { OutboundLink } from "@/components/public/outbound-link";
@@ -141,7 +143,17 @@ export default async function ManufacturerPage({
 
       {logo && (
         <div className="relative h-16 w-40 mb-4">
-          <Image src={logo.url} alt={logo.alt ?? `${manufacturer.name} logo`} fill className="object-contain object-left" />
+          {/* `sizes` was missing entirely, so this 160x64 slot inherited the
+              100vw default and downloaded a viewport-wide rendition of the
+              logo. Already correctly `object-contain` — a logo trimmed to fill
+              a box is a broken logo. */}
+          <Image
+            src={logo.url}
+            alt={logo.alt ?? `${manufacturer.name} logo`}
+            fill
+            sizes="160px"
+            className="object-contain object-left"
+          />
         </div>
       )}
 
@@ -212,6 +224,7 @@ export default async function ManufacturerPage({
                     status={p.status}
                     imageUrl={p.heroImage?.url}
                     imageAlt={p.heroImage?.alt}
+                    imageFit={mediaFit(classifiable(p.heroImage))}
                   />
                 </li>
               ))}
@@ -240,6 +253,7 @@ export default async function ManufacturerPage({
                     excerpt={a.excerpt}
                     imageUrl={a.heroImage?.url}
                     imageAlt={a.heroImage?.alt}
+                    imageFit={mediaFit(classifiable(a.heroImage))}
                   />
                 </li>
               ))}

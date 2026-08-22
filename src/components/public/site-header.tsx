@@ -47,7 +47,26 @@ export function SiteHeader() {
               alt={SITE_NAME}
               width={900}
               height={149}
-              priority
+              // No `priority`, no `preload`, and deliberately no
+              // `loading="eager"` either.
+              //
+              // `priority` is deprecated in Next 16 in favour of `preload`,
+              // but the deeper problem was that this wordmark is on EVERY
+              // page: it put a second <link rel=preload> in the head of all of
+              // them, competing for early bandwidth with the actual hero,
+              // while itself rendering 24px tall and never being the LCP
+              // element. `loading="eager"` is not the fix — React 19 hoists a
+              // preload for eager images during SSR too, which is verifiable
+              // in the rendered head, so it reintroduces exactly the same
+              // competition under a different name.
+              //
+              // Leaving it on next/image's default `lazy` costs nothing here:
+              // lazy only DEFERS images below the fold, and the sticky header
+              // is in the initial viewport on every page, so every browser
+              // fetches it during the first load anyway. What it gives up is a
+              // few milliseconds of preload-scanner head start on a small
+              // logo; what it buys back is one preload per page pointing at
+              // the image that actually decides LCP.
               className="h-6 w-auto sm:h-7"
             />
           </Link>

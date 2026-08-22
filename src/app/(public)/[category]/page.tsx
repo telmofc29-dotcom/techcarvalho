@@ -17,6 +17,8 @@ import { itemListJsonLd, safeJsonLdString } from "@/lib/seo/jsonld";
 import { getTrendingContent } from "@/lib/public/trending";
 import { getCategoryHeroImage, categoryGradient } from "@/lib/public/category-hero";
 import { Breadcrumbs } from "@/components/public/breadcrumbs";
+import { mediaFit } from "@/lib/media/presentation";
+import { classifiable } from "@/lib/public/hero-image";
 import { ContentCard, ProductCard, SectionHeading } from "@/components/public/cards";
 import { TrendingSection } from "@/components/public/trending";
 import { EmptyState } from "@/components/shared/ui";
@@ -158,10 +160,21 @@ export default async function CategoryPage({
           <>
             <Image
               src={bannerImage.url}
-              alt={bannerImage.alt ?? label}
+              // Decorative: the <h1> sitting on top of this banner already
+              // names the category, and the scrim means the image is a ground
+              // for that heading rather than content in its own right. `alt=""`
+              // is how that is spelled — repeating the label made a screen
+              // reader read the category name twice in a row.
+              alt=""
               fill
-              priority
+              // The banner genuinely IS full-bleed, so 100vw is honest here —
+              // unlike the fill images elsewhere that inherited 100vw by
+              // omission while sitting in a 720px column.
               sizes="100vw"
+              // `priority` is deprecated in Next 16; `preload` is the same
+              // behaviour under a name that says what it does. This is the
+              // page's single preloaded image.
+              preload
               className="object-cover"
             />
             {/* Scrim keeps heading contrast legible over an arbitrary photo. */}
@@ -204,6 +217,15 @@ export default async function CategoryPage({
                 linkPosition="category_page"
                 categorySlug={slug}
                 heading={`Trending in ${label}`}
+                // Exactly one preloaded image per page, and it has to be the
+                // one the viewport actually lands on. When this hub has a real
+                // banner asset the banner is that image and preloading the
+                // trending lead as well would put two competing <link rel=
+                // preload> tags in the head. When it does NOT — most hubs fall
+                // back to the CSS gradient, which is not an image at all —
+                // there is nothing above the trending lead, so the lead is the
+                // LCP candidate and preloading it is the whole point.
+                preloadLead={!bannerImage}
               />
             )}
 
@@ -242,6 +264,7 @@ export default async function CategoryPage({
                           excerpt={item.excerpt}
                           imageUrl={item.heroImage?.url}
                           imageAlt={item.heroImage?.alt}
+                          imageFit={mediaFit(classifiable(item.heroImage))}
                         />
                       </li>
                     ))}
@@ -265,6 +288,7 @@ export default async function CategoryPage({
                           excerpt={item.excerpt}
                           imageUrl={item.heroImage?.url}
                           imageAlt={item.heroImage?.alt}
+                          imageFit={mediaFit(classifiable(item.heroImage))}
                         />
                       </li>
                     ))}
@@ -287,6 +311,7 @@ export default async function CategoryPage({
                           status={p.status}
                           imageUrl={p.heroImage?.url}
                           imageAlt={p.heroImage?.alt}
+                          imageFit={mediaFit(classifiable(p.heroImage))}
                         />
                       </li>
                     ))}

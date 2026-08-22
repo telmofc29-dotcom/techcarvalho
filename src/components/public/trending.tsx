@@ -2,6 +2,8 @@ import Link from "next/link";
 import { Badge } from "@/components/shared/ui";
 import { InternalLinkTracker } from "@/components/analytics/internal-link-tracker";
 import { CONTENT_TYPE_LABEL, MediaFrame, CARD_FOCUS, ArrowGlyph } from "@/components/public/cards";
+import { mediaFit } from "@/lib/media/presentation";
+import { classifiable } from "@/lib/public/hero-image";
 import type { TrendingItem } from "@/lib/public/trending";
 
 // The "Trending now" block: one large lead story plus a rail of supporting
@@ -44,19 +46,26 @@ function FreshnessLabel({
   );
 }
 
-function LeadStory({ item }: { item: TrendingItem }) {
+function LeadStory({ item, preload }: { item: TrendingItem; preload: boolean }) {
+  const fit = mediaFit(classifiable(item.heroImage));
   return (
     <Link href={`/articles/${item.slug}`} className={`group block rounded-2xl ${CARD_FOCUS}`}>
-      {/* 16:9 on mobile, slightly taller on desktop so the lead reads as a
-          hero rather than an oversized card. aspect-* keeps it from
-          overflowing narrow viewports, which a fixed height would. */}
+      {/* Stays 16:9 at every breakpoint. It used to widen to 16:10 on desktop,
+          which is a shape nothing in the library actually is: every editorial
+          graphic is a 1600x900 canvas, so 16:10 shaved a strip off the top and
+          bottom of the one image on the page most likely to be a chart. */}
       <MediaFrame
         src={item.heroImage?.url}
-        alt={item.heroImage?.alt ?? item.title}
+        alt={item.heroImage?.alt ?? ""}
         kind="content"
-        priority
-        sizes="(min-width: 1024px) 58vw, 100vw"
-        className="aspect-[16/9] w-full rounded-2xl border border-border-subtle lg:aspect-[16/10]"
+        preload={preload}
+        fit={fit}
+        // The lead sits in 7 of 12 columns of the `max-w-6xl` shell: ~627px
+        // once the container padding and the 40px gutters come out, and it
+        // stops growing once the container is capped. "58vw" kept growing with
+        // the viewport and over-fetched by ~35% on a 1600px screen.
+        sizes="(min-width: 1280px) 640px, (min-width: 1024px) 58vw, calc(100vw - 48px)"
+        className="aspect-[16/9] w-full rounded-2xl border border-border-subtle"
         iconClassName="h-16 w-16"
       />
       <div className="mt-5">
@@ -89,10 +98,11 @@ function SupportingStory({ item }: { item: TrendingItem }) {
     <Link href={`/articles/${item.slug}`} className={`group flex gap-4 rounded-lg py-4 ${CARD_FOCUS}`}>
       <MediaFrame
         src={item.heroImage?.url}
-        alt={item.heroImage?.alt ?? item.title}
+        alt={item.heroImage?.alt ?? ""}
         kind="content"
-        sizes="112px"
-        className="aspect-[4/3] w-24 shrink-0 rounded-lg border border-border-subtle sm:w-28"
+        fit={mediaFit(classifiable(item.heroImage))}
+        sizes="(min-width: 640px) 112px, 96px"
+        className="aspect-[16/9] w-24 shrink-0 rounded-lg border border-border-subtle sm:w-28"
         iconClassName="h-6 w-6"
       />
       <div className="flex min-w-0 flex-col gap-1.5">
@@ -117,6 +127,7 @@ export function TrendingSection({
   linkPosition,
   categorySlug,
   heading = "Trending now",
+  preloadLead = true,
 }: {
   lead: TrendingItem | null;
   supporting: TrendingItem[];
@@ -124,6 +135,14 @@ export function TrendingSection({
   linkPosition: "home" | "category_page";
   categorySlug?: string;
   heading?: string;
+  /**
+   * Preload the lead image. True on the homepage, where this section is the
+   * top of the page and its lead is the LCP candidate. Must be FALSE anywhere
+   * something else above it already preloads — a page that preloads two images
+   * makes them compete for the same bandwidth and delays whichever one the
+   * viewport actually settles on.
+   */
+  preloadLead?: boolean;
 }) {
   // Nothing published at all — render nothing rather than an empty shell. The
   // caller's other sections still handle the genuinely-empty-site case.
@@ -156,7 +175,7 @@ export function TrendingSection({
       <InternalLinkTracker linkPosition={linkPosition} categorySlug={categorySlug}>
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-10">
           <div className="lg:col-span-7" data-entity-type="content" data-entity-id={lead.id}>
-            <LeadStory item={lead} />
+            <LeadStory item={lead} preload={preloadLead} />
           </div>
           {supporting.length > 0 && (
             <ul className="divide-y divide-border-subtle border-t border-border-subtle lg:col-span-5">
