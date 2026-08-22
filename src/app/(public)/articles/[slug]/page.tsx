@@ -56,6 +56,20 @@ export async function generateMetadata({
   });
 }
 
+/**
+ * A readable label for a source with no publisher recorded.
+ *
+ * Falls back to the host rather than printing a raw URL: "nvidia.com" tells a
+ * reader who said it, which is the entire point of showing sources at all.
+ */
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
+
 export default async function ArticlePage({
   params,
 }: {
@@ -65,7 +79,7 @@ export default async function ArticlePage({
   const detail = await getArticleDetail(slug);
   if (!detail) notFound();
 
-  const { content, category, products, tags, freshness, related, heroImage, seo } = detail;
+  const { content, category, products, tags, freshness, related, heroImage, seo, sources } = detail;
   const { clusterMembers, clusterPillars, comparisonSiblings, hubs } = detail;
   const lastVerified = freshness[0]?.reviewed_at ?? null;
   const gallery = await getPublishedGallery("content", content.id);
@@ -284,14 +298,53 @@ export default async function ArticlePage({
         </div>
       )}
 
-      <div className="mt-8 rounded-xl border border-border-subtle bg-zinc-50 p-4 text-xs text-zinc-500">
-        Evidence, sourcing, and testing records behind this piece are tracked internally as part of Tech
-        Carvalho&apos;s editorial process. See our{" "}
-        <Link href="/editorial-policy" className="underline hover:text-accent">
-          editorial policy
-        </Link>{" "}
-        for how we work.
-      </div>
+      {/* THE SOURCES THEMSELVES, or nothing.
+          This was a fixed prose box reading "Evidence, sourcing, and testing
+          records behind this piece are tracked internally", rendered on every
+          article with no check. It was untrue on 23 of the 81 published pieces,
+          which carry no source records at all — and "testing records" implied
+          hands-on testing that has never happened anywhere on this site.
+          A claim about evidence, made without consulting the evidence, is
+          exactly the failure class this project spent a phase removing from the
+          engine. It was sitting in the reader-facing chrome the whole time.
+          Now the page can only say what is actually there. An article with no
+          sources shows nothing, which makes the gap visible instead of
+          papering over it with a reassurance. */}
+      {sources.length > 0 && (
+        <section className="mt-10" aria-labelledby="sources-heading">
+          <h2
+            id="sources-heading"
+            className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500"
+          >
+            Sources
+          </h2>
+          <ol className="flex flex-col gap-2">
+            {sources.map((source, i) => (
+              <li key={`${source.url}-${i}`} className="text-xs leading-relaxed text-zinc-600">
+                <a
+                  href={source.url}
+                  rel="nofollow noopener"
+                  target="_blank"
+                  className="break-words underline decoration-zinc-300 underline-offset-2 hover:text-accent"
+                >
+                  {source.publisher ?? hostOf(source.url)}
+                </a>
+                {source.reliability_tier === "primary" && (
+                  <span className="ml-2 text-zinc-400">primary source</span>
+                )}
+              </li>
+            ))}
+          </ol>
+          <p className="mt-3 text-xs leading-relaxed text-zinc-400">
+            Tech Carvalho does not publish hands-on test results. This piece is written from the
+            sources above and from public documentation. See our{" "}
+            <Link href="/editorial-policy" className="underline hover:text-accent">
+              editorial policy
+            </Link>
+            .
+          </p>
+        </section>
+      )}
 
       {/* The pillar half. A piece with a real cluster under it IS a hub, and
           the whole cluster belongs on it — not three of nine, mixed with

@@ -52,6 +52,22 @@ export type ArticleDetail = {
   products: { id: string; name: string; slug: string; role: string }[];
   tags: { name: string; slug: string }[];
   freshness: { reviewed_at: string; reason: string }[];
+  /**
+   * The article's cited sources, for the reader.
+   *
+   * These were fetched by NOTHING before. The page instead rendered a fixed
+   * prose box saying "Evidence, sourcing, and testing records behind this piece
+   * are tracked internally" — on every article, with no check. It was untrue on
+   * 23 of the 81 published pieces, which have no source records at all, and
+   * "testing records" implied hands-on testing that has never happened
+   * anywhere on this site. A claim about evidence, made without consulting the
+   * evidence, is the exact failure this project spent a whole phase removing
+   * from the engine; it was sitting in the reader-facing chrome the whole time.
+   *
+   * Showing the actual rows means the page can only ever claim what is there,
+   * and an article with no sources now shows nothing rather than a reassurance.
+   */
+  sources: { url: string; publisher: string | null; reliability_tier: string; retrieved_at: string }[];
   seo: { meta_title: string | null; meta_description: string | null; canonical_url: string | null; noindex: boolean } | null;
   related: { id: string; title: string; slug: string; type: string; published_at: string | null; heroImage: HeroImage | null }[];
   heroImage: HeroImage | null;
@@ -96,6 +112,7 @@ export const getArticleDetail = cache(async (slug: string): Promise<ArticleDetai
     { data: productLinks, error: productLinksError },
     { data: tagRows, error: tagRowsError },
     { data: freshnessRows, error: freshnessError },
+    { data: sourceRows, error: sourcesError },
     { data: seo, error: seoError },
     { data: sameTypeContent, error: sameTypeError },
     heroImage,
@@ -124,6 +141,14 @@ export const getArticleDetail = cache(async (slug: string): Promise<ArticleDetai
       .eq("content_id", content.id)
       .order("reviewed_at", { ascending: false })
       .limit(5),
+    // Publicly readable for a published parent (see the RLS policy "public can
+    // read sources of published parents"), so this needs no new grant.
+    supabase
+      .from("source_records")
+      .select("url, publisher, reliability_tier, retrieved_at")
+      .eq("content_id", content.id)
+      .order("reliability_tier", { ascending: true })
+      .order("retrieved_at", { ascending: false }),
     supabase
       .from("seo_metadata")
       .select("meta_title, meta_description, canonical_url, noindex")
@@ -177,6 +202,7 @@ export const getArticleDetail = cache(async (slug: string): Promise<ArticleDetai
     ["productLinks", productLinksError],
     ["tagRows", tagRowsError],
     ["freshness", freshnessError],
+    ["sources", sourcesError],
     ["seo", seoError],
     ["sameType", sameTypeError],
     ["outgoingRelationships", outgoingRelationshipsError],
@@ -377,6 +403,7 @@ export const getArticleDetail = cache(async (slug: string): Promise<ArticleDetai
     products,
     tags,
     freshness: freshnessRows ?? [],
+    sources: sourceRows ?? [],
     seo: seo ?? null,
     related: relatedWithImages,
     heroImage,
