@@ -3,7 +3,32 @@ import { PageHeader, Card, Badge, EmptyState } from "@/components/admin/ui";
 import { EngineTabs } from "../shared";
 import { loadProofRecords } from "@/lib/engine/proof-store";
 import { evaluateAllProofs, REQUIRED_LEVEL, PROOF_TTL_DAYS, type ProofStatus } from "@/lib/engine/proofs";
-import { evaluateReadiness, resolveEffectiveMode, READINESS, modeMayPublish } from "@/lib/engine/modes";
+import { resolveEffectiveMode, READINESS, modeMayPublish } from "@/lib/engine/modes";
+import { assessShadowReadiness } from "@/lib/engine/shadow-readiness";
+import { createClient } from "@/lib/supabase/server";
+
+/** Row shapes returned by the shadow RPCs. Declared here so the page does not
+ *  silently accept a differently-shaped answer. */
+type LedgerRowShape = {
+  candidate_identity: string;
+  title: string;
+  publisher: string | null;
+  decided_on: string;
+  record_kind: string;
+  outcome: string | null;
+  terminal_stage: string;
+  reached_gate: boolean;
+  dimensions: string[] | null;
+};
+type EscapeRowShape = {
+  would_publish: number;
+  fabricated_claim_escapes: number;
+  unlicensed_media_escapes: number;
+  bypassed_hard_blockers: number;
+  duplicate_leakage: number;
+  human_reviewed: number;
+  human_disagreed: number;
+};
 
 // Autonomy readiness.
 //
@@ -46,23 +71,54 @@ export default async function AutonomyReadinessPage() {
   const records = loadProofRecords();
   const { statuses, provenCount } = evaluateAllProofs(records);
 
-  // Shadow evidence is not yet being accumulated by a running SHADOW pass, so
-  // these are honestly zero rather than optimistically estimated. When the
-  // shadow runner lands, this reads from it — and until then, zero is the
-  // truthful number.
-  const evidence = {
-    shadowDecisions: 0,
-    distinctDays: 0,
-    fabricatedClaimEscapes: 0,
-    unlicensedMediaEscapes: 0,
-    bypassedHardBlockers: 0,
-    duplicateLeakageRate: 0,
-    humanDisagreementRate: 0,
+  // Read the REAL shadow ledger.
+  //
+  // This block used to hardcode zeros, with a comment explaining that zero was
+  // the truthful number because no shadow pass had run. That was true when it
+  // was written and stopped being true the moment 118 decisions were recorded —
+  // at which point the page was understating, and a comment asserting honesty
+  // was doing the opposite. A hardcoded number cannot stay honest; only a read
+  // can. Conservative means "does not overstate", not "always says zero".
+  const supabase = await createClient();
+  const [ledgerResult, escapesResult] = await Promise.all([
+    supabase.rpc("engine_shadow_ledger", { p_limit: 20000 }),
+    supabase.rpc("engine_shadow_escapes"),
+  ]);
+
+  // A failed read is NOT an empty ledger. If either query errors, the page says
+  // so rather than rendering zeros that look like a measured result — the
+  // project's empty-vs-failed rule, applied to the readiness dashboard itself.
+  const ledgerError = ledgerResult.error ?? escapesResult.error ?? null;
+  const ledgerRows = (ledgerResult.data ?? []) as LedgerRowShape[];
+  const escapeRow = ((escapesResult.data ?? []) as EscapeRowShape[])[0];
+
+  const readiness = assessShadowReadiness({
+    ledger: ledgerRows.map((r) => ({
+      candidateIdentity: r.candidate_identity,
+      title: r.title,
+      publisher: r.publisher,
+      decidedOn: r.decided_on,
+      recordKind: r.record_kind === "decision" ? "decision" : "failure",
+      outcome: r.outcome as "WOULD_PUBLISH" | "WOULD_REJECT" | "HUMAN_REVIEW_REQUIRED" | null,
+      terminalStage: r.terminal_stage,
+      reachedGate: r.reached_gate,
+      dimensions: r.dimensions ?? [],
+    })),
+    escapes: {
+      wouldPublish: escapeRow?.would_publish ?? 0,
+      fabricatedClaimEscapes: escapeRow?.fabricated_claim_escapes ?? 0,
+      unlicensedMediaEscapes: escapeRow?.unlicensed_media_escapes ?? 0,
+      bypassedHardBlockers: escapeRow?.bypassed_hard_blockers ?? 0,
+      duplicateLeakage: escapeRow?.duplicate_leakage ?? 0,
+      humanReviewed: escapeRow?.human_reviewed ?? 0,
+      humanDisagreed: escapeRow?.human_disagreed ?? 0,
+    },
     proofRecords: records,
-  };
-  const readiness = evaluateReadiness(evidence);
+    ledgerAvailable: ledgerError === null,
+    ledgerUnavailableReason: ledgerError?.message,
+  });
   // The mode an operator might REQUEST, and what the gate actually permits.
-  const effective = resolveEffectiveMode("AUTONOMOUS", readiness);
+  const effective = resolveEffectiveMode("AUTONOMOUS", readiness.modes);
 
   return (
     <div>
@@ -130,16 +186,30 @@ export default async function AutonomyReadinessPage() {
           Shadow evaluation
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-zinc-600">
-          Shadow decisions: <strong>{readiness.progress.shadowDecisions}</strong> of{" "}
-          {readiness.progress.required}, across {readiness.progress.distinctDays} of{" "}
-          {readiness.progress.requiredDays} required distinct days.
+          Shadow decisions: <strong>{readiness.modes.progress.shadowDecisions}</strong> of{" "}
+          {readiness.modes.progress.required}, across {readiness.modes.progress.distinctDays} of{" "}
+          {readiness.modes.progress.requiredDays} required distinct days.
         </p>
-        {readiness.progress.shadowDecisions === 0 && (
+        <p className="mt-2 text-sm leading-relaxed text-zinc-600">{readiness.composition.summary}</p>
+        <p className="mt-2 text-xs leading-relaxed text-zinc-500">
+          Recorded but refused credit — duplicates: {readiness.refusedCredit.duplicates}, incomplete:{" "}
+          {readiness.refusedCredit.incomplete}, over the family cap: {readiness.refusedCredit.familyCap}.
+          Re-running the evaluation banks no additional credit: the recording RPC dedupes on the
+          candidate, server-side, so the 500 cannot be reached by repetition.
+        </p>
+        {ledgerError !== null && (
+          <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-xs leading-relaxed text-red-900">
+            THE LEDGER COULD NOT BE READ: {ledgerError.message}. The numbers above are not a
+            measurement of zero — they are the absence of one, and readiness is held at its most
+            pessimistic value until the read succeeds.
+          </p>
+        )}
+        {ledgerError === null && readiness.modes.progress.shadowDecisions === 0 && (
           <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900">
-            No shadow decisions have been recorded. This reads zero because zero have been made —
-            not because the counter is unwired. A decision counts only when it reaches a meaningful
-            final gate or a legitimate fail-closed state; a candidate that died because a stage
-            crashed is a failure, not a decision.
+            No shadow decisions have been recorded. The ledger WAS read successfully, so this is a
+            measured zero rather than a failed query. A decision counts only when it reaches a
+            meaningful final gate or a legitimate fail-closed state; a candidate that died because a
+            stage crashed is a failure, not a decision.
           </p>
         )}
       </Card>
