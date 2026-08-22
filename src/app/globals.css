@@ -40,6 +40,29 @@ body {
   text-underline-offset: 2px;
 }
 
+/* Keyboard focus must always be visible, including on elements that only
+   carry hover styling. Scoped to :focus-visible so it appears for keyboard
+   navigation without ringing every mouse click. Components may override it
+   with their own ring; this is the floor, not the ceiling. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* The card and lead-image treatments use transform/opacity transitions for
+   hover feedback. Anyone who has asked their OS for reduced motion gets the
+   same layouts with the movement removed, rather than a degraded page. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* Native disclosure element used for the mobile nav — no client JS. */
 details.mobile-nav > summary {
   list-style: none;

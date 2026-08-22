@@ -13,11 +13,17 @@ export type ArticleDetail = {
     body: string | null;
     published_at: string | null;
     updated_at: string;
+    category_id: string | null;
   };
+  // The article's taxonomy category, when it has one. Used for the visible
+  // breadcrumb trail (Home > Category > Articles > piece) and for the
+  // Article schema's articleSection — both were previously unavailable
+  // because the query didn't select category_id at all.
+  category: { name: string; slug: string } | null;
   products: { id: string; name: string; slug: string; role: string }[];
   tags: { name: string; slug: string }[];
   freshness: { reviewed_at: string; reason: string }[];
-  seo: { meta_title: string | null; meta_description: string | null; canonical_url: string | null } | null;
+  seo: { meta_title: string | null; meta_description: string | null; canonical_url: string | null; noindex: boolean } | null;
   related: { id: string; title: string; slug: string; type: string; published_at: string | null; heroImage: HeroImage | null }[];
   heroImage: HeroImage | null;
 };
@@ -28,7 +34,7 @@ export const getArticleDetail = cache(async (slug: string): Promise<ArticleDetai
 
   const { data: content, error: contentError } = await supabase
     .from("content_items")
-    .select("id, title, slug, type, body, published_at, updated_at, status")
+    .select("id, title, slug, type, body, published_at, updated_at, status, category_id")
     .eq("slug", slug)
     .eq("status", "published")
     .lte("published_at", new Date().toISOString())
@@ -46,6 +52,7 @@ export const getArticleDetail = cache(async (slug: string): Promise<ArticleDetai
     heroImage,
     { data: outgoingRelationships, error: outgoingRelationshipsError },
     { data: incomingRelationships, error: incomingRelationshipsError },
+    { data: category, error: categoryError },
   ] = await Promise.all([
     supabase.from("content_products").select("product_id, role").eq("content_id", content.id),
     supabase.from("content_tags").select("tag_id").eq("content_id", content.id),
@@ -57,7 +64,7 @@ export const getArticleDetail = cache(async (slug: string): Promise<ArticleDetai
       .limit(5),
     supabase
       .from("seo_metadata")
-      .select("meta_title, meta_description, canonical_url")
+      .select("meta_title, meta_description, canonical_url, noindex")
       .eq("content_id", content.id)
       .maybeSingle(),
     // Fallback only — see the shared-product query and the explicit
@@ -82,6 +89,9 @@ export const getArticleDetail = cache(async (slug: string): Promise<ArticleDetai
     // visitors (see 20260820_content_relationships.sql's own header).
     supabase.from("content_relationships").select("related_content_id").eq("content_id", content.id),
     supabase.from("content_relationships").select("content_id").eq("related_content_id", content.id),
+    content.category_id
+      ? supabase.from("taxonomy_categories").select("name, slug").eq("id", content.category_id).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
   ]);
   for (const [ctx, err] of [
     ["productLinks", productLinksError],
@@ -91,6 +101,7 @@ export const getArticleDetail = cache(async (slug: string): Promise<ArticleDetai
     ["sameType", sameTypeError],
     ["outgoingRelationships", outgoingRelationshipsError],
     ["incomingRelationships", incomingRelationshipsError],
+    ["category", categoryError],
   ] as const) {
     logQueryError(`getArticleDetail(${slug}) ${ctx}`, err);
   }
@@ -167,6 +178,7 @@ export const getArticleDetail = cache(async (slug: string): Promise<ArticleDetai
 
   return {
     content,
+    category: category ?? null,
     products,
     tags: tags ?? [],
     freshness: freshnessRows ?? [],

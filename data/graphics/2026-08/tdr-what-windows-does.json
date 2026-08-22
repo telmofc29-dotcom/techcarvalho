@@ -1,0 +1,28 @@
+{
+  "kind": "spec_diagram",
+  "slug": "tdr-what-windows-does",
+  "title": "What Windows' Timeout Detection and Recovery actually does",
+  "subtitle": "Schematic of the mechanism behind \"Display driver stopped responding and has recovered\"",
+  "theme": "computing",
+  "subject": "Windows Timeout Detection and Recovery (TDR)",
+  "bodyShape": "rounded",
+  "bodyLabel": "TDR",
+  "callouts": [
+    { "label": "Default timeout", "value": "2 seconds", "note": "Microsoft-documented" },
+    { "label": "Action taken", "value": "Resets the GPU", "note": "not a driver reinstall" },
+    { "label": "Video memory", "value": "All allocations purged" },
+    { "label": "What you see", "value": "One screen flicker" },
+    { "label": "Where it is logged", "value": "Event Viewer, System" },
+    { "label": "Blue-screen threshold", "value": "6th hang in 1 minute" },
+    { "label": "Tells you the cause", "value": null, "note": "the message reports the symptom only" }
+  ],
+  "provenance": {
+    "sourceLabel": "Microsoft Learn, WDDM Support for Timeout Detection and Recovery (TDR)",
+    "sourceUrl": "https://learn.microsoft.com/en-us/windows-hardware/drivers/display/timeout-detection-and-recovery",
+    "asOf": "2026-08-22"
+  },
+  "attach": {
+    "contentSlug": "display-driver-stopped-responding-and-has-recovered",
+    "role": "hero"
+  }
+}

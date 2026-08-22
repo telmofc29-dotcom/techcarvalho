@@ -27,11 +27,21 @@ export async function generateMetadata({
   const detail = await getProductDetail(slug);
   if (!detail) notFound();
 
+  // Manufacturer-qualified by default. "EOS R5" and "Alpha 7 IV" are not
+  // distinguishable in a SERP without the brand, and product names in this
+  // catalogue are stored unqualified. An editor-set meta_title always wins.
+  const brandQualified =
+    detail.manufacturer && !detail.product.name.toLowerCase().startsWith(detail.manufacturer.name.toLowerCase())
+      ? `${detail.manufacturer.name} ${detail.product.name}`
+      : detail.product.name;
+
   return buildMetadata({
-    title: detail.product.name,
-    description: detail.product.summary ?? undefined,
+    title: detail.seo?.meta_title ?? brandQualified,
+    description: detail.seo?.meta_description ?? detail.product.summary ?? undefined,
     path: `/products/${slug}`,
     image: detail.heroImage,
+    canonicalUrl: detail.seo?.canonical_url,
+    noindex: detail.seo?.noindex ?? false,
   });
 }
 
@@ -54,6 +64,10 @@ export default async function ProductPage({
     slug: product.slug,
     summary: product.summary,
     manufacturerName: manufacturer?.name,
+    image: heroImage,
+    modelNumber: product.model_number,
+    releaseDate: product.release_date,
+    categoryName: category?.name,
   });
 
   return (
@@ -67,7 +81,14 @@ export default async function ProductPage({
       <Breadcrumbs
         items={[
           { name: "Home", path: "/" },
-          ...(category ? [{ name: category.name, path: `/${category.slug}` }] : []),
+          // The category hub is the semantic parent when there is one. When
+          // there isn't, fall back to /products rather than emitting a
+          // two-item trail that jumps straight from the homepage to a leaf —
+          // a BreadcrumbList with no intermediate level tells a crawler this
+          // product sits directly under the root, which isn't true.
+          ...(category
+            ? [{ name: category.name, path: `/${category.slug}` }]
+            : [{ name: "Products", path: "/products" }]),
           { name: product.name, path: `/products/${product.slug}` },
         ]}
       />

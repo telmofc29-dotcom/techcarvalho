@@ -4,6 +4,10 @@ import { createClient } from "@/lib/supabase/server";
 import { logQueryError } from "@/lib/log/query-error";
 import { attachExcerpts } from "./excerpt";
 import { attachHeroImages, type HeroImage } from "./hero-image";
+// Shared with the rest of the public data layer so "3h ago" means the same
+// thing in every rail on the page (see src/lib/public/dates.ts for why the
+// clock is read here rather than in a component).
+import { freshnessLabel } from "./dates";
 
 // Deterministic "Trending Now" ranking for the public homepage and category
 // pages.
@@ -98,24 +102,6 @@ export type TrendingResult = {
    */
   isRecencyFallback: boolean;
 };
-
-/**
- * Relative freshness for recent items, absolute date once "how recent" stops
- * being the useful information.
- */
-function freshnessLabel(publishedAt: string | null): string | null {
-  if (!publishedAt) return null;
-  const published = new Date(publishedAt);
-  if (Number.isNaN(published.getTime())) return null;
-
-  const hours = Math.floor((Date.now() - published.getTime()) / 3_600_000);
-  if (hours < 0) return null;
-  if (hours < 1) return "Just published";
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
-  return published.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-}
 
 function recencyScore(publishedAt: string | null, type: string): number {
   if (!publishedAt) return 0;

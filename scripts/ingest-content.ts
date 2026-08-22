@@ -225,7 +225,29 @@ async function main() {
     }
   }
 
-  const knownContentSlugs = new Set([...content.map((c) => c.slug), ...Object.keys(contentIds)]);
+  // Relationship targets can live OUTSIDE this batch — a new cluster almost
+  // always wants to point at articles published by an earlier batch (that is
+  // the entire purpose of content_relationships). Until this fix the validity
+  // guard below only consulted slugs present in the current batch, so every
+  // cross-batch relationship was reported as `relatedSlug "..." not found in
+  // DB or this batch` and silently never written — even though the insert
+  // code a few lines further down already does a DB lookup to resolve exactly
+  // that case. The message was also wrong: the DB was never actually
+  // consulted. Same "define or reference" split used for taxonomy_tags above:
+  // a slug counts as known if it is defined in this batch OR already exists.
+  const externalRelatedSlugs = [
+    ...new Set(
+      content
+        .flatMap((c) => (c.relatedContent ?? []).map((r) => r.relatedSlug))
+        .filter((slug) => !content.some((c) => c.slug === slug))
+    ),
+  ];
+  const externalContentIds = await resolveIdsBySlug(client, "content_items", externalRelatedSlugs);
+  const knownContentSlugs = new Set([
+    ...content.map((c) => c.slug),
+    ...Object.keys(contentIds),
+    ...Object.keys(externalContentIds),
+  ]);
 
   // 2. Tags (delete+reinsert per item, matching the admin UI's own
   // updateContentTags action — idempotent by construction).

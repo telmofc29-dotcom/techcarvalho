@@ -71,6 +71,13 @@ export async function getPublishedHeroImage(
       attribution: asset.attribution,
       attributionRequired: asset.attribution_required,
       creator: asset.creator,
+      // `source_url` was already selected by the query above and already
+      // declared on HeroImage, but was never copied onto the returned
+      // object — so a hero image whose licence requires a link back to the
+      // source rendered its credit as plain text with the link silently
+      // dropped. getPublishedGallery (below) has always returned it; only
+      // the hero path lost it.
+      sourceUrl: asset.source_url,
     };
   } catch (e) {
     console.error(`[query-error] getPublishedHeroImage(${kind}, ${id}) threw`, e);

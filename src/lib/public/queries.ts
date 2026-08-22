@@ -32,6 +32,64 @@ export const getCategoryBySlug = cache(async (slug: string) => {
   return data;
 });
 
+// seo_metadata rows can be scoped to a category as well as to a product or a
+// content item (the table has all three FK columns). Nothing on the public
+// side read the category ones before, so an editor's category meta_title /
+// meta_description / canonical_url / noindex went into the database and
+// stopped there. Cached per-request: generateMetadata() and the page body
+// both want it.
+export const getCategorySeo = cache(async (categoryId: string) => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("seo_metadata")
+    .select("meta_title, meta_description, canonical_url, noindex")
+    .eq("category_id", categoryId)
+    .maybeSingle();
+  logQueryError(`getCategorySeo(${categoryId})`, error);
+  return data ?? null;
+});
+
+// Whether a category hub has anything published behind it.
+//
+// PLANNED_CATEGORIES renders a route for all ten subject areas whether or not
+// any of them has content, and most currently show "Coming soon". That is the
+// honest thing to render, but it is also, to a crawler, ten near-identical
+// thin pages — so this decides indexability and sitemap inclusion. Head-only
+// counts: no rows are transferred, just the totals.
+export const getCategoryPublishedCounts = cache(async (categoryId: string) => {
+  const supabase = await createClient();
+  const [{ count: productCount, error: productError }, { count: directContentCount, error: contentError }] =
+    await Promise.all([
+      supabase
+        .from("products")
+        .select("id", { count: "exact", head: true })
+        .eq("category_id", categoryId)
+        .eq("is_published", true),
+      supabase
+        .from("content_items")
+        .select("id", { count: "exact", head: true })
+        .eq("category_id", categoryId)
+        .eq("status", "published")
+        .lte("published_at", new Date().toISOString()),
+    ]);
+  logQueryError(`getCategoryPublishedCounts(${categoryId}) products`, productError);
+  logQueryError(`getCategoryPublishedCounts(${categoryId}) content`, contentError);
+
+  const products = productCount ?? 0;
+  const directContent = directContentCount ?? 0;
+  if (products > 0 || directContent > 0) return { productCount: products, contentCount: directContent };
+
+  // Nothing directly attached — but getPublishedContentForCategory also
+  // surfaces content whose primary_subject product sits in this category,
+  // and that path does not require the product itself to be published. If
+  // that route yields anything, the hub is NOT empty, and calling it
+  // noindex here would contradict the page the visitor actually gets.
+  // Only reached for otherwise-empty categories, so it costs nothing in the
+  // common case.
+  const indirect = await getPublishedContentForCategory(categoryId);
+  return { productCount: 0, contentCount: indirect.length };
+});
+
 export async function getSubcategories(categoryId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase

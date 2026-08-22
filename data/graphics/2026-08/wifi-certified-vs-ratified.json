@@ -1,0 +1,25 @@
+{
+  "kind": "comparison",
+  "slug": "wifi-certified-vs-ratified",
+  "title": "Certified is not the same as ratified",
+  "subtitle": "When you could buy a certified device, versus when IEEE published the amendment behind it",
+  "theme": "networking",
+  "left": { "name": "Wi-Fi Alliance certification", "sublabel": "When certified products arrived" },
+  "right": { "name": "IEEE amendment published", "sublabel": "When the standard itself was published" },
+  "rows": [
+    { "label": "Wi-Fi 4 / 802.11n", "left": "2009 (year stated)", "right": "29 Oct 2009" },
+    { "label": "Wi-Fi 5 / 802.11ac", "left": "2014 (year stated)", "right": "18 Dec 2013" },
+    { "label": "Wi-Fi 6 / 802.11ax", "left": "16 Sep 2019", "right": "19 May 2021" },
+    { "label": "Wi-Fi 6E", "left": "7 Jan 2021", "right": "No separate amendment" },
+    { "label": "Wi-Fi 7 / 802.11be", "left": "8 Jan 2024", "right": "22 Jul 2025" }
+  ],
+  "provenance": {
+    "sourceLabel": "Wi-Fi Alliance news releases; IEEE Standards Association and IEEE 802.11 Working Group records",
+    "sourceUrl": "https://www.ieee802.org/11/Reports/802.11_Timelines.htm",
+    "asOf": "2026-08-22"
+  },
+  "attach": {
+    "contentSlug": "wifi-generations-explained-wifi-4-to-wifi-7",
+    "role": "gallery"
+  }
+}

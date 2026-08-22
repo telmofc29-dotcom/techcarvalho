@@ -1,0 +1,18 @@
+{
+  "kind": "timeline",
+  "slug": "modern-warfare-4-published-dates",
+  "title": "Modern Warfare 4: the dates that are published",
+  "subtitle": "Two first-party sources give two launch dates. Both are plotted; neither is picked for you.",
+  "theme": "gaming",
+  "events": [
+    { "date": "2026-08-21", "label": "Beta and multiplayer detail", "detail": "PlayStation Blog post" },
+    { "date": "2026-09-01", "label": "Open beta ends", "detail": "10:00am PT, per Sony" },
+    { "date": "2026-10-22", "label": "Launch date on Steam", "detail": "Activision's own listing" },
+    { "date": "2026-10-23", "label": "Launch date per Sony", "detail": "PlayStation Blog wording" }
+  ],
+  "provenance": {
+    "sourceLabel": "Activision's Steam store listing and the PlayStation Blog",
+    "asOf": "2026-08-22"
+  },
+  "attach": { "contentSlug": "call-of-duty-modern-warfare-4-confirmed-details", "role": "hero" }
+}

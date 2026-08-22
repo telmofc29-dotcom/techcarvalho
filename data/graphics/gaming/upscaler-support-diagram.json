@@ -1,0 +1,25 @@
+{
+  "kind": "spec_diagram",
+  "slug": "upscaler-hardware-support-2026",
+  "title": "Which upscaler your GPU can actually run",
+  "subtitle": "Hardware support exactly as documented by NVIDIA, AMD and Intel — not measured by us",
+  "theme": "gaming",
+  "subject": "Upscaler support",
+  "bodyShape": "rounded",
+  "bodyLabel": "By vendor",
+  "callouts": [
+    { "label": "DLSS Super Resolution", "value": "RTX 20 series and newer", "note": "NVIDIA support table" },
+    { "label": "DLSS Frame Generation", "value": "RTX 40 and 50 only" },
+    { "label": "DLSS Multi Frame Gen", "value": "RTX 50 only", "note": "up to five frames per rendered frame" },
+    { "label": "FSR 4 upscaling", "value": "Radeon RX 9000 and above", "note": "AMD, GPUOpen documentation" },
+    { "label": "FSR on older Radeon", "value": "Falls back to FSR 3.1.5", "note": "selected automatically by AMD's API" },
+    { "label": "XeSS Super Resolution", "value": "Any GPU with SM 6.4", "note": "DP4a support required" },
+    { "label": "XeSS Frame Generation", "value": "Intel Arc, or SM 6.4 GPUs" },
+    { "label": "Relative image quality", "value": null, "note": "not independently tested by Tech Carvalho" }
+  ],
+  "provenance": {
+    "sourceLabel": "NVIDIA DLSS page, AMD GPUOpen FSR 4 page, Intel XeSS repository",
+    "asOf": "2026-08-22"
+  },
+  "attach": { "contentSlug": "game-upscaling-dlss-fsr-xess-explained", "role": "hero" }
+}

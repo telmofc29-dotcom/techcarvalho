@@ -1,0 +1,27 @@
+{
+  "kind": "comparison",
+  "slug": "re-requiem-minimum-vs-recommended",
+  "title": "Resident Evil Requiem: what each spec tier buys",
+  "subtitle": "Capcom's own published requirements — the minimum tier renders at 640p and upscales to 1080p",
+  "theme": "gaming",
+  "left": { "name": "Minimum spec", "sublabel": "As published by Capcom" },
+  "right": { "name": "Recommended spec", "sublabel": "As published by Capcom" },
+  "rows": [
+    { "label": "Output resolution", "left": "1080p", "right": "1080p" },
+    { "label": "Internal render resolution", "left": "640p", "right": "720p", "favours": "right" },
+    { "label": "Target frame rate", "left": "30 fps", "right": "60 fps", "favours": "right" },
+    { "label": "Upscaling", "left": "Assumed on", "right": "Assumed on" },
+    { "label": "GPU", "left": "GTX 1660 6GB / RX 5500 XT 8GB", "right": "RTX 2060 Super 8GB / RX 6600 8GB", "favours": "right" },
+    { "label": "CPU", "left": "Core i5-8500 / Ryzen 5 3500", "right": "Core i7-8700 / Ryzen 5 5500", "favours": "right" },
+    { "label": "Memory", "left": "16 GB", "right": "16 GB" },
+    { "label": "Operating system", "left": "Windows 11 64-bit", "right": "Windows 11 64-bit" },
+    { "label": "Storage type", "left": "SSD required", "right": "SSD required" },
+    { "label": "Install size", "left": null, "right": "Not stated on the listing" }
+  ],
+  "provenance": {
+    "sourceLabel": "Capcom's Resident Evil Requiem store listing on Steam",
+    "sourceUrl": "https://store.steampowered.com/app/3764200/Resident_Evil_Requiem/",
+    "asOf": "2026-08-22"
+  },
+  "attach": { "contentSlug": "pc-game-system-requirements-what-they-mean", "role": "hero" }
+}

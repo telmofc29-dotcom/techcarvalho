@@ -47,6 +47,12 @@ export type ProductDetail = {
   related: RelatedProduct[];
   articles: { id: string; title: string; slug: string; type: string; role: string; heroImage: HeroImage | null }[];
   heroImage: HeroImage | null;
+  // seo_metadata row for this product, when an editor has created one. The
+  // admin product form has written meta_title/meta_description/canonical_url/
+  // noindex to this table since the table existed, but nothing on the public
+  // side ever read it back for products — an editor ticking "noindex" got a
+  // page that still rendered `index, follow`. generateMetadata() consumes it.
+  seo: { meta_title: string | null; meta_description: string | null; canonical_url: string | null; noindex: boolean } | null;
   offers: ProductOffer[];
   launchPricing: LaunchPricing[];
   freshness: { reviewed_at: string; reason: string }[];
@@ -100,6 +106,7 @@ export const getProductDetail = cache(async (slug: string): Promise<ProductDetai
     { data: offers, error: offersError },
     { data: launchPricingRows, error: launchPricingError },
     { data: freshnessRows, error: freshnessError },
+    { data: seo, error: seoError },
     { count: sourceCount, error: sourceCountError },
     { count: evidenceCount, error: evidenceCountError },
     heroImage,
@@ -135,6 +142,11 @@ export const getProductDetail = cache(async (slug: string): Promise<ProductDetai
       .eq("product_id", product.id)
       .order("reviewed_at", { ascending: false })
       .limit(5),
+    supabase
+      .from("seo_metadata")
+      .select("meta_title, meta_description, canonical_url, noindex")
+      .eq("product_id", product.id)
+      .maybeSingle(),
     supabase.from("source_records").select("id", { count: "exact", head: true }).eq("product_id", product.id),
     supabase.from("evidence_records").select("id", { count: "exact", head: true }).eq("product_id", product.id),
     getPublishedHeroImage("product", product.id),
@@ -151,6 +163,7 @@ export const getProductDetail = cache(async (slug: string): Promise<ProductDetai
     ["offers", offersError],
     ["launchPricing", launchPricingError],
     ["freshness", freshnessError],
+    ["seo", seoError],
     ["sourceCount", sourceCountError],
     ["evidenceCount", evidenceCountError],
   ] as const) {
@@ -246,6 +259,7 @@ export const getProductDetail = cache(async (slug: string): Promise<ProductDetai
     related,
     articles,
     heroImage,
+    seo: seo ?? null,
     offers: offers ?? [],
     launchPricing: launchPricingRows ?? [],
     freshness: freshnessRows ?? [],

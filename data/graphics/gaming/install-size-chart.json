@@ -1,0 +1,33 @@
+{
+  "kind": "chart",
+  "slug": "published-install-size-2026",
+  "title": "Published install size, current PC releases",
+  "subtitle": "The Storage line on each game's own Steam listing. ARC Raiders publishes no figure at all.",
+  "theme": "gaming",
+  "chartType": "bar",
+  "unit": "GB",
+  "zeroBaseline": true,
+  "categories": [
+    "Call of Duty",
+    "Baldur's Gate 3",
+    "Black Myth",
+    "AC Shadows",
+    "Borderlands 4",
+    "DOOM Dark Ages",
+    "MH Wilds",
+    "Plague Tale",
+    "Cyberpunk 2077",
+    "ARC Raiders"
+  ],
+  "series": [
+    {
+      "name": "Publisher-stated install size",
+      "points": [161, 150, 130, 115, 100, 100, 75, 75, 70, null]
+    }
+  ],
+  "provenance": {
+    "sourceLabel": "Publisher store listings on Steam, minimum-tier Storage line",
+    "asOf": "2026-08-22"
+  },
+  "attach": { "contentSlug": "game-storage-requirements-2026", "role": "hero" }
+}

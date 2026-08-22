@@ -1,0 +1,26 @@
+{
+  "kind": "comparison",
+  "slug": "ssd-disk-management-states",
+  "title": "New SSD missing: reading Disk Management",
+  "subtitle": "What each state in Disk Management means, and the correct next step for it",
+  "theme": "computing",
+  "left": { "name": "What Windows is telling you", "sublabel": "State shown in Disk Management" },
+  "right": { "name": "The correct next step", "sublabel": "One of these erases data — see the article" },
+  "rows": [
+    { "label": "Not Initialized", "left": "Disk present, no partition table", "right": "Initialize Disk (erases data)" },
+    { "label": "Offline", "left": "Disk excluded by Windows", "right": "Right-click, select Online" },
+    { "label": "Unallocated", "left": "Initialised, no volume yet", "right": "New Simple Volume" },
+    { "label": "Healthy, no letter", "left": "Volume exists but unmounted", "right": "Assign a drive letter" },
+    { "label": "Unreadable partition", "left": "APFS, HFS+ or ext4 volume", "right": "Copy data off before reformat" },
+    { "label": "Not listed at all", "left": "Windows cannot see the hardware", "right": "Check firmware, M.2 slot, cable" }
+  ],
+  "provenance": {
+    "sourceLabel": "Microsoft Learn, Initialize New Disks and Disk Management troubleshooting",
+    "sourceUrl": "https://learn.microsoft.com/en-us/windows-server/storage/disk-management/initialize-new-disks",
+    "asOf": "2026-08-22"
+  },
+  "attach": {
+    "contentSlug": "new-ssd-not-showing-up-in-windows",
+    "role": "hero"
+  }
+}

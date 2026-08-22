@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { buildMetadata } from "@/lib/seo/metadata";
+import { itemListJsonLd, safeJsonLdString } from "@/lib/seo/jsonld";
 import { getManufacturerDetail } from "@/lib/public/manufacturer-detail";
 import { Breadcrumbs } from "@/components/public/breadcrumbs";
 import { ProductCard, SectionHeading } from "@/components/public/cards";
@@ -21,10 +22,33 @@ export async function generateMetadata({
   const detail = await getManufacturerDetail(slug);
   if (!detail) notFound();
 
+  const { manufacturer, products } = detail;
+
   return buildMetadata({
-    title: detail.manufacturer.name,
-    description: detail.manufacturer.description ?? undefined,
+    // Distinct from a bare brand name, which on its own is a query this site
+    // has no business competing for. What the page actually offers is the
+    // published coverage of that brand, and the title should say so.
+    title: products.length > 0 ? `${manufacturer.name} products and coverage` : manufacturer.name,
+    description:
+      manufacturer.description ??
+      (products.length > 0
+        ? `Every ${manufacturer.name} product published on Tech Carvalho, with specifications and related coverage.`
+        : undefined),
     path: `/manufacturers/${slug}`,
+    // manufacturers is world-readable reference data with no publish gating,
+    // so a row exists — and this route renders — the moment an admin adds a
+    // brand, long before any of its products are published. That page is an
+    // empty state: a heading, maybe a description, and "No published products
+    // yet". Letting it into the index is a thin-content page per brand, so it
+    // is noindex until it has something to show. `follow` stays on so the
+    // "All manufacturers" link still passes.
+    noindex: products.length === 0,
+    follow: true,
+    // Deliberately no page-specific OG image. The only image this page owns is
+    // the brand logo, which is a transparent, wide, non-16:9 asset — pushed
+    // into a summary_large_image card it renders as a letterboxed smear. The
+    // site-wide opengraph-image.tsx fallback is the better card here, and
+    // "use the default" is a real choice, not a missing one.
   });
 }
 
@@ -42,6 +66,19 @@ export default async function ManufacturerPage({
   return (
     <div className="mx-auto max-w-6xl px-6 py-12">
       <PageViewTracker entityType="manufacturer" entityId={manufacturer.id} />
+      {products.length > 0 && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: safeJsonLdString(
+              itemListJsonLd(
+                products.map((p) => ({ name: p.name, path: `/products/${p.slug}` })),
+                { name: `${manufacturer.name} products` }
+              )
+            ),
+          }}
+        />
+      )}
       <Breadcrumbs
         items={[
           { name: "Home", path: "/" },

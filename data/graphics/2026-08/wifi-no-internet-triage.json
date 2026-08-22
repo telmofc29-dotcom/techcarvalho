@@ -1,0 +1,28 @@
+{
+  "kind": "comparison",
+  "slug": "wifi-no-internet-triage",
+  "title": "Connected but no internet: what each test tells you",
+  "subtitle": "Four minutes of observation narrows the fault to your device, your router, your ISP or a service",
+  "theme": "networking",
+  "left": { "name": "What you observe", "sublabel": "The result of the test" },
+  "right": { "name": "Where the fault is", "sublabel": "What that result rules in" },
+  "rows": [
+    { "label": "Another device", "left": "Other devices work fine", "right": "This device only" },
+    { "label": "Mobile data", "left": "Works off Wi-Fi", "right": "Router or ISP" },
+    { "label": "Router status light", "left": "No internet or WAN link", "right": "Upstream of the router" },
+    { "label": "Assigned address", "left": "Address starts 169.254", "right": "DHCP failed" },
+    { "label": "Assigned address", "left": "Address is 192.168.x.x", "right": "Addressing OK, test DNS" },
+    { "label": "Names vs numbers", "left": "Numbers work, names fail", "right": "DNS resolution" },
+    { "label": "Public network", "left": "No sign-in page appeared", "right": "Captive portal" },
+    { "label": "Secure sites only", "left": "Certificate warnings", "right": "System clock is wrong" }
+  ],
+  "provenance": {
+    "sourceLabel": "Microsoft, Apple and Google support documentation; IETF RFC 3927, RFC 8910 and RFC 5280",
+    "sourceUrl": "https://www.rfc-editor.org/rfc/rfc3927.html",
+    "asOf": "2026-08-22"
+  },
+  "attach": {
+    "contentSlug": "wifi-connected-but-no-internet",
+    "role": "hero"
+  }
+}

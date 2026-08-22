@@ -10,7 +10,7 @@ import { Breadcrumbs } from "@/components/public/breadcrumbs";
 import { ContentCard, CONTENT_TYPE_LABEL } from "@/components/public/cards";
 import { RelatedContentTracker } from "@/components/public/related-content-tracker";
 import { Badge } from "@/components/shared/ui";
-import { parseBodyBlocks } from "@/lib/content/body-format";
+import { parseBodyBlocks, excerptFromBody } from "@/lib/content/body-format";
 import { PageViewTracker } from "@/components/analytics/page-view-tracker";
 import { ScrollDepthTracker } from "@/components/analytics/scroll-depth-tracker";
 import { InternalLinkTracker } from "@/components/analytics/internal-link-tracker";
@@ -26,9 +26,19 @@ export async function generateMetadata({
 
   return buildMetadata({
     title: detail.seo?.meta_title ?? detail.content.title,
-    description: detail.seo?.meta_description ?? undefined,
+    // Falls back to the same generated excerpt the cards use, so a piece with
+    // no hand-written meta description gets a real one derived from its own
+    // body rather than inheriting the site tagline — which is what every
+    // description-less article shared with every other article before this.
+    description: detail.seo?.meta_description ?? excerptFromBody(detail.content.body) ?? undefined,
     path: `/articles/${slug}`,
     image: detail.heroImage,
+    canonicalUrl: detail.seo?.canonical_url,
+    noindex: detail.seo?.noindex ?? false,
+    openGraphType: "article",
+    publishedTime: detail.content.published_at,
+    modifiedTime: detail.content.updated_at,
+    section: detail.category?.name,
   });
 }
 
@@ -41,7 +51,7 @@ export default async function ArticlePage({
   const detail = await getArticleDetail(slug);
   if (!detail) notFound();
 
-  const { content, products, tags, freshness, related, heroImage } = detail;
+  const { content, category, products, tags, freshness, related, heroImage, seo } = detail;
   const lastVerified = freshness[0]?.reviewed_at ?? null;
   const gallery = await getPublishedGallery("content", content.id);
 
@@ -50,6 +60,13 @@ export default async function ArticlePage({
     slug: content.slug,
     publishedAt: content.published_at,
     updatedAt: content.updated_at,
+    contentType: content.type,
+    description: seo?.meta_description ?? excerptFromBody(content.body),
+    image: heroImage,
+    section: category?.name,
+    // Only products actually linked through content_products, and only the
+    // published ones — getArticleDetail already filters on is_published.
+    about: products.map((p) => ({ name: p.name, slug: p.slug })),
   });
 
   return (
@@ -63,6 +80,11 @@ export default async function ArticlePage({
       <Breadcrumbs
         items={[
           { name: "Home", path: "/" },
+          // The subject-area hub, when the piece has one. This is the level
+          // that was missing: the trail ran Home > Articles > Reviews > piece,
+          // which never touched the category hub the piece actually belongs
+          // to and so passed no breadcrumb signal to it.
+          ...(category ? [{ name: category.name, path: `/${category.slug}` }] : []),
           { name: "Articles", path: "/articles" },
           { name: CONTENT_TYPE_LABEL[content.type] ?? content.type, path: `/articles?type=${content.type}` },
           { name: content.title, path: `/articles/${content.slug}` },

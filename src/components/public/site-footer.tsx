@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { SITE_NAME } from "@/lib/seo/site";
+import { SITE_NAME, SITE_TAGLINE } from "@/lib/seo/site";
 import { PLANNED_CATEGORIES } from "@/lib/public/categories";
 import { CookieSettingsButton } from "@/components/consent/cookie-settings-button";
 
@@ -34,6 +34,19 @@ export function SiteFooter() {
               height={367}
               className="h-12 w-auto"
             />
+            {/* A statement of practice, not a claim about results — it
+                describes what the site does and does not publish, which is
+                checkable against the pages themselves. */}
+            <p className="mt-4 max-w-xs text-sm leading-relaxed text-zinc-500">
+              {SITE_TAGLINE} We publish what we can source and show plainly when we can&apos;t — no invented
+              ratings, no stand-in product photography.
+            </p>
+            <Link
+              href="/editorial-policy"
+              className="mt-3 inline-block text-sm font-semibold text-accent hover:underline"
+            >
+              How we work
+            </Link>
           </div>
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-3">Browse</p>

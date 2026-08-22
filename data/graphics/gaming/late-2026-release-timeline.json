@@ -1,0 +1,19 @@
+{
+  "kind": "timeline",
+  "slug": "late-2026-dated-releases",
+  "title": "Late 2026: dates on first-party pages",
+  "subtitle": "Read from each publisher's own store listing on 22 August 2026, not from coverage",
+  "theme": "gaming",
+  "events": [
+    { "date": "2026-08-27", "label": "Resonance: A Plague Tale", "detail": "Steam listing" },
+    { "date": "2026-09-03", "label": "Onimusha: Way of the Sword", "detail": "Steam listing" },
+    { "date": "2026-10-22", "label": "CoD: Modern Warfare 4", "detail": "Steam; Sony states Oct 23" },
+    { "date": "2026-10-28", "label": "Phantom Blade Zero", "detail": "Steam listing" },
+    { "date": "2026-11-19", "label": "Grand Theft Auto VI", "detail": "PS5 and Xbox Series X/S" }
+  ],
+  "provenance": {
+    "sourceLabel": "Publisher store listings on Steam; Nintendo and PlayStation first-party pages",
+    "asOf": "2026-08-22"
+  },
+  "attach": { "contentSlug": "confirmed-game-release-dates-late-2026", "role": "hero" }
+}

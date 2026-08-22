@@ -1,0 +1,25 @@
+{
+  "kind": "timeline",
+  "slug": "wifi-generations-timeline",
+  "title": "Wi-Fi generations: the certification milestones",
+  "subtitle": "Wi-Fi 4 and 5 are the years the Wi-Fi Alliance states; later entries are its announced certification dates",
+  "theme": "networking",
+  "events": [
+    { "date": "2009", "label": "Wi-Fi 4", "detail": "Alliance states: introduced 2009" },
+    { "date": "2014", "label": "Wi-Fi 5", "detail": "Alliance states: introduced 2014" },
+    { "date": "2016-06-29", "label": "Wi-Fi 5 wave 2", "detail": "160 MHz channels, MU-MIMO" },
+    { "date": "2019-09-16", "label": "Wi-Fi 6 certified", "detail": "OFDMA, TWT, WPA3 required" },
+    { "date": "2021-01-07", "label": "Wi-Fi 6E certified", "detail": "Wi-Fi 6 extended into 6 GHz" },
+    { "date": "2024-01-08", "label": "Wi-Fi 7 certified", "detail": "320 MHz channels, multi-link" },
+    { "date": "2026-01-06", "label": "Wi-Fi 7 for 20 MHz radios", "detail": "Multi-link reaches IoT devices" }
+  ],
+  "provenance": {
+    "sourceLabel": "Wi-Fi Alliance generation pages and news releases",
+    "sourceUrl": "https://www.wi-fi.org/discover-wi-fi",
+    "asOf": "2026-08-22"
+  },
+  "attach": {
+    "contentSlug": "wifi-generations-explained-wifi-4-to-wifi-7",
+    "role": "hero"
+  }
+}

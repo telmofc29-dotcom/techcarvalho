@@ -6,11 +6,14 @@ import { buildMetadata } from "@/lib/seo/metadata";
 import { findPlannedCategory } from "@/lib/public/categories";
 import {
   getCategoryBySlug,
+  getCategorySeo,
+  getCategoryPublishedCounts,
   getPublishedContentForCategory,
   getPublishedProductsForCategory,
   getSubcategories,
   getManufacturersForCategory,
 } from "@/lib/public/queries";
+import { itemListJsonLd, safeJsonLdString } from "@/lib/seo/jsonld";
 import { getTrendingContent } from "@/lib/public/trending";
 import { getCategoryHeroImage, categoryGradient } from "@/lib/public/category-hero";
 import { Breadcrumbs } from "@/components/public/breadcrumbs";
@@ -32,7 +35,42 @@ export async function generateMetadata({
   if (!planned && !dbCategory) notFound();
 
   const label = dbCategory?.name ?? planned?.label ?? slug;
-  return buildMetadata({ title: label, description: planned?.blurb ?? dbCategory?.description ?? undefined, path: `/${slug}` });
+  const [seo, counts, bannerImage] = dbCategory
+    ? await Promise.all([
+        getCategorySeo(dbCategory.id),
+        getCategoryPublishedCounts(dbCategory.id),
+        getCategoryHeroImage(slug, label),
+      ])
+    : [null, { productCount: 0, contentCount: 0 }, null];
+
+  const hasPublishedContent = counts.productCount > 0 || counts.contentCount > 0;
+
+  return buildMetadata({
+    title: seo?.meta_title ?? label,
+    description:
+      seo?.meta_description ??
+      // The planned blurb is a one-line nav label ("Cameras, lenses, and the
+      // gear behind them.") — fine as a fallback, but a hub with real content
+      // deserves a description that says what is actually on it.
+      (hasPublishedContent
+        ? `${planned?.blurb ?? dbCategory?.description ?? `${label} on Tech Carvalho`} Reviews, guides, comparisons, and product specifications.`
+        : planned?.blurb ?? dbCategory?.description ?? undefined),
+    path: `/${slug}`,
+    canonicalUrl: seo?.canonical_url,
+    // A subject area with nothing published renders the "Coming soon" empty
+    // state. Ten of those — one per PLANNED_CATEGORIES entry, all structurally
+    // identical, differing only in a heading and a one-line blurb — is a
+    // textbook thin-content cluster, and they were all indexable AND listed in
+    // sitemap.xml. They stay crawlable (follow) so the nav still works and so
+    // each one flips to indexable the moment it has content, but they do not
+    // ask to be indexed while empty.
+    noindex: seo?.noindex ?? !hasPublishedContent,
+    follow: true,
+    // The real category banner asset when one exists — the same image the
+    // page renders at the top. Falls back to the site OG image otherwise;
+    // the on-page gradient is CSS, not an image, so there is nothing to share.
+    image: bannerImage,
+  });
 }
 
 export default async function CategoryPage({
@@ -81,6 +119,36 @@ export default async function CategoryPage({
   return (
     <div>
       <PageViewTracker entityType="category" categorySlug={slug} />
+      {/* One ItemList for the hub's editorial coverage, one for its catalogue.
+          Both list only what this page actually renders, and neither is
+          emitted on an empty "Coming soon" hub — that page is noindex, and
+          markup describing a list of nothing is worse than no markup. */}
+      {content.length > 0 && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: safeJsonLdString(
+              itemListJsonLd(
+                content.map((item) => ({ name: item.title, path: `/articles/${item.slug}` })),
+                { name: `${label} articles` }
+              )
+            ),
+          }}
+        />
+      )}
+      {products.length > 0 && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: safeJsonLdString(
+              itemListJsonLd(
+                products.map((p) => ({ name: p.name, path: `/products/${p.slug}` })),
+                { name: `${label} products` }
+              )
+            ),
+          }}
+        />
+      )}
 
       {/* Category banner. Uses a real category_hero asset when one exists;
           otherwise a deterministic per-category gradient so the header still
