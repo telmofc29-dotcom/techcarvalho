@@ -239,25 +239,46 @@ necessarily a *photograph of that product*. The Galaxy S26 Ultra hit is a Samsun
 not a handset photo. Every candidate needs a human to confirm it actually depicts the
 product before `rights_status` is set to `verified`.
 
-### The pattern, which is the actionable finding
+### The pattern — RETRACTED 2026-08-22
 
-**Freely-licensed photography tracks how long hardware has been in enthusiast hands, not
-how important it is.** Consoles, phones and older camera bodies are well covered, because
-people photograph them and upload them. **Current-generation PC components are not covered
-at all** — RTX 50-series, Ryzen 9000 and RX 9070 all returned nothing — and neither is very
-recent hardware of any kind (Switch 2, GoPro Hero 13, Osmo Action 5 Pro).
+> **This section's conclusion was wrong, and it was wrong in the direction that costs the
+> most: it recommended asking manufacturers for permission that was never needed.**
+> Two independent agents reached that finding separately while executing §3a and §3b.
+> It is retracted rather than quietly edited, because a reader may already have acted on it.
 
-So the 38 split into three groups, and they need three different answers:
+What it originally claimed: *"Current-generation PC components are not covered at all —
+RTX 50-series, Ryzen 9000 and RX 9070 all returned nothing"*, and that group 3 were
+*"the strongest candidates for a manufacturer request."*
 
-1. **Plausibly unblockable now, via Commons, with no manufacturer permission** — consoles,
-   phones, Steam Deck, some drones and older camera bodies. This route is already proven
-   end-to-end in this codebase.
-2. **Blocked on time, not on permission** — recent hardware that simply has not been
-   photographed and uploaded yet. Re-checking Commons periodically will clear some of these
-   with no negotiation at all. This is worth a scheduled recheck, not a decision.
-3. **Genuinely blocked without permission** — current-generation PC components. These are
-   the strongest candidates for a manufacturer request, and the best case for the no-photo
-   page below.
+What is actually true: **Switch 2, RTX 5090, Pixel 10 Pro, Ryzen 9 9950X, Galaxy S26 Ultra,
+DJI Mini 4 Pro, GoPro HERO13 and Osmo Action 5 Pro all had genuine, correctly-licensed
+photography on Commons.** Every one is now published. None required anyone's permission.
+
+**The cause was the search method, not the availability.** The plain-text probe failed
+because:
+
+- Files are frequently titled in another language. The GoPro files are *"GoPro Héro 13
+  Black"* — French, accented — under a lowercase category; the DJI descriptions are Polish.
+- A free-text search for a camera returns photographs **taken with** it, not **of** it.
+  Searching "GoPro HERO13" surfaced 20 Mapillary street photos and drowned the real ones.
+- Dedicated Commons **categories** existed for products the text search scored at zero.
+
+**The method is: enumerate the Commons category in full.** Not one of the fourteen
+successes across §3a and §3b would have been found by name search alone.
+
+### What the three groups actually are
+
+1. **Unblockable now via Commons, no permission needed** — the large majority. Proven
+   fourteen times over in a single day.
+2. **Blocked because no photograph exists yet** — worth a periodic recheck, no decision
+   required.
+3. **Genuinely needs permission** — *this group is currently empty.* Not one of the eight
+   products still blocked is blocked on rights. Every one is blocked because a usable
+   photograph does not exist on Commons at all.
+
+**The remaining eight are blocked on photography, not on permission** — see §3a and §3b for
+the per-product search record. Manufacturer permission remains worth pursuing on its own
+merits, but nothing in this audit supports it as the route to unblocking the backlog.
 
 **I am deliberately not putting a number on how many of the 38 are unblockable.** Doing so
 would require listing the 38 blocked products, and `anon` cannot see unpublished rows — RLS

@@ -335,6 +335,13 @@ exists to prevent.
 
 ## 6. Found and NOT fixed — ranked by leverage
 
+> **Status note added 2026-08-22 (hub pass).** §6.1 is now **built** — see §9.1. §6.2 is now
+> **fixed** — see §8.1. §6.3 is now **structurally resolved and separately re-analysed** — see §8.
+> §6.4 is **partly fixed in the data** (`ai-pendant-hardware-bust-2026` has moved to AI & AI
+> Hardware; `humanoid-home-robots-2026-reality-check` and `openai-consumer-hardware-device` are
+> still filed under Computing). §6.5 and §6.6 stand. The rest of §6 is left as written, as the
+> record of what was found when.
+
 ### 6.1 Product families have no public route at all — highest leverage
 
 `product_families` has 7 rows, full admin CRUD, and **all 6 published products belong to one**.
