@@ -57,7 +57,9 @@ export type BreakerName =
   | "validation_rejection_spike"
   | "database_errors"
   | "duplication_rate"
-  | "job_interval";
+  | "job_interval"
+  /** Stages reporting success while having no effect. See silent-success.ts. */
+  | "silent_success";
 
 export type BreakerVerdict = {
   name: BreakerName;
@@ -101,6 +103,9 @@ export type BreakerReport = {
  *    `job_interval`: these measure the character of work that happened. If no
  *    work happened there is nothing to characterise, and the "nothing happened"
  *    case is caught by health.ts instead. Closed.
+ *  - `silent_success`: absence of a silent-success report means the detector
+ *    did not run, and a failure class whose entire signature is "looks fine"
+ *    cannot be assumed absent because nobody looked. Open.
  */
 const FAIL_CLOSED: Record<BreakerName, boolean> = {
   publication_volume: true,
@@ -110,6 +115,7 @@ const FAIL_CLOSED: Record<BreakerName, boolean> = {
   database_errors: false,
   duplication_rate: false,
   job_interval: false,
+  silent_success: true,
 };
 
 export const BREAKER_THRESHOLDS = {
@@ -255,6 +261,19 @@ export type JobIntervalInput = {
   expectedIntervalHours: number;
 };
 
+/**
+ * Silent-success telemetry, produced by detectSilentSuccess() in
+ * silent-success.ts. Structural rather than an import so this module stays the
+ * leaf it is — silent-success.ts imports EngineCapability from here.
+ */
+export type SilentSuccessBreakerInput = {
+  runsObserved: number;
+  signals: number;
+  criticalSignals: number;
+  jobsAffected: number;
+  postconditionTelemetry: "present" | "absent";
+};
+
 export type BreakerInputs = {
   publication?: PublicationVolumeInput;
   sources?: SourceFailureInput;
@@ -263,6 +282,7 @@ export type BreakerInputs = {
   database?: DatabaseErrorInput;
   duplication?: DuplicationInput;
   jobs?: JobIntervalInput[];
+  silentSuccess?: SilentSuccessBreakerInput;
 };
 
 // ---------------------------------------------------------------------------
@@ -718,6 +738,85 @@ function jobIntervalBreaker(jobs: JobIntervalInput[] | undefined): BreakerVerdic
   };
 }
 
+/**
+ * The SILENT_SUCCESS breaker.
+ *
+ * Trips on ANY critical signal, with no ratio and no minimum sample. Every
+ * other breaker here waits for a sample because it is measuring a rate against
+ * a baseline; this one is measuring whether the engine's own report of what it
+ * did can be believed. There is no acceptable rate of "reported success while
+ * doing nothing", because every other measurement in this file is computed from
+ * exactly those reports. One confirmed instance makes the rest of the telemetry
+ * evidence of nothing.
+ *
+ * It halts CREATION but not classification or maintenance: continuing to
+ * measure is how the problem gets diagnosed, and re-running an idempotent
+ * assessor changes nothing. Creating more entities on top of an unknown number
+ * of phantom writes is the move that turns a detectable bug into a cleanup job.
+ */
+function silentSuccessBreaker(input: SilentSuccessBreakerInput | undefined): BreakerVerdict {
+  const halts: readonly EngineCapability[] = ["creation", "media_acquisition", "publication"];
+  if (!input) return noData("silent_success", "silent-success detection", halts);
+
+  const observed = {
+    runsObserved: input.runsObserved,
+    signals: input.signals,
+    criticalSignals: input.criticalSignals,
+    jobsAffected: input.jobsAffected,
+    postconditionTelemetry: input.postconditionTelemetry,
+  };
+
+  if (input.criticalSignals > 0) {
+    return {
+      name: "silent_success",
+      state: "open",
+      basis: "measured",
+      why:
+        `${input.criticalSignals} critical SILENT_SUCCESS signal(s) across ${input.jobsAffected} ` +
+        `job(s): at least one stage reported success while having no effect. Unlike every other ` +
+        `breaker here there is no threshold to be under — the readings the other breakers rely on ` +
+        `come from the same status column that just proved unreliable, so creation stops on the ` +
+        `first instance rather than on a rate.`,
+      action:
+        "Read the silentSuccess block in the tick's engine_job_runs detail. It names the job, the " +
+        "shape, and what to run by hand. Do NOT clear the signals by re-running the pass — a " +
+        "silent success reproduces silently.",
+      halts,
+      observed,
+    };
+  }
+
+  // Detection working but blunt. Not a halt: the coarse cross-run detectors
+  // still ran, and halting on "we could be looking harder" would make applying
+  // a migration a precondition for the engine functioning at all.
+  if (input.postconditionTelemetry === "absent") {
+    return {
+      name: "silent_success",
+      state: "closed",
+      basis: "measured",
+      why:
+        `No critical signals across ${input.runsObserved} run(s), but per-run postcondition ` +
+        `counters are absent, so only the cross-run shapes could be checked. A mutation rejected ` +
+        `and miscounted as a duplicate would not be visible at this resolution.`,
+      action:
+        "Apply supabase/migrations_pending/20260822_silent_success_telemetry.sql to raise the " +
+        "resolution of this check.",
+      halts: [],
+      observed,
+    };
+  }
+
+  return {
+    name: "silent_success",
+    state: "closed",
+    basis: "measured",
+    why: `No SILENT_SUCCESS signals across ${input.runsObserved} run(s), with per-run postcondition counters present.`,
+    action: "None.",
+    halts: [],
+    observed,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Report
 // ---------------------------------------------------------------------------
@@ -731,6 +830,7 @@ export function evaluateBreakers(inputs: BreakerInputs): BreakerReport {
     databaseErrorBreaker(inputs.database),
     duplicationBreaker(inputs.duplication),
     jobIntervalBreaker(inputs.jobs),
+    silentSuccessBreaker(inputs.silentSuccess),
   ];
 
   const open = verdicts.filter((v) => v.state === "open");

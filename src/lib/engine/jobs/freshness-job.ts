@@ -1,6 +1,12 @@
 import "server-only";
 import type { createClient } from "@/lib/supabase/server";
 import { newCounters, recordJobRun, isFlagEnabled } from "@/lib/engine/cron";
+import {
+  createPostconditionLog,
+  statusFromPostconditions,
+  worstStatus,
+} from "@/lib/engine/postconditions";
+import { postconditionDetail } from "@/lib/engine/silent-success";
 import type { StageResult } from "./discovery";
 
 type Client = Awaited<ReturnType<typeof createClient>>;
@@ -40,6 +46,13 @@ export async function runFreshness(supabase: Client): Promise<StageResult> {
     source_count: number;
   }[];
 
+  // Every mutation in this pass goes through the log, which folds results into
+  // `counters` itself. There is deliberately no hand-written
+  // `if (result === 'created') ... else deduped++` left in this file: that
+  // `else` is where 'rejected_invalid' used to land, and it is the reason this
+  // job's bridge never worked once.
+  const log = createPostconditionLog(counters);
+
   let bridged = 0;
   const bridgeRejections: string[] = [];
 
@@ -66,16 +79,25 @@ export async function runFreshness(supabase: Client): Promise<StageResult> {
     }
 
     for (const check of checks) {
-      const { data: result, error: upsertError } = await supabase.rpc("engine_upsert_freshness", {
-        p_kind: c.kind,
-        p_entity_id: c.entity_id,
-        p_reason: check.reason,
-        p_detail: check.detail,
-        p_severity: check.severity,
+      // 'rejected_invalid' is NOT in `benign`. engine_upsert_freshness returns
+      // it whenever p_reason falls outside its guard list — the same class of
+      // list-drift that broke the update-proposal bridge. Enumerating only the
+      // statuses that mean something happened makes drift loud instead of
+      // silent.
+      await log.rpc({
+        operation: "engine_upsert_freshness",
+        subject: `${c.kind}/${c.slug} reason=${check.reason}`,
+        run: () =>
+          supabase.rpc("engine_upsert_freshness", {
+            p_kind: c.kind,
+            p_entity_id: c.entity_id,
+            p_reason: check.reason,
+            p_detail: check.detail,
+            p_severity: check.severity,
+          }),
+        accepted: ["created"],
+        benign: ["deduped"],
       });
-      if (upsertError) counters.failed++;
-      else if (result === "created") counters.created++;
-      else counters.deduped++;
 
       // Bridge the HIGH-severity findings into the update-proposal queue.
       //
@@ -99,46 +121,66 @@ export async function runFreshness(supabase: Client): Promise<StageResult> {
       // discarded the answer, and engine_job_runs recorded success. An
       // operation that reports success while doing nothing is the failure
       // class this project treats as its own bug category.
-      const { data: proposalResult, error: proposalError } = await supabase.rpc("engine_upsert_update_proposal", {
-        p_content_id: c.kind === "content" ? c.entity_id : null,
-        p_product_id: c.kind === "product" ? c.entity_id : null,
-        p_discovery_id: null,
-        // 'broken_source' is a genuine evidence gap; age alone is
-        // 'stale_content'. Keeping them apart lets an editor tell "this cannot
-        // be re-verified" from "nobody has checked this in a year".
-        p_reason: check.reason === "broken_source_link" ? "broken_source" : "stale_content",
-        p_summary: check.detail,
-        // Deliberately empty: freshness has found NO new evidence. It has only
-        // established that time has passed. Inventing change suggestions here
-        // would be fabrication — the editor re-verifies against real sources.
-        p_changes: [],
-        p_evidence: [],
-        // Age is a strong signal that a check is due, not a claim about what
-        // is now wrong, so this stays well below the evidence-backed levels
-        // the update-proposal job assigns.
-        p_confidence: 0.3,
+      //
+      // It is now checked BY CONSTRUCTION rather than by a hand-written branch
+      // that a later edit could drop: 'created' and 'refreshed' are the only
+      // answers that mean a proposal exists, and anything else — including a
+      // status added to the RPC after this line was written — is a failure.
+      const bridgeReason = check.reason === "broken_source_link" ? "broken_source" : "stale_content";
+      const proposal = await log.rpc({
+        operation: "engine_upsert_update_proposal",
+        subject: `${c.kind}/${c.slug} reason=${bridgeReason}`,
+        run: () =>
+          supabase.rpc("engine_upsert_update_proposal", {
+            p_content_id: c.kind === "content" ? c.entity_id : null,
+            p_product_id: c.kind === "product" ? c.entity_id : null,
+            p_discovery_id: null,
+            // 'broken_source' is a genuine evidence gap; age alone is
+            // 'stale_content'. Keeping them apart lets an editor tell "this
+            // cannot be re-verified" from "nobody has checked this in a year".
+            p_reason: bridgeReason,
+            p_summary: check.detail,
+            // Deliberately empty: freshness has found NO new evidence. It has
+            // only established that time has passed. Inventing change
+            // suggestions here would be fabrication — the editor re-verifies
+            // against real sources.
+            p_changes: [],
+            p_evidence: [],
+            // Age is a strong signal that a check is due, not a claim about
+            // what is now wrong, so this stays well below the evidence-backed
+            // levels the update-proposal job assigns.
+            p_confidence: 0.3,
+          }),
+        accepted: ["created"],
+        benign: ["refreshed"],
       });
 
-      if (proposalError) {
-        counters.failed++;
-      } else if (proposalResult === "rejected_invalid" || proposalResult === null) {
-        // A rejection is a real failure, not a no-op to shrug at.
-        counters.failed++;
-        bridgeRejections.push(`${c.kind}:${c.slug} reason=${check.reason === "broken_source_link" ? "broken_source" : "stale_content"} -> ${String(proposalResult)}`);
-      } else {
-        bridged++;
-      }
+      if (proposal.ok) bridged++;
+      else bridgeRejections.push(`${proposal.detail}`);
     }
   }
 
-  // Same reasoning as the discovery pass: on a repeat run every review
-  // already exists and dedupes, so `created` alone is not a success signal.
-  const status =
+  // The pass's own view, which knows about things the log does not.
+  const jobView =
     counters.failed === 0
       ? "success"
       : counters.created > 0 || counters.deduped > 0
         ? "partial"
         : "failed";
-  await recordJobRun(supabase, JOB, status, counters, { staleDays: STALE_DAYS, bridged, bridgeRejections });
-  return { status, ...counters, detail: { staleDays: STALE_DAYS, bridged, bridgeRejections } };
+
+  // ...but it can only make the verdict WORSE, never better. The postcondition
+  // log is what actually looked at each write, so it has the final say on the
+  // downside. This single line is the difference between incident #2 taking
+  // weeks to find and taking one run.
+  const postconditions = log.summarise();
+  const status = worstStatus(jobView, statusFromPostconditions(postconditions));
+
+  const detail = {
+    staleDays: STALE_DAYS,
+    bridged,
+    bridgeRejections,
+    postconditions: postconditionDetail(postconditions),
+  };
+  await recordJobRun(supabase, JOB, status, counters, detail);
+  return { status, ...counters, detail };
 }

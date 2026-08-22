@@ -1,6 +1,12 @@
 import "server-only";
 import type { createClient } from "@/lib/supabase/server";
 import { newCounters, recordJobRun, isFlagEnabled } from "@/lib/engine/cron";
+import {
+  createPostconditionLog,
+  statusFromPostconditions,
+  worstStatus,
+} from "@/lib/engine/postconditions";
+import { postconditionDetail } from "@/lib/engine/silent-success";
 import { buildBrief } from "@/lib/engine/brief-builder";
 import { classifyPromotional } from "@/lib/engine/promotional";
 import type { StageResult } from "./discovery";
@@ -49,6 +55,7 @@ export async function runBriefGeneration(supabase: Client): Promise<StageResult>
   // Counted separately rather than as `failed` — declining to reprint a press
   // release is the pipeline working, not an error.
   const promotional: string[] = [];
+  const log = createPostconditionLog(counters);
 
   for (const row of rows) {
     counters.examined++;
@@ -74,12 +81,15 @@ export async function runBriefGeneration(supabase: Client): Promise<StageResult>
     const { data: ev, error: evErr } = await supabase.rpc("engine_evidence_for", {
       p_discovery_id: row.id,
     });
-    if (evErr) {
+    // A null with no error is not "this discovery has no evidence" — the RPC
+    // returns a TABLE, so an empty result is []. Null means it did not answer,
+    // and a brief built on it would present an evidence vacuum as a finding.
+    if (evErr || ev === null) {
       counters.failed++;
       continue;
     }
 
-    const evidence = ((ev ?? []) as {
+    const evidence = (ev as {
       url: string;
       publisher: string | null;
       claim_status: string;
@@ -104,33 +114,44 @@ export async function runBriefGeneration(supabase: Client): Promise<StageResult>
       evidence,
     });
 
-    const { data: result, error: createErr } = await supabase.rpc("engine_create_brief", {
-      p_discovery_id: row.id,
-      p_title: brief.proposedTitle,
-      p_rationale: brief.rationale,
-      p_primary_question: brief.primaryQuestion,
-      p_supporting_questions: brief.supportingQuestions,
-      p_verified_facts: brief.verifiedFacts,
-      p_uncertainties: brief.uncertainties,
-      p_source_urls: brief.sourceUrls,
-      p_suggested_structure: brief.suggestedStructure,
-      p_brief_kind: brief.briefKind,
-      p_freshness: brief.freshnessSensitivity,
-      p_category_slug: row.category_slug,
-      p_content_type: brief.contentType,
-      p_priority: brief.priority,
-      p_media_note: brief.mediaRequirementNote,
+    // The old `else counters.deduped++` swallowed 'rejected_invalid' as though
+    // it were the partial unique index doing its job. A content type or brief
+    // kind this builder emits but engine_create_brief's guard list does not
+    // accept would have shown up as a run full of harmless duplicates.
+    const result = await log.rpc({
+      operation: "engine_create_brief",
+      subject: `discovery/${row.id}: ${brief.proposedTitle.slice(0, 50)}`,
+      run: () =>
+        supabase.rpc("engine_create_brief", {
+          p_discovery_id: row.id,
+          p_title: brief.proposedTitle,
+          p_rationale: brief.rationale,
+          p_primary_question: brief.primaryQuestion,
+          p_supporting_questions: brief.supportingQuestions,
+          p_verified_facts: brief.verifiedFacts,
+          p_uncertainties: brief.uncertainties,
+          p_source_urls: brief.sourceUrls,
+          p_suggested_structure: brief.suggestedStructure,
+          p_brief_kind: brief.briefKind,
+          p_freshness: brief.freshnessSensitivity,
+          p_category_slug: row.category_slug,
+          p_content_type: brief.contentType,
+          p_priority: brief.priority,
+          p_media_note: brief.mediaRequirementNote,
+        }),
+      accepted: ["created"],
+      benign: ["deduped"],
     });
 
-    if (createErr) counters.failed++;
-    else if (result === "created") {
-      counters.created++;
-      created.push(brief.proposedTitle.slice(0, 60));
-    } else counters.deduped++;
+    if (result.data === "created") created.push(brief.proposedTitle.slice(0, 60));
   }
 
-  const status =
+  const jobView =
     counters.failed === 0 ? "success" : counters.created + counters.deduped > 0 ? "partial" : "failed";
-  await recordJobRun(supabase, JOB, status, counters, { created, promotional });
-  return { status, ...counters, detail: { created, promotional } };
+  const postconditions = log.summarise();
+  const status = worstStatus(jobView, statusFromPostconditions(postconditions));
+
+  const detail = { created, promotional, postconditions: postconditionDetail(postconditions) };
+  await recordJobRun(supabase, JOB, status, counters, detail);
+  return { status, ...counters, detail };
 }

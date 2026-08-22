@@ -2,6 +2,12 @@ import "server-only";
 import type { createClient } from "@/lib/supabase/server";
 import { newCounters, recordJobRun, isFlagEnabled } from "@/lib/engine/cron";
 import {
+  createPostconditionLog,
+  statusFromPostconditions,
+  worstStatus,
+} from "@/lib/engine/postconditions";
+import { postconditionDetail } from "@/lib/engine/silent-success";
+import {
   findOrphans, suggestLinksFor, pairKey, AUTO_LINK_THRESHOLD,
   type LinkCandidate,
 } from "@/lib/engine/link-suggestions";
@@ -89,6 +95,7 @@ export async function runInternalLinks(supabase: Client): Promise<StageResult> {
   const orphans = findOrphans(published, linkedIds);
   counters.examined = published.length;
 
+  const log = createPostconditionLog(counters);
   const reported: string[] = [];
   for (const orphan of orphans) {
     const suggestions = suggestLinksFor(orphan, published, existingPairs, 4);
@@ -105,37 +112,47 @@ export async function runInternalLinks(supabase: Client): Promise<StageResult> {
       : `"${orphan.title}" is published but links to nothing and nothing links to it, and the ` +
         `heuristic found no candidate worth suggesting. This one needs an editor to place it.`;
 
-    const { data: result, error } = await supabase.rpc("engine_upsert_freshness", {
-      p_kind: "content",
-      p_entity_id: orphan.id,
-      p_reason: "missing_internal_links",
-      p_detail: detail,
-      // High: an orphan is not a cosmetic problem, it is a page nobody reaches.
-      p_severity: "high",
+    // 'missing_internal_links' has to be in engine_upsert_freshness's guard
+    // list for this to do anything at all. It is today — but that list and the
+    // table's CHECK constraint have already drifted apart once in this project,
+    // and when they did the RPC answered 'rejected_invalid' to every call. So
+    // the answer is checked rather than assumed: 'rejected_invalid' is not
+    // named as benign, which makes it a failure by construction.
+    const result = await log.rpc({
+      operation: "engine_upsert_freshness",
+      subject: `content/${orphan.id} reason=missing_internal_links`,
+      run: () =>
+        supabase.rpc("engine_upsert_freshness", {
+          p_kind: "content",
+          p_entity_id: orphan.id,
+          p_reason: "missing_internal_links",
+          p_detail: detail,
+          // High: an orphan is not cosmetic, it is a page nobody reaches.
+          p_severity: "high",
+        }),
+      accepted: ["created"],
+      benign: ["deduped"],
     });
 
-    if (error) counters.failed++;
-    else if (result === "created") {
-      counters.created++;
-      reported.push(orphan.title.slice(0, 60));
-    } else counters.deduped++;
+    if (result.data === "created") reported.push(orphan.title.slice(0, 60));
   }
 
   // Zero orphans is a success and the goal, not an empty result.
-  const status =
+  const jobView =
     counters.failed === 0
       ? "success"
       : counters.created + counters.deduped > 0
         ? "partial"
         : "failed";
-  await recordJobRun(supabase, JOB, status, counters, {
+  const postconditions = log.summarise();
+  const status = worstStatus(jobView, statusFromPostconditions(postconditions));
+
+  const detail = {
     publishedExamined: published.length,
     orphansFound: orphans.length,
     reported,
-  });
-  return {
-    status,
-    ...counters,
-    detail: { publishedExamined: published.length, orphansFound: orphans.length, reported },
+    postconditions: postconditionDetail(postconditions),
   };
+  await recordJobRun(supabase, JOB, status, counters, detail);
+  return { status, ...counters, detail };
 }

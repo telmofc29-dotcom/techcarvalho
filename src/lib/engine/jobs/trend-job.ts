@@ -2,6 +2,13 @@ import "server-only";
 import type { createClient } from "@/lib/supabase/server";
 import { newCounters, recordJobRun, isFlagEnabled } from "@/lib/engine/cron";
 import {
+  createPostconditionLog,
+  expectNonEmpty,
+  statusFromPostconditions,
+  worstStatus,
+} from "@/lib/engine/postconditions";
+import { postconditionDetail } from "@/lib/engine/silent-success";
+import {
   computeTrend,
   rankTrends,
   TREND_EVIDENCE_HALF_LIFE_HOURS,
@@ -69,6 +76,7 @@ export async function runTrends(supabase: Client): Promise<StageResult> {
 
   const observedAt = new Date().toISOString();
   const scored: { topic: string; score: number | null; confidence: number; lastObservedAt: string }[] = [];
+  const log = createPostconditionLog(counters);
 
   for (const row of rows) {
     counters.examined++;
@@ -93,21 +101,30 @@ export async function runTrends(supabase: Client): Promise<StageResult> {
     // The MEASURED score is what gets stored — never a decayed one. Decay is
     // an inference about how current a measurement still is, and writing it
     // into trend_score would make the two indistinguishable on the next read.
-    const { error: upsertError } = await supabase.rpc("engine_upsert_trend", {
-      p_topic_key: row.topic_key,
-      p_label: row.label,
-      p_category: row.category_slug,
-      p_score: result.score,
-      p_confidence: result.confidence,
-      p_velocity: result.velocity,
-      p_signals: result.signals,
-      p_why: result.whyTrending,
-      p_recommended_type: result.recommendedContentType,
-      p_has_coverage: row.published_coverage > 0,
+    // The return value used to be discarded and `created++` counted off a null
+    // error alone. engine_upsert_trend answers 'rejected_invalid' when the
+    // topic key or recommended type falls outside its guard list, and that
+    // answer was going nowhere — a whole pass could re-measure nothing while
+    // reporting a full set of scores.
+    await log.rpc({
+      operation: "engine_upsert_trend",
+      subject: `trend/${row.topic_key}`,
+      run: () =>
+        supabase.rpc("engine_upsert_trend", {
+          p_topic_key: row.topic_key,
+          p_label: row.label,
+          p_category: row.category_slug,
+          p_score: result.score,
+          p_confidence: result.confidence,
+          p_velocity: result.velocity,
+          p_signals: result.signals,
+          p_why: result.whyTrending,
+          p_recommended_type: result.recommendedContentType,
+          p_has_coverage: row.published_coverage > 0,
+        }),
+      accepted: ["ok", "created", "refreshed"],
     });
 
-    if (upsertError) counters.failed++;
-    else counters.created++;
     scored.push({
       topic: row.topic_key,
       score: result.score,
@@ -153,8 +170,24 @@ export async function runTrends(supabase: Client): Promise<StageResult> {
       error: expiry.error.message,
       note: "Trend expiry RPC unavailable — engine_expire_stale_trends may not be applied yet (supabase/migrations_pending/20260822_trend_decay_expiry.sql). Stale trends CANNOT expire until it is.",
     };
+  } else if (expiry.data === null) {
+    // No error AND no row set. engine_expire_stale_trends returns a TABLE, so
+    // supabase-js hands back [] when it genuinely expired nothing. A null is
+    // the shape of a function that did not run as advertised — a missing
+    // overload, a revoked grant — and reading it as "zero trends expired" is
+    // precisely how a dead expiry phase would look permanently healthy.
+    counters.failed++;
+    decay = {
+      expired: 0,
+      available: false,
+      error: null,
+      note:
+        "engine_expire_stale_trends returned null instead of a row set. That is not 'nothing " +
+        "expired' — it is the RPC not answering in the shape it declares. Nothing can be assumed " +
+        "to have expired.",
+    };
   } else {
-    const expiredRows = (expiry.data ?? []) as { topic_key: string; reason: string }[];
+    const expiredRows = expiry.data as { topic_key: string; reason: string }[];
     decay = {
       expired: expiredRows.length,
       available: true,
@@ -166,7 +199,23 @@ export async function runTrends(supabase: Client): Promise<StageResult> {
     };
   }
 
-  const status = counters.failed === 0 ? "success" : counters.created > 0 ? "partial" : "failed";
-  await recordJobRun(supabase, JOB, status, counters, { scored, ranked, decay });
-  return { status, ...counters, detail: { scored, ranked, decay } };
+  // engine_trend_inputs returns a row for EVERY taxonomy category on every
+  // pass, so an empty input set is not a quiet week — it means the read
+  // returned nothing, which under RLS is what "denied" looks like. Recorded as
+  // a postcondition so a re-measurement pass that measured nothing cannot
+  // report a clean success.
+  await log.verify({
+    operation: "engine_trend_inputs",
+    expectation: "at least one topic row, because the RPC emits one per taxonomy category",
+    run: async () => ({ data: rows, error: null }),
+    verify: expectNonEmpty("trend input"),
+  });
+
+  const jobView = counters.failed === 0 ? "success" : counters.created > 0 ? "partial" : "failed";
+  const postconditions = log.summarise();
+  const status = worstStatus(jobView, statusFromPostconditions(postconditions));
+
+  const detail = { scored, ranked, decay, postconditions: postconditionDetail(postconditions) };
+  await recordJobRun(supabase, JOB, status, counters, detail);
+  return { status, ...counters, detail };
 }

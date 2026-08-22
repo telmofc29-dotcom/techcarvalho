@@ -2,6 +2,12 @@ import "server-only";
 import type { createClient } from "@/lib/supabase/server";
 import { newCounters, recordJobRun, isFlagEnabled } from "@/lib/engine/cron";
 import {
+  createPostconditionLog,
+  statusFromPostconditions,
+  worstStatus,
+} from "@/lib/engine/postconditions";
+import { postconditionDetail } from "@/lib/engine/silent-success";
+import {
   classifyMediaTier, evaluateHero, inferSubjectKind,
   type ClassifiableAsset,
 } from "@/lib/media/hierarchy";
@@ -53,8 +59,15 @@ export async function runHeroMediaAudit(supabase: Client): Promise<StageResult> 
       supabase.rpc("engine_open_media_requirements", { p_limit: 500 }),
     ]);
 
+  // requirementResult was previously LEFT OUT of this chain. That omission was
+  // its own silent failure: if engine_open_media_requirements errored, the
+  // `alreadyTracked` set below silently became empty, the job stopped skipping
+  // tracked entities, and it re-attempted a write for every published page —
+  // reporting success either way, because engine_flag_weak_hero answers
+  // 'already_tracked' and that was being counted as a benign dedupe.
   const anyError =
-    entityResult.error ?? contentMediaResult.error ?? productMediaResult.error ?? assetResult.error;
+    entityResult.error ?? contentMediaResult.error ?? productMediaResult.error ??
+    assetResult.error ?? requirementResult.error;
   if (anyError) {
     await recordJobRun(supabase, JOB, "failed", counters, {}, anyError.message);
     return { status: "failed", ...counters, detail: { error: anyError.message } };
@@ -80,6 +93,7 @@ export async function runHeroMediaAudit(supabase: Client): Promise<StageResult> 
     ((requirementResult.data ?? []) as { entity_id: string }[]).map((r) => r.entity_id)
   );
 
+  const log = createPostconditionLog(counters);
   const flagged: string[] = [];
   const tiers: Record<string, number> = {};
   let acceptable = 0;
@@ -110,27 +124,39 @@ export async function runHeroMediaAudit(supabase: Client): Promise<StageResult> 
       continue;
     }
 
-    const { data: result, error } = await supabase.rpc("engine_flag_weak_hero", {
-      p_content_id: isProduct ? null : entity.id,
-      p_product_id: isProduct ? entity.id : null,
-      p_tier: tier,
-      p_reason: verdict.reason,
+    // 'already_tracked' is genuine non-work — the RPC refuses to overwrite an
+    // existing requirement by design. 'rejected_invalid' is NOT listed, so a
+    // tier this job classifies but the RPC's guard list does not accept fails
+    // loudly instead of being filed as a duplicate. Those two lists live in
+    // different files and can drift; this is what makes the drift visible.
+    const result = await log.rpc({
+      operation: "engine_flag_weak_hero",
+      subject: `${entity.kind}/${entity.slug} tier=${tier}`,
+      run: () =>
+        supabase.rpc("engine_flag_weak_hero", {
+          p_content_id: isProduct ? null : entity.id,
+          p_product_id: isProduct ? entity.id : null,
+          p_tier: tier,
+          p_reason: verdict.reason,
+        }),
+      accepted: ["created"],
+      benign: ["already_tracked"],
     });
 
-    if (error) counters.failed++;
-    else if (result === "created") {
-      counters.created++;
-      flagged.push(`${entity.slug} [${tier}]`);
-    } else counters.deduped++;
+    if (result.data === "created") flagged.push(`${entity.slug} [${tier}]`);
   }
 
   // Every hero being acceptable is the goal, not an empty result.
-  const status =
+  const jobView =
     counters.failed === 0
       ? "success"
       : counters.created + counters.deduped > 0
         ? "partial"
         : "failed";
-  await recordJobRun(supabase, JOB, status, counters, { tiers, acceptable, flagged });
-  return { status, ...counters, detail: { tiers, acceptable, flagged } };
+  const postconditions = log.summarise();
+  const status = worstStatus(jobView, statusFromPostconditions(postconditions));
+
+  const detail = { tiers, acceptable, flagged, postconditions: postconditionDetail(postconditions) };
+  await recordJobRun(supabase, JOB, status, counters, detail);
+  return { status, ...counters, detail };
 }

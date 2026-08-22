@@ -1,6 +1,12 @@
 import "server-only";
 import type { createClient } from "@/lib/supabase/server";
 import { newCounters, recordJobRun, isFlagEnabled, safeFetchText } from "@/lib/engine/cron";
+import {
+  createPostconditionLog,
+  statusFromPostconditions,
+  worstStatus,
+} from "@/lib/engine/postconditions";
+import { postconditionDetail } from "@/lib/engine/silent-success";
 import { parseFeed, classifyDiscoveryType, classifyClaimStatus } from "@/lib/engine/feed-parser";
 import { buildDedupeKey } from "@/lib/engine/dedupe";
 
@@ -54,6 +60,17 @@ export async function runDiscovery(supabase: Client): Promise<StageResult> {
   }[];
 
   const perSource: Record<string, string> = {};
+  const log = createPostconditionLog(counters);
+
+  // engine_record_source_check is `returns void`. Source health is what the
+  // source_failures circuit breaker reads, so a health write that silently does
+  // nothing would leave that breaker permanently looking at a healthy registry
+  // no matter how many sources had died. It cannot be verified from here, so it
+  // is declared blind and counted rather than assumed.
+  const BLIND_SOURCE_CHECK =
+    "engine_record_source_check is declared `returns void`, so nothing in the response can show " +
+    "whether the source's health row was actually updated. Source health feeds the " +
+    "source_failures breaker, so an unnoticed no-op here blinds that breaker too.";
 
   for (const source of dueSources) {
     counters.examined++;
@@ -62,10 +79,16 @@ export async function runDiscovery(supabase: Client): Promise<StageResult> {
     if (body === null) {
       counters.failed++;
       perSource[source.organisation] = "fetch_failed";
-      await supabase.rpc("engine_record_source_check", {
-        p_source_id: source.id,
-        p_success: false,
-        p_error: "Fetch failed or returned a non-OK status",
+      await log.blind({
+        operation: "engine_record_source_check(failure)",
+        subject: source.organisation,
+        why: BLIND_SOURCE_CHECK,
+        run: () =>
+          supabase.rpc("engine_record_source_check", {
+            p_source_id: source.id,
+            p_success: false,
+            p_error: "Fetch failed or returned a non-OK status",
+          }),
       });
       continue;
     }
@@ -77,16 +100,21 @@ export async function runDiscovery(supabase: Client): Promise<StageResult> {
       // than looking like "this source simply had no news".
       counters.failed++;
       perSource[source.organisation] = "no_parseable_items";
-      await supabase.rpc("engine_record_source_check", {
-        p_source_id: source.id,
-        p_success: false,
-        p_error: "Reachable but no parseable feed items (format may have changed)",
+      await log.blind({
+        operation: "engine_record_source_check(failure)",
+        subject: source.organisation,
+        why: BLIND_SOURCE_CHECK,
+        run: () =>
+          supabase.rpc("engine_record_source_check", {
+            p_source_id: source.id,
+            p_success: false,
+            p_error: "Reachable but no parseable feed items (format may have changed)",
+          }),
       });
       continue;
     }
 
-    let created = 0;
-    let deduped = 0;
+    const before = { created: counters.created, deduped: counters.deduped };
     for (const item of items) {
       const discoveryType = classifyDiscoveryType(item.title, item.summary);
       const claimStatus = classifyClaimStatus(item.title, item.summary, source.trust_level);
@@ -96,38 +124,52 @@ export async function runDiscovery(supabase: Client): Promise<StageResult> {
         entityKey: source.categories[0] ?? null,
       });
 
-      const { data: result, error: upsertError } = await supabase.rpc("engine_upsert_discovery", {
-        p_dedupe_key: dedupeKey,
-        p_title: item.title,
-        p_summary: item.summary,
-        p_discovery_type: discoveryType,
-        p_category_slug: source.categories[0] ?? null,
-        p_claim_status: claimStatus,
-        // Confidence stays at the floor here. The real value is computed from
-        // accumulated evidence by src/lib/engine/confidence.ts — a single
-        // sighting must never assert its own credibility.
-        p_confidence: 0,
-        p_source_url: item.link,
-        p_publisher: source.organisation,
-        p_trust_level: source.trust_level,
+      // 'created' and 'deduped' were the only two statuses this loop handled.
+      // engine_upsert_discovery also answers 'rejected_invalid' — for a
+      // discovery_type or claim_status outside its guard list — and that answer
+      // matched NEITHER branch, so the item was neither created, nor deduped,
+      // nor failed. It simply evaporated, and the run reported success. A whole
+      // source could stop producing anything the moment its feed started
+      // yielding a type the RPC does not accept.
+      await log.rpc({
+        operation: "engine_upsert_discovery",
+        subject: `${source.organisation}: ${item.title.slice(0, 60)}`,
+        run: () =>
+          supabase.rpc("engine_upsert_discovery", {
+            p_dedupe_key: dedupeKey,
+            p_title: item.title,
+            p_summary: item.summary,
+            p_discovery_type: discoveryType,
+            p_category_slug: source.categories[0] ?? null,
+            p_claim_status: claimStatus,
+            // Confidence stays at the floor here. The real value is computed
+            // from accumulated evidence by src/lib/engine/confidence.ts — a
+            // single sighting must never assert its own credibility.
+            p_confidence: 0,
+            p_source_url: item.link,
+            p_publisher: source.organisation,
+            p_trust_level: source.trust_level,
+          }),
+        accepted: ["created"],
+        // A re-poll legitimately dedupes every item; that is the job working.
+        benign: ["deduped"],
       });
-
-      if (upsertError) {
-        counters.failed++;
-        continue;
-      }
-      if (result === "created") created++;
-      else if (result === "deduped") deduped++;
     }
 
-    counters.created += created;
-    counters.deduped += deduped;
+    const created = counters.created - before.created;
+    const deduped = counters.deduped - before.deduped;
     perSource[source.organisation] = `created:${created} deduped:${deduped}`;
 
-    await supabase.rpc("engine_record_source_check", {
-      p_source_id: source.id,
-      p_success: true,
-      p_error: null,
+    await log.blind({
+      operation: "engine_record_source_check(success)",
+      subject: source.organisation,
+      why: BLIND_SOURCE_CHECK,
+      run: () =>
+        supabase.rpc("engine_record_source_check", {
+          p_source_id: source.id,
+          p_success: true,
+          p_error: null,
+        }),
     });
   }
 
@@ -136,8 +178,12 @@ export async function runDiscovery(supabase: Client): Promise<StageResult> {
   // to dedupe and created will legitimately be 0, so keying success off
   // `created` alone mislabels a healthy run as failed.
   const didUsefulWork = counters.created > 0 || counters.deduped > 0;
-  const status =
+  const jobView =
     counters.failed === 0 ? "success" : didUsefulWork ? "partial" : "failed";
-  await recordJobRun(supabase, JOB, status, counters, { sources: perSource });
-  return { status, ...counters, detail: { sources: perSource } };
+  const postconditions = log.summarise();
+  const status = worstStatus(jobView, statusFromPostconditions(postconditions));
+
+  const detail = { sources: perSource, postconditions: postconditionDetail(postconditions) };
+  await recordJobRun(supabase, JOB, status, counters, detail);
+  return { status, ...counters, detail };
 }

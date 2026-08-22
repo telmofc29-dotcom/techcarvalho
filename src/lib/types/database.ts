@@ -1600,7 +1600,11 @@ export interface Database {
           p_detail: Record<string, unknown> | null;
           p_error: string | null;
         };
-        Returns: void;
+        // 'ok' | 'rejected_invalid'. Was declared `void` here while the SQL in
+        // 20260822_engine_safety.sql declares `returns text` — so the type said
+        // the completion could not be checked when in fact it could, and the
+        // caller duly did not check it.
+        Returns: string;
       };
       engine_recent_job_runs: {
         Args: { p_hours?: number; p_limit?: number };
@@ -1737,6 +1741,192 @@ export interface Database {
           p_changes: string[];
           p_evidence: string[];
           p_confidence: number;
+        };
+        Returns: string;
+      };
+
+      // ---------------------------------------------------------------------
+      // Shadow evaluation
+      // ---------------------------------------------------------------------
+      // DECLARED BUT NOT YET APPLIED. These describe
+      // supabase/migrations_pending/20260822_engine_shadow_evaluation.sql, which
+      // has NOT been run in production. Declaring them here is what lets
+      // jobs/shadow-job.ts compile and be wired into the tick; calling one
+      // before the migration is applied fails loudly with PostgREST's
+      // "Could not find the function" error rather than silently doing nothing,
+      // which is the behaviour we want in the meantime.
+      engine_shadow_candidates: {
+        Args: { p_limit?: number };
+        Returns: {
+          id: string;
+          dedupe_key: string | null;
+          title: string;
+          summary: string | null;
+          discovery_type: string;
+          category_slug: string | null;
+          claim_status: string;
+          state: string;
+          sighting_count: number | null;
+          first_seen_at: string;
+          relevance_overridden_by_admin: boolean | null;
+          product_id: string | null;
+          content_id: string | null;
+        }[];
+      };
+      // Evidence WITH excerpt and source-registry permissions — the two things
+      // engine_evidence_for deliberately omits, and without which claim
+      // attestation and the media-rights check cannot run honestly.
+      engine_shadow_evidence: {
+        Args: { p_discovery_id: string };
+        Returns: {
+          id: string;
+          url: string;
+          publisher: string | null;
+          organisation: string | null;
+          excerpt: string | null;
+          claim_status: string;
+          trust_level: string;
+          originates_from_url: string | null;
+          retrieved_at: string | null;
+          source_type: string | null;
+          discovery_permitted: boolean | null;
+          media_republication_permitted: boolean | null;
+          media_rights_status: string | null;
+          attribution_required: boolean | null;
+          editorial_use_only: boolean | null;
+          registration_required: boolean | null;
+        }[];
+      };
+      engine_shadow_media: {
+        Args: { p_product_id: string | null; p_content_id: string | null };
+        Returns: {
+          id: string;
+          source_organisation: string | null;
+          source_url: string | null;
+          asset_url: string | null;
+          asset_type: string | null;
+          potential_licence: string | null;
+          attribution_required: boolean | null;
+          attribution_text: string | null;
+          rights_status: string | null;
+          requires_human_review: boolean | null;
+          state: string | null;
+          registry_media_republication_permitted: boolean | null;
+          registry_media_rights_status: string | null;
+          registry_attribution_required: boolean | null;
+          registry_editorial_use_only: boolean | null;
+          registry_registration_required: boolean | null;
+          registry_organisation: string | null;
+        }[];
+      };
+      // Permissions only. Needed because engine_upsert_discovery never writes
+      // engine_discovery_evidence.source_id, so provenance has to be recovered
+      // by host match — see the migration's comment on this function.
+      engine_shadow_sources: {
+        Args: Record<string, never>;
+        Returns: {
+          id: string;
+          url: string;
+          organisation: string | null;
+          source_type: string | null;
+          discovery_permitted: boolean | null;
+          media_republication_permitted: boolean | null;
+          media_rights_status: string | null;
+          attribution_required: boolean | null;
+          editorial_use_only: boolean | null;
+          registration_required: boolean | null;
+        }[];
+      };
+      engine_shadow_content_signals: {
+        Args: Record<string, never>;
+        Returns: {
+          id: string;
+          title: string;
+          slug: string;
+          primary_query: string | null;
+          intent_fingerprint: string | null;
+          content_type: string | null;
+          category_id: string | null;
+        }[];
+      };
+      // Returns 'created' | 'deduped' | 'rejected_invalid' | 'rejected_disabled'.
+      // 'deduped' is the candidate_identity unique constraint refusing to bank
+      // credit for a re-run, not an error.
+      //
+      // Note what is ABSENT: no content id, no product id, no status, no
+      // is_published. This function writes three engine_shadow_* tables and
+      // nothing else, which is why SHADOW is structurally incapable of
+      // publishing rather than merely configured not to.
+      engine_shadow_record_decision: {
+        Args: {
+          p_candidate_identity: string;
+          p_candidate_kind: string;
+          p_discovery_id: string | null;
+          p_title: string;
+          p_publisher: string | null;
+          p_record_kind: string;
+          p_outcome: string | null;
+          p_terminal_stage: string;
+          p_reached_gate: boolean;
+          p_stages: unknown;
+          p_gate: unknown;
+          p_proposal: unknown;
+          p_failed_stage: string | null;
+          p_failure_error: string | null;
+          p_explanation: string;
+          p_dimensions: string[];
+          p_reasons: unknown;
+        };
+        Returns: string;
+      };
+      engine_shadow_ledger: {
+        Args: { p_limit?: number };
+        Returns: {
+          candidate_identity: string;
+          title: string;
+          publisher: string | null;
+          decided_on: string;
+          record_kind: string;
+          outcome: string | null;
+          terminal_stage: string;
+          reached_gate: boolean;
+          dimensions: string[];
+        }[];
+      };
+      engine_shadow_escapes: {
+        Args: Record<string, never>;
+        Returns: {
+          would_publish: number;
+          fabricated_claim_escapes: number;
+          unlicensed_media_escapes: number;
+          bypassed_hard_blockers: number;
+          duplicate_leakage: number;
+          human_reviewed: number;
+          human_disagreed: number;
+        }[];
+      };
+      // Raw proof RUNS, passing and failing. PROVEN/NOT_PROVEN is derived in
+      // src/lib/engine/proofs.ts, never here.
+      engine_shadow_proof_runs: {
+        Args: { p_limit?: number };
+        Returns: {
+          kind: string;
+          level: string;
+          observed_at: string;
+          commit_sha: string | null;
+          method: string;
+          observed: string;
+          passed: boolean;
+        }[];
+      };
+      engine_shadow_record_proof_run: {
+        Args: {
+          p_kind: string;
+          p_level: string;
+          p_commit_sha: string | null;
+          p_method: string;
+          p_observed: string;
+          p_passed: boolean;
         };
         Returns: string;
       };

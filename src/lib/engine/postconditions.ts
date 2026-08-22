@@ -36,7 +36,22 @@ export type PostconditionStatus =
   /** No error, but the postcondition does NOT hold. THE SILENT NO-OP. */
   | "silent_no_op"
   /** No error, but nothing came back that could confirm or deny. */
-  | "unverifiable";
+  | "unverifiable"
+  /**
+   * The write is STRUCTURALLY unobservable — a `returns void` RPC — and the
+   * caller declared it as such, in writing, with a reason.
+   *
+   * This is not a pass. It is an admission, and it is deliberately a separate
+   * member rather than being folded into `verified` so that "we cannot know"
+   * can never be counted as "it worked". A blind write does not fail its run
+   * (it is documented, expected, and usually an audit-log append), but it is
+   * counted, reported, and BLOCKS autonomous graduation — because a system
+   * cannot graduate on the strength of writes nobody can confirm happened.
+   *
+   * The only way to remove a blind write is to change the RPC to return
+   * something. That is the point: the count is a to-do list, not a category.
+   */
+  | "blind";
 
 export type PostconditionResult<T = unknown> = {
   operation: string;
@@ -48,6 +63,13 @@ export type PostconditionResult<T = unknown> = {
   detail: string;
   data: T | null;
   error: string | null;
+  /**
+   * Which entity this mutation was about, when the job knows. Carried so a
+   * silent no-op names the row it failed to touch rather than only the RPC —
+   * "engine_upsert_freshness did nothing" is far less actionable than
+   * "engine_upsert_freshness did nothing for content/why-ssds-fail".
+   */
+  subject?: string;
 };
 
 /**
@@ -76,8 +98,10 @@ export function classifyOutcome<T>(args: {
   expectation: string;
   outcome: MutationOutcome<T>;
   verify: Verifier<T>;
+  subject?: string;
 }): PostconditionResult<T> {
-  const { operation, expectation, outcome, verify } = args;
+  const { operation, expectation, outcome, verify, subject } = args;
+  const where = subject ? ` [${subject}]` : "";
 
   if (outcome.error) {
     return {
@@ -85,9 +109,10 @@ export function classifyOutcome<T>(args: {
       status: "errored",
       ok: false,
       expectation,
-      detail: `${operation} failed with an error: ${outcome.error.message}`,
+      detail: `${operation}${where} failed with an error: ${outcome.error.message}`,
       data: null,
       error: outcome.error.message,
+      subject,
     };
   }
 
@@ -99,9 +124,10 @@ export function classifyOutcome<T>(args: {
       status: "verified",
       ok: true,
       expectation,
-      detail: `${operation}: ${verification.detail}`,
+      detail: `${operation}${where}: ${verification.detail}`,
       data: outcome.data,
       error: null,
+      subject,
     };
   }
 
@@ -112,11 +138,12 @@ export function classifyOutcome<T>(args: {
       ok: false,
       expectation,
       detail:
-        `${operation} reported no error, but the result could not confirm or deny the expected ` +
+        `${operation}${where} reported no error, but the result could not confirm or deny the expected ` +
         `postcondition (${expectation}). ${verification.detail} Treated as a FAILURE: an ` +
         `unverifiable mutation is not a successful one.`,
       data: outcome.data,
       error: null,
+      subject,
     };
   }
 
@@ -126,11 +153,12 @@ export function classifyOutcome<T>(args: {
     ok: false,
     expectation,
     detail:
-      `${operation} reported SUCCESS but its postcondition does not hold (${expectation}). ` +
+      `${operation}${where} reported SUCCESS but its postcondition does not hold (${expectation}). ` +
       `${verification.detail} This is the anon/RLS signature: the statement ran, matched nothing, ` +
       `and returned no error.`,
     data: outcome.data,
     error: null,
+    subject,
   };
 }
 
@@ -142,8 +170,9 @@ export function classifyOutcome<T>(args: {
 export async function mutateAndVerify<T>(spec: {
   operation: string;
   expectation: string;
-  run: () => Promise<MutationOutcome<T>>;
+  run: () => PromiseLike<MutationOutcome<T>>;
   verify: Verifier<T>;
+  subject?: string;
 }): Promise<PostconditionResult<T>> {
   let outcome: MutationOutcome<T>;
   try {
@@ -156,7 +185,215 @@ export async function mutateAndVerify<T>(spec: {
     expectation: spec.expectation,
     outcome,
     verify: spec.verify,
+    subject: spec.subject,
   });
+}
+
+/**
+ * Record a write whose effect cannot be observed from its response.
+ *
+ * Requires `why` — a caller must state IN WRITING why the effect is
+ * unobservable. There is no default and no boolean flag, because the friction
+ * is the feature: reaching for this should feel like signing something, not
+ * like ticking a box. If the RPC could return a status string, the correct fix
+ * is to change the RPC, not to declare the call blind.
+ *
+ * An ERROR still fails normally — blindness is about the success path only.
+ */
+export async function mutateBlind(spec: {
+  operation: string;
+  /** Why the effect is structurally unobservable from the response. */
+  why: string;
+  run: () => PromiseLike<MutationOutcome<unknown>>;
+  subject?: string;
+}): Promise<PostconditionResult<unknown>> {
+  let outcome: MutationOutcome<unknown>;
+  try {
+    outcome = await spec.run();
+  } catch (e) {
+    outcome = { data: null, error: { message: e instanceof Error ? e.message : String(e) } };
+  }
+  const where = spec.subject ? ` [${spec.subject}]` : "";
+  if (outcome.error) {
+    return {
+      operation: spec.operation,
+      status: "errored",
+      ok: false,
+      expectation: "the write to land (unobservable)",
+      detail: `${spec.operation}${where} failed with an error: ${outcome.error.message}`,
+      data: null,
+      error: outcome.error.message,
+      subject: spec.subject,
+    };
+  }
+  return {
+    operation: spec.operation,
+    status: "blind",
+    // NOT ok. A blind write is an admission, not a pass — see PostconditionStatus.
+    ok: false,
+    expectation: "the write to land (unobservable)",
+    detail:
+      `${spec.operation}${where} returned no error, and its effect CANNOT be confirmed from the ` +
+      `response. ${spec.why} Under RLS a denied write looks exactly like this, so this call is ` +
+      `counted as an unproven write rather than a successful one.`,
+    data: outcome.data,
+    error: null,
+    subject: spec.subject,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// The ergonomics — one object per job pass, one line per mutation
+// ---------------------------------------------------------------------------
+
+/**
+ * Counters in the shape `engine_record_job_run` accepts. Structural on purpose
+ * so this module does not depend on the server-only cron module.
+ */
+export type CountersLike = { examined: number; created: number; deduped: number; failed: number };
+
+/**
+ * A per-pass log that a job creates once and calls once per mutation.
+ *
+ * THE POINT
+ * ---------
+ * Before this existed, every call site hand-rolled the same eight lines:
+ *
+ *     if (err) counters.failed++;
+ *     else if (result === "created") counters.created++;
+ *     else counters.deduped++;          // <- 'rejected_invalid' lands HERE
+ *
+ * That last `else` is the bug that shipped, in six different files. A rejection
+ * was counted as a benign duplicate and the run reported success. The fix is
+ * not vigilance, it is making the correct call SHORTER than the wrong one:
+ *
+ *     await log.rpc({ operation, subject, expectation,
+ *                     run: () => supabase.rpc(...),
+ *                     accepted: ["created"], benign: ["deduped"] });
+ *
+ * Anything not named in `accepted` or `benign` is a failure by construction.
+ * Forgetting to enumerate a status makes the job LOUDER, not quieter, which is
+ * the opposite of the previous default.
+ */
+export type PostconditionLog = {
+  readonly results: readonly PostconditionResult[];
+  /**
+   * The common case: an RPC returning a documented status string.
+   * `accepted` statuses count as created; `benign` count as deduped.
+   */
+  rpc(spec: {
+    operation: string;
+    expectation?: string;
+    subject?: string;
+    run: () => PromiseLike<MutationOutcome<string>>;
+    accepted: readonly string[];
+    benign?: readonly string[];
+  }): Promise<PostconditionResult<string>>;
+  /** An RPC returning the id of the row it created. */
+  createdId(spec: {
+    operation: string;
+    expectation?: string;
+    subject?: string;
+    run: () => PromiseLike<MutationOutcome<string>>;
+    /** Documented non-creating statuses, counted as deduped. */
+    benign?: readonly string[];
+  }): Promise<PostconditionResult<string>>;
+  /** Anything else, with a custom verifier. */
+  verify<T>(spec: {
+    operation: string;
+    expectation: string;
+    subject?: string;
+    run: () => PromiseLike<MutationOutcome<T>>;
+    verify: Verifier<T>;
+  }): Promise<PostconditionResult<T>>;
+  /** A structurally unobservable write. Requires a written reason. */
+  blind(spec: {
+    operation: string;
+    why: string;
+    subject?: string;
+    run: () => PromiseLike<MutationOutcome<unknown>>;
+  }): Promise<PostconditionResult<unknown>>;
+  summarise(): PostconditionSummary;
+};
+
+export function createPostconditionLog(counters: CountersLike): PostconditionLog {
+  const results: PostconditionResult[] = [];
+
+  /** Fold one result into the job counters. The ONLY place this mapping lives. */
+  function tally(result: PostconditionResult, createdWhen: boolean): void {
+    results.push(result);
+    switch (result.status) {
+      case "verified":
+        if (createdWhen) counters.created++;
+        else counters.deduped++;
+        return;
+      case "errored":
+      case "silent_no_op":
+      case "unverifiable":
+        counters.failed++;
+        return;
+      case "blind":
+        // Not counted as created — nothing proved a row appeared. Not counted
+        // as failed either: no evidence of failure exists. It is counted only
+        // in the postcondition summary, where its unprovenness is the message.
+        return;
+    }
+  }
+
+  return {
+    results,
+
+    async rpc(spec) {
+      const accepted = spec.accepted;
+      const benign = spec.benign ?? [];
+      const result = await mutateAndVerify<string>({
+        operation: spec.operation,
+        subject: spec.subject,
+        expectation:
+          spec.expectation ??
+          `one of the documented statuses: ${[...accepted, ...benign].join(" | ")}`,
+        run: spec.run,
+        verify: expectRpcStatus(accepted, benign),
+      });
+      tally(result, typeof result.data === "string" && accepted.includes(result.data));
+      return result;
+    },
+
+    async createdId(spec) {
+      const benign = spec.benign ?? [];
+      const result = await mutateAndVerify<string>({
+        operation: spec.operation,
+        subject: spec.subject,
+        expectation: spec.expectation ?? "a row id, or a documented non-creating status",
+        run: spec.run,
+        verify: expectCreatedId(benign),
+      });
+      tally(result, typeof result.data === "string" && UUID_RE.test(result.data));
+      return result;
+    },
+
+    async verify<T>(spec: {
+      operation: string;
+      expectation: string;
+      subject?: string;
+      run: () => PromiseLike<MutationOutcome<T>>;
+      verify: Verifier<T>;
+    }): Promise<PostconditionResult<T>> {
+      const result = await mutateAndVerify(spec);
+      tally(result as PostconditionResult, result.status === "verified");
+      return result;
+    },
+
+    async blind(spec) {
+      const result = await mutateBlind(spec);
+      tally(result, false);
+      return result;
+    },
+
+    summarise() {
+      return summarisePostconditions(results);
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -201,6 +438,18 @@ export function expectRpcStatus(accepted: readonly string[], benign: readonly st
  * exists; anything else is the function declining, and declining is not success.
  */
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Whether a value is a row id rather than a status string.
+ *
+ * Exported because call sites kept re-deriving it, and the versions they
+ * derived were wrong: `!result.includes("-")` was used in two jobs as "is this
+ * a uuid?", which answers `true` for `null`-turned-`"null"` and for any future
+ * status containing a hyphen.
+ */
+export function isRowId(value: unknown): value is string {
+  return typeof value === "string" && UUID_RE.test(value);
+}
 
 export function expectCreatedId(benign: readonly string[] = []): Verifier<string> {
   return (data) => {
@@ -294,6 +543,8 @@ export type PostconditionSummary = {
   errored: number;
   silentNoOps: number;
   unverifiable: number;
+  /** Writes declared structurally unobservable. Not failures; not successes. */
+  blind: number;
   /** True when every checked mutation verified. */
   allVerified: boolean;
   /**
@@ -302,6 +553,8 @@ export type PostconditionSummary = {
    */
   silentNoOpDetails: string[];
   errorDetails: string[];
+  /** Which unobservable writes happened, so the list can be worked down. */
+  blindOperations: string[];
   summary: string;
 };
 
@@ -310,11 +563,14 @@ export function summarisePostconditions(results: readonly PostconditionResult[])
   const errored = results.filter((r) => r.status === "errored");
   const silent = results.filter((r) => r.status === "silent_no_op");
   const unverifiable = results.filter((r) => r.status === "unverifiable");
+  const blind = results.filter((r) => r.status === "blind");
+  const checkable = results.length - blind.length;
 
-  const parts: string[] = [`${verified}/${results.length} mutations verified`];
+  const parts: string[] = [`${verified}/${checkable} verifiable mutations verified`];
   if (silent.length > 0) parts.push(`${silent.length} SILENT NO-OP(S)`);
   if (unverifiable.length > 0) parts.push(`${unverifiable.length} unverifiable`);
   if (errored.length > 0) parts.push(`${errored.length} errored`);
+  if (blind.length > 0) parts.push(`${blind.length} unobservable (blind) write(s)`);
 
   return {
     total: results.length,
@@ -322,9 +578,11 @@ export function summarisePostconditions(results: readonly PostconditionResult[])
     errored: errored.length,
     silentNoOps: silent.length,
     unverifiable: unverifiable.length,
-    allVerified: results.length > 0 && verified === results.length,
+    blind: blind.length,
+    allVerified: checkable > 0 && verified === checkable,
     silentNoOpDetails: silent.map((r) => r.detail),
     errorDetails: errored.map((r) => r.detail),
+    blindOperations: [...new Set(blind.map((r) => r.operation))],
     summary: parts.join("; ") + ".",
   };
 }
@@ -341,7 +599,29 @@ export function statusFromPostconditions(
 ): "success" | "partial" | "failed" {
   if (summary.total === 0) return "success";
   const bad = summary.errored + summary.silentNoOps + summary.unverifiable;
+  // Blind writes deliberately do NOT degrade the run. They are declared,
+  // documented and usually audit-log appends; failing every run on them would
+  // make `partial` meaningless within a day, and a status everyone ignores is
+  // worse than no status. They are counted instead, and the count is what
+  // blocks graduation — see silent-success.ts.
   if (bad === 0) return "success";
   if (summary.verified > 0) return "partial";
   return "failed";
+}
+
+/**
+ * Merge a job's own status with what its postconditions actually showed.
+ *
+ * The job's hand-computed status is kept only when it is WORSE. A job may know
+ * things the postcondition log does not (a source fetch failed, a stage was
+ * skipped), but it may never talk the log UP — that is precisely the move that
+ * produced `status: success` on a pass where every write was rejected.
+ */
+export function worstStatus(
+  jobStatus: "success" | "partial" | "failed" | "skipped",
+  fromPostconditions: "success" | "partial" | "failed"
+): "success" | "partial" | "failed" | "skipped" {
+  if (jobStatus === "skipped") return "skipped";
+  const rank = { success: 0, partial: 1, failed: 2 } as const;
+  return rank[jobStatus] >= rank[fromPostconditions] ? jobStatus : fromPostconditions;
 }

@@ -1,6 +1,12 @@
 import "server-only";
 import type { createClient } from "@/lib/supabase/server";
 import { newCounters, recordJobRun, isFlagEnabled } from "@/lib/engine/cron";
+import {
+  createPostconditionLog,
+  statusFromPostconditions,
+  worstStatus,
+} from "@/lib/engine/postconditions";
+import { postconditionDetail } from "@/lib/engine/silent-success";
 import { classifyUpdateSignal, proposedChanges } from "@/lib/engine/update-signals";
 import { resolveEntity } from "@/lib/engine/entity-resolution";
 import type { StageResult } from "./discovery";
@@ -55,9 +61,25 @@ export async function runUpdateProposals(supabase: Client): Promise<StageResult>
   }[];
 
   const proposals: string[] = [];
-  // Most discoveries are new topics rather than updates. Counted separately
-  // from `examined` so a quiet pass is visibly quiet rather than ambiguous.
+  // Most discoveries are new topics rather than updates.
+  //
+  // COUNTED, not merely tallied in the detail text. This job was caught by the
+  // SILENT_SUCCESS detector on real production telemetry: it examined 23
+  // discoveries, declined all 23 as "not an update", incremented NO counter,
+  // and recorded examined:23 created:0 deduped:0 failed:0 status:success — a
+  // row byte-identical to a pass whose every write was denied. `notAnUpdate`
+  // lived only in the detail payload, which engine_recent_job_runs does not
+  // expose, so nothing downstream could tell the two apart.
+  //
+  // A deliberate decision not to act is legitimate non-work, which is what the
+  // `deduped` counter means here and what engine_briefs already does when it
+  // declines a press release. Counting it makes "examined N and touched none"
+  // mean what it should: we lost track of N items.
   let notAnUpdate = 0;
+  // Evidence reads that failed. A proposal built on silently-empty evidence
+  // would understate its own uncertainty, which is worse than not proposing.
+  let evidenceUnavailable = 0;
+  const log = createPostconditionLog(counters);
 
   for (const discovery of discoveries) {
     counters.examined++;
@@ -69,21 +91,33 @@ export async function runUpdateProposals(supabase: Client): Promise<StageResult>
     const signal = classifyUpdateSignal(discovery.title, discovery.summary);
     if (!signal) {
       notAnUpdate++;
+      counters.deduped++;
       continue;
     }
 
     const resolution = resolveEntity(discovery.title, entities);
     if (resolution.decision !== "matched_existing" || !resolution.matchedId) {
       notAnUpdate++;
+      counters.deduped++;
       continue;
     }
 
     // Evidence travels with the proposal. An editor changing a published page
     // needs the sources, not a summary of them.
-    const { data: evidenceRows } = await supabase.rpc("engine_evidence_for", {
+    // The error on this read was previously DISCARDED and `?? []` used as the
+    // fallback. A denied or failed evidence read then produced a proposal with
+    // zero verified facts and zero evidence URLs — indistinguishable from a
+    // discovery that genuinely has no evidence, and it would be handed to an
+    // editor as though that were an established fact about the sources.
+    const { data: evidenceRows, error: evidenceError } = await supabase.rpc("engine_evidence_for", {
       p_discovery_id: discovery.id,
     });
-    const evidence = (evidenceRows ?? []) as { url: string; claim_status: string }[];
+    if (evidenceError || evidenceRows === null) {
+      counters.failed++;
+      evidenceUnavailable++;
+      continue;
+    }
+    const evidence = evidenceRows as { url: string; claim_status: string }[];
 
     const verifiedFacts = evidence
       .filter((e) => e.claim_status === "confirmed_primary")
@@ -99,37 +133,49 @@ export async function runUpdateProposals(supabase: Client): Promise<StageResult>
       (signal.confidence * (verifiedFacts.length > 0 ? 1 : 0.6)).toFixed(3)
     );
 
-    const { data: result, error: upsertError } = await supabase.rpc("engine_upsert_update_proposal", {
-      p_content_id: resolution.matchedKind === "content" ? resolution.matchedId : null,
-      p_product_id: resolution.matchedKind === "product" ? resolution.matchedId : null,
-      p_discovery_id: discovery.id,
-      p_reason: signal.reason,
-      p_summary: `${discovery.title}\n\n${signal.explanation} ${resolution.explanation}`,
-      p_changes: proposedChanges({ verifiedFacts, uncertainties }),
-      p_evidence: evidence.map((e) => e.url),
-      p_confidence: confidence,
+    // 'rejected_invalid' was already handled here, but by name only — any
+    // status the RPC gains later would fall into the `else counters.deduped++`
+    // branch below and be counted as a refresh that never happened. Enumerating
+    // what is ACCEPTED instead of what is rejected inverts that: an unknown
+    // status is a failure, which is the safe direction.
+    const result = await log.rpc({
+      operation: "engine_upsert_update_proposal",
+      subject: `${resolution.matchedKind}/${resolution.matchedName} reason=${signal.reason}`,
+      run: () =>
+        supabase.rpc("engine_upsert_update_proposal", {
+          p_content_id: resolution.matchedKind === "content" ? resolution.matchedId : null,
+          p_product_id: resolution.matchedKind === "product" ? resolution.matchedId : null,
+          p_discovery_id: discovery.id,
+          p_reason: signal.reason,
+          p_summary: `${discovery.title}\n\n${signal.explanation} ${resolution.explanation}`,
+          p_changes: proposedChanges({ verifiedFacts, uncertainties }),
+          p_evidence: evidence.map((e) => e.url),
+          p_confidence: confidence,
+        }),
+      accepted: ["created"],
+      benign: ["refreshed"],
     });
 
-    if (upsertError || result === "rejected_invalid") {
-      counters.failed++;
-      continue;
-    }
-    if (result === "created") {
-      counters.created++;
-      proposals.push(`${signal.reason}: ${resolution.matchedName}`);
-    } else {
-      counters.deduped++;
-    }
+    if (result.data === "created") proposals.push(`${signal.reason}: ${resolution.matchedName}`);
   }
 
   // Most discoveries are legitimately not updates, so a pass that proposes
   // nothing is a success, not a failure.
-  const status =
+  const jobView =
     counters.failed === 0
       ? "success"
       : counters.created + counters.deduped > 0
         ? "partial"
         : "failed";
-  await recordJobRun(supabase, JOB, status, counters, { proposals, notAnUpdate });
-  return { status, ...counters, detail: { proposals, notAnUpdate } };
+  const postconditions = log.summarise();
+  const status = worstStatus(jobView, statusFromPostconditions(postconditions));
+
+  const detail = {
+    proposals,
+    notAnUpdate,
+    evidenceUnavailable,
+    postconditions: postconditionDetail(postconditions),
+  };
+  await recordJobRun(supabase, JOB, status, counters, detail);
+  return { status, ...counters, detail };
 }

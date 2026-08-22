@@ -1,6 +1,7 @@
 import "server-only";
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { logQueryError } from "@/lib/log/query-error";
 
 // Shared plumbing for Growth Engine scheduled jobs (requirement 10:
 // idempotent, rate-limited, observable, retryable, inexpensive, safe when a
@@ -79,8 +80,22 @@ export function newCounters(): JobCounters {
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
-/** Appends to the engine_job_runs audit log. Never throws — logging must not
- *  be the thing that fails a job. */
+/**
+ * Appends to the engine_job_runs audit log. Never throws — logging must not be
+ * the thing that fails a job.
+ *
+ * But "never throws" was doing more than that: the RPC's `error` was never even
+ * destructured, so a denied or missing engine_record_job_run wrote no row and
+ * said nothing. That is the worst possible place for this failure class to
+ * live. Every downstream safety mechanism — health.ts, the circuit breakers,
+ * the SILENT_SUCCESS detector — reads engine_job_runs, so an audit write that
+ * silently does nothing does not just lose a log line: it starves the entire
+ * safety layer while every job continues to report success.
+ *
+ * The control flow is unchanged (a job still does not fail because its audit
+ * row would not write) but the failure is now DISCOVERABLE in server logs, the
+ * same posture src/lib/log/query-error.ts established for public pages.
+ */
 export async function recordJobRun(
   supabase: SupabaseServerClient,
   jobName: string,
@@ -90,7 +105,7 @@ export async function recordJobRun(
   error?: string
 ): Promise<void> {
   try {
-    await supabase.rpc("engine_record_job_run", {
+    const { error: writeError } = await supabase.rpc("engine_record_job_run", {
       p_job_name: jobName,
       p_status: status,
       p_items_examined: counters.examined,
@@ -100,9 +115,17 @@ export async function recordJobRun(
       p_detail: detail,
       p_error: error ?? null,
     });
-  } catch {
-    // Swallow: an unwritable audit row is worth a lost log line, not a
-    // failed job. The HTTP response still reports the real outcome.
+    logQueryError(
+      `engine_record_job_run(${jobName}) — the audit row was NOT written. health.ts, the circuit ` +
+        `breakers and the SILENT_SUCCESS detector all read engine_job_runs, so they are now ` +
+        `missing this run entirely`,
+      writeError
+    );
+  } catch (e) {
+    logQueryError(
+      `engine_record_job_run(${jobName}) threw; this run is absent from the audit log`,
+      { message: e instanceof Error ? e.message : String(e) }
+    );
   }
 }
 

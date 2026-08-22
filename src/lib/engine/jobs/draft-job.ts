@@ -1,6 +1,13 @@
 import "server-only";
 import type { createClient } from "@/lib/supabase/server";
 import { newCounters, recordJobRun, isFlagEnabled } from "@/lib/engine/cron";
+import {
+  createPostconditionLog,
+  isRowId,
+  statusFromPostconditions,
+  worstStatus,
+} from "@/lib/engine/postconditions";
+import { postconditionDetail } from "@/lib/engine/silent-success";
 import { assembleDraft, proposeSeo } from "@/lib/engine/draft-assembly";
 import { resolveEntity, proposeSlug } from "@/lib/engine/entity-resolution";
 import { proposedChanges } from "@/lib/engine/update-signals";
@@ -83,6 +90,7 @@ export async function runDraftAssembly(supabase: Client): Promise<StageResult> {
   // it travels in the detail payload — "held for a human" must stay visible
   // rather than looking like nothing happened.
   const heldForReview: string[] = [];
+  const log = createPostconditionLog(counters);
 
   for (const brief of briefs) {
     counters.examined++;
@@ -91,40 +99,69 @@ export async function runDraftAssembly(supabase: Client): Promise<StageResult> {
     const resolution = resolveEntity(brief.proposed_title, entities);
 
     // Log every decision, including the ones that changed nothing — "why
-    // didn't this create an article?" needs an auditable answer.
-    await supabase.rpc("engine_record_entity_resolution", {
-      p_discovery_id: brief.discovery_id,
-      p_candidate_name: brief.proposed_title,
-      p_normalised: resolution.normalised,
-      p_product_id: resolution.matchedKind === "product" ? resolution.matchedId : null,
-      p_content_id: resolution.matchedKind === "content" ? resolution.matchedId : null,
-      p_score: resolution.score,
-      p_decision: resolution.decision,
-      p_explanation: resolution.explanation,
+    // didn't this create an article?" needs an auditable answer. That audit
+    // trail is only worth having if it is actually being written, and this RPC
+    // is `returns void`, so nothing in the response can say whether it was.
+    await log.blind({
+      operation: "engine_record_entity_resolution",
+      subject: brief.proposed_title.slice(0, 50),
+      why:
+        "engine_record_entity_resolution is declared `returns void`. This is the audit trail for " +
+        "'why didn't this create an article?', so a silent no-op here would erase the explanation " +
+        "for every decision while every run still reported success.",
+      run: () =>
+        supabase.rpc("engine_record_entity_resolution", {
+          p_discovery_id: brief.discovery_id,
+          p_candidate_name: brief.proposed_title,
+          p_normalised: resolution.normalised,
+          p_product_id: resolution.matchedKind === "product" ? resolution.matchedId : null,
+          p_content_id: resolution.matchedKind === "content" ? resolution.matchedId : null,
+          p_score: resolution.score,
+          p_decision: resolution.decision,
+          p_explanation: resolution.explanation,
+        }),
     });
 
     // An existing article already covers this. Propose an update to it rather
     // than publishing a second page about the same thing — the difference
     // between a maintained publication and one that accumulates duplicates.
     if (resolution.decision === "matched_existing" && resolution.matchedKind === "content") {
-      await supabase.rpc("engine_upsert_update_proposal", {
-        p_content_id: resolution.matchedId,
-        p_product_id: null,
-        p_discovery_id: brief.discovery_id,
-        p_reason: "newer_evidence",
-        p_summary: `New evidence relating to an existing article. ${resolution.explanation}`,
-        // Same builder the update-proposal job uses, so both producers write
-        // the verified/unverified prefixes the admin review UI reads back.
-        // A hand-rolled variant here would render as "unclassified" there.
-        p_changes: proposedChanges({
-          verifiedFacts: brief.verified_facts ?? [],
-          uncertainties: brief.uncertainties ?? [],
-        }),
-        p_evidence: brief.source_urls ?? [],
-        p_confidence: (brief.verified_facts ?? []).length > 0 ? 0.7 : 0.4,
+      // THE INCIDENT #2 SHAPE, STILL LIVE UNTIL NOW. This call's return value
+      // AND its error were both discarded, and the job then unconditionally
+      // counted a dedupe. So the brief was consumed — marked as "already
+      // covered, proposal raised instead" — whether or not any proposal was
+      // actually raised. If this RPC rejected the call, the brief's topic was
+      // dropped and no proposal existed anywhere; the run reported success and
+      // the counters showed a healthy deduplication.
+      const proposal = await log.rpc({
+        operation: "engine_upsert_update_proposal",
+        subject: `content/${resolution.matchedName} <- ${brief.proposed_title.slice(0, 40)}`,
+        run: () =>
+          supabase.rpc("engine_upsert_update_proposal", {
+            p_content_id: resolution.matchedId,
+            p_product_id: null,
+            p_discovery_id: brief.discovery_id,
+            p_reason: "newer_evidence",
+            p_summary: `New evidence relating to an existing article. ${resolution.explanation}`,
+            // Same builder the update-proposal job uses, so both producers
+            // write the verified/unverified prefixes the admin review UI reads
+            // back. A hand-rolled variant here would render as "unclassified".
+            p_changes: proposedChanges({
+              verifiedFacts: brief.verified_facts ?? [],
+              uncertainties: brief.uncertainties ?? [],
+            }),
+            p_evidence: brief.source_urls ?? [],
+            p_confidence: (brief.verified_facts ?? []).length > 0 ? 0.7 : 0.4,
+          }),
+        accepted: ["created"],
+        benign: ["refreshed"],
       });
-      counters.deduped++;
-      deduplicated.push(brief.proposed_title.slice(0, 60));
+
+      // Only claim the brief was absorbed into an existing page if a proposal
+      // demonstrably exists on that page. Otherwise it is a failure, already
+      // counted by the log, and the brief is left for the next pass rather
+      // than being quietly retired against a proposal that was never written.
+      if (proposal.ok) deduplicated.push(brief.proposed_title.slice(0, 60));
       continue;
     }
 
@@ -133,6 +170,7 @@ export async function runDraftAssembly(supabase: Client): Promise<StageResult> {
     // record, and the brief stays approved-but-unassembled for review.
     if (resolution.decision === "ambiguous") {
       heldForReview.push(`${brief.proposed_title.slice(0, 50)} ~ ${resolution.matchedName}`);
+      counters.deduped++;
       continue;
     }
 
@@ -181,31 +219,47 @@ export async function runDraftAssembly(supabase: Client): Promise<StageResult> {
       continue;
     }
 
-    const { data: result, error: assembleError } = await supabase.rpc("engine_assemble_draft", {
-      p_brief_id: brief.id,
-      p_title: brief.proposed_title,
-      p_slug: slug,
-      p_body: draft.body,
-      p_content_type: brief.content_type,
-      p_category_slug: brief.category_slug,
-      p_search_intent: brief.search_intent,
-      p_primary_query: brief.primary_query,
-      p_source_urls: brief.source_urls ?? [],
-      p_meta_title: seo.metaTitle,
-      p_meta_description: seo.metaDescription,
+    // The previous branch chain handled 'duplicate_slug' and 'rejected_invalid'
+    // by name and then treated EVERYTHING ELSE as a created row id — including
+    // `null`. A null result (a missing overload, a revoked grant) fell straight
+    // through to `String(result)`, pushing the literal string "null" into the
+    // entity list as a content id, incrementing `created`, and reporting an
+    // article that does not exist. `createdId` inverts that: only an actual
+    // uuid counts as a creation, and null is 'unverifiable', never success.
+    //
+    // The rejection statuses named below come from the least-privilege draft in
+    // supabase/migrations_pending/20260822_engine_rpc_least_privilege.sql. They
+    // are legitimate non-work — the brief was not approved, or was already
+    // assembled — rather than errors, so they are benign; but they are named
+    // explicitly, so a status nobody anticipated still fails.
+    const result = await log.createdId({
+      operation: "engine_assemble_draft",
+      subject: `brief/${brief.id} slug=${slug}`,
+      run: () =>
+        supabase.rpc("engine_assemble_draft", {
+          p_brief_id: brief.id,
+          p_title: brief.proposed_title,
+          p_slug: slug,
+          p_body: draft.body,
+          p_content_type: brief.content_type,
+          p_category_slug: brief.category_slug,
+          p_search_intent: brief.search_intent,
+          p_primary_query: brief.primary_query,
+          p_source_urls: brief.source_urls ?? [],
+          p_meta_title: seo.metaTitle,
+          p_meta_description: seo.metaDescription,
+        }),
+      benign: [
+        "duplicate_slug",
+        "rejected_already_assembled",
+        "rejected_brief_not_approved",
+        "rejected_brief_closed",
+      ],
     });
 
-    if (assembleError) {
-      counters.failed++;
-      continue;
-    }
-    if (result === "duplicate_slug") {
-      counters.deduped++;
-      deduplicated.push(brief.proposed_title.slice(0, 60));
-      continue;
-    }
-    if (result === "rejected_invalid") {
-      counters.failed++;
+    const contentId = result.data;
+    if (!isRowId(contentId)) {
+      if (contentId === "duplicate_slug") deduplicated.push(brief.proposed_title.slice(0, 60));
       continue;
     }
 
@@ -215,20 +269,28 @@ export async function runDraftAssembly(supabase: Client): Promise<StageResult> {
     // is_published: false — it is a draft, so a later brief in this same pass
     // will name it rather than link to it.
     entities.push({
-      kind: "content", id: String(result), name: brief.proposed_title, slug, is_published: false,
+      kind: "content", id: contentId, name: brief.proposed_title, slug, is_published: false,
     });
-    counters.created++;
     assembled.push(brief.proposed_title.slice(0, 60));
   }
 
-  const status =
+  const jobView =
     counters.failed === 0
       ? "success"
       : counters.created + counters.deduped > 0
         ? "partial"
         : "failed";
-  await recordJobRun(supabase, JOB, status, counters, { assembled, deduplicated, heldForReview });
-  return { status, ...counters, detail: { assembled, deduplicated, heldForReview } };
+  const postconditions = log.summarise();
+  const status = worstStatus(jobView, statusFromPostconditions(postconditions));
+
+  const detail = {
+    assembled,
+    deduplicated,
+    heldForReview,
+    postconditions: postconditionDetail(postconditions),
+  };
+  await recordJobRun(supabase, JOB, status, counters, detail);
+  return { status, ...counters, detail };
 }
 
 /**

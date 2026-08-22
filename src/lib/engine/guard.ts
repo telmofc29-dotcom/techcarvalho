@@ -28,6 +28,14 @@ import {
   type LeaseOutcome,
 } from "@/lib/engine/concurrency";
 import { probeCoreValidators } from "@/lib/engine/validators";
+import { logQueryError } from "@/lib/log/query-error";
+import {
+  detectSilentSuccess,
+  silentSuccessBreakerInput,
+  silentSuccessFindings,
+  type SilentSuccessReport,
+  type SilentSuccessRun,
+} from "@/lib/engine/silent-success";
 
 // The I/O half of the engine safety layer. Everything that DECIDES lives in the
 // pure modules (circuit-breaker, health, budgets, concurrency, validators) and
@@ -47,12 +55,21 @@ type Client = Awaited<ReturnType<typeof createClient>>;
  */
 export type Telemetry = {
   available: boolean;
-  runs: JobRunRecord[];
+  runs: SilentSuccessRun[];
   sources: SourceFailureInput | undefined;
   validation: ValidationRejectionInput | undefined;
   unavailableReasons: string[];
 };
 
+/**
+ * The columns `engine_recent_job_runs` returns.
+ *
+ * The four postcondition columns are OPTIONAL because they do not exist in
+ * production yet — the draft that adds them is in
+ * supabase/migrations_pending/20260822_silent_success_telemetry.sql. They are
+ * read as `undefined` rather than defaulted to 0, because 0 would assert "no
+ * silent no-ops occurred" on the strength of a column that was never selected.
+ */
 type RawJobRun = {
   job_name: string;
   status: string;
@@ -63,6 +80,10 @@ type RawJobRun = {
   items_deduped: number;
   items_failed: number;
   has_error: boolean;
+  silent_no_ops?: number | null;
+  unverified_writes?: number | null;
+  blind_writes?: number | null;
+  verified_writes?: number | null;
 };
 
 function messageOf(error: unknown): string {
@@ -81,11 +102,20 @@ export async function loadTelemetry(supabase: Client, hours = 336): Promise<Tele
     supabase.rpc("engine_validation_stats", { p_hours: 24 }),
   ]);
 
-  let runs: JobRunRecord[] = [];
+  let runs: SilentSuccessRun[] = [];
   let available = true;
   if (runsResult.error) {
     available = false;
     unavailableReasons.push(`engine_recent_job_runs: ${messageOf(runsResult.error)}`);
+  } else if (runsResult.data === null) {
+    // No error and no rows is the anon/RLS signature, not an empty history —
+    // engine_recent_job_runs returns a table, so supabase-js gives [] when it
+    // genuinely has nothing. A null here means the call did not do what it says.
+    available = false;
+    unavailableReasons.push(
+      "engine_recent_job_runs returned null rather than a row set, which is what a denied or " +
+        "missing SECURITY DEFINER function looks like — not an empty job history."
+    );
   } else {
     runs = ((runsResult.data ?? []) as RawJobRun[]).map((r) => ({
       jobName: r.job_name,
@@ -97,6 +127,10 @@ export async function loadTelemetry(supabase: Client, hours = 336): Promise<Tele
       itemsDeduped: r.items_deduped,
       itemsFailed: r.items_failed,
       hasError: r.has_error,
+      silentNoOps: r.silent_no_ops ?? null,
+      unverifiedWrites: r.unverified_writes ?? null,
+      blindWrites: r.blind_writes ?? null,
+      verifiedWrites: r.verified_writes ?? null,
     }));
   }
 
@@ -208,7 +242,7 @@ export async function completeRun(
   error?: string
 ): Promise<void> {
   try {
-    await supabase.rpc("engine_complete_run", {
+    const { data, error: writeError } = await supabase.rpc("engine_complete_run", {
       p_run_id: runId,
       p_status: status,
       p_items_examined: counters.examined,
@@ -218,9 +252,20 @@ export async function completeRun(
       p_detail: detail,
       p_error: error ?? null,
     });
-  } catch {
-    // Same posture as recordJobRun: an unwritable audit row must not fail the
-    // job. The lease expires on its own if this never lands.
+    // Not fatal — the lease expires on its own if this never lands — but not
+    // silent either. A completion that does not land leaves the run row stuck
+    // in 'running', which health.ts then reports as a stuck_run: a real symptom
+    // with a misleading cause. Naming it here saves that diagnosis.
+    logQueryError(`engine_complete_run(${runId}) — run row left open`, writeError);
+    if (!writeError && data !== "ok" && data !== null) {
+      logQueryError(`engine_complete_run(${runId}) returned '${String(data)}' rather than completing the run`, {
+        message: `unexpected status: ${String(data)}`,
+      });
+    }
+  } catch (e) {
+    logQueryError(`engine_complete_run(${runId}) threw; run row left open`, {
+      message: e instanceof Error ? e.message : String(e),
+    });
   }
 }
 
@@ -234,6 +279,7 @@ export type EngineGuard = {
   telemetry: Telemetry;
   breakers: BreakerReport;
   health: HealthReport;
+  silentSuccess: SilentSuccessReport;
   ledger: BudgetLedger;
   lease: LeaseResult;
   gateFor(jobName: string): StageGate;
@@ -250,11 +296,19 @@ export function buildGuard(args: {
   const health = assessEngineHealth(telemetry.runs, { now });
   const fromRuns = telemetry.available ? breakerInputsFromRuns(telemetry.runs, { now }) : {};
 
+  // Run the SILENT_SUCCESS detector over the same rows health.ts just read. One
+  // dataset, two readings — a detector with its own private feed is one that
+  // can be starved without anyone noticing.
+  const silentSuccess = detectSilentSuccess(telemetry.runs, {
+    telemetryAvailable: telemetry.available,
+  });
+
   const breakers = evaluateBreakers({
     ...fromRuns,
     sources: telemetry.sources,
     validation: telemetry.validation,
     validators: probeCoreValidators(),
+    silentSuccess: silentSuccessBreakerInput(silentSuccess, telemetry.runs.length),
   });
 
   const ledger = ledgerFromJobRuns(telemetry.runs, { now });
@@ -293,7 +347,10 @@ export function buildGuard(args: {
       health: {
         healthy: health.healthy,
         summary: health.summary,
-        findings: health.findings.map((f) => ({
+        // SILENT_SUCCESS signals are folded into the health findings list on
+        // purpose. A separate list is a second place to look, and the whole
+        // failure class survives on nobody looking.
+        findings: [...health.findings, ...silentSuccessFindings(silentSuccess)].map((f) => ({
           job: f.job,
           kind: f.kind,
           severity: f.severity,
@@ -301,9 +358,22 @@ export function buildGuard(args: {
           action: f.action,
         })),
       },
+      silentSuccess: {
+        clean: silentSuccess.clean,
+        summary: silentSuccess.summary,
+        postconditionTelemetry: silentSuccess.postconditionTelemetry,
+        signals: silentSuccess.signals.map((s) => ({
+          kind: s.kind,
+          severity: s.severity,
+          job: s.job,
+          why: s.why,
+          action: s.action,
+          observed: s.observed,
+        })),
+      },
       budgets: describeBudgets(ledger),
     };
   }
 
-  return { telemetry, breakers, health, ledger, lease, gateFor, detail };
+  return { telemetry, breakers, health, silentSuccess, ledger, lease, gateFor, detail };
 }

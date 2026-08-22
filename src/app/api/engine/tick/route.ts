@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { checkCronAuth, newCounters, recordJobRun } from "@/lib/engine/cron";
+import { beginRun, buildGuard, completeRun, loadTelemetry } from "@/lib/engine/guard";
+import { idempotencyKeyFor } from "@/lib/engine/concurrency";
 import { runDiscovery } from "@/lib/engine/jobs/discovery";
 import { runRelevance } from "@/lib/engine/jobs/relevance-job";
 import { runBriefGeneration } from "@/lib/engine/jobs/brief-job";
@@ -14,6 +16,7 @@ import { runDraftAssembly } from "@/lib/engine/jobs/draft-job";
 import { runProductAssembly } from "@/lib/engine/jobs/product-job";
 import { runInternalLinks } from "@/lib/engine/jobs/link-job";
 import { runHeroMediaAudit } from "@/lib/engine/jobs/hero-media-job";
+import { runShadowEvaluation } from "@/lib/engine/jobs/shadow-job";
 
 const JOB = "engine_tick";
 
@@ -75,21 +78,110 @@ const STAGES = [
   // the same kind of question: is a page that is technically published
   // actually serving a reader properly?
   ["hero_media", runHeroMediaAudit],
+  // Shadow evaluation runs LAST, and deliberately so. It runs the complete
+  // autonomous decision process — including the stages above — over real
+  // candidates and publishes nothing, so it must see the state of the site
+  // after this pass has had its effect. Running it first would have it deciding
+  // against a stale picture of what already exists.
+  //
+  // It is also the only stage whose output is evidence rather than work: every
+  // decision it records is a row in the ledger that READINESS is measured
+  // against. It cannot publish — see src/lib/engine/jobs/shadow-job.ts.
+  ["shadow_evaluation", runShadowEvaluation],
 ] as const;
+
+/**
+ * Stage name -> the engine_job_runs job name it records under.
+ *
+ * The guard reasons in job names (that is what capability, budget and health
+ * telemetry are keyed by) while this route reasons in stage names. Mapping them
+ * explicitly beats deriving one from the other, because a stage whose job name
+ * this map does not know would otherwise silently receive no gate at all — an
+ * unguarded stage that looks exactly like a guarded one.
+ */
+const STAGE_JOB_NAMES: Record<string, string> = {
+  discovery: "engine_discover",
+  relevance: "engine_relevance",
+  update_proposals: "engine_update_proposals",
+  product_assembly: "engine_product_assembly",
+  briefs: "engine_briefs",
+  draft_assembly: "engine_draft_assembly",
+  search_intelligence: "engine_search_intelligence",
+  opportunities: "engine_opportunities",
+  trends: "engine_trends",
+  media_acquisition: "engine_media_acquisition",
+  freshness: "engine_freshness",
+  internal_links: "engine_internal_links",
+  hero_media: "engine_hero_media",
+  shadow_evaluation: "engine_shadow_evaluation",
+};
 
 export async function GET(request: NextRequest) {
   const unauthorized = checkCronAuth(request);
   if (unauthorized) return unauthorized;
 
   const supabase = await createClient();
+  const now = new Date();
   const startedAt = Date.now();
+
+  // --- 1. Claim the run lease -----------------------------------------------
+  // Everything below this point assumes it is the only worker in this window.
+  // Two cron invocations landing together — a retry, a manual trigger racing
+  // the schedule — is the scenario that produces two workers acting on one
+  // opportunity, and the lease is what makes that impossible rather than
+  // unlikely.
+  const lease = await beginRun(supabase, JOB, idempotencyKeyFor(JOB, now));
+  if (!lease.decision.proceed) {
+    await recordJobRun(supabase, JOB, "skipped", newCounters(), {
+      reason: lease.outcome,
+      why: lease.decision.why,
+    });
+    return NextResponse.json(
+      { ok: true, status: "skipped", reason: lease.outcome, why: lease.decision.why },
+      { status: 200 }
+    );
+  }
+
+  // --- 2. Load telemetry and build the guard --------------------------------
+  // This is the layer that circuit-breaker.ts, health.ts, budgets.ts and
+  // silent-success.ts were all written for, and which nothing was calling: the
+  // tick ran every stage unconditionally, so an open breaker halted nothing and
+  // a critical health finding stopped nothing. A safety layer with no consumer
+  // is indistinguishable from no safety layer.
+  const telemetry = await loadTelemetry(supabase);
+  const guard = buildGuard({ telemetry, lease, now });
+
   const stages: Record<string, unknown> = {};
   let anyFailed = false;
   let anySkipped = false;
+  let anyHalted = false;
+  let anyRan = false;
 
   for (const [name, run] of STAGES) {
+    const jobName = STAGE_JOB_NAMES[name];
+    // An unmapped stage is not quietly waved through. A stage nobody can gate
+    // is exactly the thing this file must not have.
+    if (!jobName) {
+      anyHalted = true;
+      stages[name] = {
+        status: "halted",
+        why:
+          `Stage '${name}' has no entry in STAGE_JOB_NAMES, so no circuit breaker, budget or ` +
+          `concurrency rule could be applied to it. An ungateable stage does not run.`,
+      };
+      continue;
+    }
+
+    const gate = guard.gateFor(jobName);
+    if (!gate.allow) {
+      anyHalted = true;
+      stages[name] = { status: "halted", job: jobName, why: gate.why };
+      continue;
+    }
+
     try {
       const result = await run(supabase);
+      anyRan = true;
       stages[name] = result;
       if (result.status === "failed") anyFailed = true;
       if (result.status === "skipped") anySkipped = true;
@@ -100,8 +192,39 @@ export async function GET(request: NextRequest) {
   }
 
   const durationMs = Date.now() - startedAt;
-  const status = anyFailed ? "partial" : anySkipped ? "success" : "success";
-  await recordJobRun(supabase, JOB, status, newCounters(), { stages, durationMs });
 
-  return NextResponse.json({ ok: !anyFailed, status, durationMs, stages });
+  // A pass in which every stage was halted or skipped is NOT a success. That
+  // mapping — `anySkipped ? "success" : "success"`, which could not return
+  // anything but success — is the tick's own version of the failure class this
+  // whole layer exists to catch.
+  const status: "success" | "partial" | "failed" =
+    anyFailed && !anyRan ? "failed"
+    : anyFailed ? "partial"
+    : anyHalted ? "partial"
+    : anyRan ? "success"
+    : "failed";
+
+  const detail = {
+    stages,
+    durationMs,
+    anyHalted,
+    anySkipped,
+    guard: guard.detail(),
+  };
+
+  if (lease.runId) {
+    await completeRun(supabase, lease.runId, status, newCounters(), detail);
+  } else {
+    await recordJobRun(supabase, JOB, status, newCounters(), detail);
+  }
+
+  return NextResponse.json({
+    ok: !anyFailed && !anyHalted,
+    status,
+    durationMs,
+    lease: { outcome: lease.outcome, why: lease.decision.why },
+    breakers: guard.breakers.summary,
+    silentSuccess: guard.silentSuccess.summary,
+    stages,
+  });
 }

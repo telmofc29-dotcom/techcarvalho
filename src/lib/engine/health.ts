@@ -26,6 +26,34 @@ import type {
 } from "./circuit-breaker.ts";
 import { CREATION_JOBS } from "./concurrency.ts";
 
+/**
+ * How often a job is actually SUPPOSED to run.
+ *
+ * This used to be the job's own observed median gap between runs, and that is
+ * wrong in a way that matters: every engine job runs as a stage of the single
+ * `/api/engine/tick` cron, scheduled `30 4 * * *` in vercel.json — once a day.
+ * But the observed median is polluted by manual invocations. During
+ * development on 2026-08-22 it fell to **1.03h for a job scheduled every 24h**,
+ * so the breaker declared a perfectly healthy nightly job overdue after two
+ * hours and halted creation, media acquisition and publication.
+ *
+ * A breaker that opens permanently on a false signal is not fail-closed. It is
+ * broken, and worse than absent, because it trains an operator to ignore it.
+ *
+ * The declared schedule is a known quantity, so use it. Observation is only
+ * consulted for a job that runs MORE often than the tick — a genuinely
+ * faster-cycling job should not be judged against a daily cadence — and never
+ * to shorten the expectation below the schedule.
+ */
+export const TICK_CADENCE_HOURS = 24;
+
+export function expectedCadenceHours(observedMedianHours: number): number {
+  // Trust observation only where it exceeds the declared schedule, which can
+  // only mean the job genuinely runs less often than the tick.
+  if (observedMedianHours > TICK_CADENCE_HOURS) return observedMedianHours;
+  return TICK_CADENCE_HOURS;
+}
+
 export type JobRunStatus = "running" | "success" | "partial" | "failed" | "skipped";
 
 /** One engine_job_runs row, in the shape the read RPC returns. */
@@ -554,6 +582,7 @@ export function breakerInputsFromRuns(
     baselineDuplicationRate: olderRates.length >= HEALTH_THRESHOLDS.minHistoryRuns ? median(olderRates) : null,
   };
 
+
   // --- Job intervals -------------------------------------------------------
   const report = assessEngineHealth(runs, { now });
   const jobs: JobIntervalInput[] = report.jobs
@@ -561,9 +590,7 @@ export function breakerInputsFromRuns(
     .map((j) => ({
       jobName: j.job,
       hoursSinceLastSuccess: j.hoursSinceLastSuccess,
-      // The job's OWN observed cadence, rounded up to at least an hour so a
-      // fast-cycling job is not called overdue after a few minutes.
-      expectedIntervalHours: Math.max(1, j.medianIntervalHours as number),
+      expectedIntervalHours: expectedCadenceHours(j.medianIntervalHours as number),
     }));
 
   return { publication, database, duplication, jobs };
