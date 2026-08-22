@@ -372,6 +372,17 @@ async function main(): Promise<void> {
   }));
 
   const escapesProbe = await client.rpc("engine_shadow_escapes");
+  // The `.error` here was DISCARDED, and the seven `?? 0` defaults below then
+  // reported zero fabricated-claim escapes, zero unlicensed-media escapes and
+  // zero bypassed hard blockers — the three zero-tolerance criteria — to the
+  // readiness assessor as though they had been measured. Every other unknown in
+  // this pipeline fails closed; this one failed OPEN, toward unlocking autonomy.
+  if (escapesProbe.error) {
+    console.log(
+      `ESCAPE COUNTS UNREADABLE: ${escapesProbe.error.message}\n` +
+        "  A spotless escape record was NOT observed — nothing was observed. Readiness is blocked.\n"
+    );
+  }
   const escapeRow = (escapesProbe.data ?? [])[0] as
     | { would_publish: number; fabricated_claim_escapes: number; unlicensed_media_escapes: number; bypassed_hard_blockers: number; duplicate_leakage: number; human_reviewed: number; human_disagreed: number }
     | undefined;
@@ -404,6 +415,8 @@ async function main(): Promise<void> {
     proofRecords: loadProofRecords(),
     ledgerAvailable,
     ledgerUnavailableReason: ledgerProbe.error?.message,
+    escapesAvailable: !escapesProbe.error,
+    escapesUnavailableReason: escapesProbe.error?.message,
   });
 
   console.log("--- READINESS (from what is RECORDED, not from what was computed) ---");

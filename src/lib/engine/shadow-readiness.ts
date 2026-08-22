@@ -77,6 +77,29 @@ export type ShadowReadinessInput = {
   /** False when the ledger could not be read at all — see the failure note. */
   ledgerAvailable: boolean;
   ledgerUnavailableReason?: string;
+  /**
+   * False when engine_shadow_escapes could not be READ.
+   *
+   * REQUIRED, not optional-defaulting-to-true, and that is the whole point.
+   *
+   * THE BUG THIS CLOSES: scripts/run-shadow-evaluation.ts called
+   * engine_shadow_escapes and never checked `.error`. Seven `?? 0` defaults
+   * then turned a failed read into "zero fabricated-claim escapes, zero
+   * unlicensed-media escapes, zero bypassed hard blockers" — the three
+   * ZERO-TOLERANCE criteria — and handed that to this function as though it
+   * were a measurement. Every other unknown in this file fails CLOSED; this one
+   * failed OPEN, in the direction of unlocking autonomy, which is the only
+   * direction that actually matters.
+   *
+   * It also became more likely rather than less: 20260823_engine_rpc_anon_surface.sql
+   * revokes that RPC from anon, so any caller running as anon now gets 42501 —
+   * and would previously have reported a spotless escape record.
+   *
+   * Making it a required field means a new call site cannot quietly inherit the
+   * old behaviour: it has to state whether the read succeeded.
+   */
+  escapesAvailable: boolean;
+  escapesUnavailableReason?: string;
 };
 
 export type ShadowReadinessReport = {
@@ -154,18 +177,33 @@ export function assessShadowReadiness(input: ShadowReadinessInput): ShadowReadin
       actual: `no — ${input.ledgerUnavailableReason ?? "unknown reason"}`,
     });
   }
+  if (!input.escapesAvailable) {
+    blockers.push({
+      criterion: "Escape counts readable",
+      required: "yes",
+      actual:
+        `no — ${input.escapesUnavailableReason ?? "unknown reason"}. The escape counts above are ` +
+        "NOT measurements: they are the absence of one. Fabricated-claim escapes, unlicensed-media " +
+        "escapes and bypassed hard blockers all have a zero tolerance, so an unread escape record " +
+        "must block rather than read as spotless.",
+    });
+  }
   for (const b of composition.blockers) {
     blockers.push({ criterion: b.criterion, required: b.required, actual: b.actual });
   }
 
-  const autonomousUnlocked = input.ledgerAvailable && modes.autonomousUnlocked && composition.adequate;
+  const autonomousUnlocked =
+    input.ledgerAvailable && input.escapesAvailable && modes.autonomousUnlocked && composition.adequate;
 
   // The mode is clamped by BOTH halves. Composition being inadequate cannot be
   // outvoted by a clean escape record, because a clean record over an
   // unrepresentative set is not evidence of anything.
   const highestJustifiedMode: EngineMode = autonomousUnlocked
     ? "AUTONOMOUS"
-    : input.ledgerAvailable && modes.highestJustifiedMode === "CANARY" && composition.gaps.length === 0
+    : input.ledgerAvailable &&
+        input.escapesAvailable &&
+        modes.highestJustifiedMode === "CANARY" &&
+        composition.gaps.length === 0
       ? "CANARY"
       : "SHADOW";
 
@@ -181,7 +219,10 @@ export function assessShadowReadiness(input: ShadowReadinessInput): ShadowReadin
       incomplete: composition.incompleteRefused,
       familyCap: composition.familyCapRefused,
     },
-    summary: !input.ledgerAvailable
+    summary: !input.escapesAvailable
+      ? `READINESS UNKNOWN — the escape counts could not be read (${input.escapesUnavailableReason ?? "unknown reason"}). ` +
+        "Zero escapes was NOT observed; nothing was observed. Treated as blocking."
+      : !input.ledgerAvailable
       ? `READINESS UNKNOWN — the shadow ledger could not be read (${input.ledgerUnavailableReason ?? "unknown reason"}). Treated as zero evidence, not as a clean slate.`
       : `${evidence.shadowDecisions}/${READINESS.minShadowDecisions} credited shadow decisions across ${evidence.distinctDays}/${READINESS.minDistinctDays} distinct day(s). ` +
         `${blockers.length} readiness criterion/criteria unmet. Highest justified mode: ${highestJustifiedMode}. ` +

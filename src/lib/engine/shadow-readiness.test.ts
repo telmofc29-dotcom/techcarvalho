@@ -54,6 +54,7 @@ const input = (over: Partial<ShadowReadinessInput> = {}): ShadowReadinessInput =
   escapes: noEscapes(),
   proofRecords: proofs(),
   ledgerAvailable: true,
+  escapesAvailable: true,
   ...over,
 });
 
@@ -178,4 +179,37 @@ test("this module can only ever remove justification, never add it", () => {
       "the combined verdict must never unlock what modes.ts refused"
     );
   }
+});
+
+test("an UNREADABLE escape record blocks — it must never read as a spotless one", () => {
+  // The bug this pins: scripts/run-shadow-evaluation.ts called
+  // engine_shadow_escapes and discarded `.error`. Seven `?? 0` defaults then
+  // reported zero fabricated-claim escapes, zero unlicensed-media escapes and
+  // zero bypassed hard blockers — the three ZERO-TOLERANCE criteria — as though
+  // they had been measured.
+  //
+  // Every other unknown in this module fails closed. This one failed OPEN, in
+  // the direction of unlocking autonomy, which is the only direction where the
+  // mistake is expensive.
+  const report = assessShadowReadiness(
+    input({ escapesAvailable: false, escapesUnavailableReason: "permission denied for function" })
+  );
+  assert.equal(report.autonomousUnlocked, false);
+  assert.notEqual(report.highestJustifiedMode, "AUTONOMOUS");
+  assert.notEqual(report.highestJustifiedMode, "CANARY");
+  const blocker = report.blockers.find((b) => b.criterion === "Escape counts readable");
+  assert.ok(blocker, `expected an escape-readability blocker: ${JSON.stringify(report.blockers)}`);
+  assert.match(blocker!.actual, /NOT measurements/);
+  assert.match(report.summary, /READINESS UNKNOWN/);
+});
+
+test("an unreadable escape record blocks even when the ledger is perfect", () => {
+  // Otherwise a full, adequate ledger could carry the verdict past a
+  // measurement that never happened.
+  const perfect = assessShadowReadiness(input());
+  const blind = assessShadowReadiness(input({ escapesAvailable: false }));
+  assert.ok(
+    blind.blockers.length > perfect.blockers.length,
+    "losing the escape measurement must ADD a blocker, never leave the verdict unchanged"
+  );
 });

@@ -97,7 +97,12 @@ export default async function AutonomyReadinessPage() {
   // A failed read is NOT an empty ledger. If either query errors, the page says
   // so rather than rendering zeros that look like a measured result — the
   // project's empty-vs-failed rule, applied to the readiness dashboard itself.
-  const ledgerError = ledgerResult.error ?? escapesResult.error ?? null;
+  // Tracked SEPARATELY. Collapsing them into one flag would mean a failed
+  // escapes read could be reported as a ledger problem, and vice versa — and
+  // the escape counts are the zero-tolerance ones.
+  const ledgerError = ledgerResult.error ?? null;
+  const escapesError = escapesResult.error ?? null;
+  const anyReadError = ledgerError ?? escapesError;
   const ledgerRows = (ledgerResult.data ?? []) as LedgerRowShape[];
   const escapeRow = ((escapesResult.data ?? []) as EscapeRowShape[])[0];
 
@@ -125,6 +130,8 @@ export default async function AutonomyReadinessPage() {
     proofRecords: records,
     ledgerAvailable: ledgerError === null,
     ledgerUnavailableReason: ledgerError?.message,
+    escapesAvailable: escapesError === null,
+    escapesUnavailableReason: escapesError?.message,
   });
   // The mode an operator might REQUEST, and what the gate actually permits.
   const effective = resolveEffectiveMode("AUTONOMOUS", readiness.modes);
@@ -216,14 +223,14 @@ export default async function AutonomyReadinessPage() {
           Re-running the evaluation banks no additional credit: the recording RPC dedupes on the
           candidate, server-side, so the 500 cannot be reached by repetition.
         </p>
-        {ledgerError !== null && (
+        {anyReadError !== null && (
           <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-xs leading-relaxed text-red-900">
-            THE LEDGER COULD NOT BE READ: {ledgerError.message}. The numbers above are not a
+            A READINESS SOURCE COULD NOT BE READ: {anyReadError.message}. The numbers above are not a
             measurement of zero — they are the absence of one, and readiness is held at its most
             pessimistic value until the read succeeds.
           </p>
         )}
-        {ledgerError === null && readiness.modes.progress.shadowDecisions === 0 && (
+        {anyReadError === null && readiness.modes.progress.shadowDecisions === 0 && (
           <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900">
             No shadow decisions have been recorded. The ledger WAS read successfully, so this is a
             measured zero rather than a failed query. A decision counts only when it reaches a
