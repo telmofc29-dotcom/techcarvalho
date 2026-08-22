@@ -74,11 +74,43 @@ export function entitySimilarity(a: string, b: string): number {
   const db = [...tb].filter((t) => MODEL_DISCRIMINATORS.has(t)).sort().join(",");
   if (da !== db) return 0.3;
 
-  // Guard 2: differing model numbers mean different products (R5 vs R6,
-  // 5080 vs 5090). Only applies when both sides actually carry one.
-  const na = [...ta].filter(isModelToken).sort().join(",");
-  const nb = [...tb].filter(isModelToken).sort().join(",");
-  if (na && nb && na !== nb) return 0.3;
+  // Guard 2: model numbers.
+  //
+  // Three distinct situations hide behind "the numbers differ", and collapsing
+  // them produces a bug in one direction or the other:
+  //
+  //   DISJOINT   "R5" vs "R6", "5080" vs "5090"
+  //              Different products. Must not match.
+  //   EXTRA BARE DIGIT
+  //              "Nintendo Switch 2" vs "Nintendo Switch"
+  //              A generation marker. A DIFFERENT product, and the one this
+  //              guard originally missed entirely — it required BOTH sides to
+  //              carry a number, so a successor whose predecessor has no digit
+  //              scored 1.00 through the containment bias and resolved to
+  //              matched_existing. Same failure as the Canon EOS R5 Mark II
+  //              incident, which had only been fixed for word-shaped
+  //              discriminators like "mark ii".
+  //   EXTRA ALPHANUMERIC
+  //              "Canon EOS R5 gets 8K firmware" vs "Canon EOS R5"
+  //              An incidental specification in a headline. The SAME product —
+  //              blocking this would stop firmware and update stories from
+  //              ever resolving to the product they are about.
+  const numsA = new Set([...ta].filter(isModelToken));
+  const numsB = new Set([...tb].filter(isModelToken));
+
+  if (numsA.size > 0 && numsB.size > 0) {
+    let overlap = 0;
+    for (const t of numsA) if (numsB.has(t)) overlap++;
+    // No shared model number at all: genuinely different products.
+    if (overlap === 0) return 0.3;
+  }
+
+  // Whichever side carries model numbers the other lacks.
+  const larger = numsA.size >= numsB.size ? numsA : numsB;
+  const smaller = numsA.size >= numsB.size ? numsB : numsA;
+  const extra = [...larger].filter((t) => !smaller.has(t));
+  // A bare digit is a generation marker; an alphanumeric token is a spec.
+  if (extra.some((t) => /^\d+$/.test(t))) return 0.3;
 
   let shared = 0;
   for (const t of ta) if (tb.has(t)) shared++;

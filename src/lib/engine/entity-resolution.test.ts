@@ -72,3 +72,36 @@ test("proposeSlug avoids collisions", () => {
   assert.equal(proposeSlug("PS5 Pro Review", taken), "ps5-pro-review-2");
   assert.equal(proposeSlug("Brand New Topic", taken), "brand-new-topic");
 });
+
+// --- REGRESSION: bare-numeric successors (found 2026-08-22 by an adversarial
+// --- review of the resolver, after the Mark II fix was believed complete) ---
+//
+// The Mark II guard only ever handled WORD-shaped discriminators. A successor
+// whose predecessor carries no digit at all scored 1.00 and resolved to
+// matched_existing — silently overwriting the predecessor's product row.
+test("a bare generation number is not the same product as its predecessor", () => {
+  const cases: [string, string][] = [
+    ["Nintendo Switch 2", "Nintendo Switch"],
+    ["Apple Vision Pro 2", "Apple Vision Pro"],
+    ["Steam Deck 2", "Steam Deck"],
+    ["Framework Laptop 16", "Framework Laptop"],
+  ];
+  for (const [successor, predecessor] of cases) {
+    const s = entitySimilarity(successor, predecessor);
+    assert.ok(s < 0.55, `"${successor}" vs "${predecessor}" scored ${s.toFixed(2)} — would merge`);
+    const r = resolveEntity(successor, [{ kind: "product", id: "p1", name: predecessor }]);
+    assert.notEqual(r.decision, "matched_existing", `${successor} must not merge into ${predecessor}`);
+  }
+});
+
+test("an incidental spec number in a headline still matches the product", () => {
+  // The other side of the same rule: "8K" is a specification mentioned in
+  // passing, not a generation marker, and must not block resolution.
+  for (const headline of [
+    "Canon EOS R5 gets 8K firmware update",
+    "Canon EOS R5 hits 45MP burst milestone",
+  ]) {
+    const s = entitySimilarity(headline, "Canon EOS R5");
+    assert.ok(s >= 0.8, `"${headline}" scored ${s.toFixed(2)} — should still match the R5`);
+  }
+});
