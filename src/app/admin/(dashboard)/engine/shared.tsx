@@ -9,6 +9,7 @@ import { Badge } from "@/components/admin/ui";
 
 const ENGINE_TABS: { href: string; label: string }[] = [
   { href: "/admin/engine", label: "Health" },
+  { href: "/admin/engine/autonomy", label: "Autonomy readiness" },
   { href: "/admin/engine/sources", label: "Sources" },
   { href: "/admin/engine/discoveries", label: "Discoveries" },
   { href: "/admin/engine/trending", label: "Trending" },
