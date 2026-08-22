@@ -160,6 +160,9 @@ export async function GET(request: NextRequest) {
   let anySkipped = false;
   let anyHalted = false;
   let anyRan = false;
+  // A stage that partly succeeded. Previously untracked entirely, so a pass
+  // containing a partial stage could still report a clean success.
+  let anyPartial = false;
 
   for (const [name, run] of STAGES) {
     const jobName = STAGE_JOB_NAMES[name];
@@ -185,10 +188,20 @@ export async function GET(request: NextRequest) {
 
     try {
       const result = await run(supabase);
-      anyRan = true;
       stages[name] = result;
+      // `anyRan = true` used to be set HERE, before result.status was read —
+      // so a stage that returned 'skipped' still counted as having run, and the
+      // expression below then resolved to "success". A tick in which every
+      // single stage was skipped reported success, which is precisely what the
+      // comment under it says must not happen.
+      //
+      // anyRan now means a stage actually DID something.
       if (result.status === "failed") anyFailed = true;
-      if (result.status === "skipped") anySkipped = true;
+      else if (result.status === "skipped") anySkipped = true;
+      else if (result.status === "partial") {
+        anyPartial = true;
+        anyRan = true;
+      } else anyRan = true;
     } catch (e) {
       anyFailed = true;
       stages[name] = { status: "error", error: e instanceof Error ? e.message : String(e) };
@@ -201,18 +214,31 @@ export async function GET(request: NextRequest) {
   // mapping — `anySkipped ? "success" : "success"`, which could not return
   // anything but success — is the tick's own version of the failure class this
   // whole layer exists to catch.
-  const status: "success" | "partial" | "failed" =
+  // anySkipped and anyPartial were both computed and then never consulted here.
+  // A value that is measured and discarded is worse than one never measured: it
+  // looks like the case is handled.
+  const status: "success" | "partial" | "failed" | "skipped" =
+    // Something broke and nothing worked.
     anyFailed && !anyRan ? "failed"
-    : anyFailed ? "partial"
-    : anyHalted ? "partial"
-    : anyRan ? "success"
-    : "failed";
+    // Something broke, or a safety mechanism stopped a stage, or a stage only
+    // partly succeeded. Any of those is a partial pass, never a clean one.
+    : anyFailed || anyHalted || anyPartial ? "partial"
+    // Nothing ran at all. Distinguish "deliberately disabled" from "broken":
+    // every stage declining because its flag is off is legitimately 'skipped',
+    // and calling it 'failed' would cry wolf every tick while flags are off.
+    : !anyRan ? (anySkipped ? "skipped" : "failed")
+    // Some stages ran and some were skipped — real work happened, but the pass
+    // was not complete, so it is not reported as one.
+    : anySkipped ? "partial"
+    : "success";
 
   const detail = {
     stages,
     durationMs,
     anyHalted,
     anySkipped,
+    anyPartial,
+    anyRan,
     guard: guard.detail(),
   };
 
