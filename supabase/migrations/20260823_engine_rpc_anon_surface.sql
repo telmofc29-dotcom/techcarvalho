@@ -1,7 +1,12 @@
+-- STATUS 2026-08-22: APPLIED IN PRODUCTION AND VERIFIED BEHAVIOURALLY.
+-- 19/19 checks pass, including a replay of the shutdown attack this file
+-- closes and a confirmation that the legitimate cron lease path still works.
+-- Re-run with: npx tsx scripts/verify-anon-surface-migration.ts
+-- NOTE: PART 3 remains DOCUMENTATION ONLY. Forged audit history is still
+-- possible for anyone holding the publishable key; the verification script
+-- asserts that gap is still open so it cannot be quietly forgotten.
 -- ============================================================================
 -- Engine RPC anon surface — least privilege where it costs cron nothing
--- NOT YET APPLIED. Drafted only. Move into supabase/migrations/ once it has
--- actually been run.
 -- ============================================================================
 --
 -- WHAT THIS FILE IS

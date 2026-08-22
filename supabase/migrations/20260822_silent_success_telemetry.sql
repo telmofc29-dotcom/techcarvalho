@@ -1,8 +1,12 @@
+-- STATUS 2026-08-22: APPLIED IN PRODUCTION AND VERIFIED BEHAVIOURALLY.
+-- 16/16 postcondition checks pass. Re-run them any time with:
+--   npx tsx scripts/verify-silent-success-migration.ts
+-- The SQL editor's result message was NOT treated as evidence: the first
+-- attempt at this file failed with 42P13, and a different migration in this
+-- project once reported "Success" without applying.
 -- ============================================================================
 -- SILENT_SUCCESS telemetry and the RPCs that currently cannot be verified
--- NOT YET APPLIED. Drafted 2026-08-22. CORRECTED 2026-08-22 after the first
--- attempt failed in production. Do not move into migrations/ until it has
--- actually been run AND verified behaviourally (see VERIFICATION at the end).
+-- CORRECTED 2026-08-22 after the first attempt failed in production with 42P13.
 -- ============================================================================
 --
 -- WHY
