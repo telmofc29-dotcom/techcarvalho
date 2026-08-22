@@ -365,6 +365,31 @@ export function exifRightsConflict(copyright: string | null): string | null {
   return null;
 }
 
+/**
+ * Turn an original Commons file URL into a standard-bucket thumbnail URL.
+ *
+ * `https://upload.wikimedia.org/wikipedia/commons/5/5e/Foo.jpg?utm_source=…`
+ *   -> `https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Foo.jpg/1920px-Foo.jpg`
+ *
+ * Returns the original URL unchanged when the path is not in the expected
+ * hashed-directory form, so an unfamiliar layout downloads the full-size
+ * original rather than a URL this function guessed at.
+ */
+export function commonsThumbUrl(originalUrl: string, width: number): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(originalUrl);
+  } catch {
+    return originalUrl;
+  }
+  // Drop the query string entirely — it is analytics, not part of the path.
+  const path = parsed.pathname;
+  const match = /^(.*\/commons)\/([0-9a-f])\/([0-9a-f]{2})\/([^/]+)$/.exec(path);
+  if (!match) return `${parsed.origin}${path}`;
+  const [, prefix, d1, d2, file] = match;
+  return `${parsed.origin}${prefix}/thumb/${d1}/${d2}/${file}/${width}px-${file}`;
+}
+
 // ---------------------------------------------------------------------------
 // The provider
 // ---------------------------------------------------------------------------

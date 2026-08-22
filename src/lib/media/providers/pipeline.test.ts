@@ -23,13 +23,13 @@ import {
   MIN_ACQUIRE_LONG_EDGE,
   type CandidateEvaluation,
 } from "./pipeline.ts";
-import { detectRightsDrift, verifyRights, thirdPartyPlatform } from "./rights-verification.ts";
+import { detectRightsDrift, verifyRights, thirdPartyPlatform, compareCredits } from "./rights-verification.ts";
 import { DEFAULT_RANKING_CONTEXT, rankCandidates } from "./ranking.ts";
 import { assessEntityMatch } from "./entity-match.ts";
 import { evaluatePublishEligibility } from "../rights.ts";
 import { evaluateProvenance } from "../provenance.ts";
 import { classifyMediaTier, evaluateHero } from "../hierarchy.ts";
-import { COMMONS_APPROVAL } from "./wikimedia-commons.ts";
+import { COMMONS_APPROVAL, commonsThumbUrl } from "./wikimedia-commons.ts";
 import { ENGINE_MAX_RIGHTS_STATUS } from "./types.ts";
 import type {
   DiscoveredCandidate,
@@ -256,6 +256,43 @@ describe("adversarial: media acquisition", () => {
     const result = evaluate(descriptor(), null);
     assert.equal(result.accepted, false);
     assert.equal(result.rejection?.code, "provenance_unresolvable");
+  });
+
+  test("a tidied credit is not a changed creator — the ten real false alarms", () => {
+    // Every pair below came from a live re-verification of the published
+    // library. Not one is a different photographer, and the first
+    // implementation reported all ten as INVALIDATED.
+    const sameName: [string, string][] = [
+      ["CEphoto / Uwe Aranas", "CEphoto, Uwe Aranas"],
+      ["See-ming Lee", "See-ming Lee from Hong Kong SAR, China"],
+      ["Ashley Pomeroy", "Ashley Pomeroy ( talk ) at en.wikipedia"],
+      ["Mlogic (Yan Li)", "Mlogic"],
+      ["Kārlis Dambrāns", "Kārlis Dambrāns from Latvia"],
+      ["Tycho (shansov.net)", "[Tycho] talk , http://shansov.net"],
+      ["Gode Nehler", "GodeNehler"],
+      ["Henry Söderlund", "Henry Söderlund from Helsinki, Finland"],
+      ["François Leblond (User:François de Dijon)", "François de Dijon"],
+    ];
+    for (const [recorded, current] of sameName) {
+      assert.notEqual(
+        compareCredits(recorded, current),
+        "different",
+        `"${recorded}" vs "${current}" should not read as a different person`
+      );
+      const drift = detectRightsDrift(
+        { license: "CC BY-SA 4.0", creator: recorded, source_url: "https://commons.wikimedia.org/x", contentHash: null },
+        provenance({ creator: current })
+      );
+      assert.equal(drift.invalidatesVerification, false, `${recorded} should not invalidate`);
+    }
+
+    // And a genuinely different photographer still blocks.
+    assert.equal(compareCredits("Jacek Halicki", "Habib M'henni"), "different");
+    const realDrift = detectRightsDrift(
+      { license: "CC BY-SA 4.0", creator: "Jacek Halicki", source_url: "https://commons.wikimedia.org/x", contentHash: null },
+      provenance({ creator: "Habib M'henni" })
+    );
+    assert.equal(realDrift.invalidatesVerification, true);
   });
 
   // -- 6 --------------------------------------------------------------------
@@ -635,7 +672,7 @@ describe("ranking never falls back to arrival order", () => {
     // criterion scores identically and only the tiebreak can separate them.
     const result = rankCandidates([make(1, 3000), make(2, 4500)], rankingCtx);
     assert.equal(result.winner!.candidate.provenance.width, 4500, "the larger frame must win, not the first-listed");
-    assert.match(result.whyItWon, /DEAD HEAT/);
+    assert.match(result.whyItWon, /EXACT TIE/);
     assert.match(result.whyItWon, /NOT because it was returned first/);
     assert.match(result.whyItWon, /higher pixel count/);
   });
@@ -653,5 +690,25 @@ describe("duplicate reconciliation edge cases", () => {
     const rejected: CandidateEvaluation = evaluate(descriptor(), provenance({ creator: null, attributionText: null }));
     const out = reconcileDuplicates([rejected]);
     assert.equal(out[0].accepted, false);
+  });
+});
+
+describe("Commons thumbnail URL construction", () => {
+  test("analytics query parameters are stripped before the path is rebuilt", () => {
+    const withQuery =
+      "https://upload.wikimedia.org/wikipedia/commons/5/5e/GoPro_H%C3%A9ro_13_Black_-_02.jpg" +
+      "?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original";
+    assert.equal(
+      commonsThumbUrl(withQuery, 1920),
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/GoPro_H%C3%A9ro_13_Black_-_02.jpg/1920px-GoPro_H%C3%A9ro_13_Black_-_02.jpg"
+    );
+  });
+
+  test("an unfamiliar path shape falls back to the original rather than guessing", () => {
+    assert.equal(
+      commonsThumbUrl("https://example.org/some/other/layout.jpg?x=1", 1920),
+      "https://example.org/some/other/layout.jpg"
+    );
+    assert.equal(commonsThumbUrl("not a url", 1920), "not a url");
   });
 });

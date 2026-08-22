@@ -122,6 +122,73 @@ export function prohibitiveLicenceReason(license: string | null): string | null 
 // Re-verification: has the source changed since we acquired?
 // ---------------------------------------------------------------------------
 
+/**
+ * Words Commons decorates an author field with that carry no identity.
+ *
+ * A stored credit is normally a HUMAN-TIDIED version of the raw field:
+ * "See-ming Lee" for `See-ming Lee from Hong Kong SAR, China`,
+ * "Ashley Pomeroy" for `Ashley Pomeroy ( talk ) at en.wikipedia`. That tidying
+ * is correct — the credit line renders a name, not a location and a wiki link.
+ */
+const CREDIT_NOISE = new Set([
+  "user", "talk", "at", "from", "the", "and", "of", "by", "photo", "photograph",
+  "en", "de", "fr", "wikipedia", "wikimedia", "commons", "org", "com", "net",
+  "http", "https", "www", "flickr", "own", "work",
+]);
+
+function creditTokens(value: string): Set<string> {
+  const folded = value
+    .normalize("NFD")
+    .replace(new RegExp("[\\u0300-\\u036f]", "g"), "")
+    .toLowerCase()
+    .replace(/https?:\/\/\S+/g, " ");
+  return new Set(
+    folded
+      .split(/[^a-z0-9]+/)
+      .filter((t) => t.length > 0 && !CREDIT_NOISE.has(t))
+  );
+}
+
+function isSubset(a: Set<string>, b: Set<string>): boolean {
+  for (const t of a) if (!b.has(t)) return false;
+  return true;
+}
+
+export type CreditComparison = "same" | "name_form" | "different";
+
+/**
+ * Are two credit strings naming the same person?
+ *
+ * Strict string equality is the obvious implementation and it is wrong, which
+ * a live re-verification run proved immediately: all ten "changes" it found on
+ * the published library were of this shape —
+ *
+ *   "CEphoto / Uwe Aranas"                vs "CEphoto, Uwe Aranas"
+ *   "Mlogic (Yan Li)"                     vs "Mlogic"
+ *   "Kārlis Dambrāns"                     vs "Kārlis Dambrāns from Latvia"
+ *   "Gode Nehler"                         vs "GodeNehler"
+ *   "François Leblond (User:François de Dijon)" vs "François de Dijon"
+ *
+ * — not one of which is a different photographer, and all ten of which the
+ * first implementation reported as INVALIDATED. Ten false alarms is not a
+ * cautious system, it is a system whose warnings nobody will read the day a
+ * real one appears.
+ */
+export function compareCredits(recorded: string, current: string): CreditComparison {
+  const a = creditTokens(recorded);
+  const b = creditTokens(current);
+  if (a.size === 0 || b.size === 0) return a.size === b.size ? "same" : "name_form";
+
+  const ja = [...a].sort().join("");
+  const jb = [...b].sort().join("");
+  // Concatenated comparison catches "Gode Nehler" vs "GodeNehler", where the
+  // token sets differ but the letters do not.
+  if (ja === jb) return "same";
+
+  if (isSubset(a, b) || isSubset(b, a)) return "name_form";
+  return "different";
+}
+
 export type RecordedRights = {
   license: string | null;
   creator: string | null;
@@ -208,16 +275,30 @@ export function detectRightsDrift(recorded: RecordedRights, current: ProvenanceR
       message: `The licence declaration we relied on ("${recorded.license}") is no longer readable at source.`,
     });
   }
-  if (recorded.creator && current.creator && recorded.creator.trim() !== current.creator.trim()) {
-    findings.push({
-      field: "creator",
-      was: recorded.creator,
-      now: current.creator,
-      severity: "blocker",
-      message:
-        `Attributed creator changed from "${recorded.creator}" to "${current.creator}". Crediting the wrong person is ` +
-        "a breach of the one condition an attribution licence imposes.",
-    });
+  if (recorded.creator && current.creator) {
+    const comparison = compareCredits(recorded.creator, current.creator);
+    if (comparison === "different") {
+      findings.push({
+        field: "creator",
+        was: recorded.creator,
+        now: current.creator,
+        severity: "blocker",
+        message:
+          `Attributed creator changed from "${recorded.creator}" to "${current.creator}" — a different person, not a ` +
+          "different spelling. Crediting the wrong person breaches the one condition an attribution licence imposes.",
+      });
+    } else if (comparison === "name_form") {
+      findings.push({
+        field: "creator",
+        was: recorded.creator,
+        now: current.creator,
+        severity: "warning",
+        message:
+          `The stored credit "${recorded.creator}" and the source's current author field "${current.creator}" are ` +
+          "different forms of the same name — typically a human tidying a location or a wiki link out of the rendered " +
+          "credit. Not a compliance problem; worth a glance if the stored form has drifted a long way from the source.",
+      });
+    }
   }
   if (recorded.contentHash && current.contentHash && recorded.contentHash !== current.contentHash) {
     findings.push({

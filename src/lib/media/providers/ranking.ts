@@ -392,25 +392,50 @@ export function rankCandidates(candidates: RankableCandidate[], ctx: RankingCont
   const decisive = deltas.filter((d) => Math.abs(d.delta) > 0.001).slice(0, 3);
   const lost = deltas.filter((d) => d.delta < -0.001).slice(0, 2);
 
-  // A dead heat is a real outcome and saying "it did not lose on any criterion"
-  // would dress up an arbitrary pick as a judgement. Name the tiebreak instead.
+  // No criterion separated them by a meaningful margin. Saying "it did not lose
+  // on any criterion" would dress up an effectively arbitrary pick as a
+  // judgement, so say what actually decided it — and be careful to distinguish
+  // an EXACT tie, where the sort's tiebreak chose, from a sub-threshold margin,
+  // where a criterion did choose but by an amount too small to mean anything.
+  //
+  // The distinction is not pedantry: the first version of this branch claimed
+  // "selected on higher pixel count" for a pair the pixel tiebreak had never
+  // been reached for — the winner was in fact the SMALLER file, ahead by
+  // 0.0007 on aspect ratio. A rationale that names the wrong reason is worse
+  // than no rationale, because it invites an editor to trust it.
   if (decisive.length === 0) {
-    const tied = ranked.filter((r) => Math.abs(r.total - winner.total) <= 0.001);
-    const wp = (winner.candidate.provenance.width ?? 0) * (winner.candidate.provenance.height ?? 0);
-    const rp = (runnerUp.candidate.provenance.width ?? 0) * (runnerUp.candidate.provenance.height ?? 0);
-    const tiebreak =
-      wp !== rp
-        ? `higher pixel count (${winner.candidate.provenance.width}x${winner.candidate.provenance.height} vs ${runnerUp.candidate.provenance.width}x${runnerUp.candidate.provenance.height})`
-        : `a stable lexicographic comparison of the candidate key, because nothing about the candidates themselves separates them`;
+    const exactTie = winner.total === runnerUp.total;
+    const tied = ranked.filter((r) => r.total === winner.total);
+
+    if (exactTie) {
+      const wp = (winner.candidate.provenance.width ?? 0) * (winner.candidate.provenance.height ?? 0);
+      const rp = (runnerUp.candidate.provenance.width ?? 0) * (runnerUp.candidate.provenance.height ?? 0);
+      const tiebreak =
+        wp !== rp
+          ? `higher pixel count (${winner.candidate.provenance.width}x${winner.candidate.provenance.height} vs ${runnerUp.candidate.provenance.width}x${runnerUp.candidate.provenance.height})`
+          : "a stable lexicographic comparison of the candidate key, because nothing about the candidates themselves separates them";
+      return {
+        ranked,
+        winner,
+        whyItWon:
+          `EXACT TIE: ${tied.length} candidates scored ${winner.total.toFixed(3)} on every criterion — typically sibling ` +
+          `frames from one photo session. "${winner.candidate.descriptor.title}" was selected on ${tiebreak}, NOT because ` +
+          "it was returned first. There is no quality argument for this one over the others, and a human choosing a " +
+          "different frame from the same set would be equally right — the choice between them is editorial (which angle " +
+          "shows the product best), which is exactly the judgement this module cannot make.",
+      };
+    }
+
+    const nearest = deltas[0];
     return {
       ranked,
       winner,
       whyItWon:
-        `DEAD HEAT: ${tied.length} candidates scored ${winner.total.toFixed(3)} on every criterion — typically sibling ` +
-        `frames from one photo session. "${winner.candidate.descriptor.title}" was selected on ${tiebreak}, NOT because ` +
-        "it was returned first. There is no quality argument for this one over the others, and a human choosing a " +
-        "different frame from the same set would be equally right — the choice between them is editorial (which angle " +
-        "shows the product best), which is exactly the judgement this module cannot make.",
+        `EFFECTIVELY A TIE: "${winner.candidate.descriptor.title}" (${winner.total.toFixed(4)}) is ahead of ` +
+        `"${runnerUp.candidate.descriptor.title}" (${runnerUp.total.toFixed(4)}) by ${(winner.total - runnerUp.total).toFixed(4)}, ` +
+        `and no criterion separates them by a weighted 0.001. The largest contributor was ${nearest.criterion} ` +
+        `(${nearest.mine.score.toFixed(4)} vs ${(nearest.theirs?.score ?? 0).toFixed(4)}), which is far too small a margin to ` +
+        "be a reason. Treat these as interchangeable: the choice between sibling frames is editorial, not measurable.",
     };
   }
 

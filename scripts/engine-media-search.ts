@@ -47,15 +47,27 @@ import { runAcquisitionPipeline, type PipelineReport } from "../src/lib/media/pr
 import { buildEnabledProviders, ALL_PROVIDER_APPROVALS } from "../src/lib/media/providers/registry.ts";
 import { DEFAULT_RANKING_CONTEXT } from "../src/lib/media/providers/ranking.ts";
 import { detectRightsDrift } from "../src/lib/media/providers/rights-verification.ts";
-import { CommonsClient, createCommonsProvider } from "../src/lib/media/providers/wikimedia-commons.ts";
+import { CommonsClient, createCommonsProvider, commonsThumbUrl } from "../src/lib/media/providers/wikimedia-commons.ts";
 import type { SubjectIdentity } from "../src/lib/media/providers/query-expansion.ts";
 import { evaluatePublishEligibility } from "../src/lib/media/rights.ts";
 
 loadEnvLocal();
 
 const USER_AGENT = "TechCarvalhoBot/1.0 (+https://www.techcarvalho.com; media-rights-verification)";
-/** Pure downscale of the untouched original. Not a crop — aspect preserved. */
-const TARGET_WIDTH = 1600;
+/**
+ * Pure downscale of the untouched original. Not a crop — aspect preserved.
+ *
+ * 1920 rather than the 1600 an earlier import used, because Commons now
+ * rejects arbitrary thumbnail widths outright:
+ *
+ *   HTTP 400 "Use thumbnail sizes listed on https://w.wiki/GHai"
+ *
+ * 1920 is one of the standard buckets. The earlier import's 1600 request only
+ * appeared to work because Commons silently served the 1920 bucket instead —
+ * which is exactly the discrepancy that recorded four rows' dimensions 20% too
+ * small until the bytes were measured directly.
+ */
+const TARGET_WIDTH = 1920;
 
 type Options = {
   slugs: string[];
@@ -112,6 +124,7 @@ async function reverify(client: IngestClient): Promise<void> {
   });
 
   let unchanged = 0;
+  let invalidated = 0;
   const drifted: string[] = [];
 
   for (const asset of commons) {
@@ -147,14 +160,21 @@ async function reverify(client: IngestClient): Promise<void> {
       continue;
     }
     const severity = report.invalidatesVerification ? "INVALIDATED" : "CHANGED";
+    if (report.invalidatesVerification) invalidated++;
     drifted.push(`${severity} ${title} (${asset.publication_status})`);
     console.log(`  ${severity} ${title} [${asset.publication_status}] — ${report.narrative}`);
     for (const f of report.findings) console.log(`      ${f.severity} ${f.field}: ${f.was} -> ${f.now}`);
   }
 
-  console.log(`\nRe-verification complete: ${unchanged} unchanged, ${drifted.length} drifted.`);
-  if (drifted.length === 0) {
-    console.log("Every recorded licence and creator still matches its source. Nothing to act on.");
+  console.log(
+    `\nRe-verification complete: ${unchanged} unchanged, ${drifted.length - invalidated} changed but still valid, ` +
+      `${invalidated} INVALIDATED.`
+  );
+  if (invalidated === 0) {
+    console.log(
+      "No published asset has lost the licence it was recorded with. The 'changed' rows are name-form differences " +
+        "between a tidied stored credit and the raw source field — not compliance problems."
+    );
   } else {
     console.log("Each INVALIDATED asset needs a human decision. Do NOT delete the private archive copy — it is the");
     console.log("only remaining evidence of what the source said when the site relied on it.");
@@ -377,13 +397,14 @@ async function acquire(
   // Commons' own downscale of the untouched original: a pure resize, aspect
   // preserved to the pixel. Not a crop, so no "changes were made" disclosure
   // is owed beyond the scale — see docs/product-media-strategy.md §2.1.
-  const thumbUrl = prov.originalFileUrl.replace(
-    /\/commons\/([0-9a-f])\/([0-9a-f]{2})\//,
-    `/commons/thumb/$1/$2/`
-  );
-  const url = thumbUrl !== prov.originalFileUrl
-    ? `${thumbUrl}/${TARGET_WIDTH}px-${prov.originalFileUrl.split("/").pop()}`
-    : prov.originalFileUrl;
+  //
+  // The query string MUST be stripped first. `imageinfo` now returns the file
+  // URL with analytics parameters appended
+  // (`?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&...`), so a
+  // naive `split("/").pop()` puts those parameters in the middle of the
+  // constructed path and Commons answers 400. The dry-acquire run caught this
+  // before it reached a real upload.
+  const url = commonsThumbUrl(prov.originalFileUrl, TARGET_WIDTH);
 
   const res = await fetch(url, { headers: { "User-Agent": USER_AGENT } });
   if (!res.ok) {

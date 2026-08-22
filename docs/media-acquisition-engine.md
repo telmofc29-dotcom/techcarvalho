@@ -140,6 +140,29 @@ write is `pending_verification`, held in the constant `ENGINE_MAX_RIGHTS_STATUS`
 
 Ambiguity fails closed at every one of them.
 
+## What it found: the eight blocked products, 2026-08-22
+
+Every one was searched end to end. **Nothing was acquired, and that is the honest answer.**
+
+| Product | Result | Why |
+|---|---|---|
+| TP-Link Deco XE75 | `no_results` | 14 queries, every one zero. The TP-Link category tree was walked in full. |
+| TP-Link Deco BE85 | `no_results` | Same. No Wi-Fi 7 Deco of any model exists on Commons. |
+| Roborock Saros 10R | `no_acceptable_candidate` | 26 candidates, all wrong product. |
+| Amazon Echo Show 8 (4th Gen) | `no_acceptable_candidate` | 56 candidates — free text matched 19th-century newspaper PDFs, the same "light echo" class of nonsense Openverse produced. |
+| Sony PlayStation 5 Pro | `no_acceptable_candidate` | 60 candidates, all wrong product. |
+| NVIDIA GeForce RTX 5080 | `no_acceptable_candidate` | 60 candidates: a `.webm` B-roll, dozens of review-video frame grabs, and a bare-PCB composite of the 5080 *and* 5090. |
+| AMD Ryzen 7 9800X3D | `no_acceptable_candidate` | 56 candidates; 48 refused on `licence_not_in_primary_source` + `third_party_relicence_unreviewed` — the ZMASLO/Geekerwan video frames. |
+| Intel Core Ultra 9 285K | `no_acceptable_candidate` | 30 candidates; 3 `.stl` meshes refused on media type, the rest wrong product (including a Core Ultra 7 265K). |
+
+Control, run identically against a product with known-good Commons photography:
+
+| GoPro HERO13 Black | `resolved` | 60 examined, 8 cleared every gate — including the accented `Category:GoPro Héro 13 black` that a name search cannot reach. |
+
+The eight remain blocked **on photography, not on permission**, which is what
+`docs/product-media-strategy.md` §3a concluded by hand. The engine reached the same conclusion
+independently, from the same sources, with the working written down.
+
 ## Finding nothing is a result
 
 The pipeline reports four statuses and they are deliberately not interchangeable:
@@ -192,6 +215,61 @@ grabs titled `RTX 5080 FE首发评测：赛博工艺品 (2160p 60fps VP9-128kbit
 a timecode, frame rate, codec or "B-roll" now score -0.6, and `pcb` / `die` / `micrograph` /
 `logo` / `teardown` / `screenshot` moved from -0.3 to -0.5. A reader arriving at a
 graphics-card page expects a graphics card.
+
+## Re-verification: the library was re-checked, and it is clean
+
+`--reverify` re-resolves every asset in the library against its source and runs
+`detectRightsDrift()`. Run against production on 2026-08-22: **39 assets carry a source URL,
+all 39 are Commons files, and not one has lost the licence it was recorded with.**
+
+The first run of it reported **ten INVALIDATED assets**, and every one was a false alarm. The
+comparison was strict string equality on the creator, and the ten differences were of this
+shape:
+
+| stored credit | current source field |
+|---|---|
+| `CEphoto / Uwe Aranas` | `CEphoto, Uwe Aranas` |
+| `Mlogic (Yan Li)` | `Mlogic` |
+| `Kārlis Dambrāns` | `Kārlis Dambrāns from Latvia` |
+| `Ashley Pomeroy` | `Ashley Pomeroy ( talk ) at en.wikipedia` |
+| `Gode Nehler` | `GodeNehler` |
+| `François Leblond (User:François de Dijon)` | `François de Dijon` |
+
+Not one is a different photographer. The stored value is a human tidying a location or a wiki
+link out of a rendered credit line, which is the correct thing to have done. **Ten false alarms
+is not a cautious system; it is a system whose warnings nobody will read the day a real one
+appears.** `compareCredits()` now folds diacritics, drops wiki noise words and URLs, and
+compares token sets — a name-form difference is a warning, only a genuinely different person is
+a blocker. All ten pairs above are regression tests.
+
+## Proving the acquisition path without writing anything
+
+`--dry-acquire` runs every step that can be run without a write: resolve, build the thumbnail
+URL, download, measure the real pixels out of the bytes, SHA-256 them, build the row, and put
+it through the publication gate. It exists because the alternative way to test acquisition is
+to run it against production and clean up afterwards, and a cleanup that goes wrong deletes
+somebody's evidence.
+
+It immediately earned itself. The download failed with
+
+> HTTP 400 `Use thumbnail sizes listed on https://w.wiki/GHai`
+
+for two independent reasons: `imageinfo` now appends analytics parameters to the file URL
+(`?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&…`), which a naive
+`split("/").pop()` planted in the middle of the constructed path; and Commons no longer serves
+arbitrary thumbnail widths, so the 1600px the earlier import requested is now rejected outright
+— it had only ever worked because Commons silently served the 1920 bucket instead, which is the
+same discrepancy that recorded four rows' dimensions 20% too small.
+
+After the fix, on `GoPro HERO13 Black`:
+
+```
+Downloaded 87344 bytes, 1920x1281, sha256:bd48e3617d297ddd…
+DRY ACQUIRE — nothing written.
+  would insert rights_status='pending_verification' publication_status='private' owned=false
+  licence='CC BY-SA 4.0' creator='François de Dijon'
+  publication gate: refused (Usage rights for this asset haven't been verified…)
+```
 
 ## A bug worth recording, because of how it hid
 
