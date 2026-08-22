@@ -7,7 +7,7 @@ import {
   statusFromPostconditions,
   worstStatus,
 } from "@/lib/engine/postconditions";
-import { postconditionDetail } from "@/lib/engine/silent-success";
+import { postconditionDetail, writeCountsFrom } from "@/lib/engine/silent-success";
 import { detectProductAnnouncement, productStatusFor } from "@/lib/engine/product-signals";
 import { resolveEntity, proposeSlug } from "@/lib/engine/entity-resolution";
 import type { StageResult } from "./discovery";
@@ -107,13 +107,13 @@ export async function runProductAssembly(supabase: Client): Promise<StageResult>
     // meaningless here.
     const resolution = resolveEntity(signal.productName, existingProducts);
 
-    await log.blind({
+    await log.pendingCreatedId({
       operation: "engine_record_entity_resolution",
       subject: signal.productName,
-      why:
-        "engine_record_entity_resolution is declared `returns void`. It is the audit trail for " +
-        "'why didn't this create a product?', so a silent no-op would leave every skip unexplained " +
-        "while the run still reported success.",
+      migration: "supabase/migrations_pending/20260822_silent_success_telemetry.sql",
+      // It is the audit trail for "why didn't this create a product?", so a
+      // silent no-op would leave every skip unexplained while the run still
+      // reported success.
       run: () =>
         supabase.rpc("engine_record_entity_resolution", {
           p_discovery_id: discovery.id,
@@ -242,6 +242,6 @@ export async function runProductAssembly(supabase: Client): Promise<StageResult>
     evidenceUnavailable,
     postconditions: postconditionDetail(postconditions),
   };
-  await recordJobRun(supabase, JOB, status, counters, detail);
+  await recordJobRun(supabase, JOB, status, counters, detail, undefined, writeCountsFrom(postconditions));
   return { status, ...counters, detail };
 }

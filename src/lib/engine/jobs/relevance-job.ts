@@ -6,7 +6,7 @@ import {
   statusFromPostconditions,
   worstStatus,
 } from "@/lib/engine/postconditions";
-import { postconditionDetail } from "@/lib/engine/silent-success";
+import { postconditionDetail, writeCountsFrom } from "@/lib/engine/silent-success";
 import { classifyRelevance } from "@/lib/engine/relevance";
 import type { StageResult } from "./discovery";
 
@@ -81,6 +81,6 @@ export async function runRelevance(supabase: Client): Promise<StageResult> {
   const status = worstStatus(jobView, statusFromPostconditions(postconditions));
 
   const detail = { ...tally, postconditions: postconditionDetail(postconditions) };
-  await recordJobRun(supabase, JOB, status, counters, detail);
+  await recordJobRun(supabase, JOB, status, counters, detail, undefined, writeCountsFrom(postconditions));
   return { status, ...counters, detail };
 }

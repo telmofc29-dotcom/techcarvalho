@@ -6,7 +6,7 @@ import {
   statusFromPostconditions,
   worstStatus,
 } from "@/lib/engine/postconditions";
-import { postconditionDetail } from "@/lib/engine/silent-success";
+import { postconditionDetail, writeCountsFrom } from "@/lib/engine/silent-success";
 import { classifyUpdateSignal, proposedChanges } from "@/lib/engine/update-signals";
 import { resolveEntity } from "@/lib/engine/entity-resolution";
 import type { StageResult } from "./discovery";
@@ -176,6 +176,6 @@ export async function runUpdateProposals(supabase: Client): Promise<StageResult>
     evidenceUnavailable,
     postconditions: postconditionDetail(postconditions),
   };
-  await recordJobRun(supabase, JOB, status, counters, detail);
+  await recordJobRun(supabase, JOB, status, counters, detail, undefined, writeCountsFrom(postconditions));
   return { status, ...counters, detail };
 }

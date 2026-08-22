@@ -7,7 +7,7 @@ import {
   statusFromPostconditions,
   worstStatus,
 } from "@/lib/engine/postconditions";
-import { postconditionDetail } from "@/lib/engine/silent-success";
+import { postconditionDetail, writeCountsFrom } from "@/lib/engine/silent-success";
 import { assembleDraft, proposeSeo } from "@/lib/engine/draft-assembly";
 import { resolveEntity, proposeSlug } from "@/lib/engine/entity-resolution";
 import { proposedChanges } from "@/lib/engine/update-signals";
@@ -102,13 +102,13 @@ export async function runDraftAssembly(supabase: Client): Promise<StageResult> {
     // didn't this create an article?" needs an auditable answer. That audit
     // trail is only worth having if it is actually being written, and this RPC
     // is `returns void`, so nothing in the response can say whether it was.
-    await log.blind({
+    await log.pendingCreatedId({
       operation: "engine_record_entity_resolution",
       subject: brief.proposed_title.slice(0, 50),
-      why:
-        "engine_record_entity_resolution is declared `returns void`. This is the audit trail for " +
-        "'why didn't this create an article?', so a silent no-op here would erase the explanation " +
-        "for every decision while every run still reported success.",
+      migration: "supabase/migrations_pending/20260822_silent_success_telemetry.sql",
+      // 'rejected_invalid' is the only non-creating answer, and it is NOT
+      // benign: it means the decision enum drifted, which would erase the
+      // explanation for every decision while every run still reported success.
       run: () =>
         supabase.rpc("engine_record_entity_resolution", {
           p_discovery_id: brief.discovery_id,
@@ -289,7 +289,7 @@ export async function runDraftAssembly(supabase: Client): Promise<StageResult> {
     heldForReview,
     postconditions: postconditionDetail(postconditions),
   };
-  await recordJobRun(supabase, JOB, status, counters, detail);
+  await recordJobRun(supabase, JOB, status, counters, detail, undefined, writeCountsFrom(postconditions));
   return { status, ...counters, detail };
 }
 

@@ -6,7 +6,7 @@ import {
   statusFromPostconditions,
   worstStatus,
 } from "@/lib/engine/postconditions";
-import { postconditionDetail } from "@/lib/engine/silent-success";
+import { postconditionDetail, writeCountsFrom } from "@/lib/engine/silent-success";
 import { runShadowPipeline } from "@/lib/engine/shadow-pipeline";
 import { tallyShadowRun, type ShadowDecision } from "@/lib/engine/shadow-decision";
 import { shadowCandidateIdentity } from "@/lib/engine/shadow-composition";
@@ -184,6 +184,6 @@ export async function runShadowEvaluation(supabase: Client): Promise<StageResult
     postconditions: postconditionDetail(postconditions),
   };
 
-  await recordJobRun(supabase, JOB, status, counters, detail);
+  await recordJobRun(supabase, JOB, status, counters, detail, undefined, writeCountsFrom(postconditions));
   return { status, ...counters, detail };
 }

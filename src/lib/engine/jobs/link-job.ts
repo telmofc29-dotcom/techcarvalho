@@ -6,7 +6,7 @@ import {
   statusFromPostconditions,
   worstStatus,
 } from "@/lib/engine/postconditions";
-import { postconditionDetail } from "@/lib/engine/silent-success";
+import { postconditionDetail, writeCountsFrom } from "@/lib/engine/silent-success";
 import {
   findOrphans, suggestLinksFor, pairKey, AUTO_LINK_THRESHOLD,
   type LinkCandidate,
@@ -153,6 +153,6 @@ export async function runInternalLinks(supabase: Client): Promise<StageResult> {
     reported,
     postconditions: postconditionDetail(postconditions),
   };
-  await recordJobRun(supabase, JOB, status, counters, detail);
+  await recordJobRun(supabase, JOB, status, counters, detail, undefined, writeCountsFrom(postconditions));
   return { status, ...counters, detail };
 }

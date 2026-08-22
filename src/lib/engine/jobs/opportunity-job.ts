@@ -6,7 +6,7 @@ import {
   statusFromPostconditions,
   worstStatus,
 } from "@/lib/engine/postconditions";
-import { postconditionDetail } from "@/lib/engine/silent-success";
+import { postconditionDetail, writeCountsFrom } from "@/lib/engine/silent-success";
 import { computeOpportunityScore } from "@/lib/engine/opportunity";
 import type { StageResult } from "./discovery";
 
@@ -75,12 +75,10 @@ export async function runOpportunityScoring(supabase: Client): Promise<StageResu
     // autonomous graduation until the RPC is changed to return something. The
     // change is drafted in
     // supabase/migrations_pending/20260822_silent_success_telemetry.sql.
-    await log.blind({
+    await log.pendingRpc({
       operation: "engine_upsert_opportunity",
       subject: `category/${row.category_slug}`,
-      why:
-        "engine_upsert_opportunity is declared `returns void`, so a successful call and a call " +
-        "that upserted nothing are byte-identical responses.",
+      migration: "supabase/migrations_pending/20260822_silent_success_telemetry.sql",
       run: () =>
         supabase.rpc("engine_upsert_opportunity", {
           p_subject_type: "category",
@@ -90,6 +88,10 @@ export async function runOpportunityScoring(supabase: Client): Promise<StageResu
           p_inputs: result.inputs,
           p_explanation: result.explanation,
         }),
+      accepted: ["ok"],
+      // Both rejections name WHICH input was refused, so a guard-list/CHECK
+      // drift shows up as a specific status rather than a generic failure.
+      benign: [],
     });
 
     scored.push({ category: row.category_slug, score: result.score });
@@ -100,6 +102,6 @@ export async function runOpportunityScoring(supabase: Client): Promise<StageResu
   const status = worstStatus(jobView, statusFromPostconditions(postconditions));
 
   const detail = { scored, postconditions: postconditionDetail(postconditions) };
-  await recordJobRun(supabase, JOB, status, counters, detail);
+  await recordJobRun(supabase, JOB, status, counters, detail, undefined, writeCountsFrom(postconditions));
   return { status, ...counters, detail };
 }

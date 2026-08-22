@@ -96,31 +96,102 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
  * row would not write) but the failure is now DISCOVERABLE in server logs, the
  * same posture src/lib/log/query-error.ts established for public pages.
  */
+/**
+ * The four postcondition counts a run can report about its own mutations.
+ *
+ * Deliberately `number | null` rather than defaulting to 0. A run that was not
+ * instrumented must record NULL, because "0 silent no-ops" and "nobody looked"
+ * are opposite facts and writing 0 for both is how an absence of measurement
+ * becomes a clean bill of health.
+ */
+export type WriteCounts = {
+  verified: number | null;
+  silentNoOps: number | null;
+  unverified: number | null;
+  blind: number | null;
+};
+
+/** Statuses engine_record_job_run returns once the telemetry migration lands. */
+const RECORDED = "recorded";
+
 export async function recordJobRun(
   supabase: SupabaseServerClient,
   jobName: string,
   status: "success" | "partial" | "failed" | "skipped",
   counters: JobCounters,
   detail: Record<string, unknown> = {},
-  error?: string
+  error?: string,
+  writes?: WriteCounts
 ): Promise<void> {
+  const base = {
+    p_job_name: jobName,
+    p_status: status,
+    p_items_examined: counters.examined,
+    p_items_created: counters.created,
+    p_items_deduped: counters.deduped,
+    p_items_failed: counters.failed,
+    p_detail: detail,
+    p_error: error ?? null,
+  };
+  const withTelemetry = {
+    ...base,
+    p_verified_writes: writes?.verified ?? null,
+    p_silent_no_ops: writes?.silentNoOps ?? null,
+    p_unverified_writes: writes?.unverified ?? null,
+    p_blind_writes: writes?.blind ?? null,
+  };
+
   try {
-    const { error: writeError } = await supabase.rpc("engine_record_job_run", {
-      p_job_name: jobName,
-      p_status: status,
-      p_items_examined: counters.examined,
-      p_items_created: counters.created,
-      p_items_deduped: counters.deduped,
-      p_items_failed: counters.failed,
-      p_detail: detail,
-      p_error: error ?? null,
-    });
+    // Attempt the instrumented shape first, then fall back.
+    //
+    // WHY A FALLBACK RATHER THAN JUST CALLING THE NEW SIGNATURE: the telemetry
+    // migration is applied by hand, out of band from a deploy. If this code
+    // shipped assuming the 12-argument function exists, then between deploy and
+    // migration EVERY call would answer PGRST202 and no job would record an
+    // audit row at all — starving health.ts, the breakers and the SILENT_SUCCESS
+    // detector simultaneously. That is a far worse outcome than losing four
+    // counters, so the audit row is written either way.
+    //
+    // The fallback is NOT silent. Losing the counters is itself reported, so
+    // "telemetry is missing" cannot be mistaken for "telemetry says zero".
+    let { data, error: writeError } = await supabase.rpc("engine_record_job_run", withTelemetry);
+
+    if (writeError && writeError.code === "PGRST202") {
+      const legacy = await supabase.rpc("engine_record_job_run", base);
+      data = legacy.data;
+      writeError = legacy.error;
+      if (!writeError) {
+        logQueryError(
+          `engine_record_job_run(${jobName}) — audit row written WITHOUT postcondition telemetry. ` +
+            `The 12-argument signature does not exist yet, so verified/silent/unverified/blind ` +
+            `counts for this run are NULL (unmeasured), not zero. Apply ` +
+            `supabase/migrations_pending/20260822_silent_success_telemetry.sql`,
+          { message: "telemetry_signature_absent" }
+        );
+      }
+    }
+
     logQueryError(
       `engine_record_job_run(${jobName}) — the audit row was NOT written. health.ts, the circuit ` +
         `breakers and the SILENT_SUCCESS detector all read engine_job_runs, so they are now ` +
         `missing this run entirely`,
       writeError
     );
+    if (writeError) return;
+
+    // INSPECT THE ANSWER. Before the telemetry migration this RPC returned void,
+    // so `data` was null and there was nothing to check — the audit writer was
+    // itself a blind write. Now it reports, and an unrecorded run must not pass
+    // as a recorded one just because no error came back. `null` is the pre-
+    // migration shape and is tolerated; any other non-'recorded' value is the
+    // function telling us it threw the row away.
+    if (data !== null && data !== RECORDED) {
+      logQueryError(
+        `engine_record_job_run(${jobName}) answered '${String(data)}' — it REFUSED the audit row ` +
+          `and no error was raised. This run is absent from engine_job_runs`,
+        { message: `engine_record_job_run=${String(data)}` }
+      );
+    }
   } catch (e) {
     logQueryError(
       `engine_record_job_run(${jobName}) threw; this run is absent from the audit log`,

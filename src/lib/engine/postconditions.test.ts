@@ -275,3 +275,145 @@ test("worstStatus preserves 'skipped' — a disabled stage is not a failing one"
 test("no mutations attempted is honestly a success", () => {
   assert.equal(statusFromPostconditions(summarisePostconditions([])), "success");
 });
+
+// ---------------------------------------------------------------------------
+// The transitional verifiers: an RPC mid-way through gaining a return value
+// ---------------------------------------------------------------------------
+// These exist because migrations here are applied by hand, out of band from a
+// deploy, so there is always a window in which the code and the database
+// disagree about whether an RPC returns anything. Both sides of that window
+// have to be honest, and neither may report success it cannot support.
+
+const MIGRATION = "supabase/migrations_pending/20260822_silent_success_telemetry.sql";
+
+test("pendingRpc: a void RPC (null) is BLIND — not verified, not failed", async () => {
+  const counters = { examined: 0, created: 0, deduped: 0, failed: 0 };
+  const log = createPostconditionLog(counters);
+
+  const r = await log.pendingRpc({
+    operation: "engine_record_source_check",
+    migration: MIGRATION,
+    run: async () => outcome<string>(null),
+    accepted: ["ok"],
+  });
+
+  assert.equal(r.status, "blind", "a `returns void` answer is unobservable, not successful");
+  assert.equal(counters.created, 0, "an unobservable write must not be counted as work done");
+  assert.equal(counters.deduped, 0);
+  assert.equal(counters.failed, 0, "and must not be counted as a failure either");
+  assert.match(r.detail, /UNOBSERVABLE/);
+  assert.match(r.detail, /silent_success_telemetry/, "names the migration that fixes it");
+});
+
+test("pendingRpc: once the RPC speaks, its status is actually CHECKED", async () => {
+  const counters = { examined: 0, created: 0, deduped: 0, failed: 0 };
+  const log = createPostconditionLog(counters);
+
+  const good = await log.pendingRpc({
+    operation: "engine_record_source_check",
+    migration: MIGRATION,
+    run: async () => outcome("ok"),
+    accepted: ["ok"],
+  });
+  assert.equal(good.status, "verified");
+  assert.equal(counters.created, 1);
+
+  // THE POINT OF THE WHOLE FILE: the post-migration function can now tell us
+  // the row was not there, and that must NOT read as a health update.
+  const noop = await log.pendingRpc({
+    operation: "engine_record_source_check",
+    migration: MIGRATION,
+    run: async () => outcome("no_matching_source"),
+    accepted: ["ok"],
+  });
+  assert.equal(noop.status, "silent_no_op", "'no_matching_source' is a no-op, not success");
+  assert.equal(counters.failed, 1);
+  assert.equal(counters.created, 1, "and it did not inflate the created counter");
+});
+
+test("pendingRpc: an error is still an error, in either world", async () => {
+  const counters = { examined: 0, created: 0, deduped: 0, failed: 0 };
+  const log = createPostconditionLog(counters);
+  const r = await log.pendingRpc({
+    operation: "engine_upsert_opportunity",
+    migration: MIGRATION,
+    run: async () => outcome<string>(null, "permission denied for function"),
+    accepted: ["ok"],
+  });
+  assert.equal(r.status, "errored", "a null WITH an error is a failure, not a blind write");
+  assert.equal(counters.failed, 1);
+});
+
+test("pendingCreatedId: null is blind, a uuid is a creation, a status is not", async () => {
+  const counters = { examined: 0, created: 0, deduped: 0, failed: 0 };
+  const log = createPostconditionLog(counters);
+
+  const blind = await log.pendingCreatedId({
+    operation: "engine_record_entity_resolution",
+    migration: MIGRATION,
+    run: async () => outcome<string>(null),
+  });
+  assert.equal(blind.status, "blind");
+  assert.equal(counters.created, 0);
+
+  const made = await log.pendingCreatedId({
+    operation: "engine_record_entity_resolution",
+    migration: MIGRATION,
+    run: async () => outcome(UUID),
+  });
+  assert.equal(made.status, "verified");
+  assert.equal(counters.created, 1);
+
+  // 'rejected_invalid' means the decision enum drifted apart from the table's
+  // CHECK — the exact shape of incident #2. It must fail loudly.
+  const rejected = await log.pendingCreatedId({
+    operation: "engine_record_entity_resolution",
+    migration: MIGRATION,
+    run: async () => outcome("rejected_invalid"),
+  });
+  assert.equal(rejected.status, "silent_no_op");
+  assert.equal(counters.failed, 1);
+});
+
+test("pendingCreatedId never accepts the string 'null' as a row id", async () => {
+  const counters = { examined: 0, created: 0, deduped: 0, failed: 0 };
+  const log = createPostconditionLog(counters);
+  // A real bug shipped in this project: String(null) was pushed as a product id
+  // and counted as created, because `!result.includes("-")` was used as a uuid
+  // test. "null" contains no hyphen, so it was treated as an id.
+  const r = await log.pendingCreatedId({
+    operation: "engine_record_entity_resolution",
+    migration: MIGRATION,
+    run: async () => outcome("null"),
+  });
+  assert.notEqual(r.status, "verified");
+  assert.equal(counters.created, 0);
+});
+
+test("blind writes keep a run from being all-verified, so they block graduation", async () => {
+  const counters = { examined: 0, created: 0, deduped: 0, failed: 0 };
+  const log = createPostconditionLog(counters);
+  await log.pendingRpc({
+    operation: "engine_upsert_opportunity",
+    migration: MIGRATION,
+    run: async () => outcome<string>(null),
+    accepted: ["ok"],
+  });
+  const s = log.summarise();
+  assert.equal(s.blind, 1);
+  assert.equal(s.allVerified, false, "'we could not look' is not 'everything verified'");
+  // But it does not fail the run: there is no evidence of failure either.
+  assert.equal(statusFromPostconditions(s), "success");
+});
+
+test("pendingCreatedId: an errored call is errored, never laundered into blind", async () => {
+  const counters = { examined: 0, created: 0, deduped: 0, failed: 0 };
+  const log = createPostconditionLog(counters);
+  const r = await log.pendingCreatedId({
+    operation: "engine_record_entity_resolution",
+    migration: MIGRATION,
+    run: async () => outcome<string>(null, "PGRST202: function not found"),
+  });
+  assert.equal(r.status, "errored");
+  assert.equal(counters.failed, 1);
+});

@@ -1338,8 +1338,20 @@ export interface Database {
           p_items_failed?: number;
           p_detail?: unknown;
           p_error?: string | null;
+          // Added by 20260822_silent_success_telemetry.sql. Optional here
+          // because src/lib/engine/cron.ts falls back to the 8-argument call
+          // while that migration is still pending, so both shapes must typecheck.
+          p_verified_writes?: number | null;
+          p_silent_no_ops?: number | null;
+          p_unverified_writes?: number | null;
+          p_blind_writes?: number | null;
         };
-        Returns: void;
+        // `string` once the telemetry migration lands ('recorded' /
+        // 'rejected_invalid_status' / 'rejected_invalid_job_name' /
+        // 'no_rows_affected'); `null` until then, because the deployed function
+        // still returns void. Both are real, so both are in the type — and the
+        // caller must therefore handle null rather than assume a status.
+        Returns: string | null;
       };
       engine_upsert_discovery: {
         Args: {
@@ -1369,7 +1381,11 @@ export interface Database {
       };
       engine_record_source_check: {
         Args: { p_source_id: string; p_success: boolean; p_error?: string | null };
-        Returns: void;
+        // void -> `string | null` while 20260822_silent_success_telemetry.sql is
+        // pending. `null` is the deployed `returns void` shape; a string is the
+        // post-migration status. Both are real, so the caller must handle both —
+        // src/lib/engine/postconditions.ts pendingRpc/pendingCreatedId does.
+        Returns: string | null;
       };
       engine_opportunity_inputs: {
         Args: { p_days?: number };
@@ -1393,7 +1409,10 @@ export interface Database {
           p_inputs: unknown;
           p_explanation: string;
         };
-        Returns: void;
+        // void -> `string | null` while 20260822_silent_success_telemetry.sql is
+        // pending. `null` is the deployed `returns void` shape; a string is the
+        // post-migration value. Both are real, so callers must handle both.
+        Returns: string | null;
       };
       engine_freshness_candidates: {
         Args: { p_stale_days?: number };
@@ -1618,6 +1637,27 @@ export interface Database {
           items_deduped: number;
           items_failed: number;
           has_error: boolean;
+          // Added by 20260822_silent_success_telemetry.sql. Optional because the
+          // deployed function does not select them yet; `null` means UNMEASURED,
+          // never zero. src/lib/engine/guard.ts already reads them this way.
+          verified_writes?: number | null;
+          silent_no_ops?: number | null;
+          unverified_writes?: number | null;
+          blind_writes?: number | null;
+        }[];
+      };
+      // Added by 20260822_silent_success_telemetry.sql. Not yet applied.
+      engine_silent_success_stats: {
+        Args: { p_hours?: number };
+        Returns: {
+          runs_in_window: number;
+          runs_instrumented: number;
+          /** False whenever any run in the window lacks instrumentation. */
+          all_measured: boolean;
+          verified_writes: number;
+          silent_no_ops: number;
+          unverified_writes: number;
+          blind_writes: number;
         }[];
       };
       engine_source_health: {
@@ -1707,7 +1747,11 @@ export interface Database {
           p_decision: string;
           p_explanation: string;
         };
-        Returns: void;
+        // void -> `string | null` while 20260822_silent_success_telemetry.sql is
+        // pending. `null` is the deployed `returns void` shape; a string is the
+        // post-migration value. Both are real, so callers must handle both.
+        // On success this is the new row's UUID, not a status word.
+        Returns: string | null;
       };
       // Manufacturers + categories. A product is only ever created for a
       // manufacturer that already has a record — never an invented one.

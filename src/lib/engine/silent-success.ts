@@ -491,6 +491,29 @@ export function postconditionDetail(summary: PostconditionSummary): Record<strin
   };
 }
 
+/**
+ * The four counts a run reports into engine_job_runs' own columns.
+ *
+ * Separate from postconditionDetail() on purpose. The detail payload is jsonb
+ * that nothing queries; these become real columns that the breaker, health.ts
+ * and the readiness scorecard read. A job that ran NO checked mutations reports
+ * zeros — that is a measured zero, and it is a different fact from the NULLs a
+ * run written before instrumentation carries.
+ */
+export function writeCountsFrom(summary: PostconditionSummary): {
+  verified: number;
+  silentNoOps: number;
+  unverified: number;
+  blind: number;
+} {
+  return {
+    verified: summary.verified,
+    silentNoOps: summary.silentNoOps,
+    unverified: summary.unverifiable,
+    blind: summary.blind,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // 2. Trip a circuit breaker
 // ---------------------------------------------------------------------------

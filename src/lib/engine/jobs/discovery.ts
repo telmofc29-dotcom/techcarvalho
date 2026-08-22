@@ -6,7 +6,7 @@ import {
   statusFromPostconditions,
   worstStatus,
 } from "@/lib/engine/postconditions";
-import { postconditionDetail } from "@/lib/engine/silent-success";
+import { postconditionDetail, writeCountsFrom } from "@/lib/engine/silent-success";
 import { parseFeed, classifyDiscoveryType, classifyClaimStatus } from "@/lib/engine/feed-parser";
 import { buildDedupeKey } from "@/lib/engine/dedupe";
 
@@ -67,10 +67,18 @@ export async function runDiscovery(supabase: Client): Promise<StageResult> {
   // nothing would leave that breaker permanently looking at a healthy registry
   // no matter how many sources had died. It cannot be verified from here, so it
   // is declared blind and counted rather than assumed.
-  const BLIND_SOURCE_CHECK =
-    "engine_record_source_check is declared `returns void`, so nothing in the response can show " +
-    "whether the source's health row was actually updated. Source health feeds the " +
-    "source_failures breaker, so an unnoticed no-op here blinds that breaker too.";
+  // engine_record_source_check is `returns void` in deployed production, so
+  // nothing in the response shows whether the source's health row was actually
+  // updated. Source health feeds the source_failures breaker, so an unnoticed
+  // no-op here blinds that breaker too. The migration below gives it a return
+  // value; until it is applied these calls record as blind rather than as
+  // either success or failure.
+  const SOURCE_CHECK_MIGRATION =
+    "supabase/migrations_pending/20260822_silent_success_telemetry.sql";
+  // 'no_matching_source' is NOT benign. It means the row we just listed is gone,
+  // which is exactly the silent no-op that would leave the breaker reading a
+  // permanently healthy registry.
+  const SOURCE_CHECK_ACCEPTED = ["ok"] as const;
 
   for (const source of dueSources) {
     counters.examined++;
@@ -79,10 +87,11 @@ export async function runDiscovery(supabase: Client): Promise<StageResult> {
     if (body === null) {
       counters.failed++;
       perSource[source.organisation] = "fetch_failed";
-      await log.blind({
+      await log.pendingRpc({
         operation: "engine_record_source_check(failure)",
         subject: source.organisation,
-        why: BLIND_SOURCE_CHECK,
+        migration: SOURCE_CHECK_MIGRATION,
+        accepted: SOURCE_CHECK_ACCEPTED,
         run: () =>
           supabase.rpc("engine_record_source_check", {
             p_source_id: source.id,
@@ -100,10 +109,11 @@ export async function runDiscovery(supabase: Client): Promise<StageResult> {
       // than looking like "this source simply had no news".
       counters.failed++;
       perSource[source.organisation] = "no_parseable_items";
-      await log.blind({
+      await log.pendingRpc({
         operation: "engine_record_source_check(failure)",
         subject: source.organisation,
-        why: BLIND_SOURCE_CHECK,
+        migration: SOURCE_CHECK_MIGRATION,
+        accepted: SOURCE_CHECK_ACCEPTED,
         run: () =>
           supabase.rpc("engine_record_source_check", {
             p_source_id: source.id,
@@ -160,10 +170,11 @@ export async function runDiscovery(supabase: Client): Promise<StageResult> {
     const deduped = counters.deduped - before.deduped;
     perSource[source.organisation] = `created:${created} deduped:${deduped}`;
 
-    await log.blind({
+    await log.pendingRpc({
       operation: "engine_record_source_check(success)",
       subject: source.organisation,
-      why: BLIND_SOURCE_CHECK,
+      migration: SOURCE_CHECK_MIGRATION,
+      accepted: SOURCE_CHECK_ACCEPTED,
       run: () =>
         supabase.rpc("engine_record_source_check", {
           p_source_id: source.id,
@@ -184,6 +195,6 @@ export async function runDiscovery(supabase: Client): Promise<StageResult> {
   const status = worstStatus(jobView, statusFromPostconditions(postconditions));
 
   const detail = { sources: perSource, postconditions: postconditionDetail(postconditions) };
-  await recordJobRun(supabase, JOB, status, counters, detail);
+  await recordJobRun(supabase, JOB, status, counters, detail, undefined, writeCountsFrom(postconditions));
   return { status, ...counters, detail };
 }

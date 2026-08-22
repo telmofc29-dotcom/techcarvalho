@@ -7,7 +7,7 @@ import {
   statusFromPostconditions,
   worstStatus,
 } from "@/lib/engine/postconditions";
-import { postconditionDetail } from "@/lib/engine/silent-success";
+import { postconditionDetail, writeCountsFrom } from "@/lib/engine/silent-success";
 import {
   computeTrend,
   rankTrends,
@@ -216,6 +216,6 @@ export async function runTrends(supabase: Client): Promise<StageResult> {
   const status = worstStatus(jobView, statusFromPostconditions(postconditions));
 
   const detail = { scored, ranked, decay, postconditions: postconditionDetail(postconditions) };
-  await recordJobRun(supabase, JOB, status, counters, detail);
+  await recordJobRun(supabase, JOB, status, counters, detail, undefined, writeCountsFrom(postconditions));
   return { status, ...counters, detail };
 }

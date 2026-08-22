@@ -313,6 +313,45 @@ export type PostconditionLog = {
     subject?: string;
     run: () => PromiseLike<MutationOutcome<unknown>>;
   }): Promise<PostconditionResult<unknown>>;
+  /**
+   * An RPC that is `returns void` in deployed production but becomes
+   * `returns text` once a named pending migration is applied.
+   *
+   * WHY THIS EXISTS RATHER THAN JUST SWITCHING TO rpc():
+   * migrations here are applied by hand, out of band from a deploy, so there is
+   * always a window in which the code and the database disagree. Calling rpc()
+   * during that window would score every call `unverifiable` and count it as
+   * FAILED — a wave of false alarms caused by our own deploy ordering, which is
+   * how a detector gets muted. Calling blind() forever would mean the counters
+   * never improve after the migration lands, and somebody would have to
+   * remember to come back and change it.
+   *
+   * So the shape of the ANSWER decides. null is the pre-migration function and
+   * is recorded as blind, naming the migration that fixes it. A string is the
+   * post-migration function and gets the full status check. Nothing to remember,
+   * no false alarms, and the blind count falls to zero by itself the moment the
+   * migration is applied.
+   */
+  pendingRpc(spec: {
+    operation: string;
+    subject?: string;
+    /** The migration filename that gives this RPC a return value. */
+    migration: string;
+    run: () => PromiseLike<MutationOutcome<string>>;
+    accepted: readonly string[];
+    benign?: readonly string[];
+  }): Promise<PostconditionResult<string>>;
+  /**
+   * As pendingRpc, for an RPC that will return the ID OF THE ROW IT CREATED
+   * rather than a status string. Same null-is-blind rule.
+   */
+  pendingCreatedId(spec: {
+    operation: string;
+    subject?: string;
+    migration: string;
+    run: () => PromiseLike<MutationOutcome<string>>;
+    benign?: readonly string[];
+  }): Promise<PostconditionResult<string>>;
   summarise(): PostconditionSummary;
 };
 
@@ -387,6 +426,83 @@ export function createPostconditionLog(counters: CountersLike): PostconditionLog
     async blind(spec) {
       const result = await mutateBlind(spec);
       tally(result, false);
+      return result;
+    },
+
+    async pendingRpc(spec) {
+      const accepted = spec.accepted;
+      const benign = spec.benign ?? [];
+      const all = [...accepted, ...benign];
+      const result = await mutateAndVerify<string>({
+        operation: spec.operation,
+        subject: spec.subject,
+        expectation: `one of the documented statuses: ${all.join(" | ")}`,
+        run: spec.run,
+        verify: (data) => {
+          if (data === null || data === undefined) {
+            // The deployed function still returns void. Honest answer: we did
+            // not observe anything, and we know exactly why.
+            return {
+              held: "unknown",
+              detail:
+                `${spec.operation} returned no value, which is the deployed \`returns void\` ` +
+                `signature. Its effect is UNOBSERVABLE until ${spec.migration} is applied; this ` +
+                `is not evidence the write landed, and not evidence it failed.`,
+            };
+          }
+          return expectRpcStatus(accepted, benign)(data);
+        },
+      });
+
+      // A null answer is reclassified from `unverifiable` (which counts as
+      // FAILED) to `blind` (which counts as unproven). The distinction is the
+      // whole point: an unobservable-by-construction write is not a failure, but
+      // it must never be counted as a success either.
+      //
+      // `status === "unverifiable"` rather than `data === null` is load-bearing.
+      // The first version of this checked only for a null `data`, which meant a
+      // call that ERRORED — permission denied, function missing, connection
+      // dropped — also returns null and was being relabelled as a blind write.
+      // That converts a real, visible failure into "we could not look", which is
+      // the exact laundering this module exists to prevent. A test caught it.
+      if (result.status === "unverifiable") {
+        const blindResult: PostconditionResult<string> = { ...result, status: "blind", ok: true };
+        tally(blindResult as PostconditionResult, false);
+        return blindResult;
+      }
+      tally(result as PostconditionResult, typeof result.data === "string" && accepted.includes(result.data));
+      return result;
+    },
+
+    async pendingCreatedId(spec) {
+      const benign = spec.benign ?? [];
+      const result = await mutateAndVerify<string>({
+        operation: spec.operation,
+        subject: spec.subject,
+        expectation: "a row id, or a documented non-creating status",
+        run: spec.run,
+        verify: (data) => {
+          if (data === null || data === undefined) {
+            return {
+              held: "unknown",
+              detail:
+                `${spec.operation} returned no value, which is the deployed \`returns void\` ` +
+                `signature. Whether a row was written is UNOBSERVABLE until ${spec.migration} ` +
+                `is applied.`,
+            };
+          }
+          return expectCreatedId(benign)(data);
+        },
+      });
+
+      // See pendingRpc: an errored call also has null data, and must stay
+      // `errored` rather than being laundered into `blind`.
+      if (result.status === "unverifiable") {
+        const blindResult: PostconditionResult<string> = { ...result, status: "blind", ok: true };
+        tally(blindResult as PostconditionResult, false);
+        return blindResult;
+      }
+      tally(result as PostconditionResult, isRowId(result.data));
       return result;
     },
 

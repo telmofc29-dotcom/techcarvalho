@@ -6,7 +6,7 @@ import {
   statusFromPostconditions,
   worstStatus,
 } from "@/lib/engine/postconditions";
-import { postconditionDetail } from "@/lib/engine/silent-success";
+import { postconditionDetail, writeCountsFrom } from "@/lib/engine/silent-success";
 import { runAcquisitionPipeline } from "@/lib/media/providers/pipeline";
 import { buildEnabledProviders } from "@/lib/media/providers/registry";
 import { DEFAULT_RANKING_CONTEXT } from "@/lib/media/providers/ranking";
@@ -421,6 +421,6 @@ export async function runMediaAcquisition(supabase: Client): Promise<StageResult
   const status = worstStatus(jobView, statusFromPostconditions(postconditions));
 
   const detail = { ...tally, postconditions: postconditionDetail(postconditions) };
-  await recordJobRun(supabase, JOB, status, counters, detail);
+  await recordJobRun(supabase, JOB, status, counters, detail, undefined, writeCountsFrom(postconditions));
   return { status, ...counters, detail };
 }
