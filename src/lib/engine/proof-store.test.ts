@@ -13,15 +13,29 @@ test("the checked-in records load and parse", () => {
   }
 });
 
-test("concurrency is the ONLY thing currently proven", () => {
-  // This is the honest state as of 2026-08-22 and the test exists to make any
-  // change to it deliberate. If a proof is added, this assertion must be
-  // updated in the same commit — which is the point.
+test("exactly two proofs are held, and both are PRODUCTION evidence", () => {
+  // The honest state as of 2026-08-22. The test exists to make any change to it
+  // deliberate: adding a proof means updating this assertion in the same commit,
+  // where a reviewer sees both halves together. That is the whole control.
+  //
+  // Both were obtained against the production database, which is what their kinds
+  // require — a lease is only real where the lock actually lives.
   const { statuses, provenCount, blockingKinds } = evaluateAllProofs(loadProofRecords());
-  const proven = statuses.filter((s) => s.state === "PROVEN").map((s) => s.kind);
-  assert.deepEqual(proven, ["concurrency_test"], `proven: ${proven.join(", ")}`);
-  assert.equal(provenCount, 1);
-  assert.equal(blockingKinds.length, PROOF_KINDS.length - 1);
+  const proven = statuses.filter((s) => s.state === "PROVEN").map((s) => s.kind).sort();
+  assert.deepEqual(proven, ["concurrency_test", "duplicate_scheduler_test"], `proven: ${proven.join(", ")}`);
+  assert.equal(provenCount, 2);
+  assert.equal(blockingKinds.length, PROOF_KINDS.length - 2);
+
+  for (const kind of proven) {
+    assert.equal(statuses.find((s) => s.kind === kind)!.level, "production_proven", kind);
+  }
+});
+
+test("rollback is reported as UNBUILT, not merely untested", () => {
+  // The distinction matters on the dashboard: "NOT PROVEN" invites the reading
+  // that a rollback path exists and is awaiting a test. It does not exist.
+  const s = evaluateAllProofs(loadProofRecords()).statuses.find((x) => x.kind === "rollback_test")!;
+  assert.equal(s.state, "NOT_IMPLEMENTED");
 });
 
 test("every unproven kind says why, and none says 'code exists'", () => {

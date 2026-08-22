@@ -110,22 +110,104 @@ async function main(): Promise<void> {
       .limit(1);
 
     if (!rows || rows.length === 0) {
-      checks.push({
-        name: "engine_set_relevance(admin-overridden) reports 'human_override'",
-        passed: true,
-        expected: "'human_override'",
-        actual: "SKIPPED — no admin-overridden discovery exists in production",
-        note: "Not a failure; there is genuinely nothing to test against. Unit-covered in relevance tests.",
-      });
+      // No naturally-overridden row exists, so one is created, tested, and put
+      // back. Skipping instead was the weaker option: 'human_override' is the
+      // branch that protects an editor's decision from being overwritten by the
+      // engine, and leaving it unexercised in production means the one guard
+      // standing between a human judgement and a machine is unverified.
+      //
+      // Only relevance_overridden_by_admin is touched — a boolean flag, set and
+      // then restored to the exact value read first. The verdict, score and
+      // explanation are read before and compared after, so the test proves it
+      // changed nothing as well as that it answered correctly.
+      const { data: candidates } = await (client as unknown as {
+        from: (t: string) => { select: (c: string) => { eq: (a: string, b: unknown) => { not: (c: string, o: string, v: unknown) => { limit: (n: number) => Promise<{ data: { id: string; relevance_verdict: string; relevance_score: number | null; relevance_explanation: string | null }[] | null }> } } } };
+      })
+        .from("engine_discoveries")
+        .select("id,relevance_verdict,relevance_score,relevance_explanation")
+        .eq("relevance_overridden_by_admin", false)
+        .not("relevance_verdict", "is", null)
+        .limit(1);
+
+      const target = candidates?.[0];
+      if (!target) {
+        record("engine_set_relevance(admin-overridden) reports 'human_override'", "'human_override'",
+          "no discovery available to mark", false);
+      } else {
+        const setFlag = async (value: boolean) =>
+          (client as unknown as {
+            from: (t: string) => { update: (v: Record<string, unknown>) => { eq: (a: string, b: string) => Promise<{ error: { message: string } | null }> } };
+          }).from("engine_discoveries").update({ relevance_overridden_by_admin: value }).eq("id", target.id);
+
+        const markError = (await setFlag(true)).error;
+        if (markError) {
+          record("engine_set_relevance(admin-overridden) reports 'human_override'", "'human_override'",
+            `could not mark row: ${markError.message}`, false);
+        } else {
+          const { data, error } = await client.rpc("engine_set_relevance", {
+            p_id: target.id,
+            // Deliberately DIFFERENT values: if the guard fails, the damage is
+            // visible in the after-check below rather than hidden by writing
+            // back what was already there.
+            p_verdict: target.relevance_verdict === "rejected" ? "relevant" : "rejected",
+            p_score: 99,
+            p_explanation: "PROBE — this must never be written.",
+            p_angle: null,
+          });
+
+          const { data: after } = await (client as unknown as {
+            from: (t: string) => { select: (c: string) => { eq: (a: string, b: string) => Promise<{ data: { relevance_verdict: string; relevance_score: number | null; relevance_explanation: string | null }[] | null }> } };
+          }).from("engine_discoveries").select("relevance_verdict,relevance_score,relevance_explanation").eq("id", target.id);
+
+          const a = after?.[0];
+          const unchanged =
+            !!a &&
+            a.relevance_verdict === target.relevance_verdict &&
+            a.relevance_score === target.relevance_score &&
+            a.relevance_explanation === target.relevance_explanation;
+
+          const restoreError = (await setFlag(false)).error;
+
+          record(
+            "engine_set_relevance(admin-overridden) reports 'human_override' AND writes nothing",
+            "'human_override' with the row untouched",
+            error ? `ERROR ${error.message}` : { answered: data, rowUnchanged: unchanged, flagRestored: !restoreError },
+            !error && data === "human_override" && unchanged && !restoreError,
+            "A human decision must never be silently overwritten. The row is checked after the call, not just the answer."
+          );
+        }
+      }
     } else {
+      // A genuinely admin-overridden row already exists, so nothing needs to be
+      // marked. Deliberately different values again, and the row is re-read
+      // afterwards to prove the refusal actually refused.
+      const target = rows[0];
+      const { data: before } = await (client as unknown as {
+        from: (t: string) => { select: (c: string) => { eq: (a: string, b: string) => Promise<{ data: { relevance_verdict: string; relevance_score: number | null; relevance_explanation: string | null }[] | null }> } };
+      }).from("engine_discoveries").select("relevance_verdict,relevance_score,relevance_explanation").eq("id", target.id);
+      const b = before?.[0];
+
       const { data, error } = await client.rpc("engine_set_relevance", {
-        p_id: rows[0].id, p_verdict: "uncertain", p_score: 0, p_explanation: "probe", p_angle: null,
+        p_id: target.id, p_verdict: "uncertain", p_score: 99,
+        p_explanation: "PROBE — this must never be written.", p_angle: null,
       });
+
+      const { data: after } = await (client as unknown as {
+        from: (t: string) => { select: (c: string) => { eq: (a: string, b: string) => Promise<{ data: { relevance_verdict: string; relevance_score: number | null; relevance_explanation: string | null }[] | null }> } };
+      }).from("engine_discoveries").select("relevance_verdict,relevance_score,relevance_explanation").eq("id", target.id);
+      const a = after?.[0];
+
+      const unchanged =
+        !!a && !!b &&
+        a.relevance_verdict === b.relevance_verdict &&
+        a.relevance_score === b.relevance_score &&
+        a.relevance_explanation === b.relevance_explanation;
+
       record(
-        "engine_set_relevance(admin-overridden) reports 'human_override'",
-        "'human_override'",
-        error ? `ERROR ${error.message}` : data,
-        !error && data === "human_override",
+        "engine_set_relevance(admin-overridden) reports 'human_override' AND writes nothing",
+        "'human_override' with the row untouched",
+        error ? `ERROR ${error.message}` : { answered: data, rowUnchanged: unchanged },
+        !error && data === "human_override" && unchanged,
         "A human decision must never be silently overwritten."
       );
     }
@@ -191,6 +273,46 @@ async function main(): Promise<void> {
       !error && data === "ok",
       "The draft narrowed this list to three values; all five are permitted by the table's CHECK."
     );
+  }
+
+  // -- 7b. The audit-trail RPC returns the row id it created ----------------
+  // engine_record_entity_resolution was `returns void`: whether the "why didn't
+  // this create an article?" explanation was stored could not be observed at
+  // all. It must now return a uuid, and must still refuse an unknown decision.
+  {
+    const { data, error } = await client.rpc("engine_record_entity_resolution", {
+      p_discovery_id: null, p_candidate_name: "TC probe", p_normalised: "tc probe",
+      p_product_id: null, p_content_id: null, p_score: 0,
+      p_decision: "not_a_real_decision", p_explanation: "probe",
+    });
+    record(
+      "engine_record_entity_resolution(invalid decision) reports the rejection",
+      "'rejected_invalid'",
+      error ? `ERROR ${error.message}` : data,
+      !error && data === "rejected_invalid",
+      "The guard list and the table CHECK have drifted apart before; a drift must be a status, not silence."
+    );
+  }
+  {
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const { data, error } = await client.rpc("engine_record_entity_resolution", {
+      p_discovery_id: null, p_candidate_name: "TC probe row", p_normalised: "tc probe row",
+      p_product_id: null, p_content_id: null, p_score: 0,
+      p_decision: "ignored", p_explanation: "Postcondition probe — deleted immediately.",
+    });
+    const isUuid = typeof data === "string" && UUID_RE.test(data);
+    record(
+      "engine_record_entity_resolution returns the created row id",
+      "a uuid",
+      error ? `ERROR ${error.message}` : data,
+      !error && isUuid,
+      "Was `returns void`: a caller could not tell whether the audit row landed."
+    );
+    if (isUuid) {
+      await (client as unknown as {
+        from: (t: string) => { delete: () => { eq: (a: string, b: unknown) => Promise<{ error: unknown }> } };
+      }).from("engine_entity_resolutions").delete().eq("id", data);
+    }
   }
 
   // -- 8. Blind writes now speak --------------------------------------------

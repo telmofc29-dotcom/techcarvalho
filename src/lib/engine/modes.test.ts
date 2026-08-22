@@ -51,10 +51,30 @@ test("SHADOW publishes nothing; CANARY and AUTONOMOUS may", () => {
   assert.equal(modeMayPublish("AUTONOMOUS"), true);
 });
 
-test("full evidence unlocks AUTONOMOUS", () => {
+test("full evidence still cannot unlock AUTONOMOUS while a capability is UNBUILT", () => {
+  // This test used to assert that full evidence unlocks AUTONOMOUS. It no
+  // longer can, and the change is deliberate rather than a regression.
+  //
+  // rollback_test is required at chaos_proven, and a repository-wide search
+  // finds no rollback, undo, revert or compensating mechanism anywhere in src/.
+  // The engine's safety model is entirely "do not make the write in the first
+  // place". That is a defensible design — but while a proof is REQUIRED for a
+  // capability that does not EXIST, the honest verdict is locked, and no amount
+  // of shadow evidence can substitute.
+  //
+  // Two ways to make AUTONOMOUS reachable, both requiring a deliberate human
+  // decision and a commit: build a rollback mechanism, or decide rollback is
+  // genuinely not required for this engine and remove it from PROOF_KINDS.
+  // Neither should happen silently, which is why this is pinned as a test.
   const r = evaluateReadiness(ready());
-  assert.equal(r.autonomousUnlocked, true, JSON.stringify(r.blockers));
-  assert.equal(r.highestJustifiedMode, "AUTONOMOUS");
+  assert.equal(r.autonomousUnlocked, false, JSON.stringify(r.blockers));
+  const rollback = r.blockers.filter((b) => b.criterion === "Proof: rollback_test");
+  assert.equal(rollback.length, 1, "rollback is the blocker");
+  assert.match(rollback[0].actual, /does not exist in the codebase/);
+  assert.equal(
+    r.blockers.length, 1,
+    `every OTHER criterion is satisfied by full evidence: ${JSON.stringify(r.blockers)}`
+  );
 });
 
 test("ANY single escape re-locks it — these have no acceptable rate", () => {
@@ -120,16 +140,22 @@ test("requesting CANARY without evidence also clamps down", () => {
   assert.equal(eff.clamped, true);
 });
 
-test("CANARY unlocks on partial evidence, but only with zero escapes and key proofs", () => {
+test("CANARY is ALSO blocked while rollback is unbuilt — and that is definitional", () => {
+  // CANARY is defined in this file as "extremely low-risk content only, under
+  // strict caps, WITH ROLLBACK", and its criteria require rollback_test PROVEN.
+  // Since no rollback mechanism exists, CANARY cannot be justified either.
+  //
+  // This is the right answer rather than an inconvenience: CANARY is the first
+  // mode that PUBLISHES. Publishing automatically with no way to undo it is
+  // precisely the risk the rollback requirement was written to prevent, so
+  // granting CANARY without it would defeat its own definition.
   const e = nothing();
   e.shadowDecisions = 100;
-  e.proofRecords = [proofFor("rollback_test"), proofFor("circuit_breaker_test")];
+  e.proofRecords = [proofFor("circuit_breaker_test"), proofFor("source_outage_test")];
   const r = evaluateReadiness(e);
-  assert.equal(r.highestJustifiedMode, "CANARY");
-  assert.equal(r.autonomousUnlocked, false, "CANARY is not AUTONOMOUS");
-
-  e.unlicensedMediaEscapes = 1;
-  assert.equal(evaluateReadiness(e).highestJustifiedMode, "SHADOW", "one escape drops it back");
+  assert.equal(r.highestJustifiedMode, "SHADOW", JSON.stringify(r.blockers));
+  assert.equal(r.autonomousUnlocked, false);
+  assert.equal(modeMayPublish(r.highestJustifiedMode), false, "the justified mode publishes nothing");
 });
 
 test("OFF is always honoured and never clamped upward", () => {

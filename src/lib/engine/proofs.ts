@@ -106,9 +106,58 @@ export type ProofRecord = {
   passed: boolean;
 };
 
+/**
+ * Whether the thing a proof is ABOUT actually exists in this codebase.
+ *
+ * WHY THIS IS SEPARATE FROM PROVEN/NOT_PROVEN
+ * -------------------------------------------
+ * "NOT PROVEN" reads as: the capability is built, and nobody has broken it on
+ * purpose yet. That is a to-do. It is a very different statement from: there is
+ * no such capability, so there is nothing that could ever be exercised.
+ *
+ * `rollback_test` was the case that forced this distinction. A search of the
+ * whole repository for rollback, undo, revert or compensating logic found the
+ * word only in this file and in modes.ts — both times as a NOUN in a comment.
+ * No rollback mechanism exists. The dashboard nevertheless rendered
+ * "NOT PROVEN — Never exercised", which invited the reading that a rollback
+ * path was sitting there waiting for a test. Collapsing "unbuilt" into
+ * "untested" is exactly the kind of quiet overstatement this project treats as
+ * a defect, so the two are now different words on the page.
+ *
+ * This map is hand-maintained and deliberately pessimistic: a kind stays
+ * `absent` until somebody can point at the code that implements it.
+ */
+export const CAPABILITY_IMPLEMENTED: Record<ProofKind, boolean> = {
+  // Implemented: src/lib/engine/circuit-breaker.ts
+  circuit_breaker_test: true,
+  // Implemented: src/lib/engine/concurrency.ts + engine_begin_run's lease.
+  concurrency_test: true,
+  duplicate_scheduler_test: true,
+  // Implemented: postconditions.ts / silent-success.ts detect the failure, and
+  // discovery.ts records source failures through engine_record_source_check.
+  database_failure_test: true,
+  source_outage_test: true,
+  // Implemented: src/lib/media/providers/* (outcome.ts, rights-verification.ts).
+  media_validation_outage_test: true,
+  provider_outage_test: true,
+  media_acquisition_test: true,
+  rights_verification_test: true,
+  // NOT IMPLEMENTED. There is no rollback, undo, revert or compensating
+  // mechanism anywhere in src/. Nothing in this engine can reverse a write it
+  // has made; the safety model is entirely "do not make the write in the first
+  // place". That is a legitimate design, but it means this proof is not merely
+  // unobtained — it is unobtainable until such a mechanism exists.
+  rollback_test: false,
+};
+
 export type ProofStatus = {
   kind: ProofKind;
-  state: "PROVEN" | "NOT_PROVEN";
+  /**
+   * NOT_IMPLEMENTED is strictly weaker than NOT_PROVEN and never counts as
+   * progress toward it. It exists so the dashboard cannot imply a capability
+   * is merely untested when it does not exist.
+   */
+  state: "PROVEN" | "NOT_PROVEN" | "NOT_IMPLEMENTED";
   /** Why it is not proven, when it is not. */
   reason: string;
   level: ProofLevel | null;
@@ -131,6 +180,25 @@ export function evaluateProof(
 ): ProofStatus {
   const required = REQUIRED_LEVEL[kind];
   const mine = records.filter((r) => r.kind === kind);
+
+  // Checked BEFORE the records, and it cannot be overridden by one. If somebody
+  // records a passing rollback proof while no rollback code exists, the record
+  // is the thing that is wrong, and the honest answer is still NOT_IMPLEMENTED.
+  if (!CAPABILITY_IMPLEMENTED[kind]) {
+    return {
+      kind,
+      state: "NOT_IMPLEMENTED",
+      reason:
+        "There is no implementation to exercise. This is not a missing test — the capability " +
+        "does not exist in the codebase, so the proof is unobtainable until it is built. " +
+        (mine.length > 0
+          ? `${mine.length} record(s) exist for this kind and are IGNORED: a proof cannot be more real than the thing it describes.`
+          : "No records exist, which is consistent."),
+      level: null,
+      observedAt: null,
+      ageDays: null,
+    };
+  }
 
   if (mine.length === 0) {
     return { kind, state: "NOT_PROVEN", reason: "Never exercised.", level: null, observedAt: null, ageDays: null };
@@ -196,10 +264,24 @@ export function evaluateAllProofs(records: ProofRecord[], now: Date = new Date()
   blockingKinds: ProofKind[];
 } {
   const statuses = PROOF_KINDS.map((k) => evaluateProof(k, records, now));
-  const blocking = statuses.filter((s) => s.state === "NOT_PROVEN").map((s) => s.kind);
+
+  // COUNTED POSITIVELY, not by subtraction.
+  //
+  // This read `statuses.length - blocking.length`, where `blocking` was only the
+  // NOT_PROVEN ones. That is safe while there are exactly two states and becomes
+  // wrong the moment a third appears: adding NOT_IMPLEMENTED would have made
+  // every unimplemented capability count as PROVEN, inflating the headline
+  // number on the readiness dashboard. Counting what is actually proven cannot
+  // drift that way when a state is added later.
+  const proven = statuses.filter((s) => s.state === "PROVEN");
+
+  // Anything not PROVEN blocks, NOT_IMPLEMENTED emphatically included — an
+  // absent capability is a stronger reason to stay locked than an untested one.
+  const blocking = statuses.filter((s) => s.state !== "PROVEN").map((s) => s.kind);
+
   return {
     statuses,
-    provenCount: statuses.length - blocking.length,
+    provenCount: proven.length,
     blockingKinds: blocking,
   };
 }

@@ -140,23 +140,37 @@ test("a single escape blocks, however large the set", () => {
   assert.ok(report.blockers.some((b) => b.criterion === "Unlicensed-media escapes"));
 });
 
-test("with a genuinely adequate ledger and every proof, autonomy unlocks", () => {
+test("a genuinely adequate ledger satisfies EVERY criterion except the unbuilt one", () => {
+  // This asserted that a full ledger plus every proof unlocks AUTONOMOUS. It
+  // cannot any more, and the reason is a finding rather than a regression:
+  // rollback_test is required at chaos_proven, and no rollback, undo, revert or
+  // compensating mechanism exists anywhere in src/. proofs.ts now answers
+  // NOT_IMPLEMENTED for it, which never counts as proven and always blocks.
+  //
+  // The valuable half of the original assertion is kept: the ledger and
+  // composition machinery genuinely do reach the bar, so nothing here is
+  // failing for an accidental reason.
   const report = assessShadowReadiness(input());
   assert.ok(
     report.evidence.shadowDecisions >= READINESS.minShadowDecisions,
     `only ${report.evidence.shadowDecisions} credited`
   );
   assert.equal(report.composition.adequate, true, report.composition.summary);
-  assert.equal(report.modes.autonomousUnlocked, true, JSON.stringify(report.modes.blockers));
-  assert.equal(report.autonomousUnlocked, true);
-  assert.equal(report.highestJustifiedMode, "AUTONOMOUS");
+  assert.equal(report.autonomousUnlocked, false);
+  assert.deepEqual(
+    report.blockers.map((b) => b.criterion),
+    ["Proof: rollback_test"],
+    "the ONLY thing standing between full evidence and AUTONOMOUS is an unbuilt capability"
+  );
 });
 
 test("this module can only ever remove justification, never add it", () => {
   const report = assessShadowReadiness(input());
   const spoiled = assessShadowReadiness(input({ ledger: fullLedger().slice(0, 10) }));
-  assert.equal(report.autonomousUnlocked, true);
-  assert.equal(spoiled.autonomousUnlocked, false);
+  // Both are locked today (see the rollback note above), so the invariant is
+  // checked against modes.ts's own verdict rather than against a hardcoded
+  // expectation — which is what the property actually says.
+  assert.ok(spoiled.blockers.length >= report.blockers.length, "a worse ledger cannot have fewer blockers");
   // The combined verdict is never stronger than modes.ts's own.
   for (const r of [report, spoiled]) {
     assert.ok(

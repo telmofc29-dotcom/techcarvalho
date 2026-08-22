@@ -50,12 +50,21 @@ type EscapeRowShape = {
 export const dynamic = "force-dynamic";
 
 function ProofRow({ status }: { status: ProofStatus }) {
-  const proven = status.state === "PROVEN";
+  // Three states, not two. NOT IMPLEMENTED is deliberately a separate word from
+  // NOT PROVEN: the latter reads as "built, not yet broken on purpose", which
+  // is a to-do. The former means there is nothing to exercise at all, and
+  // showing them identically overstates how far along the engine is.
+  const label =
+    status.state === "PROVEN"
+      ? "PROVEN"
+      : status.state === "NOT_IMPLEMENTED"
+        ? "NOT IMPLEMENTED"
+        : "NOT PROVEN";
   return (
     <tr className="border-b border-border-subtle last:border-0">
       <td className="py-2.5 pr-4 align-top font-mono text-xs text-zinc-700">{status.kind}</td>
       <td className="py-2.5 pr-4 align-top whitespace-nowrap">
-        <Badge tone={proven ? "green" : "red"}>{proven ? "PROVEN" : "NOT PROVEN"}</Badge>
+        <Badge tone={status.state === "PROVEN" ? "green" : "red"}>{label}</Badge>
       </td>
       <td className="py-2.5 pr-4 align-top whitespace-nowrap text-xs text-zinc-500">
         needs {REQUIRED_LEVEL[status.kind]}
@@ -162,6 +171,16 @@ export default async function AutonomyReadinessPage() {
           {PROOF_TTL_DAYS} days, because a proof about code from 200 commits ago is not a proof
           about this code. Nothing on this page can change one.
         </p>
+        {statuses.some((s) => s.state === "NOT_IMPLEMENTED") && (
+          <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-xs leading-relaxed text-red-900">
+            {statuses.filter((s) => s.state === "NOT_IMPLEMENTED").map((s) => s.kind).join(", ")} —{" "}
+            <strong>NOT IMPLEMENTED</strong>, which is a stronger statement than not proven. There is
+            no code to exercise, so this proof is unobtainable until the capability is built. Both
+            CANARY and AUTONOMOUS require it, so neither can be justified today no matter how much
+            shadow evidence accumulates. Closing it takes a deliberate decision: build the mechanism,
+            or establish that this engine genuinely does not need it and remove the requirement.
+          </p>
+        )}
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
