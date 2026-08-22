@@ -449,3 +449,52 @@ Ordered by value per unit of effort. **None of these has been done.**
    original explanation turned out to be impossible.
 7. **Never** treat a Commons licence tag, an API image URL, or public accessibility as
    permission.
+
+---
+
+## 6. Source discovery beyond Commons — tested 2026-08-22
+
+The eight products still blocked are blocked because a usable photograph does
+not exist, not because of rights. So the question is whether a *different*
+repository holds one. Openverse was tested first, because it aggregates
+Commons, Flickr and other CC sources behind one API with a genuine
+`license_type=commercial,modification` filter.
+
+**It found nothing new, and the way it failed is instructive.**
+
+| Blocked product | Openverse "commercially reusable" | What the results actually were |
+|---|---|---|
+| TP-Link Deco XE75 | 0 | — |
+| TP-Link Deco BE85 | 0 | — |
+| Roborock Saros 10R | 0 | — |
+| Amazon Echo Show 8 | **159** | NASA Hubble photographs of **light echoes**. The word "echo" matching astronomy. Not one is a device. |
+| Sony PlayStation 5 Pro | 47 | Top hit is the YouTube frame-grab already rejected — a CC BY 3.0 claim resting on a channel's licence toggle re-asserted by a third-party uploader. |
+| NVIDIA RTX 5080 | 57 | The bare-PCB composite already rejected, plus review-video frames. |
+| AMD Ryzen 7 9800X3D | 52 | ZMASLO and Geekerwan video frames — the same 53 files already examined. |
+| Intel Core Ultra 9 285K | 6 | CC0 die micrographs of bare delidded silicon. Not a photograph of the retail processor. |
+
+### Why this matters more than the zero
+
+Openverse presents each result with a clean licence badge and **no route to the
+evidence underneath** — no wikitext, no EXIF, no uploader chain. Every asset it
+surfaced for these products had already been examined at source and rejected
+for a reason that is invisible in the API response.
+
+An aggregator is a **discovery** aid. It is not a rights source, and taking its
+licence field at face value would have reintroduced precisely the assets a
+careful review threw out. That is the project's standing principle stated in a
+new place: discoverability is not permission, and neither is a licence badge
+someone else rendered for you.
+
+### What is still worth trying
+
+- **Flickr's own licence filter**, going to each photo's licence page directly
+  rather than through an aggregator. Flickr is where much of Openverse's
+  non-Commons inventory originates, and the per-photo page shows the
+  photographer's actual selection.
+- **Manufacturer press programmes** for the four current-generation components.
+  These are the products where a manufacturer genuinely is the only holder of a
+  usable photograph, which is a much narrower and more defensible ask than the
+  blanket permission request the retracted §3 recommended.
+- **Periodic recheck.** Six of the eight are recent hardware; the photographs
+  simply have not been taken and uploaded yet.
