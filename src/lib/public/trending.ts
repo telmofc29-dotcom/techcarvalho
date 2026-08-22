@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { logQueryError } from "@/lib/log/query-error";
 import { attachExcerpts } from "./excerpt";
 import { attachHeroImages, type HeroImage } from "./hero-image";
+import { classifyMediaTier, tierRank, type MediaTier } from "@/lib/media/hierarchy";
 // Shared with the rest of the public data layer so "3h ago" means the same
 // thing in every rail on the page (see src/lib/public/dates.ts for why the
 // clock is read here rather than in a component).
@@ -65,6 +66,48 @@ const WEIGHTS = {
   centrality: 22,
   hero: 8,
 } as const;
+
+// How much each media tier contributes to the `hero` component.
+//
+// Previously this was binary — any hero image scored 1. That is how the
+// homepage lead came to be a Wi-Fi certification TIMELINE: a diagram counted
+// exactly as much as a photograph, so the slot went to whatever ranked highest
+// on recency and centrality regardless of whether it showed anything.
+//
+// A visitor's first impression should be of a subject they recognise. This
+// does not exclude anything: a data graphic still scores, and hero is only 8
+// of ~100 points, so a genuinely stronger story still leads. It breaks ties
+// toward showing the reader a real thing.
+const HERO_TIER_SCORE: Record<MediaTier, number> = {
+  real_subject: 1,
+  original_photo: 1,
+  official_permitted: 1,
+  licensed_third_party: 0.85,
+  original_render: 0.6,
+  data_graphic: 0.4,
+  generic_graphic: 0.2,
+  missing: 0,
+};
+
+/**
+ * Tier of a hero image, judged from what the data layer already carries.
+ *
+ * `url` stands in for `storage_path`: the public URL ends in the same
+ * filename, and the filename prefix is what distinguishes a generated chart
+ * from a generated title card.
+ */
+function heroTier(hero: HeroImage | null): MediaTier {
+  if (!hero) return "missing";
+  return classifyMediaTier({
+    source_type: hero.sourceType ?? null,
+    asset_role: null,
+    owned: hero.owned ?? null,
+    ai_generated: hero.aiGenerated ?? null,
+    storage_path: hero.url,
+    source_url: hero.sourceUrl ?? null,
+    license: hero.license ?? null,
+  });
+}
 
 /** Relationship count at which centrality is considered maxed out. */
 const CENTRALITY_SOFT_CAP = 5;
@@ -218,7 +261,7 @@ export const getTrendingContent = cache(
     const scored: TrendingItem[] = withMedia.map((row) => {
       const recency = recencyScore(row.published_at, row.type);
       const centrality = Math.min((degree.get(row.id) ?? 0) / CENTRALITY_SOFT_CAP, 1);
-      const hero = row.heroImage ? 1 : 0;
+      const hero = HERO_TIER_SCORE[heroTier(row.heroImage)];
       const score =
         recency * WEIGHTS.recency + centrality * WEIGHTS.centrality + hero * WEIGHTS.hero;
       const category = row.category_id ? categoryById.get(row.category_id) : undefined;
@@ -250,8 +293,15 @@ export const getTrendingContent = cache(
     // never excludes an item for lacking one.
     let lead = pinnedLead;
     if (!lead) {
+      // Among the strongest candidates, prefer the one that actually shows
+      // its subject — a photograph over a chart, a chart over a title card.
+      // Still never promotes a weak story just for having a picture: the
+      // slice is already the top five by score.
       const topSlice = scored.slice(0, 5);
-      lead = topSlice.find((s) => s.heroImage) ?? scored[0] ?? null;
+      lead =
+        [...topSlice].sort((a, b) => tierRank(heroTier(a.heroImage)) - tierRank(heroTier(b.heroImage)))[0] ??
+        scored[0] ??
+        null;
     }
 
     const supporting: TrendingItem[] = [];
