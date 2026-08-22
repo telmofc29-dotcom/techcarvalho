@@ -1,6 +1,7 @@
 import Image from "next/image";
 import type { HeroImage } from "@/lib/public/hero-image";
 import { classifyProductMedia } from "@/lib/media/presentation";
+import { MediaCredit } from "./media-credit";
 
 // The lead (hero) slot on a product page, rendered honestly in all three
 // states — see src/lib/media/presentation.ts for the reasoning.
@@ -94,12 +95,16 @@ export function ProductLeadMedia({
           className="object-cover"
         />
       </div>
-      {presentation.attribution && (
-        // A CC BY / CC BY-SA credit is a licence CONDITION, not decoration.
-        // If this line does not render, the site is out of compliance with
-        // the licence it is relying on.
-        <figcaption className="mt-2 text-xs text-zinc-400">{presentation.attribution}</figcaption>
-      )}
+      {/* A CC BY / CC BY-SA credit is a licence CONDITION, not decoration.
+          The licence requires the creator's name AND a link to the licence AND
+          a link to the material — plain text satisfied only the first. */}
+      <MediaCredit
+        attribution={presentation.attribution}
+        creator={heroImage.creator}
+        license={heroImage.license}
+        sourceUrl={heroImage.sourceUrl}
+        className="mt-2 text-xs text-zinc-500"
+      />
     </figure>
   );
 }

@@ -48,6 +48,14 @@ export type LinkPosition =
   | "product_page"
   | "manufacturer_page"
   | "category_page"
+  // Product-family hub (/families/[slug]). Superset-only, exactly like "home"
+  // above: family hubs carry internal links to products and articles and no
+  // outbound/affiliate links at all, so outbound_click_events' CHECK
+  // constraint (and OutboundClickLinkPosition) deliberately does not list it
+  // and needs no migration. link_position on analytics_events travels inside
+  // the unconstrained `metadata` jsonb, not a checked column, so this value
+  // is accepted as-is by the ingestion endpoint.
+  | "family_page"
   | "nav"
   | "footer"
   | "search_results"

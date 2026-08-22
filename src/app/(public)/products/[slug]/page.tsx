@@ -89,6 +89,13 @@ export default async function ProductPage({
           ...(category
             ? [{ name: category.name, path: `/${category.slug}` }]
             : [{ name: "Products", path: "/products" }]),
+          // The product line, when the product belongs to one. This is the
+          // product's real immediate parent — a 5D Mark IV sits under the EOS
+          // 5D line, which sits under Cameras — and it is the level that
+          // passes a breadcrumb signal to the family hub. Safe unconditionally
+          // for the same reason the sidebar link is: a published product
+          // guarantees its own family hub is non-empty.
+          ...(family ? [{ name: family.name, path: `/families/${family.slug}` }] : []),
           { name: product.name, path: `/products/${product.slug}` },
         ]}
       />
@@ -256,8 +263,18 @@ export default async function ProductPage({
               )}
               {family && (
                 <div className="flex justify-between">
-                  <dt className="text-zinc-500">Family</dt>
-                  <dd className="font-medium text-zinc-900">{family.name}</dd>
+                  <dt className="text-zinc-500">Product line</dt>
+                  {/* Previously plain text: the family name was rendered on
+                      every product page and linked to nothing, because no
+                      /families route existed. Always safe to link — this
+                      product is published and belongs to the family, so the
+                      hub is guaranteed to have at least this one member and
+                      can never render as an empty page from here. */}
+                  <dd className="font-medium text-zinc-900">
+                    <Link href={`/families/${family.slug}`} className="hover:text-accent">
+                      {family.name}
+                    </Link>
+                  </dd>
                 </div>
               )}
               {product.model_number && (

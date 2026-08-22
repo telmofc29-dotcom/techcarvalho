@@ -20,6 +20,9 @@ export type HeroImage = {
   attributionRequired?: boolean;
   creator?: string | null;
   sourceUrl?: string | null;
+  /** Recorded licence string, e.g. 'CC BY-SA 4.0'. Needed to link the deed,
+   *  which CC BY/BY-SA require alongside the creator's name. */
+  license?: string | null;
 };
 
 export type GalleryImage = {
@@ -30,6 +33,9 @@ export type GalleryImage = {
   attributionRequired: boolean;
   creator: string | null;
   sourceUrl: string | null;
+  /** Recorded licence string. CC BY/BY-SA require a link to the licence
+   *  itself, not only to the material and the creator's name. */
+  license: string | null;
 };
 
 // Degrades to "no image" on any error rather than crashing product/article
@@ -54,7 +60,7 @@ export async function getPublishedHeroImage(
     const { data: asset, error: assetError } = await supabase
       .from("media_assets")
       .select(
-        "alt_text, publication_status, public_storage_path, source_type, owned, ai_generated, attribution, attribution_required, creator, source_url"
+        "alt_text, publication_status, public_storage_path, source_type, owned, ai_generated, attribution, attribution_required, creator, source_url, license"
       )
       .eq("id", link.media_id)
       .maybeSingle();
@@ -78,6 +84,7 @@ export async function getPublishedHeroImage(
       // dropped. getPublishedGallery (below) has always returned it; only
       // the hero path lost it.
       sourceUrl: asset.source_url,
+      license: asset.license,
     };
   } catch (e) {
     console.error(`[query-error] getPublishedHeroImage(${kind}, ${id}) threw`, e);
@@ -156,7 +163,7 @@ export async function getPublishedGallery(kind: "product" | "content", id: strin
     const mediaIds = links.map((l) => l.media_id);
     const { data: assets, error: assetError } = await supabase
       .from("media_assets")
-      .select("id, alt_text, caption, attribution, attribution_required, creator, source_url, publication_status, public_storage_path")
+      .select("id, alt_text, caption, attribution, attribution_required, creator, source_url, publication_status, public_storage_path, license")
       .in("id", mediaIds);
     logQueryError(`getPublishedGallery(${kind}, ${id}) assets`, assetError);
 
@@ -173,6 +180,7 @@ export async function getPublishedGallery(kind: "product" | "content", id: strin
         attributionRequired: asset.attribution_required,
         creator: asset.creator,
         sourceUrl: asset.source_url,
+        license: asset.license,
       });
     }
     return images;

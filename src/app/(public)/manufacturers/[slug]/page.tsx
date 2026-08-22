@@ -3,15 +3,27 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { buildMetadata } from "@/lib/seo/metadata";
-import { itemListJsonLd, safeJsonLdString } from "@/lib/seo/jsonld";
+import { collectionPageJsonLd, itemListJsonLd, safeJsonLdString } from "@/lib/seo/jsonld";
 import { getManufacturerDetail } from "@/lib/public/manufacturer-detail";
+import { listFamiliesWithPublishedMaterial } from "@/lib/public/family-detail";
+import { isManufacturerHubIndexable, hubHasContent } from "@/lib/public/hub-eligibility";
 import { Breadcrumbs } from "@/components/public/breadcrumbs";
-import { ProductCard, SectionHeading } from "@/components/public/cards";
+import { ContentCard, ProductCard, SectionHeading } from "@/components/public/cards";
 import { EmptyState } from "@/components/shared/ui";
 import { OutboundLink } from "@/components/public/outbound-link";
 import { destinationDomainOf } from "@/lib/monetisation/affiliate";
 import { PageViewTracker } from "@/components/analytics/page-view-tracker";
 import { InternalLinkTracker } from "@/components/analytics/internal-link-tracker";
+
+// Describes only what the page actually renders. Never "N products" when the
+// catalogue holds more unpublished — the counts are of published rows, which
+// is what a visitor and a crawler will both find here.
+function describeCoverage(name: string, { productCount, articleCount }: { productCount: number; articleCount: number }): string {
+  const parts: string[] = [];
+  if (productCount > 0) parts.push(`${productCount} published product${productCount === 1 ? "" : "s"} with specifications`);
+  if (articleCount > 0) parts.push(`${articleCount} published article${articleCount === 1 ? "" : "s"}`);
+  return `Tech Carvalho's ${name} coverage: ${parts.join(", plus ")}.`;
+}
 
 export async function generateMetadata({
   params,
@@ -22,17 +34,18 @@ export async function generateMetadata({
   const detail = await getManufacturerDetail(slug);
   if (!detail) notFound();
 
-  const { manufacturer, products } = detail;
+  const { manufacturer, products, articles } = detail;
+  const material = { productCount: products.length, articleCount: articles.length };
 
   return buildMetadata({
     // Distinct from a bare brand name, which on its own is a query this site
     // has no business competing for. What the page actually offers is the
     // published coverage of that brand, and the title should say so.
-    title: products.length > 0 ? `${manufacturer.name} products and coverage` : manufacturer.name,
+    title: hubHasContent(material) ? `${manufacturer.name} products and coverage` : manufacturer.name,
     description:
       manufacturer.description ??
-      (products.length > 0
-        ? `Every ${manufacturer.name} product published on Tech Carvalho, with specifications and related coverage.`
+      (hubHasContent(material)
+        ? describeCoverage(manufacturer.name, material)
         : undefined),
     path: `/manufacturers/${slug}`,
     // manufacturers is world-readable reference data with no publish gating,
@@ -42,7 +55,15 @@ export async function generateMetadata({
     // yet". Letting it into the index is a thin-content page per brand, so it
     // is noindex until it has something to show. `follow` stays on so the
     // "All manufacturers" link still passes.
-    noindex: products.length === 0,
+    //
+    // The gate now counts published ARTICLES as well as published products
+    // (see hub-eligibility.ts). The previous products-only rule treated a
+    // brand with a real body of coverage and an unpublished catalogue as
+    // thin, which it is not: against production that mislabelled NVIDIA (6
+    // published articles, 0 published products) and AMD (5 and 0) as empty
+    // shells. The threshold lives in one place so sitemap.ts cannot disagree
+    // with the page.
+    noindex: !isManufacturerHubIndexable(material),
     follow: true,
     // Deliberately no page-specific OG image. The only image this page owns is
     // the brand logo, which is a transparent, wide, non-16:9 asset — pushed
@@ -58,14 +79,45 @@ export default async function ManufacturerPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const detail = await getManufacturerDetail(slug);
+  const [detail, familiesWithMaterial] = await Promise.all([
+    getManufacturerDetail(slug),
+    listFamiliesWithPublishedMaterial(),
+  ]);
   if (!detail) notFound();
 
-  const { manufacturer, logo, products, families } = detail;
+  const { manufacturer, logo, products, families, articles } = detail;
+  const material = { productCount: products.length, articleCount: articles.length };
+
+  // Only families that genuinely have something public to show get a link.
+  // Linking a family whose members are all unpublished would hand a visitor
+  // (and a crawler) a page that renders nothing but an empty state.
+  const linkableFamilySlugs = new Set(familiesWithMaterial.map((f) => f.slug));
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-12">
       <PageViewTracker entityType="manufacturer" entityId={manufacturer.id} />
+      {/* The brand hub is a collection page: it exists to gather this brand's
+          products and coverage. Emitted only when there is a real collection,
+          and every entry is a link the page actually renders. */}
+      {hubHasContent(material) && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: safeJsonLdString(
+              collectionPageJsonLd({
+                name: `${manufacturer.name} products and coverage`,
+                description: manufacturer.description,
+                path: `/manufacturers/${slug}`,
+                items: [
+                  ...products.map((p) => ({ name: p.name, path: `/products/${p.slug}` })),
+                  ...articles.map((a) => ({ name: a.title, path: `/articles/${a.slug}` })),
+                ],
+                listName: `${manufacturer.name} coverage`,
+              })
+            ),
+          }}
+        />
+      )}
       {products.length > 0 && (
         <script
           type="application/ld+json"
@@ -109,15 +161,30 @@ export default async function ManufacturerPage({
         </OutboundLink>
       )}
 
+      {/* Families were previously rendered as inert <span> chips — the family
+          name was visible on this page and on every product page, and was a
+          link from neither. Each one that has published material now points at
+          its hub; the rest stay as plain chips rather than becoming links to
+          an empty page. */}
       {families.length > 0 && (
         <div className="mt-8">
-          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2">Product families</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2">Product lines</p>
           <div className="flex flex-wrap gap-2">
-            {families.map((f) => (
-              <span key={f.id} className="rounded-full border border-border-subtle bg-white px-3 py-1 text-sm text-zinc-600">
-                {f.name}
-              </span>
-            ))}
+            {families.map((f) =>
+              linkableFamilySlugs.has(f.slug) ? (
+                <Link
+                  key={f.id}
+                  href={`/families/${f.slug}`}
+                  className="rounded-full border border-border-subtle bg-white px-3 py-1 text-sm font-medium text-zinc-700 hover:border-accent/40 hover:text-accent"
+                >
+                  {f.name}
+                </Link>
+              ) : (
+                <span key={f.id} className="rounded-full border border-border-subtle bg-white px-3 py-1 text-sm text-zinc-600">
+                  {f.name}
+                </span>
+              )
+            )}
           </div>
         </div>
       )}
@@ -127,7 +194,11 @@ export default async function ManufacturerPage({
         {products.length === 0 ? (
           <EmptyState
             title="No published products yet"
-            description={`Products from ${manufacturer.name} will appear here once they're published.`}
+            description={
+              articles.length > 0
+                ? `${manufacturer.name} products will appear here once they're published. The coverage below is live now.`
+                : `Products from ${manufacturer.name} will appear here once they're published.`
+            }
           />
         ) : (
           <InternalLinkTracker linkPosition="manufacturer_page">
@@ -148,6 +219,34 @@ export default async function ManufacturerPage({
           </InternalLinkTracker>
         )}
       </div>
+
+      {/* The half of a brand hub that was missing. Sourced from the brand tag,
+          not from content_products — see getBrandArticles() for why that is
+          the only source visible to an anonymous visitor today. */}
+      {articles.length > 0 && (
+        <div className="mt-14">
+          <SectionHeading note={`Published ${manufacturer.name} coverage, newest first.`}>
+            {manufacturer.name} coverage
+          </SectionHeading>
+          <InternalLinkTracker linkPosition="manufacturer_page">
+            <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {articles.map((a) => (
+                <li key={a.id} data-entity-type="content" data-entity-id={a.id}>
+                  <ContentCard
+                    href={`/articles/${a.slug}`}
+                    type={a.type}
+                    title={a.title}
+                    publishedAt={a.published_at}
+                    excerpt={a.excerpt}
+                    imageUrl={a.heroImage?.url}
+                    imageAlt={a.heroImage?.alt}
+                  />
+                </li>
+              ))}
+            </ul>
+          </InternalLinkTracker>
+        </div>
+      )}
 
       <div className="mt-12">
         <Link href="/manufacturers" className="text-sm text-accent hover:underline">

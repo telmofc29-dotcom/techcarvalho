@@ -115,6 +115,44 @@ export function itemListJsonLd(
   };
 }
 
+// A hub page whose whole purpose is to collect other pages: a product-family
+// hub, a brand hub. `ItemList` on its own says "here is a list"; `CollectionPage`
+// says "this page IS the collection", which is what makes the hub, rather than
+// one of its members, the entity a crawler associates with the topic.
+//
+// The ItemList goes in `mainEntity` rather than being emitted as a second,
+// free-floating top-level node, so the graph states which page the list belongs
+// to instead of leaving two unrelated blobs on the same document.
+//
+// Only emitted by callers that have a non-empty list. A CollectionPage
+// declaring a collection of nothing is a worse claim than no markup at all —
+// same rule that keeps ItemList off the "Coming soon" category hubs.
+export function collectionPageJsonLd({
+  name,
+  description,
+  path,
+  items,
+  listName,
+}: {
+  name: string;
+  description?: string | null;
+  path: string;
+  items: { name: string; path: string }[];
+  listName?: string;
+}) {
+  const { "@context": _context, ...itemList } = itemListJsonLd(items, { name: listName });
+  void _context;
+  return {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name,
+    ...(description ? { description } : {}),
+    url: absoluteUrl(path),
+    isPartOf: { "@id": WEBSITE_ID },
+    mainEntity: itemList,
+  };
+}
+
 export function productJsonLd(product: {
   name: string;
   slug: string;

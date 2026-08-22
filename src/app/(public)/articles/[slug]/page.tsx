@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { buildMetadata } from "@/lib/seo/metadata";
-import { articleJsonLd, safeJsonLdString } from "@/lib/seo/jsonld";
+import { articleJsonLd, itemListJsonLd, safeJsonLdString } from "@/lib/seo/jsonld";
 import { getArticleDetail } from "@/lib/public/article-detail";
 import { getPublishedGallery } from "@/lib/public/hero-image";
 import { Breadcrumbs } from "@/components/public/breadcrumbs";
@@ -14,6 +14,7 @@ import { parseBodyBlocks, excerptFromBody } from "@/lib/content/body-format";
 import { PageViewTracker } from "@/components/analytics/page-view-tracker";
 import { ScrollDepthTracker } from "@/components/analytics/scroll-depth-tracker";
 import { InternalLinkTracker } from "@/components/analytics/internal-link-tracker";
+import { MediaCredit } from "@/components/public/media-credit";
 
 export async function generateMetadata({
   params,
@@ -52,6 +53,7 @@ export default async function ArticlePage({
   if (!detail) notFound();
 
   const { content, category, products, tags, freshness, related, heroImage, seo } = detail;
+  const { clusterMembers, clusterPillars, comparisonSiblings, hubs } = detail;
   const lastVerified = freshness[0]?.reviewed_at ?? null;
   const gallery = await getPublishedGallery("content", content.id);
 
@@ -77,6 +79,24 @@ export default async function ArticlePage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLdString(jsonLd) }}
       />
+      {/* When this piece is the pillar of a cluster it is also a hub, and the
+          list of pieces it gathers is real, curated data (content_relationships
+          rows written by an editor) — not a guess. Emitted only for a genuine
+          multi-piece cluster; getArticleDetail returns an empty clusterMembers
+          below MIN_CLUSTER_MEMBERS, so a "series" of one produces no markup. */}
+      {clusterMembers.length > 0 && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: safeJsonLdString(
+              itemListJsonLd(
+                clusterMembers.map((m) => ({ name: m.title, path: `/articles/${m.slug}` })),
+                { name: `${content.title} — related coverage` }
+              )
+            ),
+          }}
+        />
+      )}
       <Breadcrumbs
         items={[
           { name: "Home", path: "/" },
@@ -113,6 +133,35 @@ export default async function ArticlePage({
         <p className="text-xs text-zinc-400 mb-6">
           Last verified {new Date(lastVerified).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}
         </p>
+      )}
+
+      {/* The consolidation half of the cannibalisation fix.
+          `content_relationships` already recorded which piece is the pillar of
+          a cluster, and the public site rendered every cluster as one flat,
+          unlabelled rail of three at the very bottom of the page. A supporting
+          piece that competes with its own pillar for the same intent stops
+          competing once it visibly defers to it — high on the page, with the
+          pillar's real title as the anchor text rather than "read more".
+          Descriptive anchor text is the whole mechanism here; a generic one
+          passes no signal about what the target is about. */}
+      {clusterPillars.length > 0 && (
+        <nav
+          aria-label="Part of"
+          className="mb-8 rounded-xl border border-border-subtle bg-accent-soft/40 p-4"
+        >
+          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+            Part of {clusterPillars.length === 1 ? "our guide to" : "our guides to"}
+          </p>
+          <ul className="flex flex-col gap-1">
+            {clusterPillars.map((p) => (
+              <li key={p.id}>
+                <Link href={`/articles/${p.slug}`} className="text-sm font-medium text-zinc-900 hover:text-accent">
+                  {p.title}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
       )}
 
       {heroImage && (
@@ -176,19 +225,20 @@ export default async function ArticlePage({
               <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-zinc-100">
                 <Image src={img.url} alt={img.alt ?? content.title} fill className="object-cover" loading="lazy" />
               </div>
-              {(img.caption || (img.attributionRequired && (img.attribution || img.creator))) && (
-                <figcaption className="text-xs text-zinc-500">
-                  {img.caption}
-                  {img.caption && img.attributionRequired && (img.attribution || img.creator) ? " — " : ""}
-                  {img.attributionRequired &&
-                    (img.sourceUrl ? (
-                      <a href={img.sourceUrl} target="_blank" rel="noopener noreferrer nofollow" className="underline hover:text-accent">
-                        {img.attribution ?? img.creator}
-                      </a>
-                    ) : (
-                      img.attribution ?? img.creator
-                    ))}
-                </figcaption>
+              {img.caption && (
+                <figcaption className="text-xs text-zinc-500">{img.caption}</figcaption>
+              )}
+              {/* The credit links BOTH the material and the licence deed.
+                  Linking only the source satisfied two of CC BY's three
+                  conditions; the licence itself was named but never linked. */}
+              {img.attributionRequired && (
+                <MediaCredit
+                  attribution={img.attribution}
+                  creator={img.creator}
+                  license={img.license}
+                  sourceUrl={img.sourceUrl}
+                  className="text-xs text-zinc-500"
+                />
               )}
             </figure>
           ))}
@@ -211,6 +261,104 @@ export default async function ArticlePage({
         </Link>{" "}
         for how we work.
       </div>
+
+      {/* The pillar half. A piece with a real cluster under it IS a hub, and
+          the whole cluster belongs on it — not three of nine, mixed with
+          same-type recency filler, which is what the single `related` rail
+          did to it before. Against production this is the difference between
+          showing 3 and showing all 9 supporting pieces on the
+          astrophotography beginners guide. */}
+      {clusterMembers.length > 0 && (
+        <section className="mt-12">
+          <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-zinc-500 mb-1">
+            More in this guide series
+          </h2>
+          <p className="mb-4 text-xs text-zinc-500">
+            {clusterMembers.length} {clusterMembers.length === 1 ? "piece" : "pieces"} that build on this one.
+          </p>
+          <RelatedContentTracker contentId={content.id}>
+            <ul className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {clusterMembers.map((item) => (
+                <li key={item.id}>
+                  <ContentCard
+                    href={`/articles/${item.slug}`}
+                    type={item.type}
+                    title={item.title}
+                    publishedAt={item.published_at}
+                    excerpt={item.excerpt}
+                    imageUrl={item.heroImage?.url}
+                    imageAlt={item.heroImage?.alt}
+                  />
+                </li>
+              ))}
+            </ul>
+          </RelatedContentTracker>
+        </section>
+      )}
+
+      {/* Comparison clusters. The site publishes 20 "X vs Y" pieces and until
+          now each one was an island: nothing connected the four Canon
+          mirrorless comparisons to each other, or the three console ones.
+          Siblings are ranked by shared SUBJECT tags (format tags like
+          "comparison" excluded, or every comparison on the site would be a
+          sibling of every other) — see src/lib/public/content-cluster.ts. */}
+      {comparisonSiblings.length > 0 && (
+        <section className="mt-12">
+          <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-zinc-500 mb-1">
+            Related comparisons
+          </h2>
+          <p className="mb-4 text-xs text-zinc-500">
+            {comparisonSiblings.some((s) => s.sharedTags.length > 0)
+              ? "Other head-to-heads covering the same subject."
+              : `Other comparisons${category ? ` in ${category.name}` : ""}.`}
+          </p>
+          <RelatedContentTracker contentId={content.id}>
+            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {comparisonSiblings.map(({ article }) => (
+                <li key={article.id}>
+                  <ContentCard
+                    href={`/articles/${article.slug}`}
+                    type={article.type}
+                    title={article.title}
+                    publishedAt={article.published_at}
+                    excerpt={article.excerpt}
+                    imageUrl={article.heroImage?.url}
+                    imageAlt={article.heroImage?.alt}
+                  />
+                </li>
+              ))}
+            </ul>
+          </RelatedContentTracker>
+        </section>
+      )}
+
+      {/* Every hub this piece rolls up to, and every one of them links back
+          here — the family hub through its published products, the brand hub
+          through the same tag slug that put this link on the page, the
+          category hub through its article list. Two-way by construction, not
+          by an editor remembering to add a link on both ends. */}
+      {hubs.length > 0 && (
+        <nav aria-label="Explore" className="mt-12 border-t border-border-subtle pt-6">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">Explore</p>
+          <InternalLinkTracker linkPosition="article_end" categorySlug={category?.slug}>
+            <ul className="flex flex-wrap gap-2">
+              {hubs.map((hub) => (
+                <li key={`${hub.kind}-${hub.path}`}>
+                  <Link
+                    href={hub.path}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border-subtle bg-white px-3.5 py-1.5 text-sm font-medium text-zinc-700 hover:border-accent/40 hover:text-accent"
+                  >
+                    <span className="text-[11px] uppercase tracking-wider text-zinc-400">
+                      {hub.kind === "family" ? "Line" : hub.kind === "manufacturer" ? "Brand" : "Topic"}
+                    </span>
+                    {hub.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </InternalLinkTracker>
+        </nav>
+      )}
 
       {related.length > 0 && (
         <section className="mt-12">

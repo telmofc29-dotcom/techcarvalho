@@ -2,8 +2,19 @@ import "server-only";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { attachHeroImages, type HeroImage } from "./hero-image";
+import { attachExcerpts } from "./excerpt";
 import { mediaPublicUrl } from "@/lib/media/public-url";
 import { logQueryError } from "@/lib/log/query-error";
+
+export type ManufacturerArticle = {
+  id: string;
+  title: string;
+  slug: string;
+  type: string;
+  published_at: string | null;
+  excerpt: string | null;
+  heroImage: HeroImage | null;
+};
 
 export type ManufacturerDetail = {
   manufacturer: { id: string; name: string; slug: string; website: string | null; description: string | null };
@@ -18,6 +29,10 @@ export type ManufacturerDetail = {
     heroImage: HeroImage | null;
   }[];
   families: { id: string; name: string; slug: string }[];
+  /** Published articles tagged with this brand. See getBrandArticles for the sourcing rule. */
+  articles: ManufacturerArticle[];
+  /** Newest real timestamp among the rows this hub lists. Null when it lists nothing. */
+  lastModified: string | null;
 };
 
 // manufacturers is world-readable reference data (no publish gating) per
@@ -39,14 +54,15 @@ export const getManufacturerDetail = cache(async (slug: string): Promise<Manufac
 
   if (!manufacturer) return null;
 
-  const [{ data: products, error: productsError }, logo] = await Promise.all([
+  const [{ data: products, error: productsError }, logo, articles] = await Promise.all([
     supabase
       .from("products")
-      .select("id, name, slug, summary, status, family_id")
+      .select("id, name, slug, summary, status, family_id, updated_at")
       .eq("manufacturer_id", manufacturer.id)
       .eq("is_published", true)
       .order("name"),
     getLogoImage(supabase, manufacturer.logo_media_id),
+    getBrandArticles(supabase, manufacturer.slug),
   ]);
   logQueryError(`getManufacturerDetail(${slug}) products`, productsError);
 
@@ -59,6 +75,8 @@ export const getManufacturerDetail = cache(async (slug: string): Promise<Manufac
 
   const productsWithImages = await attachHeroImages(supabase, products ?? [], "product");
 
+  const timestamps = [...(products ?? []).map((p) => p.updated_at), ...articles.map((a) => a.updated_at)];
+
   return {
     manufacturer: {
       id: manufacturer.id,
@@ -68,10 +86,76 @@ export const getManufacturerDetail = cache(async (slug: string): Promise<Manufac
       description: manufacturer.description,
     },
     logo,
-    products: productsWithImages,
+    products: productsWithImages.map(({ updated_at: _updatedAt, ...p }) => p),
     families: families ?? [],
+    articles: articles.map(({ updated_at: _updatedAt, ...a }) => a),
+    lastModified: timestamps.length > 0 ? timestamps.reduce((a, b) => (a > b ? a : b)) : null,
   };
 });
+
+// The brand's published coverage.
+//
+// WHY THE TAG AND NOT content_products. The obvious source is "articles linked
+// to this manufacturer's products", and as an admin that returns real numbers
+// (NVIDIA: 9, Sony: 9, DJI: 6). As `anon` it returns almost nothing, because
+// content_products is only readable when BOTH sides are published
+// ("public can read content-product links when both published",
+// 20260819202305_rls_policies.sql) and this catalogue is 6-of-44 published.
+// Verified directly against production with an anon client: 9 of 123 rows
+// visible, all Canon. A hub built on that source would have rendered an empty
+// state on every brand page while looking correct in every admin preview —
+// precisely the "failure that looks like empty" this project has been bitten
+// by before.
+//
+// content_tags, by contrast, is readable for any published piece (all 250 rows
+// visible to anon), so the brand tag is the only source that actually works
+// from the public side today. It is also the more honest signal: an editor
+// tagging a piece "Canon" is asserting the piece is about Canon, whereas a
+// `mentioned` content_products row can be a passing reference.
+//
+// The tag is matched by SLUG EQUALITY with the manufacturer — no hand-written
+// manufacturer-to-tag mapping table. A mapping would be a place for someone to
+// later write "DJI → drone", which would silently claim every drone article as
+// DJI coverage. The cost of refusing that is real and is documented rather than
+// papered over: brands whose tag doesn't exist (Sony, Microsoft, DJI, GoPro,
+// TP-Link, Roborock, Amazon) get no coverage list, and their hubs stay thin
+// until someone creates the tag. That is a content decision, correctly left to
+// an editor.
+async function getBrandArticles(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  manufacturerSlug: string
+): Promise<(ManufacturerArticle & { updated_at: string })[]> {
+  const { data: tag, error: tagError } = await supabase
+    .from("taxonomy_tags")
+    .select("id")
+    .eq("slug", manufacturerSlug)
+    .maybeSingle();
+  logQueryError(`getBrandArticles(${manufacturerSlug}) tag`, tagError);
+  if (!tag) return [];
+
+  const { data: links, error: linksError } = await supabase
+    .from("content_tags")
+    .select("content_id")
+    .eq("tag_id", tag.id);
+  logQueryError(`getBrandArticles(${manufacturerSlug}) links`, linksError);
+
+  const contentIds = [...new Set((links ?? []).map((l) => l.content_id))];
+  if (contentIds.length === 0) return [];
+
+  const { data: rows, error: rowsError } = await supabase
+    .from("content_items")
+    .select("id, title, slug, type, published_at, updated_at")
+    .in("id", contentIds)
+    .eq("status", "published")
+    .lte("published_at", new Date().toISOString())
+    .order("published_at", { ascending: false });
+  logQueryError(`getBrandArticles(${manufacturerSlug}) rows`, rowsError);
+  if (!rows || rows.length === 0) return [];
+
+  const withExcerpts = await attachExcerpts(supabase, rows);
+  const withImages = await attachHeroImages(supabase, withExcerpts, "content");
+  return withImages;
+}
 
 // Same publication-gating discipline as getPublishedHeroImage — a
 // logo_media_id that points at a private/unpublished asset (e.g. mid

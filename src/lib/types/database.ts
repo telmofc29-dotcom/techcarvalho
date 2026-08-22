@@ -49,7 +49,11 @@ export type OutboundClickLinkPosition =
   | "nav"
   | "footer"
   | "search_results"
-  | "related_content";
+  | "related_content"
+  // Added 2026-08-22 with the /families/ hub routes. The DB CHECK constraint
+  // is widened by supabase/migrations_pending/20260822_outbound_family_page_position.sql
+  // — until that is applied, clicks from a family hub are rejected at insert.
+  | "family_page";
 export type OutboundClickKind = "affiliate" | "outbound";
 // Added by supabase/migrations_pending/20260821_first_party_analytics.sql —
 // mirrors src/lib/analytics/events.ts's own vocabularies; keep both in sync

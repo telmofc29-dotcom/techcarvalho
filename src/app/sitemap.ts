@@ -4,6 +4,8 @@ import { absoluteUrl } from "@/lib/seo/site";
 import { normalizeCanonical } from "@/lib/seo/metadata";
 import { PLANNED_CATEGORIES } from "@/lib/public/categories";
 import { ARTICLE_HUBS } from "@/lib/public/article-hubs";
+import { listFamiliesWithPublishedMaterial } from "@/lib/public/family-detail";
+import { isManufacturerHubIndexable, isFamilyHubIndexable } from "@/lib/public/hub-eligibility";
 import { logQueryError } from "@/lib/log/query-error";
 
 // A sitemap is a set of assertions: "these URLs exist, they are canonical,
@@ -46,6 +48,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { data: manufacturers, error: manufacturersError },
     { data: seoRows, error: seoError },
     { data: categories, error: categoriesError },
+    { data: allTags, error: allTagsError },
+    { data: contentTagLinks, error: contentTagLinksError },
+    families,
   ] = await Promise.all([
     supabase.from("products").select("id, slug, updated_at, manufacturer_id, category_id").eq("is_published", true),
     supabase
@@ -56,12 +61,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     supabase.from("manufacturers").select("id, slug"),
     supabase.from("seo_metadata").select("product_id, content_id, canonical_url, noindex"),
     supabase.from("taxonomy_categories").select("id, slug"),
+    // Brand-tag coverage. A manufacturer hub is no longer thin just because
+    // its catalogue is unpublished — see hub-eligibility.ts. These two tiny
+    // world-readable tables are what the hub itself uses to find its coverage,
+    // so the count here is exactly the count the page will render.
+    supabase.from("taxonomy_tags").select("id, slug"),
+    supabase.from("content_tags").select("content_id, tag_id"),
+    listFamiliesWithPublishedMaterial(),
   ]);
   logQueryError("sitemap products", productsError);
   logQueryError("sitemap content", contentError);
   logQueryError("sitemap manufacturers", manufacturersError);
   logQueryError("sitemap seo_metadata", seoError);
   logQueryError("sitemap categories", categoriesError);
+  logQueryError("sitemap taxonomy_tags", allTagsError);
+  logQueryError("sitemap content_tags", contentTagLinksError);
 
   const seoByProductId = new Map<string, SeoRow>();
   const seoByContentId = new Map<string, SeoRow>();
@@ -134,15 +148,56 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ];
   });
 
+  // Published articles per brand tag, matched by slug equality with the
+  // manufacturer — the identical rule getBrandArticles() uses on the page, so
+  // the sitemap can never advertise a hub that renders as empty, nor withhold
+  // one that renders as full.
+  const publishedContentById = new Map((content ?? []).map((c) => [c.id, c]));
+  const tagIdBySlug = new Map((allTags ?? []).map((t) => [t.slug, t.id]));
+  const publishedContentByTagId = new Map<string, { count: number; latest: string | null }>();
+  for (const link of contentTagLinks ?? []) {
+    const item = publishedContentById.get(link.content_id);
+    if (!item) continue;
+    const entry = publishedContentByTagId.get(link.tag_id) ?? { count: 0, latest: null };
+    entry.count += 1;
+    if (!entry.latest || item.updated_at > entry.latest) entry.latest = item.updated_at;
+    publishedContentByTagId.set(link.tag_id, entry);
+  }
+
   const manufacturerEntries: MetadataRoute.Sitemap = (manufacturers ?? []).flatMap((m) => {
-    if (!publishedProductsByManufacturer.has(m.id)) return [];
-    const lastModified = latestByManufacturerId.get(m.id);
+    const productCount = publishedProductsByManufacturer.get(m.id)?.length ?? 0;
+    const tagId = tagIdBySlug.get(m.slug);
+    const coverage = tagId ? publishedContentByTagId.get(tagId) : undefined;
+    const articleCount = coverage?.count ?? 0;
+    // Shared with the page's own `noindex` decision. A sitemap listing a URL
+    // that renders noindex is a direct contradiction; one definition, so the
+    // two cannot drift apart.
+    if (!isManufacturerHubIndexable({ productCount, articleCount })) return [];
+    const candidates = [latestByManufacturerId.get(m.id), coverage?.latest].filter((t): t is string => Boolean(t));
+    const lastModified = candidates.length > 0 ? candidates.reduce((a, b) => (a > b ? a : b)) : undefined;
     return [
       {
         url: absoluteUrl(`/manufacturers/${m.slug}`),
         ...(lastModified ? { lastModified } : {}),
         changeFrequency: "weekly" as const,
         priority: 0.4,
+      },
+    ];
+  });
+
+  // Product-family hubs (/families/[slug]). Same four rules as everything else
+  // here: real route, published material only, not thin, real lastmod.
+  // product_families is world-readable with no publish gating, so a row (and a
+  // live route) exists the moment an admin creates a line — most of them have
+  // nothing public under them today and are correctly absent.
+  const familyEntries: MetadataRoute.Sitemap = families.flatMap((f) => {
+    if (!isFamilyHubIndexable({ productCount: f.productCount, articleCount: f.articleCount })) return [];
+    return [
+      {
+        url: absoluteUrl(`/families/${f.slug}`),
+        ...(f.lastModified ? { lastModified: f.lastModified } : {}),
+        changeFrequency: "weekly" as const,
+        priority: 0.5,
       },
     ];
   });
@@ -187,6 +242,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...typeHubEntries,
     ...categoryEntries,
     ...manufacturerEntries,
+    ...familyEntries,
     ...productEntries,
     ...contentEntries,
   ];
