@@ -12,14 +12,21 @@ import { runMediaAcquisition } from "@/lib/engine/jobs/media-acquisition-job";
 import { runUpdateProposals } from "@/lib/engine/jobs/update-job";
 import { runDraftAssembly } from "@/lib/engine/jobs/draft-job";
 import { runProductAssembly } from "@/lib/engine/jobs/product-job";
+import { runInternalLinks } from "@/lib/engine/jobs/link-job";
 
 const JOB = "engine_tick";
 
 // The single orchestrated engine pass. ONE Vercel Cron entry drives every
 // engine capability, in pipeline order:
 //
-//   discover -> relevance -> brief -> search intelligence -> opportunity
-//     -> trends -> media acquisition -> freshness
+//   discover -> relevance -> update proposals -> product assembly -> brief
+//     -> draft assembly -> search intelligence -> opportunity -> trends
+//     -> media acquisition -> freshness -> internal links
+//
+// That order is the editorial pipeline made literal: find something, decide if
+// it matters, check whether we already cover it (and update rather than
+// duplicate if so), then plan, assemble, measure and finally audit the shape of
+// the site itself.
 //
 // This is the deliberate answer to the Hobby-plan two-cron limit: capabilities
 // are added as stages here, never as new cron entries, so the architecture
@@ -60,6 +67,9 @@ const STAGES = [
   // cannot ingest or approve anything itself.
   ["media_acquisition", runMediaAcquisition],
   ["freshness", runFreshness],
+  // Orphan detection runs last: it judges the state of the site AFTER
+  // everything else in this pass has had its effect.
+  ["internal_links", runInternalLinks],
 ] as const;
 
 export async function GET(request: NextRequest) {
