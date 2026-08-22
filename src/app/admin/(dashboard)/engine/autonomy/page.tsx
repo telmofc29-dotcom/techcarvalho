@@ -134,7 +134,10 @@ export default async function AutonomyReadinessPage() {
     escapesUnavailableReason: escapesError?.message,
   });
   // The mode an operator might REQUEST, and what the gate actually permits.
-  const effective = resolveEffectiveMode("AUTONOMOUS", readiness.modes);
+  // The COMBINED verdict, not readiness.modes. modes.ts does not know about
+  // the composition gate, so passing its raw report announced CANARY — a mode
+  // that publishes — while 8 of 15 coverage dimensions were below their floor.
+  const effective = resolveEffectiveMode("AUTONOMOUS", readiness);
 
   return (
     <div>

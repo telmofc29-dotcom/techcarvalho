@@ -228,7 +228,31 @@ export function modeMayPublish(mode: EngineMode): boolean {
  * proofs gives SHADOW — not an error, and not AUTONOMOUS. The safe reading of
  * an unjustified request is the safest mode that still does useful work.
  */
-export function resolveEffectiveMode(requested: EngineMode, report: ReadinessReport): {
+export function resolveEffectiveMode(
+  requested: EngineMode,
+  /**
+   * STRUCTURAL, not `ReadinessReport`, and that is the fix rather than a
+   * convenience.
+   *
+   * This took a ReadinessReport — modes.ts's own verdict — which does NOT
+   * include the composition gate that lives in shadow-readiness.ts. The admin
+   * page passed `readiness.modes` and therefore displayed "Requesting
+   * AUTONOMOUS resolves to CANARY" the moment rollback_test became proven,
+   * while the actual combined verdict was SHADOW because 8 of 15 coverage
+   * dimensions were below their floor. CANARY publishes; SHADOW does not. The
+   * page was announcing a publishing mode as justified on evidence that had not
+   * cleared its own composition requirement.
+   *
+   * Nothing in the engine consumed this — the publication boundary is
+   * structural (no publishing RPC exists, and anon is refused with 42501) — so
+   * this was an overstated DISPLAY rather than a live escape. That is still the
+   * defect class this project treats most seriously.
+   *
+   * Accepting the minimal shape means the COMBINED report satisfies it too, so
+   * the clamped verdict is the natural thing to pass.
+   */
+  report: { highestJustifiedMode: EngineMode; blockers: readonly { criterion: string }[] }
+): {
   mode: EngineMode;
   clamped: boolean;
   reason: string;

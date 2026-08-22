@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { assessShadowReadiness, type LedgerRow, type ShadowReadinessInput } from "./shadow-readiness.ts";
 import { SHADOW_DIMENSIONS, MIN_DECISIONS_PER_DIMENSION } from "./shadow-composition.ts";
-import { READINESS } from "./modes.ts";
+import { READINESS, resolveEffectiveMode, modeMayPublish, MODE_ORDER } from "./modes.ts";
 import type { ProofRecord } from "./proofs.ts";
 
 const noEscapes = () => ({
@@ -203,5 +203,36 @@ test("an unreadable escape record blocks even when the ledger is perfect", () =>
   assert.ok(
     blind.blockers.length > perfect.blockers.length,
     "losing the escape measurement must ADD a blocker, never leave the verdict unchanged"
+  );
+});
+
+test("the effective mode honours the COMPOSITION gate, not just modes.ts", () => {
+  // The bug: resolveEffectiveMode took modes.ts's raw report, which does not
+  // know about composition. With rollback_test proven and 118 decisions,
+  // modes.ts alone justified CANARY — a mode that PUBLISHES — while 8 of 15
+  // coverage dimensions were below their floor and the combined verdict was
+  // SHADOW. The admin page displayed the raw one.
+  const gappy = assessShadowReadiness(
+    input({ ledger: fullLedger().filter((r) => !r.dimensions.includes("comparisons")) })
+  );
+  assert.ok(gappy.composition.gaps.includes("comparisons"));
+
+  const viaCombined = resolveEffectiveMode("AUTONOMOUS", gappy);
+  assert.equal(
+    viaCombined.mode,
+    gappy.highestJustifiedMode,
+    "the effective mode must never exceed the combined verdict"
+  );
+  assert.equal(
+    modeMayPublish(viaCombined.mode),
+    false,
+    "a report with an unmet coverage floor must not resolve to a publishing mode"
+  );
+
+  // And the raw report is what would have overstated it, pinned so the two
+  // cannot silently converge again.
+  assert.ok(
+    MODE_ORDER.indexOf(gappy.modes.highestJustifiedMode) >= MODE_ORDER.indexOf(gappy.highestJustifiedMode),
+    "modes.ts alone is never MORE conservative than the combined verdict"
   );
 });
