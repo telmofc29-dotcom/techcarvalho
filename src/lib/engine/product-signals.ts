@@ -37,6 +37,45 @@ const NOT_AN_ANNOUNCEMENT: RegExp[] = [
   /\brumou?r(ed|s)?\b/i,
 ];
 
+// Things a manufacturer announces that are NOT catalogue products.
+//
+// The relevance engine already rejects most corporate noise, but it is a
+// different question answered for a different purpose: "would a consumer-tech
+// reader care?" is not "is this a physical product we can put a spec sheet and
+// a photograph on?". An AI model, a research platform or a cloud service can
+// legitimately pass relevance and still be nonsense as a product row.
+//
+// Found by running against real production discoveries: "NVIDIA Alpamayo 2
+// Super, the Frontier Open Model for Robotaxis" scored 6 (relevant) and would
+// have created a product called "NVIDIA Alpamayo 2 Super". It is an AI model.
+const NOT_A_PRODUCT: RegExp[] = [
+  // Software, models and platforms
+  /\b(open |frontier |foundation |language |diffusion )?model\b/i,
+  /\bframework\b/i,
+  /\b(sdk|api|toolkit|runtime|driver)s?\b/i,
+  /\bplatform\b/i,
+  /\bapp(lication)?s?\b/i,
+  /\bservice\b/i,
+  /\bcloud\b/i,
+  /\bsubscription\b/i,
+  // Corporate and financial
+  /\bstock\b|\boffering\b|\bshares?\b|\bearnings\b|\brevenue\b/i,
+  /\bacquisition\b|\bacquires?\b|\bmerger\b/i,
+  /\b(partners(hip)?|collaborat(e|es|ion))\b/i,
+  /\binvest(able|ment|ors?)\b|\basset class\b/i,
+  // Programmes, research and industry
+  /\bprogram(me)?\b/i,
+  /\binitiative\b/i,
+  /\bresearch\b/i,
+  /\bcareers?\b|\bhiring\b/i,
+  /\bsemiconductor (packaging|manufacturing|fabrication)\b/i,
+  /\bfoundry\b|\bfab\b/i,
+  /\bdata\s?cent(re|er)\b/i,
+  /\benterprise\b/i,
+  // Vehicles and non-consumer-electronics categories
+  /\brobotaxis?\b|\bautonomous vehicle\b/i,
+];
+
 export type ProductSignal = {
   manufacturerSlug: string;
   manufacturerName: string;
@@ -62,6 +101,10 @@ export function detectProductAnnouncement(
   const haystack = `${title} ${summary ?? ""}`;
 
   if (NOT_AN_ANNOUNCEMENT.some((p) => p.test(haystack))) return null;
+  // Checked against the TITLE only. A summary that merely mentions the cloud
+  // or a partnership should not veto a genuine hardware launch, but a title
+  // that leads with one is not announcing a catalogue product.
+  if (NOT_A_PRODUCT.some((p) => p.test(title))) return null;
 
   const announcement = ANNOUNCEMENT_PATTERNS.map((p) => haystack.match(p)).find(Boolean);
   if (!announcement) return null;
