@@ -114,6 +114,9 @@ function graphicOpportunity(input: {
  */
 function providerCandidateReason(report: {
   status: string;
+  // The PRECISE outcome, not the coarse legacy status. See the note at the
+  // tally below for why this had to be threaded through.
+  outcome?: { state: string; headline: string };
   narrative: string;
   evaluations: { accepted: boolean; rejection: { code: string } | null }[];
   ranking: { whyItWon: string } | null;
@@ -125,8 +128,8 @@ function providerCandidateReason(report: {
   const breakdown = [...rejections.entries()].map(([c, n]) => `${c}×${n}`).join(", ") || "none";
 
   const head =
-    `[${report.status}] REQUIRES HUMAN VERIFICATION AT SOURCE — the engine established that the evidence is ` +
-    `complete, which is not the same as permission to publish. `;
+    `[${report.outcome?.state ?? report.status}] REQUIRES HUMAN VERIFICATION AT SOURCE — the engine ` +
+    `established that the evidence is complete, which is not the same as permission to publish. `;
   const why = report.ranking ? `WHY THIS ONE: ${report.ranking.whyItWon} ` : "";
   const rest = `REJECTED: ${breakdown}. ${report.narrative}`;
 
@@ -336,7 +339,32 @@ export async function runMediaAcquisition(supabase: Client): Promise<StageResult
       }
 
       if (report) {
-        tally.providerStatus[report.status] = (tally.providerStatus[report.status] ?? 0) + 1;
+        // COUNTED BY THE SEVEN-STATE OUTCOME, not the coarse legacy status.
+        //
+        // src/lib/media/providers/outcome.ts distinguishes NO_RESULTS (the
+        // provider was reached, understood, and genuinely has nothing) from
+        // PROVIDER_PARSE_FAILURE (we could not read what it sent) and
+        // PROVIDER_OUTAGE (we never got an answer). The legacy `status`
+        // collapses the last two into 'provider_unavailable' and, worse, a
+        // parse failure that refuses every candidate is indistinguishable from
+        // an exhausted search — which is exactly the bug that hid the Commons
+        // `|other versions=` regression for a whole run.
+        //
+        // The taxonomy existed and the pipeline computed it, but this job — the
+        // only thing that actually runs in production and writes rows — still
+        // read `report.status`, so the distinction reached neither the database
+        // nor the telemetry. Implemented is not wired.
+        const outcomeState = report.outcome?.state ?? report.status;
+        tally.providerStatus[outcomeState] = (tally.providerStatus[outcomeState] ?? 0) + 1;
+
+        // A fault in OUR code or in the provider is not a finding about the
+        // world, and it must not be filed under "we looked and found nothing".
+        if (outcomeState === "PROVIDER_PARSE_FAILURE" || outcomeState === "PROVIDER_OUTAGE") {
+          counters.failed++;
+          tally.providerErrors.push(
+            `${req.slug}: ${outcomeState} — ${report.outcome?.headline ?? "no detail"}`
+          );
+        }
 
         if (report.status === "resolved" && report.ranking?.winner && report.proposedRow) {
           const winner = report.ranking.winner.candidate;
@@ -375,7 +403,16 @@ export async function runMediaAcquisition(supabase: Client): Promise<StageResult
             });
             if (c.data === "created") tally.openLicence++;
           }
-        } else if (report.status === "no_results" || report.status === "no_acceptable_candidate") {
+        } else if (
+          // Only a genuine finding is recorded as one. Previously this fired on
+          // the legacy status, so a run that failed to PARSE the provider's
+          // answer could still write a 'no_source_found' row — a permanent
+          // record asserting somebody looked and there was nothing there.
+          outcomeState === "NO_RESULTS" ||
+          outcomeState === "WRONG_ENTITY_RESULTS" ||
+          outcomeState === "RIGHTS_UNCERTAIN" ||
+          outcomeState === "PROVENANCE_INCOMPLETE"
+        ) {
           // A negative result is a finding worth keeping. Recorded as a
           // candidate row with rights_status 'no_source_found' so it shows up
           // in the admin Media Requirements surface rather than only existing
