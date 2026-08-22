@@ -1,0 +1,38 @@
+[
+  {
+    "kind": "chart",
+    "slug": "example-memory-bandwidth",
+    "title": "Memory bandwidth by example card",
+    "subtitle": "Placeholder figures — demonstrates a declared gap in the data",
+    "theme": "ai-hardware",
+    "chartType": "bar",
+    "unit": "GB/s",
+    "categories": ["Example Card A", "Example Card B", "Example Card C", "Example Card D"],
+    "series": [
+      { "name": "Peak bandwidth", "points": [448, 576, null, 1008] }
+    ],
+    "provenance": {
+      "sourceLabel": "Illustrative placeholder data — not real product specifications",
+      "asOf": "2026-08-22"
+    }
+  },
+  {
+    "kind": "chart",
+    "slug": "example-thermal-line",
+    "title": "Sustained clock over a 10-minute load",
+    "subtitle": "Placeholder figures — the line breaks where a reading is missing",
+    "theme": "gaming",
+    "chartType": "line",
+    "unit": "MHz",
+    "categories": ["0 min", "2 min", "4 min", "6 min", "8 min", "10 min"],
+    "series": [
+      { "name": "Example Card A", "points": [2610, 2540, null, 2410, 2395, 2390] },
+      { "name": "Example Card B", "points": [2480, 2455, 2440, 2430, 2425, 2420] }
+    ],
+    "zeroBaseline": false,
+    "provenance": {
+      "sourceLabel": "Illustrative placeholder data — not a real measurement run",
+      "asOf": "2026-08-22"
+    }
+  }
+]

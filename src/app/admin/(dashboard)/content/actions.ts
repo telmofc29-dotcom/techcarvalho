@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { insertRow, updateRow, deleteRow, type ValidationResult } from "@/lib/admin/reference-service";
 import { slugify } from "@/lib/admin/slugify";
+import { findUnfinishedAssemblyMarkers } from "@/lib/engine/draft-assembly";
 import type {
   ContentType,
   ContentStatus,
@@ -55,6 +56,24 @@ function readContentPayload(
   if (!VALID_STATUSES.includes(status as ContentStatus)) return { error: "Choose a valid status." };
   if (searchIntent && !VALID_SEARCH_INTENTS.includes(searchIntent as SearchIntent)) {
     return { error: "Choose a valid search intent." };
+  }
+
+  // Engine-assembled drafts carry scaffolding — an editor banner, section
+  // placeholders, and an "Unverified — DO NOT state as fact" block. Publishing
+  // one untouched would put writing instructions on the public site and
+  // publish a list of unconfirmed claims as though it were an article.
+  //
+  // status='draft' and the media gate do not catch this: an editor who adds a
+  // hero image and flips the status has satisfied both. So it is checked here,
+  // at the moment of publication, and only then — leaving a draft half-finished
+  // is entirely normal and must stay possible.
+  if (status === "published") {
+    const unfinished = findUnfinishedAssemblyMarkers(body);
+    if (unfinished.length > 0) {
+      return {
+        error: `This looks like an unfinished engine-assembled draft and cannot be published yet: ${unfinished.join("; ")}. Rewrite the body in TechCarvalho's voice and remove the engine scaffolding first.`,
+      };
+    }
   }
 
   // The published_at weakness this closes: RLS requires status = 'published'

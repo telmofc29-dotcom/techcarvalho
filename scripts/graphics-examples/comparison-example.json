@@ -1,0 +1,21 @@
+{
+  "kind": "comparison",
+  "slug": "example-camera-a-vs-b",
+  "title": "Example Camera A vs Example Camera B",
+  "subtitle": "Illustrative spec comparison — placeholder subjects, not real products",
+  "theme": "cameras-photography",
+  "left": { "name": "Example Camera A", "sublabel": "Announced 2024" },
+  "right": { "name": "Example Camera B", "sublabel": "Announced 2025" },
+  "rows": [
+    { "label": "Sensor", "left": "Full frame CMOS", "right": "Full frame stacked CMOS", "favours": "right" },
+    { "label": "Resolution", "left": "24 MP", "right": "45 MP", "favours": "right" },
+    { "label": "Max burst", "left": "12 fps", "right": "20 fps" },
+    { "label": "Viewfinder", "left": "3.69M dots", "right": null },
+    { "label": "Weight", "left": "650 g", "right": "738 g", "favours": "left" },
+    { "label": "Card slots", "left": "2 (SD)", "right": "2 (SD + CFexpress)" }
+  ],
+  "provenance": {
+    "sourceLabel": "Illustrative placeholder data — not a real product comparison",
+    "asOf": "2026-08-22"
+  }
+}

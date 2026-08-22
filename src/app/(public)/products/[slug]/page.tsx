@@ -11,6 +11,7 @@ import { ContentCard } from "@/components/public/cards";
 import { RelatedContentTracker } from "@/components/public/related-content-tracker";
 import { OutboundLink } from "@/components/public/outbound-link";
 import { LaunchPricingDisplay } from "@/components/public/launch-pricing";
+import { ProductLeadMedia } from "@/components/public/product-lead-media";
 import { outboundLinkKindFor, destinationDomainOf } from "@/lib/monetisation/affiliate";
 import { Badge, EmptyState } from "@/components/shared/ui";
 import { PageViewTracker } from "@/components/analytics/page-view-tracker";
@@ -73,11 +74,7 @@ export default async function ProductPage({
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
         <div className="lg:col-span-2">
-          {heroImage && (
-            <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-zinc-100 mb-3">
-              <Image src={heroImage.url} alt={heroImage.alt ?? product.name} fill priority className="object-cover" />
-            </div>
-          )}
+          <ProductLeadMedia heroImage={heroImage} productName={product.name} />
 
           {gallery.length > 0 && (
             <div className="mb-6">

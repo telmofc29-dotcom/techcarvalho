@@ -1,0 +1,22 @@
+{
+  "kind": "spec_diagram",
+  "slug": "example-sensor-module",
+  "title": "Example Sensor Module — key specifications",
+  "subtitle": "Schematic, abstract; placeholder subject, not a real product",
+  "theme": "computing",
+  "subject": "Example Sensor Module",
+  "bodyShape": "rounded",
+  "bodyLabel": "Imaging stack",
+  "callouts": [
+    { "label": "Sensor size", "value": "35.9 × 23.9 mm", "note": "manufacturer figure" },
+    { "label": "Effective pixels", "value": "45.7 MP" },
+    { "label": "Pixel pitch", "value": "4.35 µm" },
+    { "label": "Readout", "value": null, "note": "not disclosed" },
+    { "label": "ISO range", "value": "64 – 25,600" },
+    { "label": "Bit depth", "value": "14-bit" }
+  ],
+  "provenance": {
+    "sourceLabel": "Illustrative placeholder data — not a real product specification",
+    "asOf": "2026-08-22"
+  }
+}

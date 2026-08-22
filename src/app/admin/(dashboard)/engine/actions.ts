@@ -8,7 +8,11 @@ import type {
   MediaRightsStatus,
   TrustLevel,
 } from "@/lib/engine/types";
-import type { EngineFreshnessState, EnginePipelineState } from "@/lib/types/database";
+import type {
+  EngineFreshnessState,
+  EnginePipelineState,
+  EngineUpdateProposalState,
+} from "@/lib/types/database";
 
 type ReviewState = "pending" | "approved" | "rejected" | "snoozed" | "research_requested";
 type RelevanceVerdict = "relevant" | "rejected" | "uncertain";
@@ -433,4 +437,61 @@ export async function removeHomepageOverride(formData: FormData): Promise<void> 
 
   revalidatePath("/admin/engine/homepage");
   revalidatePath("/");
+}
+
+// ---------------------------------------------------------------------------
+// Phase 6 — update proposals
+// ---------------------------------------------------------------------------
+
+// 'open' is deliberately absent. Two reasons, both load-bearing:
+//
+//   1. engine_update_proposals carries partial unique indexes allowing only ONE
+//      open proposal per (target, reason). Reopening a closed proposal while
+//      the engine has since opened a fresh one for the same pair would violate
+//      that index, and this action shape swallows the error — a decision that
+//      silently didn't happen. The engine reopens by upserting; a human does
+//      not need to.
+//   2. A rejection that can be quietly un-rejected is a weaker record than one
+//      that stands. If a rejected proposal turns out to matter, the honest move
+//      is a new proposal with its own evidence, not resurrecting an old one.
+const VALID_PROPOSAL_DECISIONS: Exclude<EngineUpdateProposalState, "open">[] = [
+  "accepted",
+  "rejected",
+  "applied",
+];
+
+/**
+ * Records a human decision on an engine update proposal.
+ *
+ * This writes to the PROPOSAL ROW AND NOTHING ELSE. Accepting a proposal does
+ * not edit the target article or product, does not change its status or
+ * is_published, does not touch its specs, and does not publish anything.
+ * 'accepted' means "an editor agrees this page should change"; 'applied' means
+ * "a human has since made that change through the normal editorial surfaces".
+ * Neither state is produced by, or produces, an automated edit.
+ *
+ * That separation is the whole point of a proposal: the engine may argue for a
+ * change to a published page, and only a person may make one.
+ */
+export async function setUpdateProposalState(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  const state = String(formData.get("state") ?? "").trim() as EngineUpdateProposalState;
+  const reason = String(formData.get("state_reason") ?? "").trim();
+  if (!id || !VALID_PROPOSAL_DECISIONS.includes(state as Exclude<EngineUpdateProposalState, "open">)) {
+    return;
+  }
+
+  // A decision with no note is unreadable six months later, but an empty box
+  // should not block the decision — record what was decided instead of
+  // inventing a rationale nobody gave.
+  const stateReason = reason || `Marked ${state} by an administrator (no reason given).`;
+
+  const supabase = await createClient();
+  await supabase
+    .from("engine_update_proposals")
+    .update({ state, state_reason: stateReason, updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  revalidatePath("/admin/engine/update-proposals");
 }

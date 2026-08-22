@@ -9,6 +9,9 @@ import { runSearchIntelligence } from "@/lib/engine/jobs/search-job";
 import { runFreshness } from "@/lib/engine/jobs/freshness-job";
 import { runTrends } from "@/lib/engine/jobs/trend-job";
 import { runMediaAcquisition } from "@/lib/engine/jobs/media-acquisition-job";
+import { runUpdateProposals } from "@/lib/engine/jobs/update-job";
+import { runDraftAssembly } from "@/lib/engine/jobs/draft-job";
+import { runProductAssembly } from "@/lib/engine/jobs/product-job";
 
 const JOB = "engine_tick";
 
@@ -35,7 +38,20 @@ const JOB = "engine_tick";
 const STAGES = [
   ["discovery", runDiscovery],
   ["relevance", runRelevance],
+  // Update proposals run BEFORE briefs so a discovery describing a change to
+  // something already covered is recorded against the existing page. An editor
+  // then decides update-vs-new-article with both options visible.
+  ["update_proposals", runUpdateProposals],
+  // Product assembly runs after update proposals for the same reason: a
+  // discovery about a product we already have becomes an update, not a second
+  // product row. It creates unpublished shells only — no specs, no pricing.
+  ["product_assembly", runProductAssembly],
   ["briefs", runBriefGeneration],
+  // Assembly turns HUMAN-APPROVED briefs into drafts. It runs after brief
+  // generation but only ever consumes briefs approved in an earlier pass —
+  // nothing generated in this same tick can reach it, because approval is a
+  // human action.
+  ["draft_assembly", runDraftAssembly],
   ["search_intelligence", runSearchIntelligence],
   ["opportunities", runOpportunityScoring],
   // Trends run after search/opportunity so they see this pass's aggregates.

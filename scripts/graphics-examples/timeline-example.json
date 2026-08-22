@@ -1,0 +1,18 @@
+{
+  "kind": "timeline",
+  "slug": "example-mount-timeline",
+  "title": "Example Mount — release timeline",
+  "subtitle": "Placeholder events; spacing is proportional to the real dates given",
+  "theme": "cameras-photography",
+  "events": [
+    { "date": "2018-09", "label": "Mount introduced", "detail": "First body and three lenses" },
+    { "date": "2020-07", "label": "Second-generation body", "detail": "Stacked sensor" },
+    { "date": "2022", "label": "Third-party lenses licensed" },
+    { "date": "2024-03-12", "label": "Firmware 3.0", "detail": "Subject-detection autofocus" },
+    { "date": "2026-01", "label": "Fourth-generation body" }
+  ],
+  "provenance": {
+    "sourceLabel": "Illustrative placeholder timeline — not a real product history",
+    "asOf": "2026-08-22"
+  }
+}

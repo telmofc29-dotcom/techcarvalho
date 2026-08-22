@@ -73,6 +73,42 @@ export async function runFreshness(supabase: Client): Promise<StageResult> {
       if (upsertError) counters.failed++;
       else if (result === "created") counters.created++;
       else counters.deduped++;
+
+      // Bridge the HIGH-severity findings into the update-proposal queue.
+      //
+      // Why both records exist rather than one: a freshness review is a
+      // detection ("this page is old"), and it is cheap enough to raise on
+      // everything that qualifies. An update proposal is an ACTION for an
+      // editor, and the two must not be the same list or the actionable queue
+      // drowns in low-severity age warnings.
+      //
+      // The point of the bridge is that the answer to a stale page is editing
+      // that page — so it lands in the same queue as "new evidence about this
+      // page", never as a reason to write a second article about the topic.
+      //
+      // Idempotent: engine_upsert_update_proposal keeps one OPEN proposal per
+      // (target, reason), so a nightly pass refreshes rather than accumulates.
+      if (check.severity !== "high") continue;
+
+      await supabase.rpc("engine_upsert_update_proposal", {
+        p_content_id: c.kind === "content" ? c.entity_id : null,
+        p_product_id: c.kind === "product" ? c.entity_id : null,
+        p_discovery_id: null,
+        // 'broken_source' is a genuine evidence gap; age alone is
+        // 'stale_content'. Keeping them apart lets an editor tell "this cannot
+        // be re-verified" from "nobody has checked this in a year".
+        p_reason: check.reason === "broken_source_link" ? "broken_source" : "stale_content",
+        p_summary: check.detail,
+        // Deliberately empty: freshness has found NO new evidence. It has only
+        // established that time has passed. Inventing change suggestions here
+        // would be fabrication — the editor re-verifies against real sources.
+        p_changes: [],
+        p_evidence: [],
+        // Age is a strong signal that a check is due, not a claim about what
+        // is now wrong, so this stays well below the evidence-backed levels
+        // the update-proposal job assigns.
+        p_confidence: 0.3,
+      });
     }
   }
 

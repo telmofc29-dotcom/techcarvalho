@@ -14,6 +14,9 @@ const ENGINE_TABS: { href: string; label: string }[] = [
   { href: "/admin/engine/trending", label: "Trending" },
   { href: "/admin/engine/opportunities", label: "Opportunities" },
   { href: "/admin/engine/briefs", label: "Review queue" },
+  { href: "/admin/engine/drafts", label: "Assembled drafts" },
+  { href: "/admin/engine/update-proposals", label: "Update proposals" },
+  { href: "/admin/engine/entity-resolutions", label: "Entity resolution" },
   { href: "/admin/engine/searches", label: "Searches" },
   { href: "/admin/engine/freshness", label: "Freshness" },
   { href: "/admin/engine/media-acquisition", label: "Media acquisition" },
@@ -185,6 +188,66 @@ const CANDIDATE_TONE: Record<string, Tone> = {
 
 export function CandidateStateBadge({ state }: { state: string }) {
   return <Badge tone={CANDIDATE_TONE[state] ?? "neutral"}>{humanise(state)}</Badge>;
+}
+
+// ---------------------------------------------------------------------------
+// Phase 6 — draft assembly, update proposals, entity resolution
+// ---------------------------------------------------------------------------
+
+// Update-proposal lifecycle. `open` is amber because an open proposal is a
+// decision nobody has made yet, and `applied` is the only green: accepting a
+// proposal records agreement, but the target page is unchanged until a human
+// actually edits it.
+const PROPOSAL_TONE: Record<string, Tone> = {
+  open: "amber",
+  accepted: "blue",
+  rejected: "neutral",
+  applied: "green",
+};
+
+export function ProposalStateBadge({ state }: { state: string }) {
+  return <Badge tone={PROPOSAL_TONE[state] ?? "neutral"}>{humanise(state)}</Badge>;
+}
+
+export function UpdateReasonBadge({ reason }: { reason: string }) {
+  return <Badge tone="blue">{humanise(reason)}</Badge>;
+}
+
+// Entity-resolution decisions. `ambiguous` is red rather than amber: unlike
+// the other three it is not an outcome at all — the engine stopped and did
+// nothing, and the item is lost from the pipeline until a human settles it.
+const RESOLUTION_TONE: Record<string, Tone> = {
+  matched_existing: "blue",
+  new_entity: "green",
+  ambiguous: "red",
+  ignored: "neutral",
+};
+
+export function ResolutionDecisionBadge({ decision }: { decision: string }) {
+  return <Badge tone={RESOLUTION_TONE[decision] ?? "neutral"}>{humanise(decision)}</Badge>;
+}
+
+/**
+ * A match score, or an explicit statement that none was recorded.
+ *
+ * Never renders a null score as 0.000 — "we did not score this" and "we scored
+ * it zero" are different facts and an audit view that conflates them is worse
+ * than one that shows nothing.
+ */
+export function MatchScore({ score }: { score: number | null }) {
+  if (score === null || !Number.isFinite(score)) return <Badge tone="neutral">Score not recorded</Badge>;
+  return <Badge tone="neutral">Score {score.toFixed(3)}</Badge>;
+}
+
+/**
+ * Proposal confidence, phrased the same way trend confidence is: as a
+ * judgement, so a 0.28 rumour-backed proposal cannot be skim-read as if it
+ * carried the same weight as a manufacturer announcement.
+ */
+export function ProposalConfidenceBadge({ confidence }: { confidence: number }) {
+  if (confidence >= 0.7) return <Badge tone="green">High confidence ({confidence.toFixed(2)})</Badge>;
+  if (confidence >= 0.4) return <Badge tone="amber">Moderate confidence ({confidence.toFixed(2)})</Badge>;
+  return <Badge tone="red">Low confidence ({confidence.toFixed(2)})</Badge>;
 }
 
 /**

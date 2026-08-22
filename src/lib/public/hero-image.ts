@@ -2,8 +2,25 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { mediaPublicUrl } from "@/lib/media/public-url";
 import { logQueryError } from "@/lib/log/query-error";
+import type { MediaSourceType } from "@/lib/types/database";
 
-export type HeroImage = { url: string; alt: string | null };
+// Provenance travels with the hero image because the PAGE has to disclose it.
+// See src/lib/media/presentation.ts: a TechCarvalho original graphic occupying
+// the hero slot must be labelled as a graphic, and a required credit line must
+// actually reach the reader. Both are impossible if the query drops these
+// columns, so they are part of the type rather than an optional extra lookup.
+// Optional so the many call sites that only need url+alt are unaffected.
+export type HeroImage = {
+  url: string;
+  alt: string | null;
+  sourceType?: MediaSourceType | null;
+  owned?: boolean;
+  aiGenerated?: boolean;
+  attribution?: string | null;
+  attributionRequired?: boolean;
+  creator?: string | null;
+  sourceUrl?: string | null;
+};
 
 export type GalleryImage = {
   url: string;
@@ -36,14 +53,25 @@ export async function getPublishedHeroImage(
 
     const { data: asset, error: assetError } = await supabase
       .from("media_assets")
-      .select("alt_text, publication_status, public_storage_path")
+      .select(
+        "alt_text, publication_status, public_storage_path, source_type, owned, ai_generated, attribution, attribution_required, creator, source_url"
+      )
       .eq("id", link.media_id)
       .maybeSingle();
     if (assetError) logQueryError(`getPublishedHeroImage(${kind}, ${id}) asset`, assetError);
     if (assetError || !asset) return null;
     if (asset.publication_status !== "published" || !asset.public_storage_path) return null;
 
-    return { url: mediaPublicUrl(asset.public_storage_path), alt: asset.alt_text };
+    return {
+      url: mediaPublicUrl(asset.public_storage_path),
+      alt: asset.alt_text,
+      sourceType: asset.source_type,
+      owned: asset.owned,
+      aiGenerated: asset.ai_generated,
+      attribution: asset.attribution,
+      attributionRequired: asset.attribution_required,
+      creator: asset.creator,
+    };
   } catch (e) {
     console.error(`[query-error] getPublishedHeroImage(${kind}, ${id}) threw`, e);
     return null;

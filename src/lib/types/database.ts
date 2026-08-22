@@ -183,6 +183,26 @@ export type EngineFreshnessReason =
   | "missing_internal_links";
 export type EngineSeverity = "low" | "medium" | "high";
 export type EngineFreshnessState = "open" | "acknowledged" | "actioned" | "dismissed";
+
+/** Mirrors the engine_update_proposals.reason check constraint. */
+export type EngineUpdateReason =
+  | "firmware_update"
+  | "successor_released"
+  | "discontinued"
+  | "spec_change"
+  | "price_change"
+  | "newer_evidence"
+  | "broken_source"
+  // Age alone, with no new evidence behind it — raised by the freshness pass.
+  | "stale_content";
+
+export type EngineUpdateProposalState = "open" | "accepted" | "rejected" | "applied";
+
+export type EngineResolutionDecision =
+  | "matched_existing"
+  | "new_entity"
+  | "ambiguous"
+  | "ignored";
 export type EngineJobStatus = "running" | "success" | "partial" | "failed" | "skipped";
 export type EngineOpportunitySubject = "category" | "topic" | "product" | "content" | "search_term";
 
@@ -1072,6 +1092,13 @@ export interface Database {
           review_note: string | null;
           snoozed_until: string | null;
           reviewed_at: string | null;
+          // Phase 6 — 20260822_phase6_draft_assembly.sql. Links a brief to the
+          // draft it produced. `assembled_content_id` is null for every brief
+          // that has not been assembled, which is what makes "approved but not
+          // yet drafted" distinguishable from "drafted".
+          assembled_content_id: string | null;
+          assembled_at: string | null;
+          assembly_note: string | null;
         };
         Insert: Partial<Database["public"]["Tables"]["engine_briefs"]["Row"]> & {
           proposed_title: string;
@@ -1095,6 +1122,56 @@ export interface Database {
           reason: string;
         };
         Update: Partial<Database["public"]["Tables"]["engine_freshness_reviews"]["Row"]>;
+        Relationships: [];
+      };
+      // Phase 6 — 20260822_phase6_draft_assembly.sql.
+      // New evidence about an EXISTING page becomes a proposal against that
+      // page, not a second article about the same thing.
+      engine_update_proposals: {
+        Row: {
+          id: string;
+          content_id: string | null;
+          product_id: string | null;
+          discovery_id: string | null;
+          reason: EngineUpdateReason;
+          summary: string;
+          proposed_changes: string[];
+          evidence_urls: string[];
+          confidence: number;
+          state: EngineUpdateProposalState;
+          state_reason: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["engine_update_proposals"]["Row"]> & {
+          reason: string;
+          summary: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["engine_update_proposals"]["Row"]>;
+        Relationships: [];
+      };
+      // Audit log for entity matching, so a wrong merge can be reversed and
+      // "why didn't this create a record?" has an answer.
+      engine_entity_resolutions: {
+        Row: {
+          id: string;
+          discovery_id: string | null;
+          candidate_name: string;
+          normalised_name: string;
+          matched_product_id: string | null;
+          matched_content_id: string | null;
+          match_score: number | null;
+          decision: EngineResolutionDecision;
+          explanation: string;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["engine_entity_resolutions"]["Row"]> & {
+          candidate_name: string;
+          normalised_name: string;
+          decision: string;
+          explanation: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["engine_entity_resolutions"]["Row"]>;
         Relationships: [];
       };
       engine_trends: {
@@ -1435,6 +1512,22 @@ export interface Database {
         };
         Returns: string;
       };
+      // Deactivates trends whose evidence has aged past the documented floor or
+      // horizon (constants in src/lib/engine/trends.ts). Defined in
+      // supabase/migrations_pending/20260822_trend_decay_expiry.sql — NOT YET
+      // APPLIED; the trend job reports a partial run while it is missing.
+      engine_expire_stale_trends: {
+        Args: {
+          p_half_life_hours?: number;
+          p_floor?: number;
+          p_horizon_hours?: number;
+          p_grace_hours?: number;
+        };
+        Returns: {
+          topic_key: string;
+          reason: string;
+        }[];
+      };
       engine_open_media_requirements: {
         Args: { p_limit?: number };
         Returns: {
@@ -1474,6 +1567,107 @@ export interface Database {
           p_reason: string;
           p_detail: string | null;
           p_severity: string;
+        };
+        Returns: string;
+      };
+      // ---- Phase 6 RPCs ----
+      // Only briefs a HUMAN approved. Approval is the gate on assembly.
+      engine_assemblable_briefs: {
+        Args: { p_limit?: number };
+        Returns: {
+          id: string;
+          discovery_id: string | null;
+          proposed_title: string;
+          proposed_slug: string | null;
+          content_type: string;
+          search_intent: string | null;
+          primary_query: string | null;
+          category_slug: string | null;
+          rationale: string;
+          primary_question: string | null;
+          supporting_questions: string[] | null;
+          verified_facts: string[] | null;
+          uncertainties: string[] | null;
+          source_urls: string[] | null;
+          suggested_structure: string[] | null;
+          brief_kind: string | null;
+          freshness_sensitivity: string | null;
+          media_requirement_note: string | null;
+        }[];
+      };
+      // Returns the new content id, or 'duplicate_slug' / 'rejected_invalid'.
+      // There is deliberately no parameter capable of publishing.
+      engine_assemble_draft: {
+        Args: {
+          p_brief_id: string;
+          p_title: string;
+          p_slug: string;
+          p_body: string;
+          p_content_type: string;
+          p_category_slug: string | null;
+          p_search_intent: string | null;
+          p_primary_query: string | null;
+          p_source_urls: string[];
+          p_meta_title?: string | null;
+          p_meta_description?: string | null;
+        };
+        Returns: string;
+      };
+      engine_existing_entities: {
+        Args: Record<string, never>;
+        Returns: {
+          kind: string;
+          id: string;
+          name: string;
+          slug: string;
+          is_published: boolean;
+        }[];
+      };
+      engine_record_entity_resolution: {
+        Args: {
+          p_discovery_id: string | null;
+          p_candidate_name: string;
+          p_normalised: string;
+          p_product_id: string | null;
+          p_content_id: string | null;
+          p_score: number;
+          p_decision: string;
+          p_explanation: string;
+        };
+        Returns: void;
+      };
+      // Manufacturers + categories. A product is only ever created for a
+      // manufacturer that already has a record — never an invented one.
+      engine_reference_data: {
+        Args: Record<string, never>;
+        Returns: { kind: string; id: string; name: string; slug: string }[];
+      };
+      // Returns the new product id, or one of 'duplicate_slug' /
+      // 'unknown_manufacturer' / 'unknown_category' / 'rejected_invalid'.
+      // is_published is hard-wired false; there is no parameter to change it,
+      // and no parameter for specs, pricing or release date.
+      engine_assemble_product: {
+        Args: {
+          p_discovery_id: string | null;
+          p_name: string;
+          p_slug: string;
+          p_manufacturer_slug: string;
+          p_category_slug: string;
+          p_status: string;
+          p_source_urls: string[];
+        };
+        Returns: string;
+      };
+      engine_upsert_update_proposal: {
+        Args: {
+          p_content_id: string | null;
+          p_product_id: string | null;
+          p_discovery_id: string | null;
+          p_reason: string;
+          p_summary: string;
+          p_changes: string[];
+          p_evidence: string[];
+          p_confidence: number;
         };
         Returns: string;
       };
