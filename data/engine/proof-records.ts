@@ -47,8 +47,11 @@ export const PROOF_RECORDS: ProofRecord[] = [
   {
     kind: "rollback_test",
     level: "chaos_proven",
-    observedAt: "2026-08-22T23:20:00.000Z",
-    commit: "b6353bf0",
+    // Re-run at 19b8aacc after the day's later changes. A proof pins the commit
+    // it was obtained at for a reason: evidence about earlier code is evidence
+    // about code that is no longer running.
+    observedAt: "2026-08-22T23:55:00.000Z",
+    commit: "19b8aacc",
     method:
       "npx tsx scripts/proof-rollback.ts against the PRODUCTION database as an authenticated admin. Captured a representative state (an existing engine_briefs row, every column read byte-for-byte, plus the content_items count); performed the controlled mutation engine_assemble_draft actually makes — a draft content_item plus its source_records and media_requirements children, and an UPDATE moving the borrowed brief's state; then planned and executed the reversal through src/lib/engine/rollback.ts and compared every captured value individually rather than counting rows. The two refusal arms were GENUINELY INDUCED in the database rather than simulated: the row was really set to status='published' (with published_at a year in the future, so the induced state is invisible to the public — asserted, not assumed, by querying as anon), and really edited by hand as an editor would. The target state for the update is chosen to differ from what is already there, because an earlier run happened to borrow a brief already in the target state, mutated nothing, 'restored' a value that had never moved, and reported 10/10.",
     observed:
