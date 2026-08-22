@@ -1,6 +1,6 @@
 import "server-only";
 import type { createClient } from "@/lib/supabase/server";
-import { newCounters, recordJobRun, isFlagEnabled } from "@/lib/engine/cron";
+import { newCounters, recordJobRun, readFlag } from "@/lib/engine/cron";
 import type { StageResult } from "./discovery";
 
 type Client = Awaited<ReturnType<typeof createClient>>;
@@ -19,9 +19,23 @@ const JOB = "engine_search_intelligence";
 export async function runSearchIntelligence(supabase: Client): Promise<StageResult> {
   const counters = newCounters();
 
-  if (!(await isFlagEnabled(supabase, "opportunity"))) {
-    await recordJobRun(supabase, JOB, "skipped", counters, { reason: "opportunity_disabled" });
-    return { status: "skipped", ...counters };
+  const opportunityFlag = await readFlag(supabase, "opportunity");
+  if (!opportunityFlag.enabled) {
+    // An UNREADABLE flag is a failure, not a deliberate skip. Recording it as
+    // 'skipped' used to hide it twice over: the reason said the flag was off
+    // when it had never been read, and silent-success.ts filters skipped runs
+    // out entirely, so one denied RPC switched the engine off and still
+    // produced a clean detector report.
+    const status = opportunityFlag.readable ? "skipped" : "failed";
+    await recordJobRun(
+      supabase,
+      JOB,
+      status,
+      counters,
+      { reason: opportunityFlag.reason },
+      opportunityFlag.error
+    );
+    return { status, ...counters, detail: { reason: opportunityFlag.reason } };
   }
 
   const { data, error } = await supabase.rpc("engine_aggregate_searches", { p_days: 90 });

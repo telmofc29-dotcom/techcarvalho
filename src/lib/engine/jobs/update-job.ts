@@ -1,6 +1,6 @@
 import "server-only";
 import type { createClient } from "@/lib/supabase/server";
-import { newCounters, recordJobRun, isFlagEnabled } from "@/lib/engine/cron";
+import { newCounters, recordJobRun, readFlag } from "@/lib/engine/cron";
 import {
   createPostconditionLog,
   statusFromPostconditions,
@@ -29,9 +29,23 @@ const JOB = "engine_update_proposals";
 export async function runUpdateProposals(supabase: Client): Promise<StageResult> {
   const counters = newCounters();
 
-  if (!(await isFlagEnabled(supabase, "freshness"))) {
-    await recordJobRun(supabase, JOB, "skipped", counters, { reason: "freshness_disabled" });
-    return { status: "skipped", ...counters };
+  const freshnessFlag = await readFlag(supabase, "freshness");
+  if (!freshnessFlag.enabled) {
+    // An UNREADABLE flag is a failure, not a deliberate skip. Recording it as
+    // 'skipped' used to hide it twice over: the reason said the flag was off
+    // when it had never been read, and silent-success.ts filters skipped runs
+    // out entirely, so one denied RPC switched the engine off and still
+    // produced a clean detector report.
+    const status = freshnessFlag.readable ? "skipped" : "failed";
+    await recordJobRun(
+      supabase,
+      JOB,
+      status,
+      counters,
+      { reason: freshnessFlag.reason },
+      freshnessFlag.error
+    );
+    return { status, ...counters, detail: { reason: freshnessFlag.reason } };
   }
 
   const [{ data: discoveryRows, error: discoveryError }, { data: entityRows, error: entityError }] =

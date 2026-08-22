@@ -201,13 +201,105 @@ export async function recordJobRun(
 }
 
 /** Whether a specific engine capability is switched on. Fails closed. */
+export type EngineFlag =
+  | "discovery"
+  | "research"
+  | "freshness"
+  | "opportunity"
+  | "autonomous_publishing";
+
+export type FlagRead = {
+  /** Whether the stage may run. False when off AND when unreadable. */
+  enabled: boolean;
+  /** Whether we actually LEARNED the flag's value. */
+  readable: boolean;
+  /** The reason to record, distinguishing the two cases by name. */
+  reason: string;
+  error?: string;
+};
+
+/**
+ * Read a kill-switch, distinguishing "off" from "could not ask".
+ *
+ * THE BUG THIS REPLACES. `isFlagEnabled` was:
+ *
+ *     const { data, error } = await supabase.rpc("engine_flag_enabled", ...);
+ *     if (error) return false;
+ *
+ * Failing closed is right — a stage must not run when we cannot confirm it is
+ * allowed to. But the two cases were INDISTINGUISHABLE downstream, and that is
+ * where it turned into a silent success:
+ *
+ *   1. One denied or failed RPC makes every stage return `false`.
+ *   2. Each stage records status 'skipped' with reason "<flag>_disabled" — a
+ *      reason that is simply untrue, because the flag was never read.
+ *   3. silent-success.ts filters 'skipped' rows out of its analysis entirely,
+ *      and with zero measured runs its `detection_unavailable` guard cannot
+ *      fire either. The detector then reports `clean: true`.
+ *
+ * So a single database problem switches the whole engine off, labels it as a
+ * deliberate configuration choice, and produces a clean bill of health. The
+ * engine does nothing, and every signal says that is fine.
+ *
+ * The verdict is unchanged — unreadable still means do not run. Only the
+ * REPORTING changes, which is the entire point: a stage can now record
+ * 'failed' with reason "discovery_flag_unreadable" instead of 'skipped' with a
+ * fabricated one, and the failure becomes visible to everything downstream.
+ */
+export async function readFlag(
+  supabase: SupabaseServerClient,
+  flag: EngineFlag
+): Promise<FlagRead> {
+  const { data, error } = await supabase.rpc("engine_flag_enabled", { p_flag: flag });
+
+  if (error) {
+    logQueryError(
+      `engine_flag_enabled(${flag}) could not be read, so the stage is refused. This is NOT the ` +
+        `flag being switched off — it is not knowing, and it fails closed`,
+      error
+    );
+    return {
+      enabled: false,
+      readable: false,
+      reason: `${flag}_flag_unreadable`,
+      error: error.message,
+    };
+  }
+
+  // A non-boolean answer is also "we do not know". Treating anything truthy as
+  // enabled is how a schema change quietly re-enables a stage.
+  if (typeof data !== "boolean") {
+    logQueryError(
+      `engine_flag_enabled(${flag}) returned ${JSON.stringify(data)} rather than a boolean; ` +
+        `refusing the stage rather than guessing`,
+      { message: "non_boolean_flag" }
+    );
+    return {
+      enabled: false,
+      readable: false,
+      reason: `${flag}_flag_unreadable`,
+      error: `expected a boolean, got ${typeof data}`,
+    };
+  }
+
+  return {
+    enabled: data,
+    readable: true,
+    reason: data ? `${flag}_enabled` : `${flag}_disabled`,
+  };
+}
+
+/**
+ * Boolean form, kept for call sites that genuinely only need yes/no.
+ *
+ * Prefer `readFlag`. This deliberately cannot tell a caller that the flag was
+ * unreadable, so anything that RECORDS an outcome should not use it.
+ */
 export async function isFlagEnabled(
   supabase: SupabaseServerClient,
-  flag: "discovery" | "research" | "freshness" | "opportunity" | "autonomous_publishing"
+  flag: EngineFlag
 ): Promise<boolean> {
-  const { data, error } = await supabase.rpc("engine_flag_enabled", { p_flag: flag });
-  if (error) return false;
-  return data === true;
+  return (await readFlag(supabase, flag)).enabled;
 }
 
 /**
