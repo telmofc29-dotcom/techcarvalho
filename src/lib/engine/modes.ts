@@ -23,6 +23,8 @@
 // This module governs what the engine DECIDES, and gates that decision on
 // evidence. Deterministic. No AI provider.
 
+import { evaluateAllProofs, type ProofRecord } from "./proofs.ts";
+
 export type EngineMode =
   /** Nothing runs. */
   | "OFF"
@@ -84,6 +86,17 @@ export const READINESS = {
 
 export type ReadinessProof = (typeof READINESS.requiredProofs)[number];
 
+// The proof list is DERIVED from recorded evidence, never supplied.
+//
+// This used to be `passedProofs: ReadinessProof[]` on the evidence object —
+// a caller could simply hand over all seven names and unlock autonomy without
+// anything having been exercised. That is exactly the bypass this scorecard
+// exists to prevent, and it was sitting in the type.
+//
+// evaluateProof() decides PROVEN from a record of an execution: what was run,
+// what was observed, at which commit, and how recently. A name in a list is
+// not evidence.
+
 export type ReadinessEvidence = {
   shadowDecisions: number;
   distinctDays: number;
@@ -92,8 +105,9 @@ export type ReadinessEvidence = {
   bypassedHardBlockers: number;
   duplicateLeakageRate: number;
   humanDisagreementRate: number;
-  /** Proofs that have PASSED. Anything absent counts as not proven. */
-  passedProofs: ReadinessProof[];
+  /** Recorded proof EXECUTIONS. Not a list of names — see the note above.
+   *  Which of these actually count is decided by evaluateProof(). */
+  proofRecords: ProofRecord[];
 };
 
 export type ReadinessBlocker = {
@@ -139,9 +153,16 @@ export function evaluateReadiness(evidence: ReadinessEvidence): ReadinessReport 
   need("Human disagreement rate", `<= ${READINESS.maxHumanDisagreementRate}`, evidence.humanDisagreementRate.toFixed(4),
     evidence.humanDisagreementRate <= READINESS.maxHumanDisagreementRate);
 
+  // Derived, not asserted. A proof counts only if a recorded execution reached
+  // the level that kind requires, passed, carried a real observation, and has
+  // not expired.
+  const proofStatus = new Map(
+    evaluateAllProofs(evidence.proofRecords).statuses.map((s) => [s.kind, s])
+  );
   for (const proof of READINESS.requiredProofs) {
-    need(`Proof: ${proof}`, "PASS", evidence.passedProofs.includes(proof) ? "PASS" : "not run",
-      evidence.passedProofs.includes(proof));
+    const st = proofStatus.get(proof);
+    need(`Proof: ${proof}`, "PROVEN", st?.state === "PROVEN" ? "PROVEN" : (st?.reason ?? "never exercised"),
+      st?.state === "PROVEN");
   }
 
   const autonomousUnlocked = blockers.length === 0;
@@ -153,8 +174,8 @@ export function evaluateReadiness(evidence: ReadinessEvidence): ReadinessReport 
     evidence.fabricatedClaimEscapes === 0 &&
     evidence.unlicensedMediaEscapes === 0 &&
     evidence.bypassedHardBlockers === 0 &&
-    evidence.passedProofs.includes("rollback_test") &&
-    evidence.passedProofs.includes("circuit_breaker_test");
+    proofStatus.get("rollback_test")?.state === "PROVEN" &&
+    proofStatus.get("circuit_breaker_test")?.state === "PROVEN";
 
   return {
     autonomousUnlocked,

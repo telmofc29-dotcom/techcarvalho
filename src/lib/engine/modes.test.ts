@@ -4,6 +4,20 @@ import {
   evaluateReadiness, resolveEffectiveMode, modeMayPublish, READINESS,
   type ReadinessEvidence,
 } from "./modes.ts";
+import type { ProofKind, ProofRecord } from "./proofs.ts";
+
+/** A recorded EXECUTION at the level that kind requires. */
+const proofFor = (kind: ProofKind): ProofRecord => ({
+  kind,
+  level: kind === "concurrency_test" || kind === "duplicate_scheduler_test"
+    ? "production_proven" : "chaos_proven",
+  observedAt: new Date().toISOString(),
+  commit: "abc1234",
+  method: `Induced the ${kind} failure condition deliberately.`,
+  observed: "The system halted and published nothing.",
+  passed: true,
+});
+const allProofs = (): ProofRecord[] => READINESS.requiredProofs.map(proofFor);
 
 /** Evidence satisfying every criterion. Tests spoil one at a time. */
 const ready = (): ReadinessEvidence => ({
@@ -14,13 +28,13 @@ const ready = (): ReadinessEvidence => ({
   bypassedHardBlockers: 0,
   duplicateLeakageRate: 0,
   humanDisagreementRate: 0.05,
-  passedProofs: [...READINESS.requiredProofs],
+  proofRecords: allProofs(),
 });
 
 const nothing = (): ReadinessEvidence => ({
   shadowDecisions: 0, distinctDays: 0, fabricatedClaimEscapes: 0,
   unlicensedMediaEscapes: 0, bypassedHardBlockers: 0,
-  duplicateLeakageRate: 0, humanDisagreementRate: 0, passedProofs: [],
+  duplicateLeakageRate: 0, humanDisagreementRate: 0, proofRecords: [],
 });
 
 test("AUTONOMOUS is locked by default, with no evidence", () => {
@@ -56,7 +70,7 @@ test("ANY single escape re-locks it — these have no acceptable rate", () => {
 test("every missing proof is its own blocker", () => {
   for (const proof of READINESS.requiredProofs) {
     const e = ready();
-    e.passedProofs = READINESS.requiredProofs.filter((p) => p !== proof);
+    e.proofRecords = READINESS.requiredProofs.filter((p) => p !== proof).map(proofFor);
     const r = evaluateReadiness(e);
     assert.equal(r.autonomousUnlocked, false, `missing ${proof} must lock`);
     assert.ok(r.blockers.some((b) => b.criterion.includes(proof)), proof);
@@ -109,7 +123,7 @@ test("requesting CANARY without evidence also clamps down", () => {
 test("CANARY unlocks on partial evidence, but only with zero escapes and key proofs", () => {
   const e = nothing();
   e.shadowDecisions = 100;
-  e.passedProofs = ["rollback_test", "circuit_breaker_test"];
+  e.proofRecords = [proofFor("rollback_test"), proofFor("circuit_breaker_test")];
   const r = evaluateReadiness(e);
   assert.equal(r.highestJustifiedMode, "CANARY");
   assert.equal(r.autonomousUnlocked, false, "CANARY is not AUTONOMOUS");
@@ -153,4 +167,27 @@ test("the required sample size is defensible, not convenient", () => {
   assert.equal(READINESS.maxUnlicensedMediaEscapes, 0);
   assert.equal(READINESS.maxBypassedHardBlockers, 0);
   assert.ok(READINESS.requiredProofs.length >= 7);
+});
+
+test("a caller CANNOT assert a proof — only a recorded execution counts", () => {
+  // The bypass this replaced: passedProofs was a caller-supplied list of names,
+  // so handing over all seven unlocked autonomy with nothing exercised.
+  const e = ready();
+
+  // Unit-tested evidence for every proof: plausible-looking, and worth nothing.
+  e.proofRecords = READINESS.requiredProofs.map((kind) => ({
+    kind, level: "unit_tested" as const, observedAt: new Date().toISOString(),
+    commit: "abc1234", method: "Ran the unit tests and they passed.",
+    observed: "All assertions held.", passed: true,
+  }));
+  assert.equal(evaluateReadiness(e).autonomousUnlocked, false,
+    "passing unit tests must never unlock autonomy");
+
+  // Records that claim to pass but recorded no observation.
+  e.proofRecords = READINESS.requiredProofs.map((kind) => ({
+    kind, level: "chaos_proven" as const, observedAt: new Date().toISOString(),
+    commit: "abc1234", method: "", observed: "", passed: true,
+  }));
+  assert.equal(evaluateReadiness(e).autonomousUnlocked, false,
+    "an assertion with no observation is not a proof");
 });
