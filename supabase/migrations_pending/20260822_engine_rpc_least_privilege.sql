@@ -1,7 +1,27 @@
 -- ============================================================================
 -- Least privilege for engine draft/product assembly — NOT YET APPLIED
 -- ============================================================================
--- Drafted, not run. Move into migrations/ only once it has actually executed.
+-- STATUS 2026-08-22: reported as applied, but VERIFIED NOT APPLIED.
+--
+-- The exploit was replayed against production after the reported run and
+-- still succeeded on all three variants:
+--
+--   nonexistent brief id      -> created a content_items row
+--   nonexistent discovery id  -> created a products row
+--   real but UNAPPROVED brief -> created a content_items row
+--
+-- It left orphans in five tables (content_items +2, products +1,
+-- source_records +2, media_requirements +3, seo_metadata +1). All were
+-- deleted and the counts restored to 81/44/226/65/55.
+--
+-- The other three migrations in the same batch DID apply and were verified
+-- behaviourally, so this is specific to this file rather than a batch failure.
+-- The SQL below was re-read afterwards: both signatures match the functions
+-- they replace exactly (same parameter names, types and order), so CREATE OR
+-- REPLACE should succeed rather than create a second overload.
+--
+-- THIS FILE NEEDS RE-RUNNING, and the re-run needs verifying by replaying the
+-- exploit rather than by reading the SQL editor's result message.
 --
 -- THE FINDING (2026-08-22, found by probing production as `anon`)
 -- ---------------------------------------------------------------
