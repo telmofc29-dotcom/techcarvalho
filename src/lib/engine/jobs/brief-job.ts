@@ -2,6 +2,7 @@ import "server-only";
 import type { createClient } from "@/lib/supabase/server";
 import { newCounters, recordJobRun, isFlagEnabled } from "@/lib/engine/cron";
 import { buildBrief } from "@/lib/engine/brief-builder";
+import { classifyPromotional } from "@/lib/engine/promotional";
 import type { StageResult } from "./discovery";
 import type { ClaimStatus, TrustLevel } from "@/lib/engine/types";
 import type { ContentAngle } from "@/lib/engine/relevance";
@@ -45,9 +46,27 @@ export async function runBriefGeneration(supabase: Client): Promise<StageResult>
   }[];
 
   const created: string[] = [];
+  // Counted separately rather than as `failed` — declining to reprint a press
+  // release is the pipeline working, not an error.
+  const promotional: string[] = [];
 
   for (const row of rows) {
     counters.examined++;
+
+    // Discovery sources are manufacturer newsrooms, which is right for primary
+    // evidence but means the feed carries marketing alongside news. Without
+    // this check the review queue fills with vendor headlines waiting to be
+    // reprinted — which is exactly what it did: all 16 briefs the engine first
+    // produced were press releases.
+    //
+    // Relevance cannot catch this. "Intel Gamer Days 2026" is genuinely
+    // consumer-gaming relevant AND promotional; those are different axes.
+    const promo = classifyPromotional(row.title, row.summary);
+    if (promo.isPromotional) {
+      promotional.push(`${row.title.slice(0, 55)} [${promo.matched.join(", ")}]`);
+      counters.deduped++;
+      continue;
+    }
 
     // Carry provenance forward: the brief is built from the SAME evidence rows
     // the confidence score was computed from, not from a re-reading of the
@@ -112,6 +131,6 @@ export async function runBriefGeneration(supabase: Client): Promise<StageResult>
 
   const status =
     counters.failed === 0 ? "success" : counters.created + counters.deduped > 0 ? "partial" : "failed";
-  await recordJobRun(supabase, JOB, status, counters, { created });
-  return { status, ...counters, detail: { created } };
+  await recordJobRun(supabase, JOB, status, counters, { created, promotional });
+  return { status, ...counters, detail: { created, promotional } };
 }
