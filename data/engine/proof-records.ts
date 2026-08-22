@@ -83,12 +83,16 @@ export const PROOF_RECORDS: ProofRecord[] = [
   {
     kind: "media_acquisition_test",
     level: "integration_proven",
-    observedAt: "2026-08-22T22:40:00.000Z",
-    commit: "27217539",
+    // Re-run at c4890ab AFTER the embedded-rights reader was tightened. That
+    // re-run is the load-bearing part: a stricter rights check that refuses the
+    // known-good control is not safer, it is broken, and the only way to know
+    // which one you have is to run the control again.
+    observedAt: "2026-08-23T00:25:00.000Z",
+    commit: "c4890ab",
     method:
       "npx tsx scripts/proof-media-acquisition.ts — the full pipeline for 'GoPro HERO13 Black' against the LIVE Wikimedia Commons API (2500ms spacing, descriptive User-Agent, capped so the run costs 8 API requests), then downloading Commons' own 1920px derivative of the winner, reading its real pixel dimensions out of the JPEG SOF marker, SHA-256'ing the bytes, building the media_assets row and putting it through validateEnginePublicationSafety() and evaluatePublishEligibility(). The script imports no Supabase client at all. RE-RUN after the metaValue() EXIF fix so the record describes current code rather than the code it was first obtained on.",
     observed:
-      "8 live requests. Strict lookup 'GoPro HERO13 Black' accepted 0 of 6 categories; 'GoPro HERO 13 Black' accepted Category:GoPro Hero 13 black and Category:GoPro Héro 13 black and refused Category:Taken with GoPro Hero13 Black as a capturing-device category. 8 files enumerated, 3 resolved, 3 accepted, licence read from raw wikitext {{self|cc-by-sa-4.0 -> CC BY-SA 4.0, corroborated by extmetadata LicenseShortName='CC BY-SA 4.0', creator 'François de Dijon'. Winner File:GoPro Héro 13 Black - 02.jpg, declared an effective tie at 0.9777. Download HTTP 200 image/jpeg, 87,344 bytes, 1920x1281 measured from the bytes themselves. Proposed row: rights_status='pending_verification', publication_status='private', owned=false, source_type='public_domain_or_cc'. evaluatePublishEligibility() allowed=FALSE; evaluateProvenance() rights_uncertain, publishable=false, blocker rights_unverified; validateEnginePublicationSafety().safe=true, meaning the row the engine would write is CORRECTLY REFUSED. Nothing was written to the database or to storage.",
+      "8 live requests, re-run after the UsageTerms/unreadable-field hardening and still PASSING, which is what shows the stricter reader does not over-fire on legitimate material. Strict lookup 'GoPro HERO13 Black' accepted 0 of 6 categories; 'GoPro HERO 13 Black' accepted Category:GoPro Hero 13 black and Category:GoPro Héro 13 black and refused Category:Taken with GoPro Hero13 Black as a capturing-device category. 8 files enumerated, 3 resolved, 3 accepted, licence read from raw wikitext {{self|cc-by-sa-4.0 -> CC BY-SA 4.0, corroborated by extmetadata LicenseShortName='CC BY-SA 4.0', creator 'François de Dijon'. Winner File:GoPro Héro 13 Black - 02.jpg, declared an effective tie at 0.9777. Download HTTP 200 image/jpeg, 87,344 bytes, 1920x1281 measured from the bytes themselves. Proposed row: rights_status='pending_verification', publication_status='private', owned=false, source_type='public_domain_or_cc'. evaluatePublishEligibility() allowed=FALSE; evaluateProvenance() rights_uncertain, publishable=false, blocker rights_unverified; validateEnginePublicationSafety().safe=true, meaning the row the engine would write is CORRECTLY REFUSED. Nothing was written to the database or to storage.",
     passed: true,
   },
   {
