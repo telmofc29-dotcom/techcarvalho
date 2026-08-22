@@ -188,6 +188,15 @@ export default async function AutonomyReadinessPage() {
             or establish that this engine genuinely does not need it and remove the requirement.
           </p>
         )}
+        <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900">
+          <strong>PROVEN is not the same as OPERABLE.</strong> A proof records that a mechanism
+          behaved correctly when it was exercised. It does not say the mechanism is wired into the
+          running engine. <code>rollback_test</code> is the current example: the reversal logic and
+          every refusal rule are proven against production, but the engine does not yet RECORD what
+          it writes, so a real past run cannot be reversed — there is nothing durable saying what it
+          did. The missing half is drafted at{" "}
+          <code>supabase/migrations_pending/20260823_engine_change_log.sql</code> and is not applied.
+        </p>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
