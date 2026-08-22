@@ -215,6 +215,36 @@ export const ENGINE_JOBS: readonly JobIdempotency[] = [
       "losing the history of a decision would be worse. Not a scheduled stage of its own; listed " +
       "because two stages write to it.",
   },
+  {
+    // WAS ABSENT, AND THAT WAS A HOLE.
+    //
+    // shadow-job.ts records under "engine_shadow"; tick/route.ts gated it as
+    // "engine_shadow_evaluation". Neither string appeared in this list, so
+    // capabilityOf() returned null, guard.ts's entire `if (capability)` block —
+    // both the circuit-breaker check AND the concurrency-lease check — was
+    // skipped, and budgetGateForJob waved the unknown job through. The shadow
+    // stage therefore ran even when a breaker had halted ALL_CAPABILITIES.
+    //
+    // The two names are reconciled to this one; the tick's stage->job map now
+    // points here too. An unregistered job silently bypassing the safety layer
+    // is the failure mode, so gateFor() now refuses any job it cannot map
+    // rather than defaulting to allow.
+    job: "engine_shadow",
+    // Classification, not creation: a shadow decision is an assessment of a
+    // candidate that already exists, and it mints no durable artefact anyone
+    // reads as content. Deliberately NOT "creation" — putting it there would
+    // make shadow evaluation consume the daily creation budget, which would
+    // starve the real creation stages to pay for measurement.
+    capability: "classification",
+    idempotent: true,
+    concurrencySafe: true,
+    mechanism: "unique_constraint",
+    note:
+      "engine_shadow_record_decision has a unique constraint on the candidate, and answers " +
+      "'deduped' to a repeat. Re-running the evaluation therefore banks no additional readiness " +
+      "credit, which is what stops the 500-decision requirement being reachable by repetition. " +
+      "Publishes nothing and cannot: the RPC takes no parameter naming a content item or product.",
+  },
 ];
 
 /** Jobs whose output counts toward the daily creation budget. */

@@ -317,7 +317,30 @@ export function buildGuard(args: {
   function gateFor(jobName: string): StageGate {
     const capability = capabilityOf(jobName);
 
-    if (capability) {
+    // AN UNMAPPABLE JOB IS REFUSED, NOT WAVED THROUGH.
+    //
+    // This used to be `if (capability) { ...checks... }` with no else, so a job
+    // absent from ENGINE_JOBS skipped the breaker check AND the lease check
+    // entirely and then fell through to the budget gate, which also waves
+    // unknown jobs through. The shadow stage was in exactly that position: it
+    // ran even when a breaker had halted every capability.
+    //
+    // The safe reading of "I do not know what this job is allowed to do" is
+    // not "anything". Registering a job is one line; a stage that silently
+    // escapes the entire safety layer because somebody forgot that line is the
+    // kind of gap this engine cannot afford, and it is invisible precisely
+    // because everything keeps reporting success.
+    if (!capability) {
+      return {
+        allow: false,
+        why:
+          `'${jobName}' is not in ENGINE_JOBS, so no capability, breaker or concurrency rule ` +
+          `applies to it. Refused rather than allowed: an unregistered stage would otherwise run ` +
+          `while every breaker was open. Add it to src/lib/engine/concurrency.ts.`,
+      };
+    }
+
+    {
       const breakerWhy = haltReason(breakers, capability);
       if (breakerWhy) {
         return { allow: false, why: `Circuit breaker halted '${capability}'. ${breakerWhy}` };

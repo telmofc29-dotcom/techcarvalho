@@ -113,7 +113,11 @@ const STAGE_JOB_NAMES: Record<string, string> = {
   freshness: "engine_freshness",
   internal_links: "engine_internal_links",
   hero_media: "engine_hero_media",
-  shadow_evaluation: "engine_shadow_evaluation",
+  // "engine_shadow", NOT "engine_shadow_evaluation". shadow-job.ts records
+  // under "engine_shadow", and this map named a third string that existed
+  // nowhere else — so the gate looked up a job that could never be found, and
+  // capabilityOf() returned null for it.
+  shadow_evaluation: "engine_shadow",
 };
 
 export async function GET(request: NextRequest) {
