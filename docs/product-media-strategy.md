@@ -1,7 +1,8 @@
 # Product media strategy — unblocking 38 products without faking anything
 
-**Status: audit + recommendation. Nothing in here has been applied to production.**
-Written 2026-08-22. Read alongside `docs/canon-media-rights-request.md` (the drafted,
+**Status: audit + recommendation, EXCEPT §3a, which was applied to production on
+2026-08-22.** Sections 1–3 and 4–5 remain analysis that has not been acted on; §3a is a
+record of work that has. Written 2026-08-22. Read alongside `docs/canon-media-rights-request.md` (the drafted,
 unsent Canon permission request) and `src/lib/media/rights.ts` (the enforcement point).
 
 ## The rules this document works under
@@ -226,6 +227,13 @@ find more — and it does not confirm that any given hit is a usable photograph.
 | DJI Osmo Action 5 Pro | **0** | — |
 | Canon EOS R6 Mark II | **0** | — |
 
+> **Superseded in part — see [§3a](#3a-executed-drones-action-cameras-networking-and-smart-home-2026-08-22).**
+> The **0** rows above for DJI Mini 4 Pro, GoPro Hero 13 and DJI Osmo Action 5 Pro are
+> wrong: a category-based search found usable CC BY-SA 4.0 photography for all three, and
+> all three are now published. The zero-counts in this table mean "not found by a
+> plain-text file search", not "does not exist". Do not treat any row here as evidence of
+> absence without repeating the search against Commons **categories**.
+
 **Caveat that must not be skipped:** a freely-licensed file matching a product name is not
 necessarily a *photograph of that product*. The Galaxy S26 Ultra hit is a Samsung logo SVG,
 not a handset photo. Every candidate needs a human to confirm it actually depicts the
@@ -257,6 +265,129 @@ returns zero rows rather than an error, so any count produced from here would be
 dressed as a finding. The per-manufacturer breakdown needs an authenticated session against
 `media_requirements`, which belongs in the admin Media Requirements surface that already
 exists rather than in this document.
+
+---
+
+## 3a. Executed: drones, action cameras, networking and smart home (2026-08-22)
+
+**Status: APPLIED to production.** Unlike the rest of this document, this section
+describes work that was actually carried out, not a recommendation. Eight products were
+worked by hand through the Commons route of §2.1; **four were unblocked and published,
+four were rejected.** The script that did the ingest, with the per-file verification notes
+kept beside the data they justify, is
+`scripts/import-commons-media-drones-actioncams.ts`.
+
+### What §3's probe got wrong, and why
+
+§3's table reports **0** freely-licensed hits for DJI Mini 4 Pro, GoPro Hero 13 and DJI
+Osmo Action 5 Pro. All three were in fact unblockable. The probe's own stated method
+explains the miss: it was a **plain-text file search**, and Commons' full-text search does
+not surface these files well.
+
+- `File:2024 Dron DJI Mini 4 Pro (03).jpg` sits in `Category:DJI Mini 4 Pro` (46 members)
+  but its description is in Polish.
+- The GoPro files are titled **"GoPro Héro 13 Black"** — French spelling, with an accent —
+  and are categorised under `Category:GoPro Hero 13 black` (lowercase *black*), which is
+  why neither `"GoPro HERO13"` nor a `"GoPro HERO"` category search reaches them.
+- A free-text search for `GoPro HERO13` returns 20 Mapillary street-level photos **taken
+  with** a HERO13. Files taken *by* a device drown out files depicting it; Commons even has
+  a parallel `Category:Taken with …` tree for exactly this, and DJI's are named by opaque
+  EXIF model codes (`Category:DJI FC8482`) that look like product categories but are not.
+
+**The generalisable lesson: search Commons CATEGORIES, and enumerate them in full.**
+Category membership is human-curated and language-independent; full-text search is neither.
+Every one of the four successes came from a category listing, and none of the four would
+have been found by name search alone. §3's zero-counts should be read as "not found by that
+method", not as "does not exist" — the same empty-vs-failed distinction CLAUDE.md draws for
+queries applies to searches.
+
+### Unblocked (4) — all published, all verified by hand
+
+Every file below had its **raw wikitext** read (so the licence template is read directly
+rather than inferred from a rendered badge) **and** its full EXIF block checked for the
+failure mode that got `File:Canon_EOS_5D.jpg` rejected. All four are CC BY-SA 4.0,
+`{{self}}` + own-work, `permission=` empty, commercial use permitted, no `NoDerivatives`
+and no `NonCommercial` anywhere.
+
+| Product | Commons file | Licence | Creator | Model proof |
+|---|---|---|---|---|
+| DJI Mini 4 Pro | [`2024 Dron DJI Mini 4 Pro (03).jpg`](https://commons.wikimedia.org/wiki/File:2024_Dron_DJI_Mini_4_Pro_(03).jpg) | CC BY-SA 4.0 | Jacek Halicki | "MINI 4 PRO" printed on the arm, legible in frame |
+| DJI Air 3S | [`2024 Dron DJI Air 3S (2).jpg`](https://commons.wikimedia.org/wiki/File:2024_Dron_DJI_Air_3S_(2).jpg) | CC BY-SA 4.0 | Jacek Halicki | "AIR 3S" printed on the arm, legible in frame |
+| DJI Osmo Action 5 Pro | [`Osmo Action Pro 5 Camera ZVE05411.jpg`](https://commons.wikimedia.org/wiki/File:Osmo_Action_Pro_5_Camera_ZVE05411.jpg) | CC BY-SA 4.0 | Habib M'henni (User:Dyolf77) | "ACTION 5 PRO" printed on the front face |
+| GoPro HERO13 Black | [`GoPro Héro 13 Black - 01.jpg`](https://commons.wikimedia.org/wiki/File:GoPro_H%C3%A9ro_13_Black_-_01.jpg) | CC BY-SA 4.0 | François Leblond (User:François de Dijon) | sibling frames 05/06 of the same camera on the same tripod show "13 BLACK" |
+
+**Model confirmation was treated as a separate gate from the licence**, because the
+generation-confusion risk in this group is real: Mini 3 Pro vs Mini 4 Pro and HERO12 vs
+HERO13 are near-identical at a glance. Every chosen file was opened and looked at, and only
+files where the model name is physically printed on the product — or on an identical unit
+from the same shoot — were accepted.
+
+**One EXIF finding worth recording, because it is the near-miss.** The GoPro file carries
+`Copyright: "Francois Leblond"` in EXIF while the Commons account is "François de Dijon".
+This was **not** treated as a contradiction, and the distinction matters for future
+batches: a CC licence does not waive copyright, so a bare authorship assertion naming the
+photographer is exactly what a correctly-licensed CC file looks like. What disqualified
+`File:Canon_EOS_5D.jpg` was an "**all rights reserved**" assertion, which is a licence
+*conflict*. The name mismatch was resolved separately by reading the uploader's Commons
+user page: a long-standing French amateur photographer with a large own-work catalogue,
+consistent with the real name in EXIF.
+
+**Two candidates were rejected despite carrying a clean CC BY-SA 4.0 tag and an "own work"
+claim:** `File:GoPro Hero 13 Black in Polar White.png` and
+`File:GoPro Hero 13 Black in Forest Green.png`. Both are 1920px PNGs of specific
+colourways with no camera EXIF — the shape of a manufacturer press render, not of a
+photograph someone took. §2.1's rule decided it: a Commons licence tag is a claim, not
+proof, and an own-work claim that does not fit the artefact is not proof either.
+
+### Rejected (4) — searched, nothing usable, and why
+
+These are **findings, not gaps**. Each is also recorded on the product's
+`media_requirements` row (`sourcing_status = 'blocked'` with the full search record in
+`notes`), so the negative result is visible in the admin Media Requirements surface rather
+than only in this file.
+
+| Product | Searched | Found | Why rejected |
+|---|---|---|---|
+| **TP-Link Deco XE75** | category search `TP-Link`; `Category:TP-Link products` (27 members) and `Category:TP-Link Wi-Fi routers and access points` (33) enumerated in full; file search `TP-Link Deco`; `insource:"Deco XE75"` → **0** | Deco M4R and Deco M9 Plus only | Different, older, non-Wi-Fi-6E products. A Deco M9 Plus photo on an XE75 page is a wrong-product image. |
+| **TP-Link Deco BE85** | file search `BE85` (returns Korean-glyph SVGs and Stockholm museum photos); `insource:"Deco BE85"` → **0**; both TP-Link categories enumerated in full | No Wi-Fi 7 Deco of any model | Nearest Wi-Fi 7 TP-Link file is `File:Archer GE800.jpg` — a gaming router, a different product line, not mesh. |
+| **Roborock Saros 10R** | category search `Roborock` (exactly one category); `Category:Roborock` enumerated in full (5 members); file search `Roborock`; `Saros 10R`; `insource:"Saros"` | 3 logos, 1 Roborock Q8 Max Plus, 1 unidentified charging robot vacuum. `insource:"Saros"` returns only solar-eclipse **saros-cycle** diagrams — an unrelated homonym. | No Saros-series photography exists on Commons. Q8 Max Plus is a different product. |
+| **Amazon Echo Show 8 (4th Gen)** | category search `Amazon Echo`; `Category:Amazon Echo` enumerated in full (84 members); `intitle:"Echo Show"` → 6 files; `insource:"Echo Show 8"` → **0** | Echo Show (1st/2nd gen) and Echo Show 5 only | **No Echo Show 8 of any generation is on Commons**, let alone 4th Gen. An Echo Show 5 is a visibly different device. |
+
+All four are **§3 group 2 — blocked on time, not on permission.** Nobody has photographed
+and uploaded one yet. They need a scheduled recheck, not a negotiation and not a
+manufacturer request.
+
+### A defect found in the ingest path
+
+MediaWiki's `imageinfo` API returns a `thumburl` pointing at a **larger pre-rendered
+bucket** than `iiurlwidth` asked for — requesting 1600px returned a `.../1920px-...` URL
+on all four files — while still reporting `thumbwidth`/`thumbheight` as the *requested*
+size. The first run therefore recorded `media_assets.width/height` 20% smaller than the
+bytes actually stored. The four rows were corrected, and the script now reads the
+dimensions out of the downloaded JPEG's SOF marker instead of trusting the API's numbers.
+Nothing downstream renders from those columns today (the hero uses `next/image` with
+`fill`), so this was wrong metadata rather than a visible bug — but it is exactly the kind
+of quietly-wrong number that §1.4 already flags a pattern of.
+
+### Notes on how these were wired up
+
+- No cropping. Each file is Commons' own pure downscale of the untouched original — aspect
+  ratio preserved to the pixel — so there is no "changes were made" disclosure owed beyond
+  the scale. §2.1's advice to leave Commons photography uncropped was followed.
+- `source_type = 'public_domain_or_cc'` and `asset_role = 'product_photo'` were set
+  correctly from the start, i.e. these four rows do **not** repeat the §1.4 defect. The
+  original 9 rows still carry `'other'`/`NULL` and remain uncorrected.
+- All eight products in this group already had their `content_products` links. Article
+  bodies were re-scanned for unlinked mentions of each product and **every genuine textual
+  mention was already linked**, so no new content links were invented to pad the graph.
+- Two `product_relationships` rows were added, each backed by a published comparison
+  article and stored **one-directional only** per CLAUDE.md:
+  `dji-mini-4-pro --alternative_to--> dji-air-3s` and
+  `gopro-hero13-black --alternative_to--> dji-osmo-action-5-pro`.
+- Pre-existing data defect, not touched: `canon-eos-r7 --alternative_to--> canon-eos-r10`
+  and its reciprocal `canon-eos-r10 --alternative_to--> canon-eos-r7` both exist in
+  `product_relationships`, which contradicts the one-directional rule and will render that
+  pair's relationship twice.
 
 ---
 

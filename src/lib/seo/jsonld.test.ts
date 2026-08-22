@@ -7,8 +7,10 @@ import {
   itemListJsonLd,
   productJsonLd,
   articleJsonLd,
+  collectionPageJsonLd,
   safeJsonLdString,
   ORGANIZATION_ID,
+  WEBSITE_ID,
 } from "./jsonld.ts";
 import { SITE_URL } from "./site.ts";
 
@@ -161,4 +163,65 @@ test("safeJsonLdString: escapes '<' so a malicious field can't break out of the 
   assert.equal(output.includes("</script>"), false);
   assert.equal(output.includes("\\u003c"), true);
   assert.equal(JSON.parse(output.replace(/\\u003c/g, "<")).headline, malicious.headline);
+});
+
+// --- collectionPageJsonLd (hub pages: product families, brands) ------------
+
+test("collectionPageJsonLd nests its ItemList under mainEntity rather than floating free", () => {
+  const result = collectionPageJsonLd({
+    name: "Canon EOS 5D series",
+    description: "Canon's flagship enthusiast full-frame DSLR line.",
+    path: "/families/canon-eos-5d",
+    items: [
+      { name: "Canon EOS 5D", path: "/products/canon-eos-5d" },
+      { name: "Canon EOS 5D Mark II", path: "/products/canon-eos-5d-mark-ii" },
+    ],
+    listName: "Canon EOS 5D coverage",
+  });
+
+  assert.equal(result["@type"], "CollectionPage");
+  assert.equal(result.url, `${SITE_URL}/families/canon-eos-5d`);
+  assert.deepEqual(result.isPartOf, { "@id": WEBSITE_ID });
+  assert.equal(result.mainEntity["@type"], "ItemList");
+  assert.equal(result.mainEntity.numberOfItems, 2);
+  // The nested list must not restate @context — a nested node inherits the
+  // document's context, and repeating it makes the graph ambiguous.
+  assert.equal("@context" in result.mainEntity, false);
+  assert.equal(result["@context"], "https://schema.org");
+});
+
+test("collectionPageJsonLd positions its items in render order", () => {
+  const result = collectionPageJsonLd({
+    name: "Hub",
+    path: "/families/x",
+    items: [
+      { name: "First", path: "/products/first" },
+      { name: "Second", path: "/products/second" },
+    ],
+  });
+  assert.deepEqual(
+    result.mainEntity.itemListElement.map((i) => [i.position, i.name, i.url]),
+    [
+      [1, "First", `${SITE_URL}/products/first`],
+      [2, "Second", `${SITE_URL}/products/second`],
+    ]
+  );
+});
+
+test("collectionPageJsonLd omits description rather than inventing one", () => {
+  const result = collectionPageJsonLd({ name: "Hub", description: null, path: "/families/x", items: [] });
+  assert.equal("description" in result, false);
+});
+
+test("collectionPageJsonLd never fabricates ratings, prices or counts beyond the list it was given", () => {
+  const result = collectionPageJsonLd({
+    name: "Hub",
+    path: "/families/x",
+    items: [{ name: "Only", path: "/products/only" }],
+  });
+  for (const field of ["aggregateRating", "offers", "price", "review", "reviewCount"]) {
+    assert.equal(field in result, false, `${field} must never appear on a hub page`);
+  }
+  // numberOfItems is the length of the list ON THIS PAGE, never a catalogue total.
+  assert.equal(result.mainEntity.numberOfItems, 1);
 });

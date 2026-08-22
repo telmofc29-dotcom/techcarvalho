@@ -86,9 +86,27 @@ export const getManufacturerDetail = cache(async (slug: string): Promise<Manufac
       description: manufacturer.description,
     },
     logo,
-    products: productsWithImages.map(({ updated_at: _updatedAt, ...p }) => p),
+    // `updated_at` is fetched purely to derive `lastModified` above and is
+    // mapped off here rather than leaking into the view model.
+    products: productsWithImages.map((p) => ({
+      id: p.id,
+      name: p.name,
+      slug: p.slug,
+      summary: p.summary,
+      status: p.status,
+      family_id: p.family_id,
+      heroImage: p.heroImage,
+    })),
     families: families ?? [],
-    articles: articles.map(({ updated_at: _updatedAt, ...a }) => a),
+    articles: articles.map((a) => ({
+      id: a.id,
+      title: a.title,
+      slug: a.slug,
+      type: a.type,
+      published_at: a.published_at,
+      excerpt: a.excerpt,
+      heroImage: a.heroImage,
+    })),
     lastModified: timestamps.length > 0 ? timestamps.reduce((a, b) => (a > b ? a : b)) : null,
   };
 });

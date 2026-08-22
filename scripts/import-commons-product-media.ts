@@ -568,8 +568,37 @@ async function main() {
 
   await syncRelationships(client, apply);
 
+  // Write the rejection reasoning onto media_requirements so it shows up in the
+  // admin Media Requirements surface, not only in this file. 'blocked' is the
+  // honest status: these are blocked on the photography not existing (or not
+  // being confirmable), which is a different thing from nobody having looked.
   console.log(`\n=== Left blocked on purpose (${REJECTED.length}) ===`);
-  for (const r of REJECTED) console.log(`  ${r.productSlug}: ${r.reason}\n`);
+  for (const r of REJECTED) {
+    console.log(`  ${r.productSlug}: ${r.reason}\n`);
+    const { data: p, error: pErr } = await client
+      .from("products")
+      .select("id")
+      .eq("slug", r.productSlug)
+      .maybeSingle();
+    if (pErr) {
+      console.error(`    QUERY FAILED (product ${r.productSlug}): ${pErr.message}`);
+      continue;
+    }
+    if (!p) {
+      console.error(`    no product row for ${r.productSlug}`);
+      continue;
+    }
+    if (!apply) continue;
+    const { error: upErr } = await client
+      .from("media_requirements")
+      .update({
+        sourcing_status: "blocked",
+        notes: `Wikimedia Commons checked by category (not just free text) on 2026-08-22 — no usable photograph. ${r.reason} Recheck periodically: this is blocked on the photograph not existing, not on permission.`,
+      })
+      .eq("product_id", p.id);
+    if (upErr) console.error(`    FAILED to update media_requirements: ${upErr.message}`);
+    else console.log(`    media_requirements -> blocked, reason recorded.`);
+  }
 }
 
 main().catch((e) => {
