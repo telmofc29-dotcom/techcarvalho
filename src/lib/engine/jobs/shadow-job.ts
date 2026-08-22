@@ -23,6 +23,8 @@ import {
   type RawMediaRow,
   type RawSourceRow,
 } from "@/lib/engine/shadow-io";
+import { controlRead } from "@/lib/engine/queue-read";
+import { concludeEmptyQueue } from "./reader-liveness";
 import type { StageResult } from "./discovery";
 
 type Client = Awaited<ReturnType<typeof createClient>>;
@@ -121,6 +123,35 @@ export async function runShadowEvaluation(supabase: Client): Promise<StageResult
     entities: (entitiesRes.data ?? []) as RawEntityRow[],
     reference: (referenceRes.data ?? []) as RawManufacturerRow[],
   });
+
+  // An empty candidate list used to fall through the loop and record success
+  // with every counter at zero — byte-identical to a silently-denied read of
+  // engine_shadow_candidates, because RLS denies by returning zero rows and no
+  // error. This stage's output is the READINESS evidence, so a denial here does
+  // not merely lose a night's work: it makes the ledger stop growing while every
+  // signal says the evaluation is running normally.
+  //
+  // The corroboration is free — engine_reference_data and
+  // engine_existing_entities both answered in this same pass, through the same
+  // anon grant path. See queue-read.ts for exactly what that excludes.
+  if (candidateRows.length === 0) {
+    const referenceRows = ((referenceRes.data ?? []) as unknown[]).length;
+    const entityRows = ((entitiesRes.data ?? []) as unknown[]).length;
+    const outcome = await concludeEmptyQueue(supabase, {
+      stage: JOB,
+      source: "engine_shadow_candidates",
+      kind: "security_definer_rpc",
+      rowsReturned: 0,
+      eligible: 0,
+      reason: "no_shadow_candidates",
+      liveness: controlRead(
+        "engine_reference_data + engine_existing_entities",
+        referenceRows + entityRows
+      ),
+    });
+    await recordJobRun(supabase, JOB, outcome.status, counters, outcome.detail, outcome.error ?? undefined);
+    return { status: outcome.status, ...counters, detail: outcome.detail };
+  }
 
   const log = createPostconditionLog(counters);
   const decisions: ShadowDecision[] = [];

@@ -7,7 +7,7 @@ Date: 2026-08-22. Scope: `src/lib/engine/**`, `src/app/api/engine/**`, every `su
 Method: traced each finding to the lines that produce it. **CONFIRMED** means the code path was read
 end to end and genuinely behaves this way. **SUSPECTED** means one link is inferred.
 
-A note that colours several findings below: `supabase/migrations_pending/20260822_silent_success_telemetry.sql`
+A note that colours several findings below: `supabase/migrations/20260822_silent_success_telemetry.sql`
 **is still in `migrations_pending/`**, not `migrations/`. If it has in fact been applied in production,
 the repo's own convention (CLAUDE.md: "move it into `migrations/` only once it's actually been run")
 has been broken, and — more importantly — several code paths key their behaviour off the belief that

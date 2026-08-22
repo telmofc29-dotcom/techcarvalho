@@ -284,7 +284,7 @@ test("no mutations attempted is honestly a success", () => {
 // disagree about whether an RPC returns anything. Both sides of that window
 // have to be honest, and neither may report success it cannot support.
 
-const MIGRATION = "supabase/migrations_pending/20260822_silent_success_telemetry.sql";
+const MIGRATION = "supabase/migrations/20260822_silent_success_telemetry.sql";
 
 test("pendingRpc: a void RPC (null) is BLIND — not verified, not failed", async () => {
   const counters = { examined: 0, created: 0, deduped: 0, failed: 0 };

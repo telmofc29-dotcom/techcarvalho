@@ -179,7 +179,7 @@ export async function runCarrierStage(args: {
   if (args.voidRpc) {
     await log.pendingRpc({
       operation: args.voidRpc,
-      migration: args.voidRpcMigration ?? "supabase/migrations_pending/20260822_silent_success_telemetry.sql",
+      migration: args.voidRpcMigration ?? "supabase/migrations/20260822_silent_success_telemetry.sql",
       accepted: ["ok"],
       run: () => args.client.rpc<string>(args.voidRpc as string, { p_success: counters.failed === 0 }),
     });

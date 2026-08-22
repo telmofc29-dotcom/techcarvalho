@@ -164,8 +164,9 @@ export async function recordJobRun(
         logQueryError(
           `engine_record_job_run(${jobName}) — audit row written WITHOUT postcondition telemetry. ` +
             `The 12-argument signature does not exist yet, so verified/silent/unverified/blind ` +
-            `counts for this run are NULL (unmeasured), not zero. Apply ` +
-            `supabase/migrations_pending/20260822_silent_success_telemetry.sql`,
+            `counts for this run are NULL (unmeasured), not zero. 20260822_silent_success_telemetry.sql ` +
+            `IS applied, so this branch firing means the function was changed or its grant revoked ` +
+            `since — investigate rather than re-running the migration.`,
           { message: "telemetry_signature_absent" }
         );
       }

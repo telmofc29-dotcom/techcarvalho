@@ -10,6 +10,8 @@ import {
 import { postconditionDetail, writeCountsFrom } from "@/lib/engine/silent-success";
 import { detectProductAnnouncement, productStatusFor } from "@/lib/engine/product-signals";
 import { resolveEntity, proposeSlug } from "@/lib/engine/entity-resolution";
+import { controlRead } from "@/lib/engine/queue-read";
+import { concludeEmptyQueue } from "./reader-liveness";
 import type { StageResult } from "./discovery";
 
 type Client = Awaited<ReturnType<typeof createClient>>;
@@ -93,11 +95,43 @@ export async function runProductAssembly(supabase: Client): Promise<StageResult>
   const existingProducts = entities.filter((e) => e.kind === "product");
   const takenSlugs = new Set(existingProducts.map((p) => p.slug));
 
-  // No manufacturer records means nothing can be created, and that is a real
-  // condition worth reporting rather than a silent zero.
+  // No manufacturer records means nothing can be created — but "there are no
+  // manufacturers" and "we were not allowed to read the manufacturers" are the
+  // same zero rows and the same absent error, and this used to record `success`
+  // for both. The corroboration is free here: `reference` is the whole answer
+  // from engine_reference_data (manufacturers UNION categories), filtered to
+  // manufacturers in application code. Categories coming back means the read was
+  // permitted; nothing at all coming back means there is no evidence either way.
   if (manufacturers.length === 0) {
-    await recordJobRun(supabase, JOB, "success", counters, { reason: "no_manufacturer_records" });
-    return { status: "success", ...counters, detail: { reason: "no_manufacturer_records" } };
+    const outcome = await concludeEmptyQueue(supabase, {
+      stage: JOB,
+      source: "engine_reference_data",
+      kind: "security_definer_rpc",
+      rowsReturned: reference.length,
+      eligible: 0,
+      reason: "no_manufacturer_records",
+      liveness: { form: "same_read_filtered", rowsReturned: reference.length },
+    });
+    await recordJobRun(supabase, JOB, outcome.status, counters, outcome.detail, outcome.error ?? undefined);
+    return { status: outcome.status, ...counters, detail: outcome.detail };
+  }
+
+  // The discovery queue itself. Empty is legitimate and common, so it gets the
+  // same treatment rather than an early `success`: engine_reference_data has
+  // already answered in this pass, so its row count is the control read and
+  // there is no extra round trip.
+  if (discoveries.length === 0) {
+    const outcome = await concludeEmptyQueue(supabase, {
+      stage: JOB,
+      source: "engine_briefable_discoveries",
+      kind: "security_definer_rpc",
+      rowsReturned: 0,
+      eligible: 0,
+      reason: "no_briefable_discoveries",
+      liveness: controlRead("engine_reference_data", reference.length),
+    });
+    await recordJobRun(supabase, JOB, outcome.status, counters, outcome.detail, outcome.error ?? undefined);
+    return { status: outcome.status, ...counters, detail: outcome.detail };
   }
 
   const created: string[] = [];
@@ -124,7 +158,7 @@ export async function runProductAssembly(supabase: Client): Promise<StageResult>
     await log.pendingCreatedId({
       operation: "engine_record_entity_resolution",
       subject: signal.productName,
-      migration: "supabase/migrations_pending/20260822_silent_success_telemetry.sql",
+      migration: "supabase/migrations/20260822_silent_success_telemetry.sql",
       // It is the audit trail for "why didn't this create a product?", so a
       // silent no-op would leave every skip unexplained while the run still
       // reported success.

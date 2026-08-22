@@ -9,6 +9,7 @@ import {
 import { postconditionDetail, writeCountsFrom } from "@/lib/engine/silent-success";
 import { buildBrief } from "@/lib/engine/brief-builder";
 import { classifyPromotional } from "@/lib/engine/promotional";
+import { concludeEmptyQueue } from "./reader-liveness";
 import type { StageResult } from "./discovery";
 import type { ClaimStatus, TrustLevel } from "@/lib/engine/types";
 import type { ContentAngle } from "@/lib/engine/relevance";
@@ -64,6 +65,22 @@ export async function runBriefGeneration(supabase: Client): Promise<StageResult>
     suggested_angle: string | null;
     sighting_count: number;
   }[];
+
+  // An empty discovery queue used to fall through the loop and record success
+  // with every counter at zero — the identical row a silently-denied read
+  // produces. NOTHING_TO_DO has to be earned; see queue-read.ts.
+  if (rows.length === 0) {
+    const outcome = await concludeEmptyQueue(supabase, {
+      stage: JOB,
+      source: "engine_briefable_discoveries",
+      kind: "security_definer_rpc",
+      rowsReturned: 0,
+      eligible: 0,
+      reason: "no_briefable_discoveries",
+    });
+    await recordJobRun(supabase, JOB, outcome.status, counters, outcome.detail, outcome.error ?? undefined);
+    return { status: outcome.status, ...counters, detail: outcome.detail };
+  }
 
   const created: string[] = [];
   // Counted separately rather than as `failed` — declining to reprint a press

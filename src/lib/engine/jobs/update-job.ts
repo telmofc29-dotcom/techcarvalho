@@ -9,6 +9,8 @@ import {
 import { postconditionDetail, writeCountsFrom } from "@/lib/engine/silent-success";
 import { classifyUpdateSignal, proposedChanges } from "@/lib/engine/update-signals";
 import { resolveEntity } from "@/lib/engine/entity-resolution";
+import { controlRead } from "@/lib/engine/queue-read";
+import { concludeEmptyQueue } from "./reader-liveness";
 import type { StageResult } from "./discovery";
 
 type Client = Awaited<ReturnType<typeof createClient>>;
@@ -73,6 +75,26 @@ export async function runUpdateProposals(supabase: Client): Promise<StageResult>
     slug: string;
     is_published: boolean;
   }[];
+
+  // An empty discovery queue used to fall through the loop and record success
+  // with every counter at zero — the identical row a silently-denied read
+  // produces. The corroboration is free: engine_existing_entities answered in
+  // the same pass, through the same anon grant path, so rows coming back from it
+  // exclude a blanket loss of grants. See queue-read.ts for what that does and
+  // does not establish.
+  if (discoveries.length === 0) {
+    const outcome = await concludeEmptyQueue(supabase, {
+      stage: JOB,
+      source: "engine_briefable_discoveries",
+      kind: "security_definer_rpc",
+      rowsReturned: 0,
+      eligible: 0,
+      reason: "no_briefable_discoveries",
+      liveness: controlRead("engine_existing_entities", entities.length),
+    });
+    await recordJobRun(supabase, JOB, outcome.status, counters, outcome.detail, outcome.error ?? undefined);
+    return { status: outcome.status, ...counters, detail: outcome.detail };
+  }
 
   const proposals: string[] = [];
   // Most discoveries are new topics rather than updates.

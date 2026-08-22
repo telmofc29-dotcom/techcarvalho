@@ -59,7 +59,14 @@ export type BreakerName =
   | "duplication_rate"
   | "job_interval"
   /** Stages reporting success while having no effect. See silent-success.ts. */
-  | "silent_success";
+  | "silent_success"
+  /**
+   * Health findings that mean the engine's own report of itself is unreliable.
+   * See HALTING_HEALTH_FINDING_KINDS in health.ts for what is in and what is
+   * deliberately out. Until this existed, no HealthFinding of any severity
+   * reached any breaker at all.
+   */
+  | "health_findings";
 
 export type BreakerVerdict = {
   name: BreakerName;
@@ -106,6 +113,14 @@ export type BreakerReport = {
  *  - `silent_success`: absence of a silent-success report means the detector
  *    did not run, and a failure class whose entire signature is "looks fine"
  *    cannot be assumed absent because nobody looked. Open.
+ *  - `health_findings`: Closed, and this one needs its reasoning stated because
+ *    "closed on absence" reads like a hole. Health findings are derived from
+ *    `engine_recent_job_runs` — the SAME rows the `silent_success` breaker
+ *    already fails CLOSED on, halting the IDENTICAL capability set. So the
+ *    absence this breaker would have to cover is already covered, by a breaker
+ *    that stops exactly the same things. Opening a second one on the same
+ *    absence buys no additional safety and costs a second thing to diagnose.
+ *    That equivalence is asserted in the tests rather than trusted here.
  */
 const FAIL_CLOSED: Record<BreakerName, boolean> = {
   publication_volume: true,
@@ -116,6 +131,7 @@ const FAIL_CLOSED: Record<BreakerName, boolean> = {
   duplication_rate: false,
   job_interval: false,
   silent_success: true,
+  health_findings: false,
 };
 
 export const BREAKER_THRESHOLDS = {
@@ -272,6 +288,37 @@ export type SilentSuccessBreakerInput = {
   criticalSignals: number;
   jobsAffected: number;
   postconditionTelemetry: "present" | "absent";
+  /**
+   * Which of the four telemetry states the window is in. See TelemetryState in
+   * silent-success.ts.
+   *
+   * OPTIONAL, so a caller that predates the four-state model still typechecks —
+   * and when it is absent the breaker behaves exactly as it did before rather
+   * than inventing a state. `runsObserved` alone cannot substitute for it: that
+   * counts rows handed to the detector, including 'skipped' ones the detector
+   * then discarded, so `runsObserved: 40, measuredRuns: 0` is a real and
+   * important combination.
+   */
+  telemetryState?: "zero_measured_runs" | "measured_clean" | "telemetry_unavailable" | "incidents_detected";
+  measuredRuns?: number;
+  skippedRuns?: number;
+};
+
+/**
+ * Health telemetry, produced by healthFindingsBreakerInput() in health.ts.
+ *
+ * Structural rather than an import for the same reason SilentSuccessBreakerInput
+ * is: health.ts imports its breaker input types FROM here, so this module has to
+ * stay the leaf.
+ */
+export type HealthFindingsInput = {
+  jobsAssessed: number;
+  /** Every critical finding, including the ones that deliberately do not halt. */
+  criticalFindings: number;
+  /** Critical findings whose kind is in HALTING_HEALTH_FINDING_KINDS. */
+  haltingFindings: number;
+  haltingKinds: readonly string[];
+  haltingJobs: readonly string[];
 };
 
 export type BreakerInputs = {
@@ -283,6 +330,7 @@ export type BreakerInputs = {
   duplication?: DuplicationInput;
   jobs?: JobIntervalInput[];
   silentSuccess?: SilentSuccessBreakerInput;
+  healthFindings?: HealthFindingsInput;
 };
 
 // ---------------------------------------------------------------------------
@@ -764,7 +812,84 @@ function silentSuccessBreaker(input: SilentSuccessBreakerInput | undefined): Bre
     criticalSignals: input.criticalSignals,
     jobsAffected: input.jobsAffected,
     postconditionTelemetry: input.postconditionTelemetry,
+    telemetryState: input.telemetryState ?? null,
+    measuredRuns: input.measuredRuns ?? null,
+    skippedRuns: input.skippedRuns ?? null,
   };
+
+  // ZERO MEASURED RUNS — state (a). Distinct from every other verdict this
+  // function can return, and distinct in the field that matters: `basis` is
+  // "no_data", not "measured". A closed breaker on measured evidence and a
+  // closed breaker on no evidence at all are different facts, and this file
+  // already has the vocabulary to say so — it just was never said here, so a
+  // window containing nothing produced the identical verdict to a window that
+  // was examined and found clean.
+  //
+  // It does NOT open. A brand-new engine has no runs, and a breaker that opens
+  // on an empty history would leave the engine permanently unable to start,
+  // which is not fail-closed but stuck. The honest report is "nothing is known",
+  // and the graduation gate — which is where an unproven claim actually has to
+  // be refused — blocks on it. See telemetryStateBlocksGraduation().
+  if (input.telemetryState === "zero_measured_runs") {
+    return {
+      name: "silent_success",
+      state: "closed",
+      basis: "no_data",
+      why:
+        `NOTHING WAS MEASURED. ${input.runsObserved} run row(s) were handed to the detector and ` +
+        `${input.measuredRuns ?? 0} of them entered the analysis` +
+        (input.skippedRuns ? ` (${input.skippedRuns} were 'skipped' and are excluded from every rule)` : "") +
+        `. This is NOT a clean bill of health and must not be read as one: no rule ran, so a completely ` +
+        `broken stage would produce exactly this verdict. The breaker stays closed because an engine ` +
+        `with no history must still be able to start, but the state is UNKNOWN, not healthy, and ` +
+        `autonomous graduation is blocked on it.`,
+      action:
+        "Check that the tick is actually running and that its stages are recording rows. If every run " +
+        "is 'skipped', read the reason on those rows — a reason ending '_flag_unreadable' is a failed " +
+        "kill-switch read wearing a skip's clothes.",
+      halts: [],
+      observed,
+    };
+  }
+
+  // TELEMETRY UNAVAILABLE — state (c). Its own branch, above the generic
+  // critical-signals branch it used to fall into.
+  //
+  // WHY IT NEEDED SEPARATING. `detection_unavailable` is itself a critical
+  // signal, so (c) and (d) produced the identical verdict — same state, same
+  // basis, same halts, same sentence about "N critical signals". An operator
+  // triaging an open silent_success breaker could not tell "we could not read
+  // the telemetry" from "we read it and found a stage lying about its work", and
+  // those have completely different fixes: one is a grant, the other is a job.
+  //
+  // `basis` STAYS "measured", deliberately, and not for want of noticing. The
+  // reasoning is asserted in circuit-breaker-chaos.test.ts and it is sound: the
+  // detector RAN and positively reported its own blindness, which is a stronger
+  // answer than publication_volume's `no_data`, where nothing arrived at all.
+  // The two are genuinely different kinds of absence and the field already
+  // distinguishes them correctly. What separates (c) from (d) is
+  // `observed.telemetryState` and the text below.
+  //
+  // NOTHING IS WEAKENED: same `state: "open"`, same `halts`.
+  if (input.telemetryState === "telemetry_unavailable") {
+    return {
+      name: "silent_success",
+      state: "open",
+      basis: "measured",
+      why:
+        `TELEMETRY UNAVAILABLE. The SILENT_SUCCESS detector could not read the job-run history, so the ` +
+        `class could not be looked for at all. This is NOT a clean report and it is NOT a finding about ` +
+        `any particular stage — it is the absence of the evidence every other breaker here is computed ` +
+        `from. A failure class whose entire signature is "looks fine" cannot be assumed absent because ` +
+        `nobody was able to look, so the engine is treated as out of limits until it can show otherwise.`,
+      action:
+        "Restore engine_recent_job_runs: check that the function exists at the signature guard.ts calls " +
+        "(p_hours, p_limit) and that anon still has execute on it. A revoked grant reports as " +
+        "'not found in schema cache' rather than as a permission error.",
+      halts,
+      observed,
+    };
+  }
 
   if (input.criticalSignals > 0) {
     return {
@@ -799,7 +924,7 @@ function silentSuccessBreaker(input: SilentSuccessBreakerInput | undefined): Bre
         `counters are absent, so only the cross-run shapes could be checked. A mutation rejected ` +
         `and miscounted as a duplicate would not be visible at this resolution.`,
       action:
-        "Apply supabase/migrations_pending/20260822_silent_success_telemetry.sql to raise the " +
+        "Applied: supabase/migrations/20260822_silent_success_telemetry.sql to raise the " +
         "resolution of this check.",
       halts: [],
       observed,
@@ -810,7 +935,84 @@ function silentSuccessBreaker(input: SilentSuccessBreakerInput | undefined): Bre
     name: "silent_success",
     state: "closed",
     basis: "measured",
-    why: `No SILENT_SUCCESS signals across ${input.runsObserved} run(s), with per-run postcondition counters present.`,
+    why:
+      `MEASURED AND CLEAN. ${input.measuredRuns ?? input.runsObserved} run(s) were examined against every ` +
+      `rule in silent-success.ts and none fired, with per-run postcondition counters present. This is the ` +
+      `one verdict here that means health, and it is reachable only by having looked.`,
+    action: "None.",
+    halts: [],
+    observed,
+  };
+}
+
+/**
+ * The HEALTH FINDINGS breaker.
+ *
+ * THE HOLE IT CLOSES. health.ts has always been able to raise a CRITICAL
+ * `zero_processing_anomaly` — "this job reported success having examined 0 items
+ * against its own median of 22", which is the literal signature of a silently
+ * denied read — and the engine carried on creating, because `gateFor()` reads
+ * the breakers, the lease and the budget ledger, and health findings reached
+ * none of them. They were rendered into a jsonb detail payload and that was all.
+ * A detector whose output gates nothing documents an incident; it does not
+ * prevent one.
+ *
+ * WHY IT TRIPS ON ONE. Same argument as `silent_success`: the halting kinds are
+ * not measurements of a rate, they are findings that the engine's own report of
+ * what it did cannot be believed. Every other breaker in this file computes its
+ * verdict FROM those reports. One confirmed instance makes the rest of the
+ * telemetry evidence of nothing, so there is no threshold to be under.
+ *
+ * WHY THIS SET OF HALTS. Identical to `silent_success`: creation,
+ * media_acquisition and publication. Measurement, classification and maintenance
+ * continue, because continuing to measure is how the problem gets diagnosed and
+ * re-running an idempotent assessor changes nothing.
+ */
+function healthFindingsBreaker(input: HealthFindingsInput | undefined): BreakerVerdict {
+  const halts: readonly EngineCapability[] = ["creation", "media_acquisition", "publication"];
+  if (!input) return noData("health_findings", "engine health", halts);
+
+  const observed = {
+    jobsAssessed: input.jobsAssessed,
+    criticalFindings: input.criticalFindings,
+    haltingFindings: input.haltingFindings,
+    haltingKinds: input.haltingKinds.join(", ") || null,
+    haltingJobs: input.haltingJobs.join(", ") || null,
+  };
+
+  if (input.haltingFindings > 0) {
+    return {
+      name: "health_findings",
+      state: "open",
+      basis: "measured",
+      why:
+        `${input.haltingFindings} critical health finding(s) of a halting kind ` +
+        `(${input.haltingKinds.join(", ")}) across ${input.haltingJobs.length} job(s): ` +
+        `${input.haltingJobs.join(", ")}. Each of those kinds means a stage's own report of what it did ` +
+        `is unreliable — it claimed success while touching nothing, examined nothing against a history ` +
+        `of examining plenty, or could not show it was able to read its input at all. Every other ` +
+        `breaker here computes its verdict from those same reports, so creation stops on the first ` +
+        `instance rather than on a rate.`,
+      action:
+        "Open the health findings in the tick's guard detail and find the named job(s). The finding " +
+        "carries the exact read to run by hand as anon. Do NOT clear it by re-running the pass — a " +
+        "denied read reproduces silently.",
+      halts,
+      observed,
+    };
+  }
+
+  return {
+    name: "health_findings",
+    state: "closed",
+    basis: "measured",
+    why:
+      `No halting health findings across ${input.jobsAssessed} job(s)` +
+      (input.criticalFindings > 0
+        ? `. ${input.criticalFindings} critical finding(s) were raised, but none of a kind this breaker ` +
+          `acts on — those kinds have their own breakers (job_interval, database_errors, ` +
+          `publication_volume, duplication_rate) and are deliberately not doubled up here.`
+        : "."),
     action: "None.",
     halts: [],
     observed,
@@ -831,6 +1033,7 @@ export function evaluateBreakers(inputs: BreakerInputs): BreakerReport {
     duplicationBreaker(inputs.duplication),
     jobIntervalBreaker(inputs.jobs),
     silentSuccessBreaker(inputs.silentSuccess),
+    healthFindingsBreaker(inputs.healthFindings),
   ];
 
   const open = verdicts.filter((v) => v.state === "open");

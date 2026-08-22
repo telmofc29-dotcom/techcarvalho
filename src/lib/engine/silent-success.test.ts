@@ -466,3 +466,44 @@ test("an assessor whose writes are DENIED is still caught, by the telemetry", ()
     "silent no-ops must still surface on an assessor"
   );
 });
+
+test("a consumer waiting on a HUMAN is not starved — the editor's inbox is not an engine fault", () => {
+  // The third costume of the same defect. engine_briefs produces briefs;
+  // engine_draft_assembly consumes only the ones a human has APPROVED. Five
+  // briefs across three productive runs with no approvals fired a CRITICAL
+  // downstream_starved, opened the silent_success breaker and halted creation.
+  //
+  // The engine stopped writing articles because the editor had not been through
+  // the inbox — and stopped hardest exactly when that inbox was fullest.
+  const runs = [
+    run({ jobName: "engine_briefs", hoursAgo: 1, itemsExamined: 9, itemsCreated: 3 }),
+    run({ jobName: "engine_briefs", hoursAgo: 25, itemsExamined: 9, itemsCreated: 2 }),
+    run({ jobName: "engine_briefs", hoursAgo: 49, itemsExamined: 9, itemsCreated: 2 }),
+    run({ jobName: "engine_draft_assembly", hoursAgo: 1, itemsExamined: 0 }),
+    run({ jobName: "engine_draft_assembly", hoursAgo: 25, itemsExamined: 0 }),
+  ];
+  const report = detectSilentSuccess(runs, ok);
+  assert.equal(
+    report.signals.some((s) => s.kind === "downstream_starved"),
+    false,
+    `waiting on an approval is not starvation: ${JSON.stringify(report.signals.map((s) => s.kind))}`
+  );
+});
+
+test("a consumer that does NOT wait on a human is still reported as starved", () => {
+  // The fix must not blind the detector to real starvation. engine_relevance
+  // consumes what engine_discover writes with no human in between, so a full
+  // producer and an idle consumer there IS the pipeline being broken.
+  const runs = [
+    run({ jobName: "engine_discover", hoursAgo: 1, itemsExamined: 9, itemsCreated: 3 }),
+    run({ jobName: "engine_discover", hoursAgo: 25, itemsExamined: 9, itemsCreated: 2 }),
+    run({ jobName: "engine_discover", hoursAgo: 49, itemsExamined: 9, itemsCreated: 2 }),
+    run({ jobName: "engine_relevance", hoursAgo: 1, itemsExamined: 0 }),
+    run({ jobName: "engine_relevance", hoursAgo: 25, itemsExamined: 0 }),
+  ];
+  const report = detectSilentSuccess(runs, ok);
+  assert.ok(
+    report.signals.some((s) => s.kind === "downstream_starved"),
+    "a machine-to-machine handoff that stopped moving is still an incident"
+  );
+});

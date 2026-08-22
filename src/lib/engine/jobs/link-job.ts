@@ -11,6 +11,7 @@ import {
   findOrphans, suggestLinksFor, pairKey, AUTO_LINK_THRESHOLD,
   type LinkCandidate,
 } from "@/lib/engine/link-suggestions";
+import { concludeEmptyQueue } from "./reader-liveness";
 import type { StageResult } from "./discovery";
 
 type Client = Awaited<ReturnType<typeof createClient>>;
@@ -86,8 +87,31 @@ export async function runInternalLinks(supabase: Client): Promise<StageResult> {
     .map((e) => ({ id: e.id, title: e.name, categoryId: null, type: "content" }));
 
   if (published.length === 0) {
-    await recordJobRun(supabase, JOB, "success", counters, { reason: "no_published_content" });
-    return { status: "success", ...counters };
+    // WAS: `recordJobRun(..., "success", ..., { reason: "no_published_content" })`.
+    //
+    // That row is byte-identical to the row a silently-denied read produces.
+    // Under RLS a denied SELECT returns zero rows with no error, so "there is no
+    // published content" and "we were not allowed to see the published content"
+    // wrote the same success. Nothing anywhere could tell them apart.
+    //
+    // The corroboration here is the strongest form available and costs nothing:
+    // engine_existing_entities returns products AND content, published and
+    // unpublished, and `published` is the result of filtering that answer in
+    // application code. If the RPC returned rows at all then the read was not
+    // denied — same statement, same grant, same policy. If it returned nothing
+    // either, there is no evidence, and this records `failed` rather than
+    // claiming an empty site it cannot demonstrate.
+    const outcome = await concludeEmptyQueue(supabase, {
+      stage: JOB,
+      source: "engine_existing_entities",
+      kind: "security_definer_rpc",
+      rowsReturned: entities.length,
+      eligible: 0,
+      reason: "no_published_content",
+      liveness: { form: "same_read_filtered", rowsReturned: entities.length },
+    });
+    await recordJobRun(supabase, JOB, outcome.status, counters, outcome.detail, outcome.error ?? undefined);
+    return { status: outcome.status, ...counters, detail: outcome.detail };
   }
 
   // Anything touched by a relationship in either direction, or associated with

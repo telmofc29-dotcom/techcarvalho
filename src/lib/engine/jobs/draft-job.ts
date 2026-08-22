@@ -11,6 +11,7 @@ import { postconditionDetail, writeCountsFrom } from "@/lib/engine/silent-succes
 import { assembleDraft, proposeSeo } from "@/lib/engine/draft-assembly";
 import { resolveEntity, proposeSlug } from "@/lib/engine/entity-resolution";
 import { proposedChanges } from "@/lib/engine/update-signals";
+import { concludeEmptyQueue } from "./reader-liveness";
 import type { StageResult } from "./discovery";
 
 type Client = Awaited<ReturnType<typeof createClient>>;
@@ -78,8 +79,32 @@ export async function runDraftAssembly(supabase: Client): Promise<StageResult> {
   }[];
 
   if (briefs.length === 0) {
-    await recordJobRun(supabase, JOB, "success", counters, { reason: "no_approved_briefs" });
-    return { status: "success", ...counters };
+    // WAS: `recordJobRun(..., "success", ..., { reason: "no_approved_briefs" })`.
+    //
+    // An empty inbox is the NORMAL state for this stage — it consumes only
+    // human-approved briefs — which is exactly what made the row so dangerous:
+    // the one shape a denial produces is the one shape nobody would ever look
+    // at twice. `{ data: [], error: null }` from a denied read and an editor who
+    // has approved nothing wrote the identical run.
+    //
+    // The control read is made only on this path, so a pass with work to do pays
+    // nothing for it. It excludes a blanket loss of grants. What it cannot
+    // exclude is stated in the probe's own corroboration text and is real for
+    // THIS RPC specifically: engine_assemblable_briefs opens with
+    // `if not engine_flag_enabled('research') then return; end if;`, so a
+    // research flag that reads false inside the function returns zero rows with
+    // no error. The job checked that flag itself moments ago, which narrows it,
+    // but does not close it — see supabase/migrations_pending/.
+    const outcome = await concludeEmptyQueue(supabase, {
+      stage: JOB,
+      source: "engine_assemblable_briefs",
+      kind: "security_definer_rpc",
+      rowsReturned: 0,
+      eligible: 0,
+      reason: "no_approved_briefs",
+    });
+    await recordJobRun(supabase, JOB, outcome.status, counters, outcome.detail, outcome.error ?? undefined);
+    return { status: outcome.status, ...counters, detail: outcome.detail };
   }
 
   // One scan of existing entities serves every brief in this pass — both for
@@ -119,7 +144,7 @@ export async function runDraftAssembly(supabase: Client): Promise<StageResult> {
     await log.pendingCreatedId({
       operation: "engine_record_entity_resolution",
       subject: brief.proposed_title.slice(0, 50),
-      migration: "supabase/migrations_pending/20260822_silent_success_telemetry.sql",
+      migration: "supabase/migrations/20260822_silent_success_telemetry.sql",
       // 'rejected_invalid' is the only non-creating answer, and it is NOT
       // benign: it means the decision enum drifted, which would erase the
       // explanation for every decision while every run still reported success.

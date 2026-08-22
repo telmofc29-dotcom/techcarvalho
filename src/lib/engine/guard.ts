@@ -66,7 +66,7 @@ export type Telemetry = {
  *
  * The four postcondition columns are OPTIONAL because they do not exist in
  * production yet — the draft that adds them is in
- * supabase/migrations_pending/20260822_silent_success_telemetry.sql. They are
+ * supabase/migrations/20260822_silent_success_telemetry.sql, applied and verified 16/16 on 2026-08-22. They are
  * read as `undefined` rather than defaulted to 0, because 0 would assert "no
  * silent no-ops occurred" on the strength of a column that was never selected.
  */

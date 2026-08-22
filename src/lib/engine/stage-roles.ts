@@ -30,6 +30,29 @@ export type StageEffect = {
   feeds: readonly string[];
   /** What a row created by this stage IS, for the message text. */
   produces: string;
+  /**
+   * True when this stage's INPUT only becomes available after a human acts.
+   *
+   * The third instance of the same defect. `role` fixed detectors #1 and #5,
+   * which judge a stage by what IT produced. Detector #6 (downstream_starved)
+   * judges a stage by what its declared CONSUMER examined, and read no role at
+   * all — so `engine_briefs` producing five briefs across three runs while no
+   * editor approves any of them fired a CRITICAL starvation signal, opened the
+   * silent_success breaker, and halted creation.
+   *
+   * That is: the engine stops writing articles because the editor is on
+   * holiday, and it stops hardest exactly when the queue is fullest.
+   *
+   * `role: "assessor"` is the wrong tool here — it describes what a stage
+   * produces, and the question is why its input is empty. Those are different
+   * facts and conflating them is how this kept recurring in new costumes.
+   *
+   * NOTHING IS LOST BY THIS EXEMPTION. A consumer whose queue read was actually
+   * DENIED is caught by input_unproven, which is positive evidence about the
+   * read rather than an inference from an empty queue — and unlike this
+   * detector, it fires on the very first run with no history.
+   */
+  consumptionRequiresHumanAction?: boolean;
 };
 
 export const STAGE_EFFECTS: readonly StageEffect[] = [
@@ -41,7 +64,7 @@ export const STAGE_EFFECTS: readonly StageEffect[] = [
   // Assembly consumes only HUMAN-APPROVED briefs, so it is legitimately idle
   // whenever nobody has approved one. Judging it as a producer would flag the
   // editor's inbox as an engine fault.
-  { job: "engine_draft_assembly", role: "assessor", feeds: [], produces: "a draft article" },
+  { job: "engine_draft_assembly", role: "assessor", feeds: [], produces: "a draft article", consumptionRequiresHumanAction: true },
   { job: "engine_search_intelligence", role: "producer", feeds: ["engine_opportunities", "engine_trends"], produces: "an aggregated search row" },
   { job: "engine_opportunities", role: "producer", feeds: [], produces: "an opportunity score" },
   { job: "engine_trends", role: "producer", feeds: [], produces: "a trend measurement" },

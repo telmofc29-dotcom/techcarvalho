@@ -8,6 +8,7 @@ import {
 } from "@/lib/engine/postconditions";
 import { postconditionDetail, writeCountsFrom } from "@/lib/engine/silent-success";
 import { classifyRelevance } from "@/lib/engine/relevance";
+import { concludeEmptyQueue } from "./reader-liveness";
 import type { StageResult } from "./discovery";
 
 type Client = Awaited<ReturnType<typeof createClient>>;
@@ -48,6 +49,24 @@ export async function runRelevance(supabase: Client): Promise<StageResult> {
   }
 
   const rows = (data ?? []) as { id: string; title: string; summary: string | null }[];
+
+  // An empty classification queue used to fall through the loop and record
+  // success with every counter at zero — indistinguishable from the run a
+  // silently-denied read produces, because RLS denies by returning zero rows
+  // with no error. NOTHING_TO_DO has to be earned; see queue-read.ts.
+  if (rows.length === 0) {
+    const outcome = await concludeEmptyQueue(supabase, {
+      stage: JOB,
+      source: "engine_unclassified_discoveries",
+      kind: "security_definer_rpc",
+      rowsReturned: 0,
+      eligible: 0,
+      reason: "no_unclassified_discoveries",
+    });
+    await recordJobRun(supabase, JOB, outcome.status, counters, outcome.detail, outcome.error ?? undefined);
+    return { status: outcome.status, ...counters, detail: outcome.detail };
+  }
+
   const tally = { relevant: 0, rejected: 0, uncertain: 0 };
   const log = createPostconditionLog(counters);
 
@@ -68,7 +87,7 @@ export async function runRelevance(supabase: Client): Promise<StageResult> {
     // admin-overridden, deleted, or invisible under RLS also yields 'ok'. That
     // is a silent no-op living inside the function, and no amount of checking
     // out here can see it. The fix is drafted in
-    // supabase/migrations_pending/20260822_silent_success_telemetry.sql, which
+    // supabase/migrations/20260822_silent_success_telemetry.sql, applied 2026-08-22, which
     // makes it return 'updated' / 'no_matching_row' / 'human_override'; those
     // are listed below already so applying it needs no change here.
     await log.rpc({

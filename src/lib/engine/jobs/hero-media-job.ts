@@ -11,6 +11,7 @@ import {
   classifyMediaTier, evaluateHero, inferSubjectKind,
   type ClassifiableAsset,
 } from "@/lib/media/hierarchy";
+import { concludeEmptyQueue } from "./reader-liveness";
 import type { StageResult } from "./discovery";
 
 type Client = Awaited<ReturnType<typeof createClient>>;
@@ -106,6 +107,29 @@ export async function runHeroMediaAudit(supabase: Client): Promise<StageResult> 
   const alreadyTracked = new Set(
     ((requirementResult.data ?? []) as { entity_id: string }[]).map((r) => r.entity_id)
   );
+
+  // The queue is `entities` filtered to published, and the filter runs in
+  // application code below. An empty published set used to fall through the loop
+  // and record success with every counter at zero — the same row a denied
+  // engine_existing_entities produces, because RLS denies by returning zero rows
+  // with no error. Classified BEFORE the loop so the two are separable: rows
+  // coming back from the RPC at all is proof the read was permitted, and it is
+  // the same statement and the same grant, which is the strongest form of that
+  // proof available anywhere.
+  const publishedEntities = entities.filter((e) => e.is_published);
+  if (publishedEntities.length === 0) {
+    const outcome = await concludeEmptyQueue(supabase, {
+      stage: JOB,
+      source: "engine_existing_entities",
+      kind: "security_definer_rpc",
+      rowsReturned: entities.length,
+      eligible: 0,
+      reason: "no_published_entities",
+      liveness: { form: "same_read_filtered", rowsReturned: entities.length },
+    });
+    await recordJobRun(supabase, JOB, outcome.status, counters, outcome.detail, outcome.error ?? undefined);
+    return { status: outcome.status, ...counters, detail: outcome.detail };
+  }
 
   const log = createPostconditionLog(counters);
   const flagged: string[] = [];

@@ -11,6 +11,7 @@ import { runAcquisitionPipeline } from "@/lib/media/providers/pipeline";
 import { buildEnabledProviders } from "@/lib/media/providers/registry";
 import { DEFAULT_RANKING_CONTEXT } from "@/lib/media/providers/ranking";
 import type { SubjectIdentity } from "@/lib/media/providers/query-expansion";
+import { concludeEmptyQueue } from "./reader-liveness";
 import type { StageResult } from "./discovery";
 
 type Client = Awaited<ReturnType<typeof createClient>>;
@@ -174,6 +175,24 @@ export async function runMediaAcquisition(supabase: Client): Promise<StageResult
     category_slug: string | null;
     existing_candidates: number;
   }[];
+
+  // An empty requirement list used to fall through and record success with every
+  // counter at zero — the identical row a silently-denied read of
+  // engine_open_media_requirements produces. "No media is blocked" and "we were
+  // not allowed to see what is blocked" are opposite facts and wrote the same
+  // run. NOTHING_TO_DO has to be earned; see queue-read.ts.
+  if (requirements.length === 0) {
+    const outcome = await concludeEmptyQueue(supabase, {
+      stage: JOB,
+      source: "engine_open_media_requirements",
+      kind: "security_definer_rpc",
+      rowsReturned: 0,
+      eligible: 0,
+      reason: "no_open_media_requirements",
+    });
+    await recordJobRun(supabase, JOB, outcome.status, counters, outcome.detail, outcome.error ?? undefined);
+    return { status: outcome.status, ...counters, detail: outcome.detail };
+  }
 
   // Source registry, keyed by organisation, so a manufacturer candidate can
   // carry that source's REAL verified rights status rather than a guess.

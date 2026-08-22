@@ -84,6 +84,131 @@ export type SilentSuccessKind =
 
 export type SilentSuccessSeverity = "warning" | "critical";
 
+// ---------------------------------------------------------------------------
+// THE FOUR TELEMETRY STATES — separately representable, separately reported
+// ---------------------------------------------------------------------------
+
+/**
+ * What the detector's window actually contained.
+ *
+ * THE DEFECT THIS EXISTS TO MAKE IMPOSSIBLE. An assessor stage finding nothing
+ * to flag — its GOAL — raised a CRITICAL signal that opened the silent_success
+ * breaker and halted creation, media_acquisition and publication. The engine
+ * stopped writing articles precisely BECAUSE the site had no orphans, and
+ * started again only when the site got worse. The fix made the detectors
+ * role-aware, which stopped that particular collapse; this type stops the whole
+ * FAMILY of them, by giving each of the four possible readings its own name and
+ * forbidding any of them from being computed as another.
+ *
+ * The four are mutually exclusive and jointly exhaustive:
+ *
+ *   ZERO_MEASURED_RUNS  There were no runs in the window to examine. Nothing was
+ *                       measured, so nothing is known. NOT health — an engine
+ *                       that has not run is not an engine that is fine. It is
+ *                       also not an incident: there is no evidence of anything.
+ *
+ *   MEASURED_CLEAN      Runs were examined and every one of them came back
+ *                       genuinely clean. THIS, AND ONLY THIS, IS HEALTH. It is
+ *                       the one state reachable only by having looked.
+ *
+ *   TELEMETRY_UNAVAILABLE  The detector could not read what it needs. NOT clean.
+ *                       The absence of evidence looks identical to good news for
+ *                       this failure class, which is exactly why it gets its own
+ *                       state rather than defaulting into MEASURED_CLEAN. Still
+ *                       fails closed: it opens the breaker and blocks graduation.
+ *
+ *   INCIDENTS_DETECTED  At least one genuine critical signal.
+ *
+ * ZERO_MEASURED_RUNS and TELEMETRY_UNAVAILABLE are both UNKNOWN — see
+ * `telemetryStateIsKnown`. Neither reads as healthy and neither reads as an
+ * incident, because "we did not look" and "we looked and it was bad" are
+ * different facts and collapsing them in either direction is a lie.
+ */
+export type TelemetryState =
+  | "zero_measured_runs"
+  | "measured_clean"
+  | "telemetry_unavailable"
+  | "incidents_detected";
+
+export const TELEMETRY_STATES: readonly TelemetryState[] = [
+  "zero_measured_runs",
+  "measured_clean",
+  "telemetry_unavailable",
+  "incidents_detected",
+];
+
+export const TELEMETRY_STATE_HEADLINES: Record<TelemetryState, string> = {
+  zero_measured_runs: "NOTHING WAS MEASURED — no runs in the window",
+  measured_clean: "measured and clean — runs were examined and are genuinely healthy",
+  telemetry_unavailable: "TELEMETRY UNAVAILABLE — the detector could not read what it needs",
+  incidents_detected: "INCIDENTS DETECTED — at least one stage's report of itself is unreliable",
+};
+
+export const TELEMETRY_STATE_MEANINGS: Record<TelemetryState, string> = {
+  zero_measured_runs:
+    "The window contained no measured runs at all — either the engine has never run, or every run in it " +
+    "was 'skipped' and therefore excluded from every baseline. NOT a clean bill of health: no detector " +
+    "in this file examined anything, so a stage could be entirely broken and produce exactly this. Also " +
+    "NOT an incident, because there is no evidence of one. It is UNKNOWN, and it is reported as unknown.",
+  measured_clean:
+    "Runs were examined and every rule in this file was applied to them, and none fired. This is the " +
+    "ONLY state that means health, and it is reachable only by having looked. An assessor that examined " +
+    "rows and deliberately flagged none of them lands here, which is correct: zero orphans is the goal, " +
+    "not an empty result.",
+  telemetry_unavailable:
+    "The detector could not read the job-run telemetry, so SILENT_SUCCESS could not be looked for at " +
+    "all. NOT clean. This class's entire signature is that its absence of evidence looks identical to " +
+    "good news, so an engine that cannot show its stages are having an effect is treated as one that is " +
+    "not. Fails closed: opens the breaker and blocks graduation.",
+  incidents_detected:
+    "At least one critical signal fired: a stage reported success while having no effect, rejected " +
+    "everything and called it success, has never once produced what it exists to produce, or starved " +
+    "its declared consumer. The engine's own report of what it did cannot be believed.",
+};
+
+/** THE ONLY state that means healthy. Zero measured runs is not health. */
+export function telemetryStateIsHealthy(state: TelemetryState): boolean {
+  return state === "measured_clean";
+}
+
+/** Whether anything at all was established. False for both UNKNOWN states. */
+export function telemetryStateIsKnown(state: TelemetryState): boolean {
+  return state === "measured_clean" || state === "incidents_detected";
+}
+
+/** Whether the state constitutes evidence of a problem, as opposed to absence of evidence. */
+export function telemetryStateIsIncident(state: TelemetryState): boolean {
+  return state === "incidents_detected";
+}
+
+/**
+ * Whether the state must block autonomous graduation.
+ *
+ * Everything except MEASURED_CLEAN. Graduation is a claim that the engine has
+ * been SHOWN to be safe, and three of the four states are the absence of that
+ * showing rather than the presence of it. TELEMETRY_UNAVAILABLE blocking is the
+ * fail-closed rule and must never erode; ZERO_MEASURED_RUNS blocking is the same
+ * rule applied to the case where the reads worked and there was nothing in them.
+ */
+export function telemetryStateBlocksGraduation(state: TelemetryState): boolean {
+  return state !== "measured_clean";
+}
+
+/**
+ * Whether the state may open the silent-success breaker.
+ *
+ * MEASURED_CLEAN must never trip it — that is requirement (b), and violating it
+ * is what halted creation on a healthy site. ZERO_MEASURED_RUNS must not trip it
+ * either, for a different reason: a brand-new engine has no runs, and a breaker
+ * that opens on an empty history would make the engine unable to ever start,
+ * which is not fail-closed but merely stuck. It is reported as UNKNOWN instead —
+ * `basis: "no_data"` on the verdict, which is structurally distinct from
+ * `basis: "measured"` and is the field an operator reads to tell the two apart.
+ */
+export function telemetryStateOpensBreaker(state: TelemetryState): boolean {
+  return state === "telemetry_unavailable" || state === "incidents_detected";
+}
+
 export type SilentSuccessSignal = {
   kind: SilentSuccessKind;
   severity: SilentSuccessSeverity;
@@ -141,7 +266,7 @@ export const SILENT_SUCCESS_THRESHOLDS = {
  * telemetry does not carry them — which is the case in production TODAY,
  * because `engine_recent_job_runs` returns a fixed column list that predates
  * this module. `null` means UNMEASURED and is never read as zero. The draft in
- * supabase/migrations_pending/20260822_silent_success_telemetry.sql adds them.
+ * supabase/migrations/20260822_silent_success_telemetry.sql, applied 2026-08-22, added them.
  *
  * The detectors below are written so the ones that need only the old columns
  * still work without it. Losing the sharp instrument must not mean losing all
@@ -162,6 +287,42 @@ export type SilentSuccessReport = {
   affectedJobs: string[];
   /** Whether the sharp per-run counters were available at all. */
   postconditionTelemetry: "present" | "absent";
+  /**
+   * Which of the four telemetry states this window is in. THE authoritative
+   * field — `clean` below is deliberately narrower and must not be read as
+   * health.
+   */
+  telemetryState: TelemetryState;
+  /**
+   * True iff `telemetryState` is MEASURED_CLEAN.
+   *
+   * Separate from `clean` on purpose, and the difference is the whole of task 1:
+   * `clean` means "no critical signal fired", which is ALSO true when nothing
+   * was measured and when the reads failed. `healthy` means "runs were examined
+   * and they were genuinely fine". Only the second is a claim about the engine.
+   */
+  healthy: boolean;
+  /** False for both UNKNOWN states — nothing was established either way. */
+  known: boolean;
+  /** Runs that entered the analysis: everything not 'skipped'. */
+  measuredRuns: number;
+  /** Runs excluded from every rule here because they were 'skipped'. */
+  skippedRuns: number;
+  /**
+   * Jobs for which EVERY run in the window was skipped.
+   *
+   * A job in this list contributed no evidence at all, and every readiness
+   * number computed over the window is computed over nothing for it. Named so an
+   * intentional skip cannot quietly make the telemetry look better than it is.
+   */
+  jobsWithOnlySkippedRuns: string[];
+  /**
+   * No CRITICAL signal fired.
+   *
+   * NOT the same as healthy. Left with its original meaning because the breaker
+   * and existing callers key on it, but read `healthy`/`telemetryState` to ask
+   * "is the engine fine?".
+   */
   clean: boolean;
   summary: string;
 };
@@ -202,12 +363,54 @@ export function detectSilentSuccess(
         "its signature) before trusting any 'success' the engine reports.",
       observed: { telemetryAvailable: false },
     });
-    return finish(signals, "absent");
+    return finish(signals, "absent", {
+      state: "telemetry_unavailable",
+      measuredRuns: 0,
+      skippedRuns: runs.filter((r) => r.status === "skipped").length,
+      jobsWithOnlySkippedRuns: [],
+    });
   }
 
   const measured = runs.filter((r) => r.status !== "skipped");
+  const skipped = runs.filter((r) => r.status === "skipped");
   const anyCounters = measured.some((r) => r.silentNoOps !== null && r.silentNoOps !== undefined);
   const telemetry: "present" | "absent" = anyCounters ? "present" : "absent";
+
+  // --- Jobs that contributed NOTHING because every run of theirs was skipped --
+  // A skipped run is excluded from every rule in this file and from every
+  // baseline in health.ts, which is correct — a flag-disabled run records zeros
+  // by definition and letting those into a median would teach the detector that
+  // doing nothing is normal. But the exclusion has a cost that was never
+  // reported: a job whose every run in the window was skipped is INVISIBLE, not
+  // clean, and readiness computed over the window is computed over nothing for
+  // it. Named here so an intentional skip cannot make the telemetry look
+  // healthier than it is.
+  const measuredJobs = new Set(measured.map((r) => r.jobName));
+  const jobsWithOnlySkippedRuns = [
+    ...new Set(skipped.map((r) => r.jobName).filter((j) => !measuredJobs.has(j))),
+  ].sort();
+
+  if (jobsWithOnlySkippedRuns.length > 0) {
+    signals.push({
+      kind: "detection_unavailable",
+      severity: "warning",
+      job: jobsWithOnlySkippedRuns.join(", "),
+      why:
+        `${jobsWithOnlySkippedRuns.length} job(s) have NO measured run in this window — every run of ` +
+        `theirs was 'skipped', and skipped runs are excluded from every rule in this file and every ` +
+        `baseline in health.ts. Nothing has been checked about them. That is not the same as their ` +
+        `having been checked and found fine, and it must not be counted as evidence toward readiness.`,
+      action:
+        "Confirm the skip was intentional by reading the reason on those rows. A reason ending " +
+        "'_flag_unreadable' is NOT an intentional skip — it is a failed kill-switch read, and those " +
+        "record 'failed' now precisely so they stop landing here.",
+      observed: {
+        jobs: jobsWithOnlySkippedRuns.join(", "),
+        skippedRuns: skipped.length,
+        measuredRuns: measured.length,
+      },
+    });
+  }
 
   if (!anyCounters && measured.length > 0) {
     signals.push({
@@ -219,7 +422,7 @@ export function detectSilentSuccess(
         "the coarser cross-run shapes below. A mutation that was rejected and counted as a " +
         "duplicate is invisible at this resolution.",
       action:
-        "Apply supabase/migrations_pending/20260822_silent_success_telemetry.sql, which adds " +
+        "Applied: supabase/migrations/20260822_silent_success_telemetry.sql, which adds " +
         "silent_no_ops / unverified_writes / blind_writes to engine_job_runs and exposes them " +
         "through engine_recent_job_runs.",
       observed: { runsChecked: measured.length },
@@ -420,6 +623,22 @@ export function detectSilentSuccess(
       const consumerExamined = sum(consumerRuns.map((r) => r.itemsExamined));
       if (consumerExamined > 0) continue;
 
+      // A consumer whose input only arrives after a HUMAN acts is not starved
+      // when its queue is empty — it is waiting, which is the design.
+      // engine_draft_assembly consumes only human-APPROVED briefs, so a full
+      // brief queue with no approvals fired a CRITICAL signal, opened the
+      // silent_success breaker and halted creation: the engine stopped writing
+      // articles because the editor had not been through the inbox, and
+      // stopped hardest exactly when that inbox was fullest.
+      //
+      // This is the same defect as the assessor false positive, in a third
+      // costume — detector #6 judges a stage by what its CONSUMER examined and
+      // read no role at all. Nothing is lost: a consumer whose queue read was
+      // genuinely DENIED is caught by input_unproven, which is positive
+      // evidence about the read rather than an inference from an empty queue,
+      // and which fires on the first run with no history at all.
+      if (stageEffectOf(consumerName)?.consumptionRequiresHumanAction) continue;
+
       signals.push({
         kind: "downstream_starved",
         severity: "critical",
@@ -446,23 +665,72 @@ export function detectSilentSuccess(
     }
   }
 
-  return finish(signals, telemetry);
+  return finish(signals, telemetry, {
+    state: null,
+    measuredRuns: measured.length,
+    skippedRuns: skipped.length,
+    jobsWithOnlySkippedRuns,
+  });
 }
 
-function finish(signals: SilentSuccessSignal[], telemetry: "present" | "absent"): SilentSuccessReport {
+function finish(
+  signals: SilentSuccessSignal[],
+  telemetry: "present" | "absent",
+  window: {
+    /** Forced only for the total-blindness path; otherwise derived below. */
+    state: TelemetryState | null;
+    measuredRuns: number;
+    skippedRuns: number;
+    jobsWithOnlySkippedRuns: string[];
+  }
+): SilentSuccessReport {
   const critical = signals.filter((s) => s.severity === "critical");
   const affectedJobs = [...new Set(signals.map((s) => s.job))];
+
+  // THE STATE MACHINE, written as one total expression so no branch can fall
+  // through into "healthy" by accident. Order matters and is argued:
+  //
+  //   1. TELEMETRY_UNAVAILABLE first — it explains everything else, and a
+  //      detector that could not read must not report on what it did not see.
+  //   2. INCIDENTS_DETECTED next — evidence of a problem outranks absence of
+  //      evidence.
+  //   3. ZERO_MEASURED_RUNS — nothing was examined, so nothing is known.
+  //   4. MEASURED_CLEAN — the only remaining case, and the only one that can be
+  //      reached by having actually looked at runs and found them fine.
+  const state: TelemetryState =
+    window.state !== null
+      ? window.state
+      : critical.length > 0
+        ? "incidents_detected"
+        : window.measuredRuns === 0
+          ? "zero_measured_runs"
+          : "measured_clean";
+
+  const warnings = signals.length - critical.length;
+  const signalText =
+    signals.length === 0
+      ? "no signals"
+      : `${critical.length} critical and ${warnings} warning signal(s): ` +
+        signals.map((s) => `${s.job}/${s.kind}`).join(", ");
+
   return {
     signals,
     critical,
     affectedJobs,
     postconditionTelemetry: telemetry,
+    telemetryState: state,
+    healthy: telemetryStateIsHealthy(state),
+    known: telemetryStateIsKnown(state),
+    measuredRuns: window.measuredRuns,
+    skippedRuns: window.skippedRuns,
+    jobsWithOnlySkippedRuns: window.jobsWithOnlySkippedRuns,
     clean: critical.length === 0,
+    // The summary NAMES the state. Two different states producing the same
+    // sentence is the collapse this whole change exists to prevent, and it is
+    // asserted in the tests rather than left as an intention.
     summary:
-      signals.length === 0
-        ? "No SILENT_SUCCESS signals."
-        : `${critical.length} critical and ${signals.length - critical.length} warning SILENT_SUCCESS ` +
-          `signal(s): ${signals.map((s) => `${s.job}/${s.kind}`).join(", ")}.`,
+      `SILENT_SUCCESS [${state}] ${TELEMETRY_STATE_HEADLINES[state]} — ` +
+      `${window.measuredRuns} measured run(s), ${window.skippedRuns} skipped, ${signalText}.`,
   };
 }
 
@@ -537,6 +805,12 @@ export type SilentSuccessInput = {
   jobsAffected: number;
   /** Whether the sharp per-run counters were available. */
   postconditionTelemetry: "present" | "absent";
+  /** Which of the four states the window is in. */
+  telemetryState: TelemetryState;
+  /** Runs that actually entered the analysis. */
+  measuredRuns: number;
+  /** Runs excluded as 'skipped'. */
+  skippedRuns: number;
 };
 
 export function silentSuccessBreakerInput(report: SilentSuccessReport, runsObserved: number): SilentSuccessInput {
@@ -546,6 +820,9 @@ export function silentSuccessBreakerInput(report: SilentSuccessReport, runsObser
     criticalSignals: report.critical.length,
     jobsAffected: report.affectedJobs.length,
     postconditionTelemetry: report.postconditionTelemetry,
+    telemetryState: report.telemetryState,
+    measuredRuns: report.measuredRuns,
+    skippedRuns: report.skippedRuns,
   };
 }
 
@@ -608,6 +885,20 @@ export const SILENT_SUCCESS_READINESS = {
   maxBlindWriteOperations: 0,
   /** Detection must itself be demonstrably working. */
   requirePostconditionTelemetry: true,
+  /**
+   * Graduation requires the MEASURED_CLEAN state specifically.
+   *
+   * Not "no critical signals" — that is satisfied by ZERO_MEASURED_RUNS and by
+   * TELEMETRY_UNAVAILABLE too, and neither of those is evidence of safety. An
+   * engine graduates on having been shown to be safe, and two of the four states
+   * are the absence of that showing.
+   */
+  requireMeasuredCleanTelemetry: true,
+  /**
+   * Jobs whose every run in the window was skipped contribute no evidence, and a
+   * readiness number computed over them is computed over nothing.
+   */
+  maxJobsWithOnlySkippedRuns: 0,
 } as const;
 
 export type SilentSuccessEvidence = {
@@ -650,6 +941,43 @@ export function silentSuccessGraduationBlockers(evidence: SilentSuccessEvidence)
       actual: "absent — silent no-ops cannot be counted, so a count of zero would be an assumption",
     });
   }
+
+  // --- The four-state gate ---------------------------------------------------
+  // The three non-healthy states each get their OWN blocker text, because
+  // "readiness was refused" is useless to an operator who cannot tell whether
+  // the engine is broken, was never looked at, or could not be read.
+  if (
+    SILENT_SUCCESS_READINESS.requireMeasuredCleanTelemetry &&
+    telemetryStateBlocksGraduation(report.telemetryState)
+  ) {
+    blockers.push({
+      criterion: "SILENT_SUCCESS telemetry state",
+      required: "measured_clean — runs examined and found genuinely clean",
+      actual:
+        `${report.telemetryState} — ${TELEMETRY_STATE_HEADLINES[report.telemetryState]}. ` +
+        `${TELEMETRY_STATE_MEANINGS[report.telemetryState]} ` +
+        `(measured ${report.measuredRuns}, skipped ${report.skippedRuns})`,
+    });
+  }
+
+  // --- Jobs that were only ever skipped --------------------------------------
+  // An intentional skip is legitimate operation and is NOT an incident. What it
+  // must not do is make readiness look better than the evidence supports: a job
+  // that never ran in the window has been checked by nothing, and counting its
+  // silence as a pass is the same substitution — absence of evidence for
+  // evidence of absence — that this whole module exists to refuse.
+  if (report.jobsWithOnlySkippedRuns.length > SILENT_SUCCESS_READINESS.maxJobsWithOnlySkippedRuns) {
+    blockers.push({
+      criterion: "Jobs with no measured run in the readiness window",
+      required: "0 — every job must have contributed at least one measured run",
+      actual:
+        `${report.jobsWithOnlySkippedRuns.length}: ${report.jobsWithOnlySkippedRuns.join(", ")}. ` +
+        `Every run of these was 'skipped' and therefore excluded from every detector and every ` +
+        `baseline. Nothing about them has been checked; that is not the same as their having been ` +
+        `checked and found fine.`,
+    });
+  }
+
   return blockers;
 }
 

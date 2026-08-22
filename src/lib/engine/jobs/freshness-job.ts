@@ -7,6 +7,7 @@ import {
   worstStatus,
 } from "@/lib/engine/postconditions";
 import { postconditionDetail, writeCountsFrom } from "@/lib/engine/silent-success";
+import { concludeEmptyQueue } from "./reader-liveness";
 import type { StageResult } from "./discovery";
 
 type Client = Awaited<ReturnType<typeof createClient>>;
@@ -59,6 +60,23 @@ export async function runFreshness(supabase: Client): Promise<StageResult> {
     age_days: number;
     source_count: number;
   }[];
+
+  // An empty candidate list used to fall through the loop and record success
+  // with every counter at zero — the identical row a silently-denied read
+  // produces, because RLS denies by returning zero rows with no error.
+  // NOTHING_TO_DO has to be earned; see queue-read.ts.
+  if (candidates.length === 0) {
+    const outcome = await concludeEmptyQueue(supabase, {
+      stage: JOB,
+      source: "engine_freshness_candidates",
+      kind: "security_definer_rpc",
+      rowsReturned: 0,
+      eligible: 0,
+      reason: "no_freshness_candidates",
+    });
+    await recordJobRun(supabase, JOB, outcome.status, counters, outcome.detail, outcome.error ?? undefined);
+    return { status: outcome.status, ...counters, detail: outcome.detail };
+  }
 
   // Every mutation in this pass goes through the log, which folds results into
   // `counters` itself. There is deliberately no hand-written

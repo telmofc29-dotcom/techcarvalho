@@ -21,6 +21,7 @@ import type {
   BreakerInputs,
   DatabaseErrorInput,
   DuplicationInput,
+  HealthFindingsInput,
   JobIntervalInput,
   PublicationVolumeInput,
 } from "./circuit-breaker.ts";
@@ -107,6 +108,27 @@ export type HealthFindingKind =
   | "deduplication_starvation"
   /** Several consecutive failed runs. */
   | "repeated_failures"
+  /**
+   * The stage could not establish that it was ABLE TO SEE its own input.
+   *
+   * The row shape is: status 'failed', every counter zero. A stage that got as
+   * far as examining, creating, deduplicating or failing an item has
+   * demonstrated that it could read something; one that failed before touching
+   * anything has not, and the two causes that produce this shape are precisely
+   * the two this project keeps shipping:
+   *
+   *   * a queue read that came back empty with no error and no corroborating
+   *     evidence that the reader was awake — see queue-read.ts, which is what
+   *     turns that case into this row instead of into `status: success`;
+   *   * a kill-switch read that failed, so the stage does not know whether it
+   *     was allowed to run — see readFlag() in cron.ts.
+   *
+   * NEEDS NO HISTORY, and that is the entire point. `zero_processing_anomaly`
+   * below compares a job against its own baseline and therefore cannot fire for
+   * a stage that has been denied since birth — which is exactly how the 2026-08
+   * grants incident survived weeks. This one fires on the FIRST such run.
+   */
+  | "input_unproven"
   /** Not enough history to judge. Reported rather than silently assumed fine. */
   | "insufficient_history";
 
@@ -297,6 +319,56 @@ export function assessEngineHealth(
           deduped: latest.itemsDeduped,
           failed: latest.itemsFailed,
           status: latest.status,
+        },
+      });
+    }
+
+    // --- 1b. The stage never established that it could see its input --------
+    // NO HISTORY REQUIRED. Every other baseline-relative rule in this file
+    // compares a job against itself, which is the right instrument for a job
+    // that USED to work — and completely blind to one that never did. A stage
+    // whose grant was missing from the day it shipped has a flat history of
+    // zeros and looks perfectly normal against it.
+    //
+    // This rule reads a shape instead of a baseline: a run that ended in
+    // 'failed' having examined, created, deduplicated and failed NOTHING did not
+    // get far enough to touch any work. Either its input read could not be shown
+    // to have been permitted (queue-read.ts records exactly this row for an
+    // unproven empty queue) or its kill-switch read failed (readFlag() in
+    // cron.ts records exactly this row for `<flag>_flag_unreadable`).
+    //
+    // Both are the same fact from the engine's point of view: THE STAGE CANNOT
+    // SHOW THAT IT WAS ABLE TO LOOK. That is not a quiet night.
+    if (
+      latest.status === "failed" &&
+      latest.itemsExamined === 0 &&
+      latest.itemsCreated === 0 &&
+      latest.itemsDeduped === 0 &&
+      latest.itemsFailed === 0
+    ) {
+      findings.push({
+        job,
+        kind: "input_unproven",
+        severity: "critical",
+        why:
+          `${job}'s most recent run ended in 'failed' having examined, created, deduplicated and failed ` +
+          `NOTHING. It did not get far enough to touch a single item, so it never demonstrated that it ` +
+          `could read its own input queue or its own kill switch. Under RLS a denied read returns zero ` +
+          `rows and no error, so "there was nothing to do" and "we were not allowed to look" are the same ` +
+          `bytes — this run refused to claim the first without evidence, and that refusal is what is ` +
+          `being reported here. It needs no history, which is why a stage denied FROM BIRTH is visible.`,
+        action:
+          "Read the run's detail payload. If it carries a `stageOutcome` block, the `inputProbe` inside " +
+          "names the read, what corroboration was attempted and why it was insufficient. If it carries " +
+          "a `<flag>_flag_unreadable` reason, engine_flag_enabled is the thing to call by hand as anon.",
+        observed: {
+          status: latest.status,
+          examined: 0,
+          created: 0,
+          deduped: 0,
+          failed: 0,
+          hasError: latest.hasError,
+          priorRuns: history.length,
         },
       });
     }
@@ -545,10 +617,65 @@ export function assessEngineHealth(
  * deliberately absent here rather than approximated. The breakers treat a
  * missing input according to their own fail-closed table.
  */
+/**
+ * Health findings that are allowed to OPEN A BREAKER, and the ones that are not.
+ *
+ * Until now no HealthFinding of any severity reached any breaker. health.ts
+ * could raise a CRITICAL `zero_processing_anomaly` — the read-side denial
+ * signature, the exact thing this engine exists to catch — and the engine would
+ * carry on creating, because `gateFor()` consults the breakers, the lease and
+ * the budget ledger and nothing else. A detector whose output gates nothing is a
+ * detector that documents an incident rather than preventing one.
+ *
+ * The list is a SUBSET, deliberately, and the criterion for membership is: does
+ * this finding mean THE ENGINE'S REPORT OF ITSELF IS UNRELIABLE?
+ *
+ *   * `success_no_effect`         — a run said success and touched nothing.
+ *   * `zero_processing_anomaly`   — a run said success having examined nothing,
+ *                                   against its own history of examining plenty.
+ *   * `input_unproven`            — a run could not show it was able to look.
+ *
+ * DELIBERATELY EXCLUDED: `stale_job`, `stuck_run`, `repeated_failures`,
+ * `abnormal_volume`, `deduplication_anomaly`. Not because they are unimportant —
+ * each already has its own breaker (`job_interval`, `database_errors`,
+ * `publication_volume`, `duplication_rate`) built for it — but because they are
+ * evidence that a stage IS NOT RUNNING, and halting a capability is itself a way
+ * of stopping stages from running. Folding them in creates a breaker that, once
+ * open, guarantees its own input: halted stages record no rows, missing rows
+ * become staleness, staleness re-opens the breaker. health.ts's own standard
+ * applies — "a breaker that opens permanently on a false signal is not
+ * fail-closed, it is broken".
+ *
+ * The three that ARE included have the same property the `silent_success`
+ * breaker already accepts for the identical `success_no_effect` shape: they
+ * latch until the cause is fixed and the evidence rolls out of the window. That
+ * is the intended cost of refusing to create records on top of an engine whose
+ * own telemetry has been shown to be wrong.
+ */
+export const HALTING_HEALTH_FINDING_KINDS: readonly HealthFindingKind[] = [
+  "success_no_effect",
+  "zero_processing_anomaly",
+  "input_unproven",
+];
+
+/** The breaker input derived from a health report. */
+export function healthFindingsBreakerInput(report: HealthReport): HealthFindingsInput {
+  const halting = report.findings.filter(
+    (f) => f.severity === "critical" && HALTING_HEALTH_FINDING_KINDS.includes(f.kind)
+  );
+  return {
+    jobsAssessed: report.jobs.length,
+    criticalFindings: report.critical.length,
+    haltingFindings: halting.length,
+    haltingKinds: [...new Set(halting.map((f) => f.kind))],
+    haltingJobs: [...new Set(halting.map((f) => f.job))],
+  };
+}
+
 export function breakerInputsFromRuns(
   runs: readonly JobRunRecord[],
   opts: { now: Date; creationJobs?: readonly string[] }
-): Pick<BreakerInputs, "publication" | "database" | "duplication" | "jobs"> {
+): Pick<BreakerInputs, "publication" | "database" | "duplication" | "jobs" | "healthFindings"> {
   const now = opts.now;
   const creationJobs = opts.creationJobs ?? CREATION_JOBS;
   const measured = runs.filter((r) => r.status !== "skipped");
@@ -613,5 +740,9 @@ export function breakerInputsFromRuns(
       expectedIntervalHours: expectedCadenceHours(j.medianIntervalHours as number),
     }));
 
-  return { publication, database, duplication, jobs };
+  // --- Health findings -----------------------------------------------------
+  // The report is already computed above for the job-interval inputs; this is
+  // the same reading, routed to the breaker that was missing rather than to a
+  // detail payload nobody queries.
+  return { publication, database, duplication, jobs, healthFindings: healthFindingsBreakerInput(report) };
 }

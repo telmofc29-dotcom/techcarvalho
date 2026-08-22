@@ -13,6 +13,11 @@
 //   * `File:Canon EOS 5D.jpg`, the file docs/product-media-strategy.md records a
 //     human reviewer rejecting on its EXIF, so the EXIF cross-check itself is
 //     exercised against the real embedded metadata;
+//   * `File:Canon AE-1 with 50mm f1.8 S.C. II.jpg`, found live by
+//     insource:"Charles Lanteigne" on 2026-08-22: a CC BY-SA 3.0 file whose
+//     embedded `UsageTerms` reads "No Usage Rights Granted Without Written
+//     Authorization from Charles Lanteigne" — a genuine rights reservation
+//     carried in the file itself rather than on the page;
 //   * a file whose licence exists only in generated metadata / whose source is a
 //     third-party video platform, if the search finds one.
 //
@@ -79,6 +84,14 @@ const TARGETS: Target[] = [
     ref: "File:Canon EOS 5D.jpg",
     why: "the file docs/product-media-strategy.md records a reviewer rejecting on its EXIF; exercises the EXIF cross-check",
     expect: "whatever the real EXIF supports — reported verbatim, including how this code receives it",
+  },
+  {
+    ref: "File:Canon AE-1 with 50mm f1.8 S.C. II.jpg",
+    why:
+      'found live on 2026-08-22 by insource:"Charles Lanteigne" — a CC BY-SA 3.0 file whose EMBEDDED metadata carries ' +
+      '`UsageTerms = "No Usage Rights Granted Without Written Authorization from Charles Lanteigne"`, in both buckets, ' +
+      "in FLAT form (unlike File:Canon EOS 5D.jpg, whose identical sentence arrives lang-structured)",
+    expect: "REFUSED — a rights reservation written into the file itself cannot coexist with a free grant",
   },
 ];
 
@@ -168,8 +181,10 @@ async function main(): Promise<void> {
     console.log(`    prohibitiveLicenceReason(declared) = ${JSON.stringify(prohibitiveLicenceReason(p.licenceDeclared))}`);
     console.log(`    prohibitiveLicenceReason(metadata) = ${JSON.stringify(prohibitiveLicenceReason(p.licenceMetadata))}`);
 
-    console.log("\n  EMBEDDED (EXIF) AS THIS CODE RECEIVES IT:");
-    for (const e of p.evidence.filter((x) => x.kind === "exif_artist" || x.kind === "exif_copyright")) {
+    console.log("\n  EMBEDDED (EXIF/IPTC/XMP) AS THIS CODE RECEIVES IT:");
+    for (const e of p.evidence.filter(
+      (x) => x.kind === "exif_artist" || x.kind === "exif_copyright" || x.kind === "restriction_field"
+    )) {
       console.log(`    ${e.detail}   [${e.origin}]`);
     }
 

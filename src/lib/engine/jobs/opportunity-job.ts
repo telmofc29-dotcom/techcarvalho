@@ -8,6 +8,7 @@ import {
 } from "@/lib/engine/postconditions";
 import { postconditionDetail, writeCountsFrom } from "@/lib/engine/silent-success";
 import { computeOpportunityScore } from "@/lib/engine/opportunity";
+import { concludeEmptyQueue } from "./reader-liveness";
 import type { StageResult } from "./discovery";
 
 type Client = Awaited<ReturnType<typeof createClient>>;
@@ -60,6 +61,22 @@ export async function runOpportunityScoring(supabase: Client): Promise<StageResu
     days_since_freshest: number;
   }[];
 
+  // An empty input set used to fall through the loop and record success with
+  // every counter at zero — the identical row a silently-denied read produces.
+  // NOTHING_TO_DO has to be earned; see queue-read.ts.
+  if (rows.length === 0) {
+    const outcome = await concludeEmptyQueue(supabase, {
+      stage: JOB,
+      source: "engine_opportunity_inputs",
+      kind: "security_definer_rpc",
+      rowsReturned: 0,
+      eligible: 0,
+      reason: "no_opportunity_inputs",
+    });
+    await recordJobRun(supabase, JOB, outcome.status, counters, outcome.detail, outcome.error ?? undefined);
+    return { status: outcome.status, ...counters, detail: outcome.detail };
+  }
+
   const scored: { category: string; score: number | null }[] = [];
   const log = createPostconditionLog(counters);
 
@@ -88,11 +105,11 @@ export async function runOpportunityScoring(supabase: Client): Promise<StageResu
     // reports how many unprovable writes it made, and the count blocks
     // autonomous graduation until the RPC is changed to return something. The
     // change is drafted in
-    // supabase/migrations_pending/20260822_silent_success_telemetry.sql.
+    // supabase/migrations/20260822_silent_success_telemetry.sql, applied 2026-08-22.
     await log.pendingRpc({
       operation: "engine_upsert_opportunity",
       subject: `category/${row.category_slug}`,
-      migration: "supabase/migrations_pending/20260822_silent_success_telemetry.sql",
+      migration: "supabase/migrations/20260822_silent_success_telemetry.sql",
       run: () =>
         supabase.rpc("engine_upsert_opportunity", {
           p_subject_type: "category",

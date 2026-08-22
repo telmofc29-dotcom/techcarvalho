@@ -26,6 +26,7 @@ test("the proofs held today, stated exactly", () => {
     [
       "circuit_breaker_test",
       "concurrency_test",
+      "database_failure_test",
       "duplicate_scheduler_test",
       "media_acquisition_test",
       "media_validation_outage_test",
@@ -36,8 +37,8 @@ test("the proofs held today, stated exactly", () => {
     ],
     `proven: ${proven.join(", ")}`
   );
-  assert.equal(provenCount, 9);
-  assert.equal(blockingKinds.length, PROOF_KINDS.length - 9);
+  assert.equal(provenCount, 10);
+  assert.equal(blockingKinds.length, PROOF_KINDS.length - 10);
 
   // Every proof meets the level ITS OWN kind requires — no record counts by
   // being strong in general.
@@ -47,14 +48,32 @@ test("the proofs held today, stated exactly", () => {
   }
 });
 
-test("database_failure_test is recorded as FAILED, and a failed proof never counts", () => {
-  // The read half of that capability does not fail closed: a silently-denied
-  // queue read is invisible without history and halts nothing with it. The
-  // record says passed:false rather than being narrowed to the write paths it
-  // does cover, because a narrowed scope is how a proof becomes a reassurance.
+test("database_failure_test passed on its ORIGINAL definition, not a narrowed one", () => {
+  // It was recorded passed:false because the read half did not fail closed: a
+  // silently-denied queue read was invisible without history and halted nothing
+  // with it. The tempting move was to narrow the record to the write paths it
+  // did cover. That was refused, and the read side was closed instead — so it
+  // now passes against the same definition it originally failed.
   const s = evaluateAllProofs(loadProofRecords()).statuses.find((x) => x.kind === "database_failure_test")!;
-  assert.equal(s.state, "NOT_PROVEN");
-  assert.match(s.reason, /FAILED/);
+  assert.equal(s.state, "PROVEN");
+
+  // The residuals are part of the record. If somebody trims them out, the
+  // record stops describing what was actually covered.
+  const rec = loadProofRecords().find((r) => r.kind === "database_failure_test")!;
+  assert.match(rec.observed, /THREE RESIDUALS/);
+  assert.match(rec.observed, /NEXT tick/, "the one-tick halt delay must stay stated");
+  assert.match(rec.observed, /engine_assemblable_briefs/, "the concrete unclosed hole must stay named");
+});
+
+test("a FAILED proof would still never count — the machinery is not now unused", () => {
+  // Every kind currently passes, so the failed-record path has no live example.
+  // Exercised explicitly rather than left to rot, since the next failed proof
+  // must still be treated as evidence AGAINST readiness.
+  const rec = loadProofRecords()[0];
+  const failed = evaluateAllProofs([{ ...rec, kind: "rollback_test", passed: false }]).statuses
+    .find((x) => x.kind === "rollback_test")!;
+  assert.equal(failed.state, "NOT_PROVEN");
+  assert.match(failed.reason, /FAILED/);
 });
 
 test("rollback is now BUILT, and the NOT_IMPLEMENTED machinery still works", () => {

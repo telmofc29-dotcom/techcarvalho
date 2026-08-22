@@ -9,6 +9,7 @@ import {
 import { postconditionDetail, writeCountsFrom } from "@/lib/engine/silent-success";
 import { parseFeed, classifyDiscoveryType, classifyClaimStatus } from "@/lib/engine/feed-parser";
 import { buildDedupeKey } from "@/lib/engine/dedupe";
+import { concludeEmptyQueue } from "./reader-liveness";
 
 type Client = Awaited<ReturnType<typeof createClient>>;
 
@@ -73,6 +74,25 @@ export async function runDiscovery(supabase: Client): Promise<StageResult> {
     categories: string[];
   }[];
 
+  // No source is due. Legitimate and common — engine_due_sources filters on
+  // next_check_at — and until now it fell through the loop and recorded success
+  // with every counter at zero, which is the identical row a silently-denied
+  // read produces. Discovery is the head of the whole pipeline, so a denial here
+  // starves every stage downstream while all of them report success. See
+  // queue-read.ts for what the control read does and does not establish.
+  if (dueSources.length === 0) {
+    const outcome = await concludeEmptyQueue(supabase, {
+      stage: JOB,
+      source: "engine_due_sources",
+      kind: "security_definer_rpc",
+      rowsReturned: 0,
+      eligible: 0,
+      reason: "no_sources_due",
+    });
+    await recordJobRun(supabase, JOB, outcome.status, counters, outcome.detail, outcome.error ?? undefined);
+    return { status: outcome.status, ...counters, detail: outcome.detail };
+  }
+
   const perSource: Record<string, string> = {};
   const log = createPostconditionLog(counters);
 
@@ -88,7 +108,7 @@ export async function runDiscovery(supabase: Client): Promise<StageResult> {
   // value; until it is applied these calls record as blind rather than as
   // either success or failure.
   const SOURCE_CHECK_MIGRATION =
-    "supabase/migrations_pending/20260822_silent_success_telemetry.sql";
+    "supabase/migrations/20260822_silent_success_telemetry.sql";
   // 'no_matching_source' is NOT benign. It means the row we just listed is gone,
   // which is exactly the silent no-op that would leave the breaker reading a
   // permanently healthy registry.

@@ -433,7 +433,7 @@ test("PROPAGATION: a SILENT failure a miswired job reported as success still hal
 // passes is what happens NEXT: does anything downstream catch it, and does
 // anything halt? Both cases are measured rather than argued.
 
-test("⚠️ FINDING: a silently-denied queue on a job with HISTORY is detected but halts nothing", () => {
+test("a silently-denied queue on a job with HISTORY is detected AND halts creation", () => {
   const c = client();
   c.breakRpc(QUEUE, { kind: "rls_silent_zero_rows" });
 
@@ -471,31 +471,66 @@ test("⚠️ FINDING: a silently-denied queue on a job with HISTORY is detected 
   assert.ok(anomaly, "assessEngineHealth names the job whose input dried up");
   assert.equal(anomaly.observed.medianExamined, 22);
 
-  // ⚠️ BAD: the silent-success detector does NOT see it — both of its relevant
-  // rules require examined > 0, and the denial is precisely why it is 0.
+  // STILL TRUE, and still worth asserting: the silent-success detector does NOT
+  // see this one. Both of its relevant rules require examined > 0, and the
+  // denial is precisely why it is 0. That is why health.ts had to be the module
+  // that reaches a breaker here — the two detectors are blind to different
+  // things on purpose.
   assert.equal(view.silentSuccess.clean, true);
 
-  // ⚠️ WORSE: NOTHING IS HALTED. A critical health finding is placed in
-  // guard.detail() and never consulted by gateFor(), which reads only the
-  // breakers, the lease and the budget ledger. The engine carries on creating.
-  assert.equal(view.breakers.healthy, true);
-  assert.deepEqual(capabilitiesStillRunnable(view.breakers), [...ALL_CAPABILITIES]);
-  assert.equal(breakerGateFor(view.breakers, "engine_briefs").allow, true);
+  // FIXED: the critical health finding now reaches a breaker.
+  //
+  // Before: `assert.equal(view.breakers.healthy, true)` — a CRITICAL
+  // zero_processing_anomaly was rendered into guard.detail() and consulted by
+  // nothing, because gateFor() reads the breakers, the lease and the budget
+  // ledger and no HealthFinding of any severity mapped to any of them. The
+  // engine carried on creating on top of a stage that could not see its input.
+  //
+  // Now `breakerInputsFromRuns` routes the report through
+  // healthFindingsBreakerInput(), and the `health_findings` breaker opens on the
+  // halting kinds. See HALTING_HEALTH_FINDING_KINDS in health.ts for why the
+  // list is a subset and not "every critical finding".
+  const hf = view.breakers.open.find((v) => v.name === "health_findings");
+  assert.ok(hf, "the critical health finding must now open a breaker");
+  assert.equal(hf.basis, "measured");
+  assert.equal(hf.observed.haltingKinds, "zero_processing_anomaly");
+  assert.equal(hf.observed.haltingJobs, "engine_discover");
+
+  assert.equal(view.breakers.healthy, false);
+  const stillRunnable = capabilitiesStillRunnable(view.breakers);
+  assert.deepEqual(stillRunnable, ["discovery", "classification", "maintenance"]);
+  assert.equal(breakerGateFor(view.breakers, "engine_briefs").allow, false);
+  assert.match(breakerGateFor(view.breakers, "engine_briefs").why, /health_findings/);
+  // Measurement deliberately continues — it is how the problem gets diagnosed.
+  assert.equal(breakerGateFor(view.breakers, "engine_relevance").allow, true);
 
   observe(
     PROOF,
-    "⚠️ FINDING: a critical health finding halts nothing",
+    "C3: a critical health finding now halts creation",
     `queue denied silently on a job with 10 nights of history: health.ts raised CRITICAL ` +
-      `zero_processing_anomaly (${JSON.stringify(anomaly.observed)}), silentSuccess.clean=${view.silentSuccess.clean}, ` +
+      `zero_processing_anomaly (${JSON.stringify(anomaly.observed)}), silentSuccess.clean=${view.silentSuccess.clean} ` +
+      `(its rules need examined>0, so it is legitimately blind here), ` +
       `breakers.healthy=${view.breakers.healthy}, ${describeHalt(view.breakers)}. ` +
-      `No HealthFinding of any severity maps to a breaker, so health.ts cannot halt anything.`
+      `The health_findings breaker is the link that did not exist.`
   );
 });
 
-test("⚠️ FINDING: a silently-denied queue on a job with NO history is not detected at all", () => {
+test("⚠️ FINDING: a job that reports SUCCESS on a zero-row read is still undetectable with no history", () => {
   // The worse case: the grant was never there. The job has always examined
   // zero, so there is no baseline for it to look wrong against — the exact way
   // the 2026-08 grants incident survived for weeks.
+  //
+  // STILL TRUE, AND NARROWER THAN IT WAS. The fixture below hand-writes
+  // `status: "success"` for a denied read, which is what every job did before
+  // src/lib/engine/queue-read.ts existed. A stage that now builds an InputProbe
+  // records `status: "failed"` with every counter at zero on that path instead,
+  // which health.ts's `input_unproven` detector catches on the FIRST run with no
+  // history at all — see src/lib/engine/denied-read-halt.test.ts.
+  //
+  // So this test no longer describes engine_discover, which is wired. It
+  // describes the residual class: any stage whose empty-queue path still reports
+  // success without an emptiness proof. Keeping it is the point — it is the
+  // regression guard for wiring the next one.
   const runs = healthyHistory()
     .filter((r) => r.jobName !== "engine_discover")
     .concat(
