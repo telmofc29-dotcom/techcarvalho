@@ -104,3 +104,63 @@ test("M&A is treated as corporate, not consumer product news", () => {
   const r = classifyRelevance({ title: "Company acquires startup in strategic partnership" });
   assert.notEqual(r.verdict, "relevant");
 });
+
+// --- Regression: real headlines from the non-vendor sources added 2026-08-22 ---
+// The classifier had been tuned entirely on vendor product PR. Measured against
+// the new sources, it scored genuine category news at zero and rejected it.
+// These are verbatim feed titles.
+test("real non-vendor headlines that must be RELEVANT", () => {
+  const cases: [string, string][] = [
+    // Display standards — the whole VESA feed scored 0-4 before.
+    ["VESA Introduces DisplayHDR True Black 1400 to Certify Next-Generation Displays", "computing"],
+    ["VESA Elevates PC and Laptop HDR Display Performance with Updated DisplayHDR Standard", "computing"],
+    ["VESA to Update DisplayPort 2.1 with New Active Cable Specification", "computing"],
+    // Astrophotography — 10 published articles, two sources, no vocabulary.
+    ["A total solar eclipse is coming to Europe", "astrophotography"],
+    ["Perseids meteor shower peaks this week", "astrophotography"],
+    ["Webb captures a new image of the Pillars of Creation nebula", "astrophotography"],
+    // Independent camera journalism.
+    ["This pocket-sized camera zooms to 2000mm and tracks wildlife on its own", "cameras-photography"],
+    ["TTArtisan's $99 AF 85mm F1.8 gives Sony E and Nikon Z shooters a portrait lens", "cameras-photography"],
+    // Smart-home ecosystem.
+    ["FireAvert joins Works with Home Assistant", "smart-home-robots"],
+  ];
+  for (const [title, categorySlug] of cases) {
+    const v = classifyRelevance({ title, summary: null, categorySlug });
+    assert.equal(v.verdict, "relevant", `"${title}" scored ${v.score}`);
+  }
+});
+
+// Deliberately NOT asserted relevant on the title alone: "Fly around
+// Schiaparelli Crater with Mars Express" scores 0 without its summary, and a
+// Mars orbiter flyover is space news rather than astrophotography a reader can
+// act on. Stretching the vocabulary to catch it would start pulling in general
+// space-agency PR.
+test("organisational and off-topic posts from the same feeds stay rejected", () => {
+  // Adding vocabulary must not turn every post from a good source relevant.
+  const cases: [string, string][] = [
+    ["Meet our new IETF NOC Lead", "networking"],
+    ["Secretariat restructuring and staffing update", "networking"],
+    ["IETF Community Survey 2025", "networking"],
+    ["Just released: Raspberry Pi Book of Making 2027", "computing"],
+    ["Community Day 2026: Save the date!", "smart-home-robots"],
+    ["Making our web analytics open source with Plausible", "smart-home-robots"],
+  ];
+  for (const [title, categorySlug] of cases) {
+    const v = classifyRelevance({ title, summary: null, categorySlug });
+    assert.notEqual(v.verdict, "relevant", `"${title}" wrongly relevant at ${v.score}`);
+  }
+});
+
+test("the B2B and corporate rejections still hold after the new vocabulary", () => {
+  // Guard against the display/astro additions reopening the hole closed earlier.
+  const cases: [string, string][] = [
+    ["Intel Completes RAMP-C Program, Accelerating Momentum for Secure Domestic Chips", "computing"],
+    ["Intel Announces Upsize and Pricing of $20 Billion Common Stock Offering", "computing"],
+    ["Intel and Lens Technology Collaborate to Enable Advanced Semiconductor Packaging for AI Era", "computing"],
+  ];
+  for (const [title, categorySlug] of cases) {
+    const v = classifyRelevance({ title, summary: null, categorySlug });
+    assert.notEqual(v.verdict, "relevant", `"${title}" wrongly relevant at ${v.score}`);
+  }
+});

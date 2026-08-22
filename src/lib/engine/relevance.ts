@@ -45,7 +45,11 @@ export type ContentAngle =
   | "discontinuation"
   | "comparison"
   | "buying_question"
-  | "emerging_tech";
+  | "emerging_tech"
+  // Something a reader can go outside and photograph — an eclipse, an aurora,
+  // a comet. Distinct from a product angle because the useful piece is a
+  // planning guide, not a review.
+  | "observable_event";
 
 // Strong corporate/financial markers. These are heavily weighted because a
 // single unambiguous hit (an SEC filing, an earnings call) is essentially
@@ -93,6 +97,37 @@ const POSITIVE: { pattern: RegExp; label: string; weight: number; angle: Content
   // and rejected ("Intel Gamer Days 2026 ... AAA Gaming Bundle").
   { pattern: /\b(free play days|game pass|pre-?order|open beta|play the beta|now playable|gam(e|ing) bundle|gamer days)\b/i, label: "consumer gaming/storefront offer", weight: 7, angle: "buying_question" },
   { pattern: /\b(game|title|dlc|expansion|season pass)\b[\s\S]{0,30}\b(launch|release|available|out now|beta)\b/i, label: "game release", weight: 5, angle: "product_launch" },
+
+  // --- Vocabulary added after measuring the classifier against the ten
+  // non-vendor sources added on 2026-08-22. The lists above were tuned on
+  // vendor product PR and scored genuine category news at zero:
+  //   "VESA Introduces DisplayHDR True Black 1400"        -> 0, rejected
+  //   "Webb Opens Treasure Chest"                          -> 0, rejected
+  //   "Home Assistant 2026.8: Approachable by design"      -> 0, rejected
+  // Each of those is real news for a category the site actively publishes in.
+
+  // Observable sky events. The astrophotography category has 10 published
+  // articles and two sources (NASA, ESA), and no way to recognise its news.
+  {
+    pattern: /\b(solar|lunar) eclipse\b|\baurora\b|\bnorthern lights\b|\bmeteor shower\b|\bcomet\b|\bsupermoon\b|\bconjunction\b|\boccultation\b|\bperseids?\b|\bgeminids?\b/i,
+    label: "observable sky event", weight: 7, angle: "observable_event",
+  },
+  // Astronomy imaging subjects and gear.
+  {
+    pattern: /\b(telescope|observatory|nebula|galaxy|galaxies|star cluster|deep[- ]sky|exoplanet|webb|hubble|equatorial mount|star tracker|astrophotograph)/i,
+    label: "astronomy subject or gear", weight: 5, angle: "hardware",
+  },
+  // Display technology. "monitor" was already a hardware noun, but the panel
+  // vocabulary that actually carries display news was absent.
+  {
+    pattern: /\b(hdr\d*|displayhdr|oled|qd-?oled|mini-?led|micro-?led|refresh rate|displayport|adaptive-?sync|freesync|g-?sync|vrr|colour gamut|color gamut|panel|nits)\b/i,
+    label: "display technology", weight: 5, angle: "specifications",
+  },
+  // Smart-home platform and ecosystem changes.
+  {
+    pattern: /\b(home assistant|homekit|smartthings|z-?wave|zigbee|works with|local control|automation|smart home hub|border router)\b/i,
+    label: "smart-home ecosystem", weight: 5, angle: "compatibility",
+  },
 ];
 
 /** Above this, accept. Below the reject floor, reject. Between, uncertain. */

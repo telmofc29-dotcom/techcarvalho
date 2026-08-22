@@ -48,9 +48,9 @@ a future article. It just cannot become one by itself.
 | | Before | After |
 |---|---|---|
 | Sources in registry | 19 | **29** |
-| Active feeds | 4 | **14** |
-| Active vendor newsrooms | 4 (100%) | 4 (29%) |
-| **Active non-vendor** | **0** | **10 (71%)** |
+| Active feeds | 4 | **13** |
+| Active vendor newsrooms | 4 (100%) | 4 (31%) |
+| **Active non-vendor** | **0** | **9 (69%)** |
 | With `media_republication_permitted` | 0 | **0** |
 
 ## Active sources
@@ -67,7 +67,6 @@ a future article. It just cannot become one by itself.
 | Home Assistant | smart home | primary | Non-vendor voice on Matter and local control |
 | VESA | computing | primary | Display standards (DisplayPort, DisplayHDR) |
 | Bluetooth SIG | networking, smart home | primary | Bluetooth standards |
-| IETF | networking | primary | Internet standards |
 
 **DPReview is deliberately `secondary`.** An editorial outlet is not a primary
 source for a manufacturer's own facts. Secondary trust means it cannot reach
@@ -95,6 +94,7 @@ checked for staleness. These were rejected on evidence:
 | ESO, NOIRLab, Linux Foundation, CIPA | 404 |
 | Khronos | Parsed empty |
 | Blender | 39 days; 3D software, off-topic |
+| **IETF** | **Added, then deactivated after measurement.** All 6 most recent posts scored 0 or below: NOC lead appointments, secretariat restructuring, community surveys, Birds of a Feather sessions. Standards are published as RFCs, not via this blog. Kept in the registry as a recorded negative so it is not re-added by the same reasoning. |
 | W3C, LWN | Reachable and fresh, but web-standards and kernel-niche rather than consumer tech |
 | EFF, Signal | Reachable and fresh, but policy/privacy-heavy; would need heavy filtering |
 
@@ -112,3 +112,31 @@ was found.** Worth revisiting.
 - The promotional classifier flags copy written to sell rather than to inform.
   It does not decide a topic is uninteresting — a real launch announced in a
   press release is still a real launch.
+
+## Relevance vocabulary was measured against these sources
+
+Adding non-vendor sources exposed that the relevance classifier had been tuned
+entirely on vendor product PR. Measured against real feed titles, it scored
+genuine category news at zero and rejected it:
+
+| Headline | Before | After |
+|---|---|---|
+| "VESA Introduces DisplayHDR True Black 1400…" | 0 · rejected | 5 · relevant |
+| "VESA Elevates PC and Laptop HDR Display Performance…" | 20 · relevant | 25 · relevant |
+| "A total solar eclipse is coming to Europe" | 4 · uncertain | 11 · relevant |
+| "FireAvert joins Works with Home Assistant" | 14 · relevant | 19 · relevant |
+
+The whole VESA feed went from **2 of 6 relevant to 6 of 6**. Four vocabulary
+groups were added: observable sky events, astronomy subjects and gear, display
+technology, and smart-home ecosystem.
+
+Two guards accompany it. Organisational posts from the *same* good sources must
+stay rejected ("Meet our new IETF NOC Lead", "Raspberry Pi Book of Making
+2027", "Community Day 2026: Save the date!"), and the earlier B2B/corporate
+rejections must still hold ("Intel Announces Upsize and Pricing of $20 Billion
+Common Stock Offering"). Both are permanent regression tests.
+
+One case was deliberately **not** forced: "Fly around Schiaparelli Crater with
+Mars Express" scores 0 on its title alone. A Mars orbiter flyover is space news
+rather than astrophotography a reader can act on, and stretching the vocabulary
+to catch it would start pulling in general space-agency PR.

@@ -74,6 +74,9 @@ const ANGLE_TO_KIND: Record<ContentAngle, BriefKind> = {
   comparison: "comparison",
   buying_question: "buying_guide",
   emerging_tech: "explainer",
+  // An eclipse or an aurora is useful to a reader as a planning guide — when
+  // to be where, with what settings — not as a news report of the event.
+  observable_event: "explainer",
 };
 
 const KIND_TO_CONTENT_TYPE: Record<BriefKind, Brief["contentType"]> = {
