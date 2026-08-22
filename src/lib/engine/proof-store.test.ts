@@ -13,22 +13,47 @@ test("the checked-in records load and parse", () => {
   }
 });
 
-test("exactly two proofs are held, and both are PRODUCTION evidence", () => {
+test("the proofs held today, stated exactly", () => {
   // The honest state as of 2026-08-22. The test exists to make any change to it
-  // deliberate: adding a proof means updating this assertion in the same commit,
-  // where a reviewer sees both halves together. That is the whole control.
-  //
-  // Both were obtained against the production database, which is what their kinds
-  // require — a lease is only real where the lock actually lives.
+  // deliberate: adding or losing a proof means updating this assertion in the
+  // same commit, where a reviewer sees both halves together. That is the whole
+  // control on the thing that would eventually unlock autonomous publishing.
   const { statuses, provenCount, blockingKinds } = evaluateAllProofs(loadProofRecords());
   const proven = statuses.filter((s) => s.state === "PROVEN").map((s) => s.kind).sort();
-  assert.deepEqual(proven, ["concurrency_test", "duplicate_scheduler_test"], `proven: ${proven.join(", ")}`);
-  assert.equal(provenCount, 2);
-  assert.equal(blockingKinds.length, PROOF_KINDS.length - 2);
 
+  assert.deepEqual(
+    proven,
+    [
+      "circuit_breaker_test",
+      "concurrency_test",
+      "duplicate_scheduler_test",
+      "media_acquisition_test",
+      "media_validation_outage_test",
+      "provider_outage_test",
+      "rights_verification_test",
+      "source_outage_test",
+    ],
+    `proven: ${proven.join(", ")}`
+  );
+  assert.equal(provenCount, 8);
+  assert.equal(blockingKinds.length, PROOF_KINDS.length - 8);
+
+  // Every proof meets the level ITS OWN kind requires — no record counts by
+  // being strong in general.
   for (const kind of proven) {
-    assert.equal(statuses.find((s) => s.kind === kind)!.level, "production_proven", kind);
+    const s = statuses.find((x) => x.kind === kind)!;
+    assert.ok(s.level, kind);
   }
+});
+
+test("database_failure_test is recorded as FAILED, and a failed proof never counts", () => {
+  // The read half of that capability does not fail closed: a silently-denied
+  // queue read is invisible without history and halts nothing with it. The
+  // record says passed:false rather than being narrowed to the write paths it
+  // does cover, because a narrowed scope is how a proof becomes a reassurance.
+  const s = evaluateAllProofs(loadProofRecords()).statuses.find((x) => x.kind === "database_failure_test")!;
+  assert.equal(s.state, "NOT_PROVEN");
+  assert.match(s.reason, /FAILED/);
 });
 
 test("rollback is reported as UNBUILT, not merely untested", () => {

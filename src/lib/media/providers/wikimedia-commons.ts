@@ -490,11 +490,76 @@ export function meaningfulPermission(value: string | null): string | null {
 }
 
 type NamedMeta = { name: string; value: unknown }[] | undefined;
-function metaValue(meta: NamedMeta, name: string): string | null {
+/**
+ * Unwrap one embedded-metadata value.
+ *
+ * THE BUG THIS FIXES, verified against live Commons on 2026-08-22.
+ *
+ * MediaWiki returns some embedded metadata as a LANGUAGE-STRUCTURED value, and
+ * real files do it for exactly the field the rights cross-check depends on:
+ *
+ *   File:Canon EOS 5D.jpg  commonmetadata.Copyright =
+ *     [{"name":"x-default","value":"©2008 Charles Lanteigne"},
+ *      {"name":"_type","value":"lang"}]
+ *
+ * `String(hit.value).trim()` turns that into the literal string
+ * "[object Object],[object Object]". That string was then handed to
+ * exifRightsConflict() — which therefore could not fire on ANY lang-typed EXIF
+ * Copyright, whatever it said — and stored verbatim as primary provenance
+ * evidence. File:Canon EOS 5D.jpg is the file this project cites as the reason
+ * the check exists, and it was coming out evidence_complete.
+ *
+ * It failed OPEN, which is what makes it the worst of the three: a rights
+ * reservation written in the file's own metadata was invisible, and the
+ * resulting asset looked fully evidenced.
+ *
+ * The correct flat value is present in the same response under `metadata`;
+ * resolve() concatenates `commonmetadata` first, so `.find()` reached the
+ * broken one. Rather than depend on ordering, the structured shape is unwrapped
+ * here: x-default first, then en, then the first entry that is not the `_type`
+ * marker. An array we cannot interpret returns null — "we could not read this"
+ * — rather than a stringified object, because a garbage string that no pattern
+ * matches is indistinguishable from a field that says nothing.
+ */
+export function unwrapMetaValue(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+
+  if (Array.isArray(value)) {
+    const entries = value.filter(
+      (e): e is { name: unknown; value: unknown } =>
+        typeof e === "object" && e !== null && "name" in e && "value" in e
+    );
+    if (entries.length === 0) return null;
+
+    const named = (want: string) =>
+      entries.find((e) => String(e.name).toLowerCase() === want)?.value;
+    const picked =
+      named("x-default") ??
+      named("en") ??
+      entries.find((e) => String(e.name).toLowerCase() !== "_type")?.value;
+
+    if (picked === undefined || picked === null) return null;
+    // One level only. A nested structure is not something to guess at.
+    if (typeof picked === "object") return null;
+    return String(picked).trim() || null;
+  }
+
+  if (typeof value === "object") return null;
+  return String(value).trim() || null;
+}
+
+export function metaValue(meta: NamedMeta, name: string): string | null {
   if (!meta) return null;
-  const hit = meta.find((m) => m.name.toLowerCase() === name.toLowerCase());
-  if (!hit || hit.value === null || hit.value === undefined) return null;
-  return String(hit.value).trim() || null;
+  // ALL matching entries, not the first. resolve() concatenates commonmetadata
+  // ahead of metadata, and the same field can appear in both — once
+  // lang-structured and once flat. Taking the first readable one means the
+  // usable form wins regardless of which bucket it came from.
+  const hits = meta.filter((m) => m.name.toLowerCase() === name.toLowerCase());
+  for (const hit of hits) {
+    const unwrapped = unwrapMetaValue(hit.value);
+    if (unwrapped !== null) return unwrapped;
+  }
+  return null;
 }
 
 /**

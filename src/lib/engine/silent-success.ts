@@ -57,6 +57,7 @@ import type { EngineCapability } from "./circuit-breaker.ts";
 import type { JobRunRecord } from "./health.ts";
 import type { HealthFinding } from "./health.ts";
 import type { PostconditionSummary } from "./postconditions.ts";
+import { STAGE_EFFECTS, stageEffectOf } from "./stage-roles.ts";
 
 // ---------------------------------------------------------------------------
 // The taxonomy
@@ -112,39 +113,11 @@ export type SilentSuccessSignal = {
  * mean a stage that has been broken since birth teaches the detector that doing
  * nothing is normal for it — the precise way incident #2 stayed hidden.
  */
-export type StageRole = "producer" | "assessor";
+// Moved to ./stage-roles.ts so health.ts can share the same definition — the
+// two files implement the same detector and had drifted apart on exactly this.
+// Re-exported so existing importers keep working.
+export { STAGE_EFFECTS, stageEffectOf, type StageRole, type StageEffect } from "./stage-roles.ts";
 
-export type StageEffect = {
-  job: string;
-  role: StageRole;
-  /** Stages that consume what this one produces, by job name. */
-  feeds: readonly string[];
-  /** What a row created by this stage IS, for the message text. */
-  produces: string;
-};
-
-export const STAGE_EFFECTS: readonly StageEffect[] = [
-  { job: "engine_discover", role: "producer", feeds: ["engine_relevance"], produces: "a candidate discovery" },
-  { job: "engine_relevance", role: "producer", feeds: ["engine_briefs", "engine_update_proposals", "engine_product_assembly"], produces: "a relevance verdict" },
-  { job: "engine_update_proposals", role: "assessor", feeds: [], produces: "an update proposal against an existing page" },
-  { job: "engine_product_assembly", role: "assessor", feeds: [], produces: "an unpublished product shell" },
-  { job: "engine_briefs", role: "producer", feeds: ["engine_draft_assembly"], produces: "a research brief" },
-  // Assembly consumes only HUMAN-APPROVED briefs, so it is legitimately idle
-  // whenever nobody has approved one. Judging it as a producer would flag the
-  // editor's inbox as an engine fault.
-  { job: "engine_draft_assembly", role: "assessor", feeds: [], produces: "a draft article" },
-  { job: "engine_search_intelligence", role: "producer", feeds: ["engine_opportunities", "engine_trends"], produces: "an aggregated search row" },
-  { job: "engine_opportunities", role: "producer", feeds: [], produces: "an opportunity score" },
-  { job: "engine_trends", role: "producer", feeds: [], produces: "a trend measurement" },
-  { job: "engine_media_acquisition", role: "assessor", feeds: [], produces: "a media candidate" },
-  { job: "engine_freshness", role: "assessor", feeds: [], produces: "a freshness review" },
-  { job: "engine_internal_links", role: "assessor", feeds: [], produces: "an orphan report" },
-  { job: "engine_hero_media", role: "assessor", feeds: [], produces: "a weak-hero requirement" },
-];
-
-export function stageEffectOf(job: string): StageEffect | null {
-  return STAGE_EFFECTS.find((s) => s.job === job) ?? null;
-}
 
 export const SILENT_SUCCESS_THRESHOLDS = {
   /** Runs a producer must have accumulated before "never effective" can fire.
@@ -269,8 +242,43 @@ export function detectSilentSuccess(
 
     // --- 1. Reported success, examined rows, affected none of them ----------
     // Needs no history and no new columns. Incident #1's exact shape.
+    //
+    // ROLE-AWARE, and it was not. This detector fired on ANY pass with
+    // examined > 0 and nothing touched, which is the normal, desired outcome
+    // for an ASSESSOR. engine_internal_links sets examined = every published
+    // article, then finds zero orphans and reports success — its own comment
+    // says "Zero orphans is a success and the goal, not an empty result."
+    //
+    // That row is examined:29 created:0 deduped:0 failed:0 status:success, which
+    // fired this signal at CRITICAL with no rate and no minimum sample, opened
+    // the silent_success breaker, and halted creation, media_acquisition and
+    // publication. Observed: 4 of 15 jobs refused, including engine_briefs and
+    // engine_draft_assembly. The engine therefore stopped writing articles
+    // precisely BECAUSE the site had no orphans — and started again only when
+    // the site got worse. health.ts's own standard applies: "A breaker that
+    // opens permanently on a false signal is not fail-closed. It is broken."
+    //
+    // StageRole already existed for exactly this, engine_internal_links /
+    // engine_hero_media / engine_freshness are all already declared assessors,
+    // and detector #5 below already honours the role. This one simply never
+    // read it.
+    //
+    // WHAT IS NOT LOST. An assessor whose writes are all being DENIED shows the
+    // same counters, so this is not a free change — the evidence that separates
+    // the two is the postcondition telemetry, not the counters. A denied write
+    // produces silent_no_ops > 0, which detector #4 (status_overstated) catches
+    // for every job regardless of role, and where that telemetry is missing
+    // entirely the detection_unavailable signal fires instead of silence. The
+    // assessor case is therefore still covered, by the evidence that can
+    // actually tell the two apart.
     const touched = latest.itemsCreated + latest.itemsDeduped + latest.itemsFailed;
-    if ((latest.status === "success" || latest.status === "partial") && latest.itemsExamined > 0 && touched === 0) {
+    const isAssessor = effect?.role === "assessor";
+    if (
+      !isAssessor &&
+      (latest.status === "success" || latest.status === "partial") &&
+      latest.itemsExamined > 0 &&
+      touched === 0
+    ) {
       signals.push({
         kind: "success_no_effect",
         severity: "critical",

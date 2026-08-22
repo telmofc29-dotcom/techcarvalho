@@ -59,7 +59,11 @@ test("an empty but readable history is clean — nothing has happened yet", () =
 // ---------------------------------------------------------------------------
 
 test("INCIDENT 1: examined rows, touched none, reported success", () => {
-  const r = detectSilentSuccess([run({ jobName: "engine_freshness", hoursAgo: 1, itemsExamined: 40 })], ok);
+  // engine_discover, not engine_freshness. Freshness is a declared ASSESSOR,
+  // for which "examined 40, flagged none" is the desired outcome rather than a
+  // silent success — this test previously used it, and so encoded the false
+  // positive that halted creation on a healthy site.
+  const r = detectSilentSuccess([run({ jobName: "engine_discover", hoursAgo: 1, itemsExamined: 40 })], ok);
   const s = r.signals.find((x) => x.kind === "success_no_effect");
   assert.ok(s, "must be detected with no history and no new columns");
   assert.equal(s.severity, "critical");
@@ -240,7 +244,7 @@ test("the detail block carries what to act on, not just a boolean", () => {
 
 test("one critical signal opens the breaker and halts creation", () => {
   const report = detectSilentSuccess(
-    [run({ jobName: "engine_freshness", hoursAgo: 1, itemsExamined: 40 })], ok
+    [run({ jobName: "engine_discover", hoursAgo: 1, itemsExamined: 40 })], ok
   );
   const breakers = evaluateBreakers({ silentSuccess: silentSuccessBreakerInput(report, 1) });
   const v = breakers.verdicts.find((x) => x.name === "silent_success");
@@ -250,8 +254,10 @@ test("one critical signal opens the breaker and halts creation", () => {
 });
 
 test("no threshold to hide under: ONE instance trips it", () => {
+  // A PRODUCER, deliberately. engine_freshness is a declared assessor, for
+  // which examining one item and flagging none of it is the intended outcome.
   const report = detectSilentSuccess(
-    [run({ jobName: "engine_freshness", hoursAgo: 1, itemsExamined: 1 })], ok
+    [run({ jobName: "engine_discover", hoursAgo: 1, itemsExamined: 1 })], ok
   );
   const input = silentSuccessBreakerInput(report, 1);
   assert.equal(input.criticalSignals, 1);
@@ -268,7 +274,7 @@ test("the breaker fails CLOSED when the detector did not run at all", () => {
 
 test("measurement and maintenance keep running so the problem can be diagnosed", () => {
   const report = detectSilentSuccess(
-    [run({ jobName: "engine_freshness", hoursAgo: 1, itemsExamined: 40 })], ok
+    [run({ jobName: "engine_discover", hoursAgo: 1, itemsExamined: 40 })], ok
   );
   const breakers = evaluateBreakers({ silentSuccess: silentSuccessBreakerInput(report, 1) });
   const v = breakers.verdicts.find((x) => x.name === "silent_success");
@@ -291,7 +297,7 @@ test("a clean detector run leaves the breaker closed", () => {
 
 test("signals render as health findings so they appear where people already look", () => {
   const report = detectSilentSuccess(
-    [run({ jobName: "engine_freshness", hoursAgo: 1, itemsExamined: 40 })], ok
+    [run({ jobName: "engine_discover", hoursAgo: 1, itemsExamined: 40 })], ok
   );
   const findings = silentSuccessFindings(report);
   assert.equal(findings.length, report.signals.length);
@@ -300,7 +306,7 @@ test("signals render as health findings so they appear where people already look
   const noEffect = findings.find((f) => f.observed.silentSuccessKind === "success_no_effect");
   assert.ok(noEffect);
   assert.equal(noEffect.severity, "critical");
-  assert.equal(noEffect.job, "engine_freshness");
+  assert.equal(noEffect.job, "engine_discover");
 });
 
 // ---------------------------------------------------------------------------
@@ -323,7 +329,7 @@ test("clean evidence adds no blockers", () => {
 test("one critical signal blocks graduation", () => {
   const blockers = silentSuccessGraduationBlockers({
     ...cleanEvidence,
-    report: detectSilentSuccess([run({ jobName: "engine_freshness", hoursAgo: 1, itemsExamined: 40 })], ok),
+    report: detectSilentSuccess([run({ jobName: "engine_discover", hoursAgo: 1, itemsExamined: 40 })], ok),
   });
   assert.ok(blockers.some((b) => b.criterion.includes("critical signals")));
 });
@@ -394,11 +400,69 @@ test("stageEffectOf returns null rather than guessing for an unknown job", () =>
 
 test("every signal carries an action, not just a diagnosis", () => {
   const runs = [
-    run({ jobName: "engine_freshness", hoursAgo: 1, itemsExamined: 40 }),
+    run({ jobName: "engine_discover", hoursAgo: 1, itemsExamined: 40 }),
     run({ jobName: "engine_relevance", hoursAgo: 1, itemsExamined: 30, itemsFailed: 30 }),
   ];
   for (const s of detectSilentSuccess(runs, ok).signals) {
     assert.ok(s.action.length > 10, `${s.kind} has no action`);
     assert.ok(s.why.length > 30, `${s.kind} has no explanation`);
   }
+});
+
+// ---------------------------------------------------------------------------
+// The assessor false positive: a HEALTHY site halted article creation
+// ---------------------------------------------------------------------------
+
+test("an assessor that finds nothing to flag is the GOAL, not a silent success", () => {
+  // The live bug. engine_internal_links sets examined = every published
+  // article, finds zero orphans, and reports success. That row is
+  // examined:29 created:0 deduped:0 failed:0 status:success — which fired
+  // success_no_effect at CRITICAL, opened the silent_success breaker, and
+  // halted creation, media_acquisition and publication. The engine stopped
+  // writing articles precisely because the site had no orphans.
+  const report = detectSilentSuccess(
+    [run({ jobName: "engine_internal_links", hoursAgo: 1, status: "success", itemsExamined: 29 })],
+    ok
+  );
+  assert.equal(
+    report.signals.filter((s) => s.kind === "success_no_effect").length,
+    0,
+    "an assessor examining 29 articles and flagging none of them is the desired outcome"
+  );
+  assert.equal(report.critical.length, 0, JSON.stringify(report.signals));
+});
+
+test("a PRODUCER with the same counters is still the incident, unchanged", () => {
+  // The fix must not blind the detector to what it was built for.
+  const report = detectSilentSuccess(
+    [run({ jobName: "engine_discover", hoursAgo: 1, status: "success", itemsExamined: 29 })],
+    ok
+  );
+  assert.ok(
+    report.signals.some((s) => s.kind === "success_no_effect" && s.severity === "critical"),
+    "a producer that looked at 29 items and touched none of them is incident #1"
+  );
+});
+
+test("an assessor whose writes are DENIED is still caught, by the telemetry", () => {
+  // What the role exemption does not cost. A denied write produces silent
+  // no-ops, and status_overstated reads those for every job regardless of role
+  // — the evidence that actually separates "nothing to flag" from "could not
+  // write what I flagged".
+  const report = detectSilentSuccess(
+    [
+      run({
+        jobName: "engine_internal_links",
+        hoursAgo: 1,
+        status: "success",
+        itemsExamined: 29,
+        silentNoOps: 3,
+      }),
+    ],
+    ok
+  );
+  assert.ok(
+    report.signals.some((s) => s.kind === "status_overstated"),
+    "silent no-ops must still surface on an assessor"
+  );
 });

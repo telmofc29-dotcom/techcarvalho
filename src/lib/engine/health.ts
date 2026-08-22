@@ -25,6 +25,7 @@ import type {
   PublicationVolumeInput,
 } from "./circuit-breaker.ts";
 import { CREATION_JOBS } from "./concurrency.ts";
+import { stageEffectOf } from "./stage-roles.ts";
 
 /**
  * How often a job is actually SUPPOSED to run.
@@ -257,8 +258,27 @@ export function assessEngineHealth(
     // Needs no history: a run that examined rows, reported success, and created,
     // deduped and failed nothing did not do the thing it says it did. This is
     // the exact shape of "0 rows deleted, no error".
+    //
+    // ROLE-AWARE, and it was not — the same defect silent-success.ts carried,
+    // for the same reason: the role model lived inside that file and this one
+    // could not import it without a cycle. Both files therefore raised a
+    // CRITICAL success_no_effect for engine_internal_links whenever the site had
+    // ZERO orphans, which is that stage's goal. That opened the silent_success
+    // breaker and halted creation, media_acquisition and publication: a healthy
+    // site stopped the engine writing articles.
+    //
+    // An assessor examining rows and flagging none of them is the intended
+    // outcome. An assessor whose writes are being DENIED shows the same counters
+    // but also carries silent no-ops, which detector #4 in silent-success.ts
+    // reads for every job regardless of role — so nothing is lost here.
     const touched = latest.itemsCreated + latest.itemsDeduped + latest.itemsFailed;
-    if ((latest.status === "success" || latest.status === "partial") && latest.itemsExamined > 0 && touched === 0) {
+    const isAssessor = stageEffectOf(job)?.role === "assessor";
+    if (
+      !isAssessor &&
+      (latest.status === "success" || latest.status === "partial") &&
+      latest.itemsExamined > 0 &&
+      touched === 0
+    ) {
       findings.push({
         job,
         kind: "success_no_effect",
