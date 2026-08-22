@@ -18,6 +18,8 @@ import {
 import { RelatedContentTracker } from "@/components/public/related-content-tracker";
 import { Badge } from "@/components/shared/ui";
 import { parseBodyBlocks, excerptFromBody } from "@/lib/content/body-format";
+import { estimateReadingTime } from "@/lib/content/reading-time";
+import { articleDisplayDate, articleDeck } from "@/lib/content/article-header";
 import { PageViewTracker } from "@/components/analytics/page-view-tracker";
 import { ScrollDepthTracker } from "@/components/analytics/scroll-depth-tracker";
 import { InternalLinkTracker } from "@/components/analytics/internal-link-tracker";
@@ -82,6 +84,17 @@ export default async function ArticlePage({
   const { content, category, products, tags, freshness, related, heroImage, seo, sources } = detail;
   const { clusterMembers, clusterPillars, comparisonSiblings, hubs } = detail;
   const lastVerified = freshness[0]?.reviewed_at ?? null;
+
+  // Derived, never stored. See src/lib/content/article-header.ts for why each
+  // of these is computed rather than authored, and src/lib/content/reading-time.ts
+  // for what the estimate counts.
+  const readingTime = estimateReadingTime(content.body);
+  const displayDate = articleDisplayDate(content.published_at, content.updated_at);
+  const deck = articleDeck({
+    metaDescription: seo?.meta_description ?? null,
+    body: content.body,
+    title: content.title,
+  });
   const gallery = await getPublishedGallery("content", content.id);
 
   const jsonLd = articleJsonLd({
@@ -138,39 +151,63 @@ export default async function ArticlePage({
         ]}
       />
 
-      <div className="flex items-center gap-3 mb-4">
-        <Badge tone="amber">{CONTENT_TYPE_LABEL[content.type] ?? content.type}</Badge>
-        {content.published_at && (
-          <time dateTime={content.published_at} className="text-sm text-zinc-500">
-            Published{" "}
-            {new Date(content.published_at).toLocaleDateString(undefined, {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
-          </time>
-        )}
-      </div>
+      {/* HERO FIRST.
+          The hero used to render at y=525 on a 390px screen, BELOW the
+          headline, the metadata and the cluster nav — so the first body
+          sentence sat at y=941, which is 161px below the fold. A reader on a
+          phone met three blocks of furniture before anything told them what the
+          story looked like.
+          Order is now: hero, headline, updated + reading time, deck, article.
+          "Products covered" moved below the body for the same reason: it is
+          useful after reading, not before. */}
+      {heroImage && <ArticleLeadMedia heroImage={heroImage} />}
 
-      <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight text-zinc-900 mb-4">
+      <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight text-zinc-900 mt-6 mb-3">
         {content.title}
       </h1>
 
+      {/* One metadata line, not three stacked blocks.
+          It says UPDATED rather than "Published": updated_at reached the JSON-LD
+          but never the reader, so a piece revised after publication looked
+          stale to a person and current to a crawler. When the two dates are the
+          same day it says "Published", because "Updated" on a piece that has
+          never been revised overstates the maintenance. */}
+      <div className="mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-500">
+        <Badge tone="amber">{CONTENT_TYPE_LABEL[content.type] ?? content.type}</Badge>
+        {displayDate && (
+          <time dateTime={displayDate.iso}>
+            {displayDate.revised ? "Updated" : "Published"} {displayDate.label}
+          </time>
+        )}
+        {readingTime && (
+          <>
+            <span aria-hidden="true" className="text-zinc-300">
+              •
+            </span>
+            <span>{readingTime.label}</span>
+          </>
+        )}
+      </div>
+
+      {/* The deck. Derived from the article's own first paragraph when no
+          hand-written meta description exists, so it can never be generic SEO
+          filler bolted on afterwards — it is the piece's own opening sentence.
+          Suppressed when it would merely restate the headline. */}
+      {deck && (
+        <p className="mb-6 text-lg leading-relaxed text-zinc-600">{deck}</p>
+      )}
+
       {lastVerified && (
         <p className="text-xs text-zinc-400 mb-6">
-          Last verified {new Date(lastVerified).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}
+          Last verified{" "}
+          {new Date(lastVerified).toLocaleDateString(undefined, {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })}
         </p>
       )}
 
-      {/* The consolidation half of the cannibalisation fix.
-          `content_relationships` already recorded which piece is the pillar of
-          a cluster, and the public site rendered every cluster as one flat,
-          unlabelled rail of three at the very bottom of the page. A supporting
-          piece that competes with its own pillar for the same intent stops
-          competing once it visibly defers to it — high on the page, with the
-          pillar's real title as the anchor text rather than "read more".
-          Descriptive anchor text is the whole mechanism here; a generic one
-          passes no signal about what the target is about. */}
       {clusterPillars.length > 0 && (
         <nav
           aria-label="Part of"
@@ -189,29 +226,6 @@ export default async function ArticlePage({
             ))}
           </ul>
         </nav>
-      )}
-
-      {heroImage && <ArticleLeadMedia heroImage={heroImage} />}
-
-      {products.length > 0 && (
-        <div className="rounded-xl border border-border-subtle bg-accent-soft/40 p-4 mb-8">
-          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2">Products covered</p>
-          <InternalLinkTracker linkPosition="article_top">
-            <div className="flex flex-wrap gap-2">
-              {products.map((p) => (
-                <Link
-                  key={p.id}
-                  href={`/products/${p.slug}`}
-                  data-entity-type="product"
-                  data-entity-id={p.id}
-                  className="rounded-full border border-border-subtle bg-white px-3 py-1 text-sm hover:border-accent/40"
-                >
-                  {p.name}
-                </Link>
-              ))}
-            </div>
-          </InternalLinkTracker>
-        </div>
       )}
 
       {content.body ? (
@@ -287,6 +301,27 @@ export default async function ArticlePage({
             </figure>
             );
           })}
+        </div>
+      )}
+
+      {products.length > 0 && (
+        <div className="rounded-xl border border-border-subtle bg-accent-soft/40 p-4 mt-10">
+          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2">Products covered</p>
+          <InternalLinkTracker linkPosition="article_top">
+            <div className="flex flex-wrap gap-2">
+              {products.map((p) => (
+                <Link
+                  key={p.id}
+                  href={`/products/${p.slug}`}
+                  data-entity-type="product"
+                  data-entity-id={p.id}
+                  className="rounded-full border border-border-subtle bg-white px-3 py-1 text-sm hover:border-accent/40"
+                >
+                  {p.name}
+                </Link>
+              ))}
+            </div>
+          </InternalLinkTracker>
         </div>
       )}
 
