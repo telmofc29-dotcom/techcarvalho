@@ -362,8 +362,8 @@ export function fieldValueAnomaly(field: string, value: string): ParseAnomaly | 
   return null;
 }
 
-function truncate(value: string): string {
-  return value.length > 120 ? `${value.slice(0, 117)}…` : value;
+function truncate(value: string, limit = 120): string {
+  return value.length > limit ? `${value.slice(0, limit - 3)}…` : value;
 }
 
 /** Name of a `|name=` found at brace depth zero inside a value, if any. */
@@ -490,6 +490,92 @@ export function meaningfulPermission(value: string | null): string | null {
 }
 
 type NamedMeta = { name: string; value: unknown }[] | undefined;
+
+/**
+ * The result of reading ONE embedded-metadata field — with "I could not read
+ * this" as a first-class answer rather than as a null.
+ *
+ * WHY THIS TYPE EXISTS AT ALL
+ * ---------------------------
+ * The first fix for the lang-structured bug returned `null` for every shape it
+ * could not interpret. `null` is the same value this reader returns for a file
+ * that carries no Copyright field at all — so "this file says nothing about
+ * rights" and "this file says something about rights and we could not read it"
+ * arrived at the rights check as the identical answer, and the identical answer
+ * is *proceed*.
+ *
+ * That is the SAME failure as the bug it was fixing, one layer up: a rights
+ * assertion made invisible by a reader that could not parse it. Returning null
+ * is quieter than returning "[object Object]" and no safer.
+ *
+ * For rights-bearing metadata the unreadable case therefore STOPS the
+ * candidate. For descriptive metadata (Model, and the identity half of Artist)
+ * it does not, and `metaValue()` below is the deliberately lax reader for those
+ * — an unreadable camera model is not a rights claim, and refusing a file over
+ * one would be refusing it for a reason that has nothing to do with rights.
+ */
+export type MetaRead =
+  /** No entry with this name in `commonmetadata` or `metadata`. */
+  | { status: "absent" }
+  /** Entry present, value empty/whitespace/an empty container: it asserts nothing. */
+  | { status: "empty" }
+  /** Interpreted. */
+  | { status: "read"; value: string }
+  /**
+   * The entry is THERE and its shape is not one this reader models. Never
+   * collapsed to `absent` or `empty`: for a rights-bearing field this is a stop.
+   */
+  | { status: "unreadable"; detail: string }
+  /**
+   * The same field arrived more than once carrying materially different values.
+   * Resolved by NOBODY — not by taking the first, which is what a plain
+   * `.find()` does and what the previous fix still did across the two buckets.
+   */
+  | { status: "disagreeing"; values: string[]; detail: string };
+
+/** JSON of a value we are about to refuse, so a human can see the real shape. */
+function rawShape(value: unknown): string {
+  try {
+    const json = JSON.stringify(value);
+    return truncate(json === undefined ? String(value) : json, 200);
+  } catch {
+    return "(a value that could not even be serialised)";
+  }
+}
+
+function isNamedEntry(e: unknown): e is { name: unknown; value: unknown } {
+  return typeof e === "object" && e !== null && !Array.isArray(e) && "name" in e && "value" in e;
+}
+
+/**
+ * Every string anywhere inside an embedded value, whatever shape it is in.
+ *
+ * The reservation scan runs over THIS rather than over the interpreted value,
+ * so a rights reservation buried in a structure this reader cannot interpret is
+ * still seen. "We could not parse it" must never be the reason a file's own
+ * "all rights reserved" goes unnoticed — that is precisely how the original bug
+ * did its damage.
+ */
+export function embeddedStrings(value: unknown, budget = 400): string[] {
+  const out: string[] = [];
+  const walk = (v: unknown, depth: number): void => {
+    if (out.length >= budget || depth > 12) return;
+    if (typeof v === "string") {
+      if (v.trim()) out.push(v.trim());
+      return;
+    }
+    if (Array.isArray(v)) {
+      for (const item of v) walk(item, depth + 1);
+      return;
+    }
+    if (typeof v === "object" && v !== null) {
+      for (const item of Object.values(v as Record<string, unknown>)) walk(item, depth + 1);
+    }
+  };
+  walk(value, 0);
+  return out;
+}
+
 /**
  * Unwrap one embedded-metadata value.
  *
@@ -517,45 +603,194 @@ type NamedMeta = { name: string; value: unknown }[] | undefined;
  * resolve() concatenates `commonmetadata` first, so `.find()` reached the
  * broken one. Rather than depend on ordering, the structured shape is unwrapped
  * here: x-default first, then en, then the first entry that is not the `_type`
- * marker. An array we cannot interpret returns null — "we could not read this"
- * — rather than a stringified object, because a garbage string that no pattern
- * matches is indistinguishable from a field that says nothing.
+ * marker.
+ *
+ * MediaWiki's structured forms, all three of which are live on Commons today:
+ *
+ *   _type "lang"  a language map. File:GoPro Héro 13 Black - 01.jpg Copyright.
+ *   _type "ol"    an ORDERED LIST with numeric names. File:Canon EOS 5D.jpg
+ *                 Artist = [{"name":0,"value":"Charles Lanteigne"},{"name":"_type","value":"ol"}].
+ *                 Reading only the first item of a list is the same
+ *                 pick-the-first mistake in miniature, so every item is kept.
+ *   _type "ul"    an unordered list, same treatment.
+ *
+ * Anything else is `unreadable`, NOT null — see `MetaRead`.
  */
-export function unwrapMetaValue(value: unknown): string | null {
-  if (value === null || value === undefined) return null;
-
-  if (Array.isArray(value)) {
-    const entries = value.filter(
-      (e): e is { name: unknown; value: unknown } =>
-        typeof e === "object" && e !== null && "name" in e && "value" in e
-    );
-    if (entries.length === 0) return null;
-
-    const named = (want: string) =>
-      entries.find((e) => String(e.name).toLowerCase() === want)?.value;
-    const picked =
-      named("x-default") ??
-      named("en") ??
-      entries.find((e) => String(e.name).toLowerCase() !== "_type")?.value;
-
-    if (picked === undefined || picked === null) return null;
-    // One level only. A nested structure is not something to guess at.
-    if (typeof picked === "object") return null;
-    return String(picked).trim() || null;
+export function unwrapMetaRead(value: unknown): MetaRead {
+  if (value === null || value === undefined) return { status: "empty" };
+  if (typeof value === "string") {
+    const v = value.trim();
+    if (!v) return { status: "empty" };
+    if (isStringificationArtifact(v)) {
+      return {
+        status: "unreadable",
+        detail:
+          `the value arrived as "${truncate(v)}" — a stringified object, which is what the 2026-08 reader produced ` +
+          "for every lang-structured Copyright field. It says nothing about the file and must not be read as if it did.",
+      };
+    }
+    return { status: "read", value: v };
   }
-
-  if (typeof value === "object") return null;
-  return String(value).trim() || null;
+  // A number or a boolean is unambiguously readable — there is no parse in
+  // doubt, the value simply is not prose. `Copyright: 2008` is a scalar that
+  // says what it says.
+  if (typeof value === "number" || typeof value === "boolean") return { status: "read", value: String(value) };
+  if (Array.isArray(value)) return unwrapStructuredMeta(value);
+  return {
+    status: "unreadable",
+    detail: `an object carrying no MediaWiki "_type" marker, so which of its keys is the value is a guess: ${rawShape(value)}`,
+  };
 }
 
+function unwrapStructuredMeta(value: unknown[]): MetaRead {
+  if (value.length === 0) return { status: "empty" };
+
+  const entries = value.filter(isNamedEntry);
+  if (entries.length !== value.length) {
+    return {
+      status: "unreadable",
+      detail:
+        "an array whose elements are not MediaWiki {name, value} entries. Picking one of them, or joining them, " +
+        `would be inventing a reading: ${rawShape(value)}`,
+    };
+  }
+
+  const marker = entries.find((e) => String(e.name).toLowerCase() === "_type");
+  const type = marker === undefined ? null : String(marker.value).toLowerCase();
+  const items = entries.filter((e) => String(e.name).toLowerCase() !== "_type");
+
+  if (items.length === 0) {
+    return {
+      status: "unreadable",
+      detail:
+        `a ${type ?? "structured"}-typed value that carries the "_type" marker and no entries at all. The field is ` +
+        `present and its content is missing, which is not the same as the field being absent: ${rawShape(value)}`,
+    };
+  }
+
+  if (type === null || type === "lang") {
+    const named = (want: string) => items.find((e) => String(e.name).toLowerCase() === want);
+    const picked = named("x-default") ?? named("en") ?? items[0];
+    const inner = unwrapMetaRead(picked.value);
+    if (inner.status === "unreadable") {
+      return {
+        status: "unreadable",
+        detail: `the "${String(picked.name)}" entry of a language-structured value is itself unreadable — ${inner.detail}`,
+      };
+    }
+    // Only one language is REPORTED, which is a presentation choice. It is not
+    // a rights choice: `embeddedStrings()` scans every language, so a
+    // reservation written only in the French entry is still seen.
+    return inner;
+  }
+
+  if (type === "ol" || type === "ul") {
+    const parts: string[] = [];
+    for (const item of items) {
+      const inner = unwrapMetaRead(item.value);
+      if (inner.status === "unreadable") {
+        return { status: "unreadable", detail: `item "${String(item.name)}" of a ${type} value is unreadable — ${inner.detail}` };
+      }
+      if (inner.status === "read") parts.push(inner.value);
+    }
+    if (parts.length === 0) return { status: "empty" };
+    return { status: "read", value: parts.join("; ") };
+  }
+
+  return {
+    status: "unreadable",
+    detail: `an unrecognised MediaWiki structured value, "_type":"${type}": ${rawShape(value)}`,
+  };
+}
+
+/**
+ * Value-or-null unwrap. The LAX reader — see `MetaRead` for why that is a
+ * category and not an oversight. Unreadable and empty both come back null, so
+ * this must not be used for a field a rights decision is made from.
+ */
+export function unwrapMetaValue(value: unknown): string | null {
+  const read = unwrapMetaRead(value);
+  return read.status === "read" ? read.value : null;
+}
+
+/** Every entry in either bucket carrying this field name. */
+function metaEntries(meta: NamedMeta, name: string): { name: string; value: unknown }[] {
+  if (!meta) return [];
+  return meta.filter((m) => String(m.name).toLowerCase() === name.toLowerCase());
+}
+
+/** Whitespace/case/unicode-insensitive form, used ONLY to compare two readings. */
+function comparableMeta(value: string): string {
+  return value.normalize("NFC").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+/**
+ * STRICT read of one embedded field, across both metadata buckets.
+ *
+ * Three things this does that `metaValue()` does not, each of which is a way the
+ * previous fix could still lose a rights assertion:
+ *
+ * 1. **Unreadable is reported**, not converted into null.
+ * 2. **Every entry is read**, and if two of them disagree the answer is
+ *    `disagreeing` — NOT the first one. `commonmetadata` and `metadata` are two
+ *    renderings of the same embedded block; if they render different text, one
+ *    of them is wrong and picking either is guessing about rights. The previous
+ *    fix iterated all entries but returned the first READABLE one, so a benign
+ *    `commonmetadata.Copyright` sitting in front of a restrictive
+ *    `metadata.Copyright` would have silenced the restriction — the original
+ *    failure mode with the ordering reversed.
+ * 3. **An empty entry never outvotes a populated one.** MediaWiki routinely
+ *    renders one bucket and not the other; an entry that says nothing is not a
+ *    second opinion. (Unlike a wikitext field declared twice, where empty IS a
+ *    competing declaration — see `parseInformationField`. Two renderings of one
+ *    embedded block and two authored declarations are different situations.)
+ */
+export function readEmbeddedField(meta: NamedMeta, name: string): MetaRead {
+  const hits = metaEntries(meta, name);
+  if (hits.length === 0) return { status: "absent" };
+
+  const reads = hits.map((h) => unwrapMetaRead(h.value));
+
+  const unreadable = reads.filter((r): r is Extract<MetaRead, { status: "unreadable" }> => r.status === "unreadable");
+  if (unreadable.length > 0) {
+    return {
+      status: "unreadable",
+      detail:
+        `"${name}" is present in the file's embedded metadata and could not be interpreted: ` +
+        unreadable.map((u) => u.detail).join(" — and separately: "),
+    };
+  }
+
+  const byComparable = new Map<string, string>();
+  for (const r of reads) {
+    if (r.status !== "read") continue;
+    const key = comparableMeta(r.value);
+    if (!byComparable.has(key)) byComparable.set(key, r.value);
+  }
+
+  const values = [...byComparable.values()];
+  if (values.length === 0) return { status: "empty" };
+  if (values.length === 1) return { status: "read", value: values[0] };
+  return {
+    status: "disagreeing",
+    values,
+    detail:
+      `"${name}" appears ${hits.length} times in the embedded metadata with ${values.length} different values ` +
+      `(${values.map((v) => `"${truncate(v)}"`).join(", ")}). Which one the file actually asserts is not readable from here.`,
+  };
+}
+
+/**
+ * First readable value for a field. The LAX reader, kept for DESCRIPTIVE fields
+ * (camera Model, the identity half of Artist) where an uninterpretable value is
+ * a missing caption rather than a missing permission.
+ *
+ * Do not call this for a field a rights decision rests on. `readEmbeddedField()`
+ * is the one that can say "unreadable" and "these two disagree"; this one
+ * cannot, by construction.
+ */
 export function metaValue(meta: NamedMeta, name: string): string | null {
-  if (!meta) return null;
-  // ALL matching entries, not the first. resolve() concatenates commonmetadata
-  // ahead of metadata, and the same field can appear in both — once
-  // lang-structured and once flat. Taking the first readable one means the
-  // usable form wins regardless of which bucket it came from.
-  const hits = meta.filter((m) => m.name.toLowerCase() === name.toLowerCase());
-  for (const hit of hits) {
+  for (const hit of metaEntries(meta, name)) {
     const unwrapped = unwrapMetaValue(hit.value);
     if (unwrapped !== null) return unwrapped;
   }
@@ -565,21 +800,194 @@ export function metaValue(meta: NamedMeta, name: string): string | null {
 /**
  * Rights assertions embedded in the file that CONTRADICT a free licence.
  *
- * This is the check that disqualified File:Canon_EOS_5D.jpg. It is also the
- * check that must NOT fire on the GoPro file, whose EXIF Copyright reads
- * "Francois Leblond" — a bare authorship assertion naming the photographer is
- * exactly what a correctly-licensed CC file looks like, because CC does not
- * waive copyright. Only a RESERVATION of rights is a conflict.
+ * This is the check the project believed had disqualified File:Canon_EOS_5D.jpg.
+ * It is also the check that must NOT fire on the GoPro file, whose EXIF
+ * Copyright reads "Francois Leblond" — a bare authorship assertion naming the
+ * photographer is exactly what a correctly-licensed CC file looks like, because
+ * CC does not waive copyright. Only a RESERVATION of rights is a conflict.
  */
-export function exifRightsConflict(copyright: string | null): string | null {
-  if (!copyright) return null;
-  const v = copyright.trim();
+const RIGHTS_RESERVATION_PATTERNS: [RegExp, (field: string, v: string) => string][] = [
+  [/all\s+rights\s+reserved/i, (f, v) => `${f} asserts "${v}" — all rights reserved contradicts a free licence.`],
+  [/\bno\s+(unauthori[sz]ed|commercial)\s+use\b/i, (f, v) => `${f} restricts use: "${v}".`],
+  [/\bdo\s+not\s+(copy|reproduce|distribute)\b/i, (f, v) => `${f} forbids reuse: "${v}".`],
+  [/\bnot\s+for\s+(commercial|redistribution)\b/i, (f, v) => `${f} restricts use: "${v}".`],
+  // ADDED 2026-08-22 after reading the live embedded metadata of the very file
+  // this project cites as the reason the check exists. File:Canon EOS 5D.jpg
+  // carries, in `commonmetadata.UsageTerms`, lang-structured:
+  //
+  //   "No Usage Rights Granted Without Written Authorization from Charles Lanteigne"
+  //
+  // Not one of the four patterns above matches that sentence. The four were
+  // written from the phrase a human had quoted, not from what the file says.
+  [/\bno\s+(usage\s+)?rights?\s+(are\s+|is\s+)?granted\b/i, (f, v) => `${f} states that no rights are granted: "${v}".`],
+  [
+    /\bwithout\s+(prior\s+|express\s+|explicit\s+)*written\s+(authori[sz]ation|permission|consent|approval)\b/i,
+    (f, v) => `${f} requires prior written permission, which is not a free grant: "${v}".`,
+  ],
+  [
+    /\b(unauthori[sz]ed|unauthorised)\s+(use|reproduction|duplication|copying|distribution)\b/i,
+    (f, v) => `${f} restricts use: "${v}".`,
+  ],
+  [
+    /\bmay\s+not\s+be\s+(used|reused|reproduced|copied|distributed|republished|published|sold)\b/i,
+    (f, v) => `${f} forbids reuse: "${v}".`,
+  ],
+  [/\b(written\s+)?permission\s+(is\s+)?required\b/i, (f, v) => `${f} requires permission: "${v}".`],
+  [/\bcommercial\s+use\s+(is\s+)?(strictly\s+)?(prohibited|forbidden|not\s+permitted)\b/i, (f, v) => `${f} restricts use: "${v}".`],
+];
+
+/**
+ * A value that reached us as a stringified object — the ORIGINAL BUG's own
+ * output, "[object Object],[object Object]".
+ *
+ * Kept separate from the reservation patterns because it is not a statement the
+ * FILE makes; it is evidence that something upstream lost the value. So it
+ * makes a field `unreadable` (a reader defect, PROVIDER_PARSE_FAILURE) rather
+ * than a rights conflict. `embeddedRightsConflict()` still refuses it outright,
+ * as a net under any caller that hands a raw string straight to the check.
+ */
+export function isStringificationArtifact(value: string): boolean {
+  return /\[object (Object|Array|Null|Undefined)\]/.test(value);
+}
+
+/**
+ * Rights assertions embedded in a file that CONTRADICT a free licence, for any
+ * rights-bearing embedded field.
+ *
+ * "Some rights reserved" is deliberately absent from the patterns: it is
+ * Creative Commons' own tagline, and a check that fires on it would refuse
+ * exactly the files this pipeline exists to find.
+ */
+export function embeddedRightsConflict(field: string, value: string | null): string | null {
+  if (!value) return null;
+  const v = value.trim();
   if (!v) return null;
-  if (/all\s+rights\s+reserved/i.test(v)) return `EXIF Copyright asserts "${v}" — all rights reserved contradicts a free licence.`;
-  if (/\bno\s+(unauthori[sz]ed|commercial)\s+use\b/i.test(v)) return `EXIF Copyright restricts use: "${v}".`;
-  if (/\bdo\s+not\s+(copy|reproduce|distribute)\b/i.test(v)) return `EXIF Copyright forbids reuse: "${v}".`;
-  if (/\bnot\s+for\s+(commercial|redistribution)\b/i.test(v)) return `EXIF Copyright restricts use: "${v}".`;
+  if (isStringificationArtifact(v)) {
+    return (
+      `${field} could not be read: the value arrived as "${v}", which is a stringified object rather than anything ` +
+      "the file asserts. A rights field whose content we cannot see is not a rights field that says nothing."
+    );
+  }
+  return rightsReservationMessage(field, v);
+}
+
+/** Only a RESERVATION written by the file — no reader-defect detection. */
+function rightsReservationMessage(field: string, value: string): string | null {
+  for (const [pattern, message] of RIGHTS_RESERVATION_PATTERNS) {
+    if (pattern.test(value)) return message(field, value);
+  }
   return null;
+}
+
+export function exifRightsConflict(copyright: string | null): string | null {
+  return embeddedRightsConflict("EXIF Copyright", copyright);
+}
+
+/**
+ * Embedded fields that ASSERT TERMS, and are therefore read strictly: an
+ * unreadable one stops the candidate.
+ *
+ * `Artist` and `Credit` are not in this list — they are identity fields, and an
+ * unreadable one is a missing credit rather than a hidden restriction, which is
+ * not worth refusing a correctly-licensed photograph over. They ARE scanned for
+ * reservation text (below), because a photographer who writes "© X, all rights
+ * reserved" into the Artist field has still written a reservation.
+ */
+export const RIGHTS_BEARING_EMBEDDED_FIELDS = [
+  "Copyright",
+  "UsageTerms",
+  "CopyrightNotice",
+  "Rights",
+  "WebStatement",
+] as const;
+
+/** Additionally scanned for reservation text, but not strictly required to parse. */
+export const RIGHTS_SCANNED_EMBEDDED_FIELDS = [...RIGHTS_BEARING_EMBEDDED_FIELDS, "Artist", "Credit"] as const;
+
+/** How a field is named in a conflict message. */
+function embeddedFieldLabel(field: string): string {
+  return field === "Copyright" ? "EXIF Copyright" : `Embedded ${field}`;
+}
+
+export type EmbeddedRightsReading = {
+  /** Conflicts to record on the provenance record. Any one of these blocks. */
+  conflicts: string[];
+  /** Evidence lines describing what was read, and from where. */
+  notes: { field: string; detail: string }[];
+  /**
+   * Rights-bearing fields that are PRESENT and could not be interpreted, and in
+   * which no reservation text was visible either. Non-empty means the candidate
+   * must stop as a PARSE FAILURE: we are looking at a rights assertion we cannot
+   * read, and "could not read" is not "says nothing".
+   */
+  unreadable: { field: string; detail: string }[];
+};
+
+/**
+ * Read every rights-bearing embedded field, failing closed on the unknown.
+ *
+ * Order of precedence, and it matters:
+ *
+ *   1. A reservation VISIBLE anywhere inside the raw value wins, whatever shape
+ *      the value is in. That is a fact about the FILE, and it is more useful to
+ *      a human than "we could not parse it".
+ *   2. Otherwise, an uninterpretable rights-bearing field is a PARSE FAILURE —
+ *      it says the reader is wrong, not the file, which is the same distinction
+ *      resolve() already draws for an ambiguous {{Information}} field.
+ *   3. Two readings that disagree are a CONFLICT: the file contradicts itself
+ *      and neither reading may be preferred.
+ */
+export function readEmbeddedRights(meta: NamedMeta): EmbeddedRightsReading {
+  const conflicts: string[] = [];
+  const notes: { field: string; detail: string }[] = [];
+  const unreadable: { field: string; detail: string }[] = [];
+  const reserved = new Set<string>();
+
+  // (1) The reservation scan, over EVERY string inside every entry — including
+  //     entries whose overall shape is not interpretable.
+  for (const field of RIGHTS_SCANNED_EMBEDDED_FIELDS) {
+    for (const entry of metaEntries(meta, field)) {
+      for (const text of embeddedStrings(entry.value)) {
+        // Deliberately the RESERVATION check only. A stringification artifact
+        // found in here is a reader defect, and must route to `unreadable`
+        // below rather than be reported as something the file says.
+        const conflict = rightsReservationMessage(embeddedFieldLabel(field), text);
+        if (!conflict) continue;
+        reserved.add(field);
+        if (!conflicts.includes(conflict)) conflicts.push(conflict);
+      }
+    }
+  }
+
+  // (2)/(3) The strict read.
+  for (const field of RIGHTS_BEARING_EMBEDDED_FIELDS) {
+    const read = readEmbeddedField(meta, field);
+    switch (read.status) {
+      case "absent":
+        break;
+      case "empty":
+        notes.push({ field, detail: `embedded ${field} is present and empty` });
+        break;
+      case "read":
+        notes.push({ field, detail: `embedded ${field}="${read.value}"` });
+        break;
+      case "disagreeing": {
+        notes.push({ field, detail: `embedded ${field} DISAGREES WITH ITSELF: ${read.detail}` });
+        const conflict =
+          `The file's own embedded metadata gives ${field} more than once with different content: ${read.detail} ` +
+          "Neither reading may be preferred over the other, and the permissive one is exactly the one a " +
+          "pick-the-first reader would have chosen.";
+        if (!conflicts.includes(conflict)) conflicts.push(conflict);
+        break;
+      }
+      case "unreadable":
+        notes.push({ field, detail: `embedded ${field} UNREADABLE: ${read.detail}` });
+        if (!reserved.has(field)) unreadable.push({ field, detail: read.detail });
+        break;
+    }
+  }
+
+  return { conflicts, notes, unreadable };
 }
 
 /**
@@ -1053,21 +1461,64 @@ export function createCommonsProvider(options: CommonsProviderOptions): MediaPro
       }
 
       // --- EXIF, the cross-check ------------------------------------------
+      //
+      // Both buckets, concatenated. `commonmetadata` is the raw common set and
+      // `metadata` the formatted one; the SAME field appears in both, and on
+      // real files it appears in two different SHAPES (see unwrapMetaRead).
       const meta = (ii.commonmetadata ?? []).concat(ii.metadata ?? []) as NamedMeta;
+
+      // Descriptive reads: lax on purpose. An unreadable camera model is not a
+      // rights claim and must not refuse a correctly-licensed photograph.
       const exifArtist = metaValue(meta, "Artist");
-      const exifCopyright = metaValue(meta, "Copyright");
       const exifModel = metaValue(meta, "Model");
       if (exifArtist) evidence.push({ kind: "exif_artist", detail: `EXIF Artist="${exifArtist}"`, origin: "imageinfo commonmetadata" });
+
+      // Rights reads: strict. Unreadable is a stop, disagreement is a conflict,
+      // and every rights-bearing field is read — not only `Copyright`.
+      const embeddedRights = readEmbeddedRights(meta);
+      const copyrightRead = readEmbeddedField(meta, "Copyright");
       evidence.push({
         kind: "exif_copyright",
-        detail: exifCopyright ? `EXIF Copyright="${exifCopyright}"` : "no EXIF Copyright field",
-        origin: "imageinfo commonmetadata",
+        detail:
+          copyrightRead.status === "read"
+            ? `EXIF Copyright="${copyrightRead.value}"`
+            : copyrightRead.status === "disagreeing"
+              ? `EXIF Copyright DISAGREES WITH ITSELF: ${copyrightRead.detail}`
+              : copyrightRead.status === "unreadable"
+                ? `EXIF Copyright is PRESENT AND UNREADABLE: ${copyrightRead.detail}`
+                : "no EXIF Copyright field",
+        origin: "imageinfo commonmetadata/metadata",
       });
+      for (const note of embeddedRights.notes) {
+        if (note.field === "Copyright") continue; // already recorded above
+        evidence.push({ kind: "restriction_field", detail: note.detail, origin: "imageinfo commonmetadata/metadata" });
+      }
+      for (const c of embeddedRights.conflicts) if (!conflicts.includes(c)) conflicts.push(c);
+
+      // A rights-bearing embedded field that is THERE and unreadable stops the
+      // candidate, and stops it as a PARSE FAILURE rather than as a rights
+      // finding — the same distinction drawn for an ambiguous {{Information}}
+      // field above. Reaching a rights verdict from a field we could not read
+      // is the shape of the bug this whole module keeps re-learning: the
+      // previous fix returned null here, and null is indistinguishable from
+      // "this file makes no rights assertion", which is a green light.
+      if (embeddedRights.unreadable.length > 0) {
+        return {
+          outcome: {
+            status: "malformed",
+            detail:
+              `Rights-bearing embedded metadata on ${candidate.providerRef} could not be interpreted: ` +
+              embeddedRights.unreadable.map((u) => u.detail).join(" | ") +
+              " Refused as a PARSE FAILURE, not as a rights finding — a rights field this reader cannot read is not a " +
+              "rights field that says nothing, and treating the two the same is how an embedded reservation goes " +
+              "unnoticed under a free licence badge.",
+          },
+          provenance: null,
+        };
+      }
       if (exifModel) {
         evidence.push({ kind: "licence_metadata", detail: `EXIF Model="${exifModel}"`, origin: "imageinfo commonmetadata" });
       }
-      const exifConflict = exifRightsConflict(exifCopyright);
-      if (exifConflict) conflicts.push(exifConflict);
 
       // --- Dimensions, type, hash ------------------------------------------
       if (ii.width && ii.height) {

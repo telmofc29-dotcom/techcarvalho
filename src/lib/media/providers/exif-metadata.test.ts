@@ -72,9 +72,11 @@ test("both buckets are searched, so ordering cannot decide readability", () => {
   assert.equal(metaValue(both, "Copyright"), "©2008 Charles Lanteigne");
 });
 
-test("an uninterpretable value is null — 'unreadable', not a garbage string", () => {
-  // A stringified object matches no pattern, so it reads as "this field says
-  // nothing" rather than "this field could not be read". null is honest.
+test("the LAX reader still returns null for anything it cannot interpret", () => {
+  // `unwrapMetaValue` is the lax accessor, kept for DESCRIPTIVE fields. null
+  // here is fine precisely because no rights decision is made from it — see
+  // `unwrapMetaRead` / `readEmbeddedField` below, which is what the rights path
+  // uses and which can say "unreadable" out loud.
   assert.equal(unwrapMetaValue({ nested: { deeper: true } }), null);
   assert.equal(unwrapMetaValue([]), null);
   assert.equal(unwrapMetaValue([{ name: "_type", value: "lang" }]), null);

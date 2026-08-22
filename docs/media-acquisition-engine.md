@@ -88,9 +88,31 @@ It can establish, from primary evidence it fetched itself:
 | Source / credit | `extmetadata Credit` or `{{Information|source=}}` |
 | Permission field | `{{Information|permission=}}` — empty is the healthy state for an own-work CC upload |
 | Restrictions | `extmetadata Restrictions` |
-| Embedded rights metadata | EXIF `Artist` and `Copyright` via `commonmetadata` |
+| Embedded rights metadata | `Copyright`, **`UsageTerms`**, `CopyrightNotice`, `Rights`, `WebStatement` and `Artist`, read from **both** `commonmetadata` and `metadata`, in whatever shape MediaWiki returns them |
 | Content hash | `imageinfo sha1` of the original, plus SHA-256 of the bytes on acquisition |
 | Dimensions, MIME, byte size | `imageinfo` |
+
+> **The Canon EOS 5D lesson, 2026-08-22.** This file has been cited for months as the
+> reason the embedded-rights cross-check exists, and it was passing that check.
+> Two defects in the same costume. Its EXIF `Copyright` reads `©2008 Charles
+> Lanteigne` — a bare notice, correctly NOT a conflict, because CC does not waive
+> copyright. The real reservation sits in `UsageTerms`: *"No Usage Rights Granted
+> Without Written Authorization from Charles Lanteigne"* — a field the reader
+> never looked at, whose sentence matched none of the reservation patterns
+> because those had been written from a phrase a human once quoted rather than
+> from what the file says. It came out `evidence_complete`, `mayAcquire=true`.
+>
+> Two consequences worth carrying: a rights reader must scan **every string in
+> the value, whatever shape it is in** — a reservation buried in an
+> uninterpretable structure is a fact about the FILE and beats a fact about the
+> reader — and an **unreadable** rights-bearing field must block rather than
+> return "says nothing", because those two answers arrive at the gate as the same
+> word and that word is *proceed*.
+>
+> Also note: `insource:` indexes wikitext only, so `insource:"No Usage Rights
+> Granted"` returns **zero hits** for a file carrying exactly that in its EXIF.
+> EXIF-borne reservations cannot be found by search; only by reading the embedded
+> metadata of each candidate.
 
 It cross-checks them. The two independent licence reads must agree. An EXIF **reservation**
 of rights blocks (this is the `File:Canon_EOS_5D.jpg` failure); an EXIF `Copyright` naming
