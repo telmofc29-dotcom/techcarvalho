@@ -193,7 +193,7 @@ export async function attachHeroImages<T extends { id: string }>(
       // these are extra columns on a query that already ran, not extra
       // queries.
       .select(
-        "id, alt_text, publication_status, storage_path, public_storage_path, source_type, asset_role, owned, ai_generated, source_url, license, width, height"
+        "id, alt_text, publication_status, storage_path, public_storage_path, source_type, asset_role, owned, ai_generated, source_url, license, width, height, attribution, attribution_required, creator"
       )
       .in("id", mediaIds);
     logQueryError(`attachHeroImages(${kind}) assets`, assetError);
@@ -212,6 +212,13 @@ export async function attachHeroImages<T extends { id: string }>(
         aiGenerated: asset.ai_generated,
         sourceUrl: asset.source_url,
         license: asset.license,
+        // Carried so a CARD can render its credit. Omitting these here was a
+        // live licence breach: the detail-page query selected them and the
+        // batched list query did not, so every CC BY photograph on the
+        // homepage, category pages and index pages rendered uncredited.
+        attribution: asset.attribution,
+        attributionRequired: asset.attribution_required,
+        creator: asset.creator,
         storagePath: asset.storage_path,
         assetRole: asset.asset_role,
         width: asset.width,

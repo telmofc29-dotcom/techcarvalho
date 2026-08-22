@@ -1576,6 +1576,59 @@ export interface Database {
         };
         Returns: string;
       };
+      // Drafted by supabase/migrations_pending/20260822_engine_safety.sql —
+      // NOT YET APPLIED. src/lib/engine/guard.ts calls these and treats an
+      // error as "telemetry unavailable", which the circuit breakers then
+      // treat as a reason to STOP rather than to proceed unchecked. So the
+      // code is safe against the migration being absent; it simply reports
+      // every breaker as unavailable until it lands.
+      // Lease-based idempotency for a scheduled pass — same pending migration.
+      // engine_begin_run returns a run id, or a marker when another worker
+      // already holds the lease, so a double-fired scheduler cannot run twice.
+      engine_begin_run: {
+        Args: { p_job_name: string; p_idempotency_key: string; p_lease_seconds?: number };
+        Returns: string;
+      };
+      engine_complete_run: {
+        Args: {
+          p_run_id: string;
+          p_status: string;
+          p_items_examined: number;
+          p_items_created: number;
+          p_items_deduped: number;
+          p_items_failed: number;
+          p_detail: Record<string, unknown> | null;
+          p_error: string | null;
+        };
+        Returns: void;
+      };
+      engine_recent_job_runs: {
+        Args: { p_hours?: number; p_limit?: number };
+        Returns: {
+          job_name: string;
+          status: string;
+          started_at: string;
+          finished_at: string | null;
+          items_examined: number;
+          items_created: number;
+          items_deduped: number;
+          items_failed: number;
+          has_error: boolean;
+        }[];
+      };
+      engine_source_health: {
+        Args: Record<string, never>;
+        Returns: { checked: number; failed: number; max_consecutive_failures: number }[];
+      };
+      engine_validation_stats: {
+        Args: { p_hours?: number };
+        Returns: {
+          evaluated: number;
+          rejected: number;
+          baseline_evaluated: number;
+          baseline_rejected: number;
+        }[];
+      };
       engine_upsert_freshness: {
         Args: {
           p_kind: string;

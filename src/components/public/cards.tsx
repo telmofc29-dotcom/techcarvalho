@@ -103,6 +103,7 @@ export function MediaFrame({
   // call site.
   className = "aspect-[4/3] w-full rounded-t-xl",
   iconClassName = "h-9 w-9",
+  credit,
 }: {
   src?: string | null;
   alt: string;
@@ -123,6 +124,21 @@ export function MediaFrame({
   fit?: MediaFit;
   className?: string;
   iconClassName?: string;
+  /**
+   * Credit text for a licensed image, e.g. "Photo: A.Savin, CC BY-SA 4.0".
+   *
+   * Rendered as TEXT rather than links, deliberately: a card is itself wrapped
+   * in a <Link>, and nesting an anchor inside one is invalid HTML. CC BY asks
+   * for attribution "in any reasonable manner based on the medium", and the
+   * fully-linked credit — creator, licence deed and source — is one click away
+   * on the detail page.
+   *
+   * Omitting this entirely was a live breach: the detail-page query selected
+   * the credit fields and the batched card query did not, so every CC BY
+   * photograph on the homepage, category pages and index pages rendered with
+   * no credit at all.
+   */
+  credit?: string | null;
 }) {
   if (src) {
     const contained = fit === "contain";
@@ -142,6 +158,14 @@ export function MediaFrame({
               : "object-cover transition-transform duration-300 group-hover:scale-[1.03]"
           }
         />
+        {credit && (
+          <span
+            className="pointer-events-none absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/55 to-transparent px-2 pb-1 pt-3 text-[10px] leading-tight text-white/85"
+            // Not aria-hidden: a licence credit is content, not decoration.
+          >
+            {credit}
+          </span>
+        )}
       </div>
     );
   }
