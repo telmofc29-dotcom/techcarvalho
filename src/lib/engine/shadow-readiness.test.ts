@@ -141,28 +141,20 @@ test("a single escape blocks, however large the set", () => {
   assert.ok(report.blockers.some((b) => b.criterion === "Unlicensed-media escapes"));
 });
 
-test("a genuinely adequate ledger satisfies EVERY criterion except the unbuilt one", () => {
-  // This asserted that a full ledger plus every proof unlocks AUTONOMOUS. It
-  // cannot any more, and the reason is a finding rather than a regression:
-  // rollback_test is required at chaos_proven, and no rollback, undo, revert or
-  // compensating mechanism exists anywhere in src/. proofs.ts now answers
-  // NOT_IMPLEMENTED for it, which never counts as proven and always blocks.
-  //
-  // The valuable half of the original assertion is kept: the ledger and
-  // composition machinery genuinely do reach the bar, so nothing here is
-  // failing for an accidental reason.
+test("a genuinely adequate ledger with every proof unlocks AUTONOMOUS", () => {
+  // Briefly impossible: rollback_test was found to be NOT_IMPLEMENTED, so this
+  // asserted the opposite for a while. rollback.ts now exists and is proven, so
+  // the ledger and composition machinery can once again carry a verdict all the
+  // way. That matters as a test of THIS module: if it could never reach true,
+  // nothing here would be exercised beyond its refusals.
   const report = assessShadowReadiness(input());
   assert.ok(
     report.evidence.shadowDecisions >= READINESS.minShadowDecisions,
     `only ${report.evidence.shadowDecisions} credited`
   );
   assert.equal(report.composition.adequate, true, report.composition.summary);
-  assert.equal(report.autonomousUnlocked, false);
-  assert.deepEqual(
-    report.blockers.map((b) => b.criterion),
-    ["Proof: rollback_test"],
-    "the ONLY thing standing between full evidence and AUTONOMOUS is an unbuilt capability"
-  );
+  assert.equal(report.autonomousUnlocked, true, JSON.stringify(report.blockers));
+  assert.equal(report.highestJustifiedMode, "AUTONOMOUS");
 });
 
 test("this module can only ever remove justification, never add it", () => {

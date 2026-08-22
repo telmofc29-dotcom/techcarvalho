@@ -51,30 +51,24 @@ test("SHADOW publishes nothing; CANARY and AUTONOMOUS may", () => {
   assert.equal(modeMayPublish("AUTONOMOUS"), true);
 });
 
-test("full evidence still cannot unlock AUTONOMOUS while a capability is UNBUILT", () => {
-  // This test used to assert that full evidence unlocks AUTONOMOUS. It no
-  // longer can, and the change is deliberate rather than a regression.
+test("full evidence unlocks AUTONOMOUS — the gate is demanding, not jammed", () => {
+  // This assertion has now been true, then false, then true again, and the
+  // journey is the point.
   //
-  // rollback_test is required at chaos_proven, and a repository-wide search
-  // finds no rollback, undo, revert or compensating mechanism anywhere in src/.
-  // The engine's safety model is entirely "do not make the write in the first
-  // place". That is a defensible design — but while a proof is REQUIRED for a
-  // capability that does not EXIST, the honest verdict is locked, and no amount
-  // of shadow evidence can substitute.
+  // It originally passed. It then began FAILING when rollback_test was found to
+  // be NOT_IMPLEMENTED — a repository-wide search turned up the word only in
+  // two comments — which made AUTONOMOUS permanently unreachable however much
+  // evidence accumulated. src/lib/engine/rollback.ts now exists and is proven
+  // against production, so the gate opens again on full evidence.
   //
-  // Two ways to make AUTONOMOUS reachable, both requiring a deliberate human
-  // decision and a commit: build a rollback mechanism, or decide rollback is
-  // genuinely not required for this engine and remove it from PROOF_KINDS.
-  // Neither should happen silently, which is why this is pinned as a test.
+  // Keeping this test is what distinguishes a gate that is HARD from one that
+  // is BROKEN. A criterion nothing can ever satisfy stops being a safety
+  // control and becomes a permanent no, which is easy to mistake for rigour and
+  // is really just a bug nobody has noticed.
   const r = evaluateReadiness(ready());
-  assert.equal(r.autonomousUnlocked, false, JSON.stringify(r.blockers));
-  const rollback = r.blockers.filter((b) => b.criterion === "Proof: rollback_test");
-  assert.equal(rollback.length, 1, "rollback is the blocker");
-  assert.match(rollback[0].actual, /does not exist in the codebase/);
-  assert.equal(
-    r.blockers.length, 1,
-    `every OTHER criterion is satisfied by full evidence: ${JSON.stringify(r.blockers)}`
-  );
+  assert.equal(r.autonomousUnlocked, true, JSON.stringify(r.blockers));
+  assert.equal(r.highestJustifiedMode, "AUTONOMOUS");
+  assert.deepEqual(r.blockers, [], "full evidence means no blockers");
 });
 
 test("ANY single escape re-locks it — these have no acceptable rate", () => {

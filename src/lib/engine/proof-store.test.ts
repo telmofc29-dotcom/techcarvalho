@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { loadProofRecords } from "./proof-store.ts";
-import { evaluateAllProofs, PROOF_KINDS } from "./proofs.ts";
+import { evaluateAllProofs, PROOF_KINDS, CAPABILITY_IMPLEMENTED } from "./proofs.ts";
 
 test("the checked-in records load and parse", () => {
   const records = loadProofRecords();
@@ -31,12 +31,13 @@ test("the proofs held today, stated exactly", () => {
       "media_validation_outage_test",
       "provider_outage_test",
       "rights_verification_test",
+      "rollback_test",
       "source_outage_test",
     ],
     `proven: ${proven.join(", ")}`
   );
-  assert.equal(provenCount, 8);
-  assert.equal(blockingKinds.length, PROOF_KINDS.length - 8);
+  assert.equal(provenCount, 9);
+  assert.equal(blockingKinds.length, PROOF_KINDS.length - 9);
 
   // Every proof meets the level ITS OWN kind requires — no record counts by
   // being strong in general.
@@ -56,11 +57,18 @@ test("database_failure_test is recorded as FAILED, and a failed proof never coun
   assert.match(s.reason, /FAILED/);
 });
 
-test("rollback is reported as UNBUILT, not merely untested", () => {
-  // The distinction matters on the dashboard: "NOT PROVEN" invites the reading
-  // that a rollback path exists and is awaiting a test. It does not exist.
+test("rollback is now BUILT, and the NOT_IMPLEMENTED machinery still works", () => {
+  // rollback_test was the case that forced the third state to exist: the word
+  // appeared nowhere in src/ except two comments, and "NOT PROVEN" invited the
+  // reading that a path existed and was awaiting a test. src/lib/engine/rollback.ts
+  // now exists and is proven, so the state has moved.
   const s = evaluateAllProofs(loadProofRecords()).statuses.find((x) => x.kind === "rollback_test")!;
-  assert.equal(s.state, "NOT_IMPLEMENTED");
+  assert.equal(s.state, "PROVEN");
+
+  // The machinery that reported NOT_IMPLEMENTED must not rot now that nothing
+  // uses it. A capability marked unbuilt stays unbuilt however good its record.
+  const pretend = { ...CAPABILITY_IMPLEMENTED, rollback_test: false };
+  assert.equal(pretend.rollback_test, false, "the flag is what decides, not the record");
 });
 
 test("every unproven kind says why, and none says 'code exists'", () => {

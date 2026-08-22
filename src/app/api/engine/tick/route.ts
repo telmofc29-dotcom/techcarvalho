@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { checkCronAuth, newCounters, recordJobRun } from "@/lib/engine/cron";
 import { beginRun, buildGuard, completeRun, loadTelemetry } from "@/lib/engine/guard";
 import { idempotencyKeyFor } from "@/lib/engine/concurrency";
-import { STAGE_JOB_NAMES } from "@/lib/engine/stages";
+import { STAGE_JOB_NAMES, ENGINE_STAGE_NAMES, type EngineStageName } from "@/lib/engine/stages";
 import { runDiscovery } from "@/lib/engine/jobs/discovery";
 import { runRelevance } from "@/lib/engine/jobs/relevance-job";
 import { runBriefGeneration } from "@/lib/engine/jobs/brief-job";
@@ -18,6 +18,9 @@ import { runProductAssembly } from "@/lib/engine/jobs/product-job";
 import { runInternalLinks } from "@/lib/engine/jobs/link-job";
 import { runHeroMediaAudit } from "@/lib/engine/jobs/hero-media-job";
 import { runShadowEvaluation } from "@/lib/engine/jobs/shadow-job";
+import type { StageResult } from "@/lib/engine/jobs/discovery";
+
+type EngineClient = Awaited<ReturnType<typeof createClient>>;
 
 const JOB = "engine_tick";
 
@@ -47,7 +50,14 @@ const JOB = "engine_tick";
 // discoveries this pass created, and briefs must see this pass's relevance
 // verdicts. Running them on independent schedules would introduce a lag of a
 // full cycle between each stage.
-const STAGES = [
+// TYPED AGAINST ENGINE_STAGE_NAMES.
+//
+// A stage added here whose name is not in src/lib/engine/stages.ts now fails to
+// COMPILE. Previously it compiled, halted on every tick (route.ts refuses an
+// unmapped stage) and looked like a stage that simply never had anything to do.
+// Fail-closed is the right runtime behaviour, but a capability that silently
+// stops existing is not something to discover from a halted row.
+const STAGES: readonly (readonly [EngineStageName, (c: EngineClient) => Promise<StageResult>])[] = [
   ["discovery", runDiscovery],
   ["relevance", runRelevance],
   // Update proposals run BEFORE briefs so a discovery describing a change to

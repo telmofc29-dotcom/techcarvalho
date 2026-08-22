@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   evaluateProof, evaluateAllProofs, REQUIRED_LEVEL, PROOF_KINDS, PROOF_TTL_DAYS,
   type ProofRecord,
+  CAPABILITY_IMPLEMENTED,
 } from "./proofs.ts";
 
 const NOW = new Date("2026-08-22T12:00:00Z");
@@ -122,11 +123,12 @@ test("every NOT_PROVEN status explains itself in actionable terms", () => {
 // ---------------------------------------------------------------------------
 
 test("a capability with no implementation reports NOT_IMPLEMENTED, not NOT_PROVEN", () => {
-  // rollback_test is the real case. A repository-wide search for rollback, undo,
-  // revert or compensating logic finds the word only in proofs.ts and modes.ts,
-  // both times in a comment. "NOT PROVEN — never exercised" invites the reading
-  // that a rollback path exists and is merely untested.
-  const s = evaluateProof("rollback_test", [], NOW);
+  // rollback_test was the real case: a repository-wide search found the word
+  // only in two comments. It is now built, so the machinery is exercised
+  // through an injected map rather than deleted — the rule must keep applying
+  // to whatever capability is added next.
+  const unbuilt = { ...CAPABILITY_IMPLEMENTED, rollback_test: false };
+  const s = evaluateProof("rollback_test", [], NOW, unbuilt);
   assert.equal(s.state, "NOT_IMPLEMENTED");
   assert.match(s.reason, /does not exist in the codebase/);
 });
@@ -135,16 +137,19 @@ test("a passing record cannot make an unimplemented capability proven", () => {
   // The failure this blocks: someone records a rollback proof — sincerely, from
   // a test of something adjacent — and the dashboard turns green for a mechanism
   // that was never built. A proof cannot be more real than its subject.
+  const unbuilt = { ...CAPABILITY_IMPLEMENTED, rollback_test: false };
   const s = evaluateProof(
     "rollback_test",
     [rec({ kind: "rollback_test", level: "chaos_proven", passed: true })],
-    NOW
+    NOW,
+    unbuilt
   );
   assert.equal(s.state, "NOT_IMPLEMENTED");
   assert.match(s.reason, /IGNORED/);
 });
 
 test("NOT_IMPLEMENTED still blocks graduation, and is never counted as proven", () => {
+  // Uses the real map: with no records at all, nothing is proven either way.
   // The arithmetic bug this pins: provenCount used to be derived by SUBTRACTING
   // the NOT_PROVEN ones from the total. Adding a third state silently promoted
   // every unimplemented capability to "proven".

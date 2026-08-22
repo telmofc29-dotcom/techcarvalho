@@ -142,12 +142,20 @@ export const CAPABILITY_IMPLEMENTED: Record<ProofKind, boolean> = {
   provider_outage_test: true,
   media_acquisition_test: true,
   rights_verification_test: true,
-  // NOT IMPLEMENTED. There is no rollback, undo, revert or compensating
-  // mechanism anywhere in src/. Nothing in this engine can reverse a write it
-  // has made; the safety model is entirely "do not make the write in the first
-  // place". That is a legitimate design, but it means this proof is not merely
-  // unobtained — it is unobtainable until such a mechanism exists.
-  rollback_test: false,
+  // IMPLEMENTED 2026-08-22: src/lib/engine/rollback.ts.
+  //
+  // It was genuinely absent before — a repository-wide search found the word
+  // only in two comments — so this flag was false and proofs.ts reported
+  // NOT_IMPLEMENTED rather than the softer NOT_PROVEN. That is now a different
+  // statement: the mechanism exists, is unit-tested, and has been exercised
+  // against the production database.
+  //
+  // Deliberately admin-only and never engine-invoked. Engine jobs run as
+  // `anon`, and the anon key ships in client-side JavaScript, so a
+  // delete-capable rollback path reachable that way would hand anyone with curl
+  // a means of destroying editorial work — a larger hazard than the one
+  // rollback exists to contain.
+  rollback_test: true,
 };
 
 export type ProofStatus = {
@@ -176,7 +184,15 @@ export type ProofStatus = {
 export function evaluateProof(
   kind: ProofKind,
   records: ProofRecord[],
-  now: Date = new Date()
+  now: Date = new Date(),
+  /**
+   * Which capabilities exist. Injectable ONLY so the NOT_IMPLEMENTED machinery
+   * stays tested once every real capability is built — otherwise those tests
+   * would have to be deleted the moment the last gap closed, and the rule would
+   * quietly stop being enforced for the next capability somebody adds. Callers
+   * in the application never pass it.
+   */
+  implemented: Record<ProofKind, boolean> = CAPABILITY_IMPLEMENTED
 ): ProofStatus {
   const required = REQUIRED_LEVEL[kind];
   const mine = records.filter((r) => r.kind === kind);
@@ -184,7 +200,7 @@ export function evaluateProof(
   // Checked BEFORE the records, and it cannot be overridden by one. If somebody
   // records a passing rollback proof while no rollback code exists, the record
   // is the thing that is wrong, and the honest answer is still NOT_IMPLEMENTED.
-  if (!CAPABILITY_IMPLEMENTED[kind]) {
+  if (!implemented[kind]) {
     return {
       kind,
       state: "NOT_IMPLEMENTED",
@@ -258,12 +274,16 @@ export function evaluateProof(
 }
 
 /** Every proof's status, and the list of kinds still blocking graduation. */
-export function evaluateAllProofs(records: ProofRecord[], now: Date = new Date()): {
+export function evaluateAllProofs(
+  records: ProofRecord[],
+  now: Date = new Date(),
+  implemented: Record<ProofKind, boolean> = CAPABILITY_IMPLEMENTED
+): {
   statuses: ProofStatus[];
   provenCount: number;
   blockingKinds: ProofKind[];
 } {
-  const statuses = PROOF_KINDS.map((k) => evaluateProof(k, records, now));
+  const statuses = PROOF_KINDS.map((k) => evaluateProof(k, records, now, implemented));
 
   // COUNTED POSITIVELY, not by subtraction.
   //

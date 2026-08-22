@@ -45,6 +45,17 @@ export const PROOF_RECORDS: ProofRecord[] = [
     passed: true,
   },
   {
+    kind: "rollback_test",
+    level: "chaos_proven",
+    observedAt: "2026-08-22T23:20:00.000Z",
+    commit: "b6353bf0",
+    method:
+      "npx tsx scripts/proof-rollback.ts against the PRODUCTION database as an authenticated admin. Captured a representative state (an existing engine_briefs row, every column read byte-for-byte, plus the content_items count); performed the controlled mutation engine_assemble_draft actually makes — a draft content_item plus its source_records and media_requirements children, and an UPDATE moving the borrowed brief's state; then planned and executed the reversal through src/lib/engine/rollback.ts and compared every captured value individually rather than counting rows. The two refusal arms were GENUINELY INDUCED in the database rather than simulated: the row was really set to status='published' (with published_at a year in the future, so the induced state is invisible to the public — asserted, not assumed, by querying as anon), and really edited by hand as an editor would. The target state for the update is chosen to differ from what is already there, because an earlier run happened to borrow a brief already in the target state, mutated nothing, 'restored' a value that had never moved, and reported 10/10.",
+    observed:
+      "11/11 checks passed. The mutation was verified real before reversal (state 'drafting' -> 'planned'). A genuinely PUBLISHED row refused the ENTIRE plan — refusals=[row_published], and critically the source_records row was NOT deleted, so a published article never loses its sources to a half-reversal. A genuinely EDITED row also refused the entire plan — refusals=[row_modified_since] — so the editor's title was not discarded. Anon saw 0 rows for the induced published state, confirming it never reached a reader. The clean run then planned '4 reversal(s): 1 restore then 3 deletes, children before parents', executed it, and afterwards: the created draft, source_records row and media_requirements row were all absent; the updated brief held EXACTLY its previous values {state:'drafting', review_state:'pending'}; the `rationale` column — which the engine never wrote — was byte-identical, proving only the recorded columns are restored; and content_items was back to exactly 81, the count before the run.",
+    passed: true,
+  },
+  {
     kind: "provider_outage_test",
     level: "chaos_proven",
     observedAt: "2026-08-22T21:50:00.000Z",

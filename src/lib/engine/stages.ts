@@ -20,7 +20,49 @@
 //
 // Pure data. No imports, no I/O.
 
-export const STAGE_JOB_NAMES: Record<string, string> = {
+/**
+ * Every stage the engine tick runs, by name.
+ *
+ * This list is the SINGLE SOURCE OF TRUTH for what a stage is. route.ts pairs
+ * each name with its runner function and is typed against this list, so a stage
+ * added to the route without an entry here is a COMPILE error rather than a
+ * runtime surprise.
+ *
+ * That ordering matters. The runtime already fails closed — an unmapped stage
+ * is halted by route.ts and an unregistered job is refused by guard.gateFor().
+ * But a stage that silently halts on every tick is a stage that never runs, and
+ * "it fails closed" is a poor consolation for a capability that quietly stopped
+ * existing. Catching it at build time is the difference between a bug that
+ * cannot ship and a bug that ships and hides.
+ */
+export const ENGINE_STAGE_NAMES = [
+  "discovery",
+  "relevance",
+  "update_proposals",
+  "product_assembly",
+  "briefs",
+  "draft_assembly",
+  "search_intelligence",
+  "opportunities",
+  "trends",
+  "media_acquisition",
+  "freshness",
+  "internal_links",
+  "hero_media",
+  "shadow_evaluation",
+] as const;
+
+export type EngineStageName = (typeof ENGINE_STAGE_NAMES)[number];
+
+/**
+ * Typed as a TOTAL map over EngineStageName, not Record<string, string>.
+ *
+ * With `Record<string, string>` a missing stage simply produced `undefined` at
+ * runtime. As a total record, omitting one fails to compile — which is what
+ * makes the invariant structural rather than a convention somebody has to
+ * remember.
+ */
+export const STAGE_JOB_NAMES: Record<EngineStageName, string> = {
   discovery: "engine_discover",
   relevance: "engine_relevance",
   update_proposals: "engine_update_proposals",
