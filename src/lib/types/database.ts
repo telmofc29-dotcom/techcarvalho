@@ -1564,6 +1564,18 @@ export interface Database {
         };
         Returns: string;
       };
+      // Drafted by supabase/migrations_pending/20260822_hero_media_upgrade.sql
+      // — not yet applied. Returns 'created' | 'already_tracked' |
+      // 'rejected_invalid'.
+      engine_flag_weak_hero: {
+        Args: {
+          p_content_id: string | null;
+          p_product_id: string | null;
+          p_tier: string;
+          p_reason: string;
+        };
+        Returns: string;
+      };
       engine_upsert_freshness: {
         Args: {
           p_kind: string;

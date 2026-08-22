@@ -17,12 +17,17 @@ type BaseProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "rel" | "target">
   // position no outbound link actually uses.
   //
   // "family_page" IS permitted: it was added to OutboundClickLinkPosition
-  // alongside the /families/ hub routes, and the CHECK constraint is widened
-  // to match by supabase/migrations_pending/20260822_outbound_family_page_position.sql.
-  // Until that migration is applied a family-hub outbound click is rejected
-  // at insert — recordOutboundClick() logs the rejection rather than losing
-  // it silently. Family hubs carry no outbound links today, so nothing is
-  // affected in the meantime.
+  // alongside the /families/ hub routes, and the CHECK constraint was widened
+  // to match by supabase/migrations/20260822_outbound_family_page_position.sql,
+  // APPLIED and verified against production on 2026-08-22 — a 'family_page'
+  // insert is accepted, and an invalid value still fails with 23514, so the
+  // vocabulary stayed closed.
+  //
+  // Family hubs currently track internal navigation only (InternalLinkTracker),
+  // so no outbound click carries this position yet. The constraint was widened
+  // ahead of that rather than after: recordOutboundClick() fires the insert as
+  // `void ... .insert()`, so a rejected row would have been lost silently and
+  // looked exactly like "nobody clicked".
   linkPosition: Exclude<LinkPosition, "home">;
   contentId?: string;
   productId?: string;

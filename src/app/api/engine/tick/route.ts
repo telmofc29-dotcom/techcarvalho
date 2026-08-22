@@ -13,6 +13,7 @@ import { runUpdateProposals } from "@/lib/engine/jobs/update-job";
 import { runDraftAssembly } from "@/lib/engine/jobs/draft-job";
 import { runProductAssembly } from "@/lib/engine/jobs/product-job";
 import { runInternalLinks } from "@/lib/engine/jobs/link-job";
+import { runHeroMediaAudit } from "@/lib/engine/jobs/hero-media-job";
 
 const JOB = "engine_tick";
 
@@ -21,7 +22,7 @@ const JOB = "engine_tick";
 //
 //   discover -> relevance -> update proposals -> product assembly -> brief
 //     -> draft assembly -> search intelligence -> opportunity -> trends
-//     -> media acquisition -> freshness -> internal links
+//     -> media acquisition -> freshness -> internal links -> hero media
 //
 // That order is the editorial pipeline made literal: find something, decide if
 // it matters, check whether we already cover it (and update rather than
@@ -70,6 +71,10 @@ const STAGES = [
   // Orphan detection runs last: it judges the state of the site AFTER
   // everything else in this pass has had its effect.
   ["internal_links", runInternalLinks],
+  // Hero-media quality. Runs alongside orphan detection because both ask
+  // the same kind of question: is a page that is technically published
+  // actually serving a reader properly?
+  ["hero_media", runHeroMediaAudit],
 ] as const;
 
 export async function GET(request: NextRequest) {
