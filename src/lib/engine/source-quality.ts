@@ -154,6 +154,36 @@ const FORUM_HOST = /(^|\.)forums?\./i;
 const REGULATOR_HOSTS =
   /(^|\.)(gov|gov\.uk|europa\.eu|iso\.org|ieee\.org|ietf\.org|w3\.org|fcc\.gov|nist\.gov|jedec\.org|usb\.org|vesa\.org)$/i;
 
+// Hosts that ARE a company's own newsroom, whatever the registry says they are.
+//
+// WHY THIS RULE EXISTS
+// --------------------
+// All 12 active discovery feeds are registered `source_type = 'rss_atom'`,
+// including blog.google, blogs.nvidia.com and newsroom.intel.com — which are
+// manufacturer newsrooms in every sense except the registry column.
+// SOURCE_TYPE_CLASS maps 'rss_atom' to 'unclassified', and 'unclassified' has
+// an EMPTY authority list, so every claim from every live feed was carrying no
+// factual authority at all. A vendor is at least authoritative about its own
+// price and its own specification, and losing that is a real loss.
+//
+// The rule can only ever fire on a row that is otherwise `unclassified`, and it
+// grants ONLY the vendor-own domains. It cannot promote anything to `primary`
+// and — the part that matters — it never grants independent_performance or
+// independent_significance. A press release classified correctly is still not
+// evidence that the story is news; qualifiesAsNews() now says so explicitly
+// instead of falling through an unclassified row.
+//
+// Aggregators are excluded by name: news.google.com carries the `news.` prefix
+// but publishes nothing of its own, so treating it as Google's newsroom would
+// be wrong in both directions.
+const VENDOR_NEWSROOM_HOST =
+  /^(?:newsroom|news|press|pressroom|presscentre|presscenter|media|blog|blogs|corporate|about|investor|investors)\./i;
+
+const NOT_A_NEWSROOM_HOST =
+  /^(?:news\.google\.com|news\.ycombinator\.com|news\.microsoft\.com\.feedburner|feedproxy\.google\.com|feeds\.feedburner\.com|news\.bbc\.co\.uk)$/i;
+
+const VENDOR_NEWSROOM_PATH = /\/(?:newsroom|press-releases?|press-release|pressroom|press-centre|press-center)(?:\/|$)/i;
+
 const SOURCE_TYPE_CLASS: Record<EngineSourceType, SourceClass> = {
   official_docs: "primary",
   regulatory_dataset: "primary",
@@ -176,6 +206,29 @@ function hostOf(url: string | null | undefined): string | null {
   }
 }
 
+function pathOf(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    return new URL(url).pathname.toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Whether a URL is a company's own newsroom, judged from the URL rather than
+ * from the registry column that is supposed to say so. Used only to resolve an
+ * `unclassified` row; never to demote a classified one.
+ */
+export function looksLikeVendorNewsroom(url: string | null | undefined): boolean {
+  const host = hostOf(url);
+  if (!host) return false;
+  if (NOT_A_NEWSROOM_HOST.test(host)) return false;
+  if (VENDOR_NEWSROOM_HOST.test(host)) return true;
+  const path = pathOf(url);
+  return path !== null && VENDOR_NEWSROOM_PATH.test(path);
+}
+
 export function classifySource(input: SourceInput): SourceClassification {
   const independent = !input.originatesFromUrl;
   const host = hostOf(input.url);
@@ -196,6 +249,18 @@ export function classifySource(input: SourceInput): SourceClassification {
   } else if (sourceClass === "unclassified" && host && REGULATOR_HOSTS.test(host)) {
     sourceClass = "primary";
     reasons.push(`standards/regulator host ${host}`);
+  } else if (
+    sourceClass === "unclassified" &&
+    // Only where trust_level does not already say this is an independent
+    // outlet. A `secondary` source on blog.<outlet> is a blog by a publication,
+    // not a vendor newsroom, and must not be demoted into one.
+    (!input.trustLevel || input.trustLevel === "primary") &&
+    looksLikeVendorNewsroom(input.url)
+  ) {
+    sourceClass = "vendor_press_release";
+    reasons.push(
+      `vendor newsroom URL (${host}) — the registry records source_type '${input.sourceType ?? "none"}', which classifies as unclassified and would carry NO authority at all`
+    );
   }
 
   if (sourceClass === "unclassified" && input.trustLevel) {

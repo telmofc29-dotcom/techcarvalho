@@ -502,8 +502,14 @@ export function reviewProposedPublication(input: ReviewInput): ReviewResult {
 
   const confidence = computeConfidence(
     evidence.map((e) => ({
+      id: e.id,
       claim_status: e.claimStatus,
       trust_level: e.trustLevel,
+      // url/publisher are what let independence.ts collapse rows into VOICES.
+      // Dropping them here would make five pages from one publisher look like
+      // five sources, which is the exact miscount confidence.ts exists to stop.
+      url: e.url,
+      publisher: e.publisher,
       originates_from_url: e.originatesFromUrl ?? null,
     }))
   );
