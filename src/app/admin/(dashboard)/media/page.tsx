@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireAdmin } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { sanitizeSearchTerm } from "@/lib/search/sanitize";
@@ -123,9 +124,9 @@ export default async function MediaListPage({
           No photographs taken by {"Tech Carvalho"} yet. {composition.generated} of{" "}
           {composition.records} records are generated graphics, which is why article cards
           look alike on the public site. See{" "}
-          <a href="/admin/photography" className="underline hover:text-neutral-800">
+          <Link href="/admin/photography" className="underline hover:text-neutral-800">
             photography triage
-          </a>{" "}
+          </Link>{" "}
           for what to shoot first.
         </p>
       )}

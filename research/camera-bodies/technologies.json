@@ -1,0 +1,197 @@
+[
+  {
+    "slug": "canon-rf-mount",
+    "name": "Canon RF mount",
+    "kind": "mount",
+    "summary": "Every EOS R body in this dataset states \"Lens mount: Canon RF mount\" in Canon's own specification appendix. Compatible glass is listed as \"Canon RF lens group\", with later bodies adding \"(including RF-S lenses)\". Canon states in the same table that EF and EF-S lenses can be used \"using Mount Adapter EF-EOS R\", explicitly excluding EF-M lenses. Full-frame RF bodies note that with an EF-S lens the angle of view is \"approx. 1.6 times the indicated focal length\".",
+    "source_urls": [
+      "https://global.canon/en/c-museum/product/dslr894.html",
+      "https://global.canon/en/c-museum/product/dslr910.html",
+      "https://global.canon/en/c-museum/product/dslr880.html"
+    ]
+  },
+  {
+    "slug": "canon-ef-mount",
+    "name": "Canon EF mount",
+    "kind": "mount",
+    "summary": "Canon's DSLR specification tables state \"Lens mount: Canon EF mount\". Full-frame EF bodies list compatible lenses as \"Canon EF lenses\" and explicitly exclude EF-S and EF-M. APS-C EF bodies list \"Canon EF lenses (including EF-S lenses)\" and note that the effective angle of view is approximately 1.6x the indicated focal length. The EF mount is the physical basis for the EF-EOS R adapter path onto RF bodies.",
+    "source_urls": [
+      "https://global.canon/en/c-museum/product/dslr866.html",
+      "https://global.canon/en/c-museum/product/dslr873.html",
+      "https://global.canon/en/c-museum/product/dslr887.html"
+    ]
+  },
+  {
+    "slug": "nikon-z-mount",
+    "name": "Nikon Z mount",
+    "kind": "mount",
+    "summary": "Every Z-series body's specification table states \"Lens mount: Nikon Z mount\". Nikon splits Z bodies by image-sensor format in the same table: FX bodies are given as \"35.9 x 23.9 mm CMOS sensor (full-frame/FX-format)\" and DX bodies as \"23.5 x 15.7 mm CMOS sensor (Nikon DX format)\", and focus-point counts are quoted per image area (for example the Z6III's \"273 focus points (single-point AF)\" applies with FX selected). No F-to-Z adapter page was reachable in this pass, so no adapter behaviour is asserted here.",
+    "source_urls": [
+      "https://onlinemanual.nikonimglib.com/z9/en/specifications_348.html",
+      "https://onlinemanual.nikonimglib.com/z6III/en/specifications_396.html",
+      "https://onlinemanual.nikonimglib.com/z50II/en/15-08.html"
+    ]
+  },
+  {
+    "slug": "nikon-f-mount",
+    "name": "Nikon F mount",
+    "kind": "mount",
+    "summary": "The D780's specification table states \"Lens mount: Nikon F mount (with AF coupling and AF contacts)\". Nikon lists compatibility in the same table as \"Types G, E, and D (some restrictions apply to PC lenses); Other AF NIKKOR lenses (excluding IX NIKKOR lenses and lenses for the F3AF); AI-P NIKKOR lenses; DX lenses (using [DX (24 x 16)] image area); Non-CPU lenses\". This is the only F-mount body in this dataset with a reachable manufacturer specification page.",
+    "source_urls": [
+      "https://onlinemanual.nikonimglib.com/d780/en/16_technical_notes_08.html"
+    ]
+  },
+  {
+    "slug": "sony-e-mount",
+    "name": "Sony E mount",
+    "kind": "mount",
+    "summary": "Sony's Japanese specification tables state the mount for every Alpha body simply as \"レンズマウント: Eマウント\" (lens mount: E mount) — the same entry for full-frame and APS-C bodies alike. Sony distinguishes the two formats in the sensor row instead (\"35mmフルサイズ\" vs \"APS-Cサイズ\"), and on full-frame bodies the focus-point row gives separate counts for full-frame readout, full-frame lens with APS-C crop, and APS-C lens mounted. No Sony page giving E-mount flange geometry was reachable.",
+    "source_urls": [
+      "https://www.sony.jp/ichigan/products/ILCE-1/spec.html",
+      "https://www.sony.jp/ichigan/products/ILCE-6700/spec.html"
+    ]
+  },
+  {
+    "slug": "fujifilm-x-mount",
+    "name": "Fujifilm X mount",
+    "kind": "mount",
+    "summary": "Fujifilm's X-series interchangeable-lens bodies in this dataset (X-T5, X-H2, X-H2S, X-S20) all use the X mount over an APS-C sensor that Fujifilm specifies as either \"23.5mm x 15.7mm (APS-C)\" or \"23.5mm x 15.6mm (APS-C)\" depending on the sensor generation. The X100VI is not an X-mount body: it has a fixed 23mm F2.0 lens over the same 23.5 x 15.7 mm sensor, so its mount field is null in this dataset.",
+    "source_urls": [
+      "http://www.fujifilm-x.com/global/products/cameras/x-t5/specifications/",
+      "http://www.fujifilm-x.com/global/products/cameras/x100vi/specifications/"
+    ]
+  },
+  {
+    "slug": "dual-pixel-cmos-af",
+    "name": "Canon Dual Pixel CMOS AF",
+    "kind": "sensor",
+    "summary": "Canon's specification appendices list \"Dual Pixel CMOS AF: Supported\" as a property of the image sensor itself, not of a separate AF module — on RF bodies it sits directly under the sensor's type and effective-pixel rows. On EF-mount DSLRs the same table describes the sensor as \"CMOS sensor (supports Dual Pixel CMOS AF)\" and Dual Pixel CMOS AF governs live-view focusing while a separate dedicated phase-detection sensor with a stated point count (45 points on the EOS 90D and 6D Mark II, 9 on the 250D and 2000D) handles viewfinder shooting. NOT SOURCED in this pass: Canon's \"Dual Pixel CMOS AF II\" branding — no reachable Canon page used that name, so no body record claims it.",
+    "source_urls": [
+      "https://global.canon/en/c-museum/product/dslr894.html",
+      "https://global.canon/en/c-museum/product/dslr887.html",
+      "https://global.canon/en/c-museum/product/dslr880.html"
+    ]
+  },
+  {
+    "slug": "canon-af-zones-not-points",
+    "name": "Canon AF zones and selectable positions (not \"AF points\")",
+    "kind": "compute",
+    "summary": "Canon does not publish an \"AF points\" figure for its mirrorless bodies. The specification appendix instead gives two different numbers: \"Number of AF zones available for automatic selection\" (for example max. 1053 zones (39x27) on the EOS R5 and R8, max. 975 zones (39x25) on the R5 Mark II, max. 527 zones (31x17) on the R50, max. 117 zones (13x9) on the R100) and a separate count of manually selectable AF positions (max. 5940 positions (90x66) on the R5). Canon footnotes the latter with \"Values for the selectable positions for AF points do not represent AF performance\". Because these are not comparable to the focus-point counts Nikon and Sony publish, af_points is null for every Canon mirrorless body here and populated only for the DSLRs, where Canon does state a point count.",
+    "source_urls": [
+      "https://global.canon/en/c-museum/product/dslr894.html",
+      "https://global.canon/en/c-museum/product/dslr910.html",
+      "https://global.canon/en/c-museum/product/dslr908.html"
+    ]
+  },
+  {
+    "slug": "stacked-cmos-sensor",
+    "name": "Stacked CMOS image sensor",
+    "kind": "sensor",
+    "summary": "Two of the makers here name the stacked construction in the sensor row itself. Canon describes the EOS R3, EOS R5 Mark II and (in the same wording) its top bodies as a \"Full-frame back-illuminated stacked CMOS sensor\", in contrast to the plain \"CMOS sensor\" or \"Full-frame CMOS sensor\" used for the R5, R6 and R6 Mark II. Sony distinguishes its sensor families by name in the same row: \"Exmor RS CMOSセンサー\" on the Alpha 1, Alpha 1 II, Alpha 9 III and Alpha 7 V, versus \"Exmor R CMOSセンサー\" on the Alpha 7 IV, 7R V, 7S III, 7C II, 6700 and ZV-E10 II, and plain \"Exmor CMOSセンサー\" on the Alpha 6400. Nikon's tables give no construction beyond \"CMOS sensor\", so no Nikon body in this dataset is recorded as stacked.",
+    "source_urls": [
+      "https://global.canon/en/c-museum/product/dslr899.html",
+      "https://global.canon/en/c-museum/product/dslr910.html",
+      "https://www.sony.jp/ichigan/products/ILCE-1/spec.html",
+      "https://www.sony.jp/ichigan/products/ILCE-7M4/spec.html"
+    ]
+  },
+  {
+    "slug": "rolling-shutter",
+    "name": "Rolling shutter (electronic shutter readout)",
+    "kind": "sensor",
+    "summary": "Canon states the readout mode explicitly for movie recording: under the shutter section of the EOS R5, R6, R6 Mark II, R8, R100, R3 and others the entry reads \"Type: Rolling shutter, using the image sensor\". Nikon describes the equivalent on its mirrorless bodies as a shutter type rather than a readout mode — the Z9 gives \"Electronic shutter with shutter sound and sensor shield\", while the Z6III, Z5II, Zf, Z50II and Zfc give \"Electronically-controlled vertical-travel focal-plane mechanical shutter; electronic front-curtain shutter; electronic shutter\".",
+    "source_urls": [
+      "https://global.canon/en/c-museum/product/dslr894.html",
+      "https://onlinemanual.nikonimglib.com/z9/en/specifications_348.html",
+      "https://onlinemanual.nikonimglib.com/z6III/en/specifications_396.html"
+    ]
+  },
+  {
+    "slug": "global-shutter",
+    "name": "Global shutter",
+    "kind": "sensor",
+    "summary": "NOT SOURCED. No manufacturer page reachable in this pass stated that any body in this dataset uses a global-shutter sensor. Sony's Japanese specification table for the Alpha 9 III (www.sony.jp/ichigan/products/ILCE-9M3/spec.html) gives the sensor only as \"35mmフルサイズ (35.6 x 23.8 mm)、Exmor RS CMOSセンサー\" and does not use the term. This entry exists so the gap is visible rather than filled from memory; populate it from a Sony page that states the term when one becomes reachable.",
+    "source_urls": [
+      "https://www.sony.jp/ichigan/products/ILCE-9M3/spec.html"
+    ]
+  },
+  {
+    "slug": "in-body-image-stabilisation",
+    "name": "In-body image stabilisation (IBIS)",
+    "kind": "stabilisation",
+    "summary": "The three makers state it three different ways. Canon adds a single line, \"Image stabilization (IS mode): Provided\", to the specification appendix of the R5, R5 Mark II, R6, R6 Mark II, R3, R7 and R1 and omits it entirely from the R8, R10, R50, R100, RP and R. Nikon gives a \"Vibration reduction (VR)\" section in the body specification of the Z9, Z8, Z6III, Z5II and Zf and omits that section from the Z50II, Zfc, Z30 and D780. Sony gives a numeric \"補正効果 (静止画時)\" (compensation effect, stills) figure in stops, always footnoted to a specific lens and CIPA revision. Fujifilm states \"image sensor shift mechanism with 5-axis compensation\" plus a stop figure. Every stop figure in this dataset is in manufacturer_claims, never in a spec field.",
+    "source_urls": [
+      "https://global.canon/en/c-museum/product/dslr894.html",
+      "https://onlinemanual.nikonimglib.com/z6III/en/specifications_396.html",
+      "https://www.sony.jp/ichigan/products/ILCE-7RM5/spec.html",
+      "http://www.fujifilm-x.com/global/products/cameras/x-t5/specifications/"
+    ]
+  },
+  {
+    "slug": "subject-detection-af",
+    "name": "Subject-detection autofocus",
+    "kind": "compute",
+    "summary": "Fujifilm enumerates the detectable subject classes directly in the X-H2S and X-S20 specification tables: \"animals, birds, automobiles, motorcycles/bikes, airplanes, trains\". Nikon exposes the equivalent as a menu item — the Z9's reference guide lists \"AF Subject Detection Options\" in both the photo shooting menu and the video recording menu — but does not enumerate the classes in the specification table itself. Canon's specification appendix does not enumerate subject classes at all. Class lists are therefore recorded only for the two Fujifilm bodies.",
+    "source_urls": [
+      "http://www.fujifilm-x.com/global/products/cameras/x-h2s/specifications/",
+      "http://www.fujifilm-x.com/global/products/cameras/x-s20/specifications/",
+      "https://onlinemanual.nikonimglib.com/z9/en/"
+    ]
+  },
+  {
+    "slug": "cfexpress-type-a-vs-type-b",
+    "name": "CFexpress Type A vs Type B vs SD UHS-II",
+    "kind": "connectivity",
+    "summary": "The card format a body accepts is stated in its recording-media row and differs sharply by maker. Sony's full-frame bodies that take CFexpress take Type A, always in a slot that also accepts SD: \"SDメモリーカード、SDHCメモリーカード (UHS-I/II対応)、SDXCメモリーカード (UHS-I/II対応)、CFexpress Type Aカード\" (Alpha 1, 7 IV, 7R V, 7S III). Canon and Nikon use Type B: the EOS R5 Mark II lists \"Card 1: CFexpress memory card, Type B, CFexpress 2.0 and VPG400 supported; Card 2: SDXC/SDHC/SD memory card\", the EOS R3 lists CFexpress Type B, and the Nikon Z9 lists \"CFexpress (Type B) and XQD memory cards\" while the Z8 and Z6III add \"SD (Secure Digital), and UHS-II compliant SDHC and SDXC\". Fujifilm's X-H2 and X-H2S pair CFexpress Type B with an SD UHS-II slot. Everything else here is SD-only, and Nikon and Canon both distinguish UHS-II slots from UHS-I ones (the EOS R50 and R100 are UHS-I; the R7's two slots are both UHS-II).",
+    "source_urls": [
+      "https://www.sony.jp/ichigan/products/ILCE-1/spec.html",
+      "https://global.canon/en/c-museum/product/dslr910.html",
+      "https://onlinemanual.nikonimglib.com/z9/en/specifications_348.html",
+      "https://global.canon/en/c-museum/product/dslr901.html"
+    ]
+  },
+  {
+    "slug": "aps-c-crop-factor-1-5x-vs-1-6x",
+    "name": "APS-C crop factor: Canon 1.6x vs 1.5x elsewhere",
+    "kind": "sensor",
+    "summary": "Canon's APS-C sensors are smaller than everyone else's, and Canon says so numerically in its own tables. Canon states the multiplier directly — \"Using EF-S lenses: Approx. 1.6 times the indicated focal length\" — and gives its APS-C sensors as approx. 22.3 x 14.8 mm (EOS R7, 90D) or 22.3 x 14.9 mm (R10, R50, R100, 250D, 2000D). Nikon's DX sensors are given as 23.5 x 15.7 mm (Z50II, Zfc, Z30) and Fujifilm's APS-C sensors as 23.5 x 15.7 mm or 23.5 x 15.6 mm; Sony's as 23.5 x 15.6 mm (Alpha 6400) or 23.3 x 15.5 mm (Alpha 6700, ZV-E10 II). Only Canon publishes the multiplier as a number; the 1.5x figure conventionally applied to Nikon DX, Sony APS-C and Fujifilm X is NOT SOURCED here — the sensor dimensions above are what those makers actually state.",
+    "source_urls": [
+      "https://global.canon/en/c-museum/product/dslr894.html",
+      "https://global.canon/en/c-museum/product/dslr901.html",
+      "https://onlinemanual.nikonimglib.com/z50II/en/15-08.html",
+      "https://www.sony.jp/ichigan/products/ILCE-6700/spec.html",
+      "http://www.fujifilm-x.com/global/products/cameras/x-t5/specifications/"
+    ]
+  },
+  {
+    "slug": "canon-digic-x",
+    "name": "Canon DIGIC X",
+    "kind": "compute",
+    "summary": "NOT SOURCED. Canon's specification appendices — the only Canon camera source reachable in this pass — do not name the image processor anywhere in the table, and Canon's regional product pages (canon.co.uk, usa.canon.com, canon-europe.com), which do carry the DIGIC branding, returned HTTP 403 to every request. Every Canon body in this dataset therefore has processor: null with \"processor\" listed in unsourced_fields. Fill this from a Canon page that states it when one becomes reachable.",
+    "source_urls": [
+      "https://global.canon/en/c-museum/product/dslr894.html"
+    ]
+  },
+  {
+    "slug": "fujifilm-x-processor-5",
+    "name": "Fujifilm X-Processor 5",
+    "kind": "compute",
+    "summary": "Fujifilm names the processor in the specification table itself, so it is the only processor field populated in this dataset. All five Fujifilm bodies here — X-T5, X-H2, X-H2S, X-S20 and X100VI — state \"X-Processor 5\", across two different sensor generations (X-Trans CMOS 5 HR at 40.2 MP, X-Trans CMOS 5 HS at 26.16 MP, and X-Trans CMOS 4 at 26.1 MP in the X-S20). Sony's and Nikon's specification tables name no processor at all.",
+    "source_urls": [
+      "http://www.fujifilm-x.com/global/products/cameras/x-t5/specifications/",
+      "http://www.fujifilm-x.com/global/products/cameras/x-h2s/specifications/",
+      "http://www.fujifilm-x.com/global/products/cameras/x-s20/specifications/"
+    ]
+  },
+  {
+    "slug": "burst-rate-is-a-claim-not-a-spec",
+    "name": "Burst rate as a conditional manufacturer claim",
+    "kind": "other",
+    "summary": "Nikon publishes frame-advance rates with the conditions attached and a disclaimer, which is why no burst figure appears as a spec field anywhere in this dataset. The Z9's entry reads \"Continuous low-speed: Approx. 1 - 10 fps; Continuous high-speed: Approx. 10 - 20 fps; High-speed frame capture + (C15): Approx. 15 fps; High-speed frame capture + (C30): Approx. 30 fps\", footnoted \"maximum frame advance rate as measured by in-house tests\". The Z6III's rate is conditioned on shutter type and file format (\"Approx. 8.1 fps ... when using the electronic shutter and image quality settings other than NEF (RAW) and NEF (RAW) +: approx. 14 fps\"), and the Z5II's on the shutter-type menu setting. Canon's museum specification appendix gives no continuous-shooting row at all, and Sony's Japanese table did not surface one in this pass. Every Nikon rate captured is recorded verbatim in that body's manufacturer_claims.",
+    "source_urls": [
+      "https://onlinemanual.nikonimglib.com/z9/en/specifications_348.html",
+      "https://onlinemanual.nikonimglib.com/z6III/en/specifications_396.html",
+      "https://onlinemanual.nikonimglib.com/z5II/en/specifications_379.html"
+    ]
+  }
+]
