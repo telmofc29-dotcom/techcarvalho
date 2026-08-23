@@ -15,7 +15,6 @@ loadEnvLocal();
 
 const URL_ = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const ANON = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
-const NIL = "00000000-0000-0000-0000-0000000000ff";
 const STAMP = Date.now();
 const PROBE_KEY = `tc-probe-provenance-${STAMP}`;
 

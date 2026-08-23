@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { updateRow, deleteRow, getRowById, type ValidationResult } from "@/lib/admin/reference-service";
 import { MEDIA_PRIVATE_BUCKET, MEDIA_PUBLIC_BUCKET } from "@/lib/media/constants";
 import { evaluatePublishEligibility } from "@/lib/media/rights";
+import { resolvePublicationSource } from "@/lib/media/publication-source";
 import type { MediaType, MediaRole, MediaSourceType, MediaRightsStatus, MediaBrandRole, Insert } from "@/lib/types/database";
 import type { FormState } from "@/components/admin/reference-form";
 
@@ -225,9 +226,37 @@ export async function bulkPublishMediaAssets(ids: string[]): Promise<BulkActionS
       summary.skipped.push({ id: asset.id, reason: eligibility.reason });
       continue;
     }
+    // The same second gate as publishMediaAsset. A bulk action must mirror the
+    // per-asset action exactly — a shortcut here is how a boundary enforced in
+    // one place gets bypassed in another.
+    const { data: derivRows, error: derivError } = await supabase
+      .from("media_derivatives")
+      .select("id, storage_path, watermarked, width, crop, format")
+      .eq("media_asset_id", asset.id);
+    if (derivError) {
+      summary.skipped.push({ id: asset.id, reason: `reading derivatives failed: ${derivError.message}` });
+      continue;
+    }
+    const publication = resolvePublicationSource(
+      asset,
+      (derivRows ?? []).map((d) => ({
+        id: d.id,
+        storagePath: d.storage_path,
+        watermarked: d.watermarked,
+        width: d.width,
+        crop: d.crop,
+        format: d.format,
+      }))
+    );
+    if (!publication.allowed) {
+      summary.skipped.push({ id: asset.id, reason: publication.reason });
+      continue;
+    }
     const { error: copyError } = await supabase.storage
       .from(MEDIA_PRIVATE_BUCKET)
-      .copy(asset.storage_path, asset.storage_path, { destinationBucket: MEDIA_PUBLIC_BUCKET });
+      .copy(publication.source.storagePath, publication.source.storagePath, {
+        destinationBucket: MEDIA_PUBLIC_BUCKET,
+      });
     if (copyError) {
       summary.skipped.push({ id: asset.id, reason: copyError.message });
       continue;
@@ -236,7 +265,7 @@ export async function bulkPublishMediaAssets(ids: string[]): Promise<BulkActionS
       .from("media_assets")
       .update({
         publication_status: "published",
-        public_storage_path: asset.storage_path,
+        public_storage_path: publication.source.storagePath,
         published_at: new Date().toISOString(),
         published_by: admin.id,
       })
@@ -336,9 +365,44 @@ export async function publishMediaAsset(id: string): Promise<FormState> {
   if (!eligibility.allowed) return { error: eligibility.reason };
 
   const supabase = await createClient();
+
+  // SECOND gate, and a different question. Rights eligibility above answers
+  // "may this be public at all". This answers "in what FORM" — and for one of
+  // our own photographs the answer must be a watermarked derivative, never the
+  // master. Publishing the master would put the unmarked full-resolution
+  // original at a public URL one hop from the marked copies, which is not a
+  // weaker form of protection but none at all.
+  //
+  // Today this changes nothing: shouldWatermark() refuses all 112 assets in the
+  // library, so every one of them still publishes its master exactly as before.
+  // It arms itself on the first owned photograph.
+  const { data: derivRows, error: derivError } = await supabase
+    .from("media_derivatives")
+    .select("id, storage_path, watermarked, width, crop, format")
+    .eq("media_asset_id", id);
+  // A failed read must not be treated as "no derivatives exist" — that would
+  // turn a transient error into a publish refusal, or worse, into publishing
+  // the master for an asset that has perfectly good marked derivatives.
+  if (derivError) return { error: `Publish failed reading derivatives: ${derivError.message}` };
+
+  const publication = resolvePublicationSource(
+    asset,
+    (derivRows ?? []).map((d) => ({
+      id: d.id,
+      storagePath: d.storage_path,
+      watermarked: d.watermarked,
+      width: d.width,
+      crop: d.crop,
+      format: d.format,
+    }))
+  );
+  if (!publication.allowed) return { error: publication.reason };
+
   const { error: copyError } = await supabase.storage
     .from(MEDIA_PRIVATE_BUCKET)
-    .copy(asset.storage_path, asset.storage_path, { destinationBucket: MEDIA_PUBLIC_BUCKET });
+    .copy(publication.source.storagePath, publication.source.storagePath, {
+      destinationBucket: MEDIA_PUBLIC_BUCKET,
+    });
 
   if (copyError) {
     return { error: `Publish failed: ${copyError.message}` };
@@ -348,7 +412,11 @@ export async function publishMediaAsset(id: string): Promise<FormState> {
     .from("media_assets")
     .update({
       publication_status: "published",
-      public_storage_path: asset.storage_path,
+      // The path of what was ACTUALLY copied, which for an owned original is
+      // the derivative. Recording the master here while copying a derivative
+      // would make unpublish remove the wrong object and leave the public copy
+      // orphaned in the bucket.
+      public_storage_path: publication.source.storagePath,
       published_at: new Date().toISOString(),
       published_by: admin.id,
     })

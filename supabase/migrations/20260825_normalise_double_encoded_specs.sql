@@ -1,3 +1,22 @@
+-- ############################################################################
+-- ## SUPERSEDED — THIS FILE DOES NOTHING. USE 20260825b_..._RUNNABLE.sql.   ##
+-- ############################################################################
+--
+-- Every line of this file is a SQL comment. It was applied on 2026-08-25,
+-- Postgres executed nothing, and Supabase reported "Success. No rows returned."
+-- — which was accurate. Verified afterwards against production: all 98 rows
+-- were still double-encoded and the type distribution was unchanged.
+--
+-- The intent was "read the preview, then uncomment the UPDATE". That is a bad
+-- shape for a migration: it looks applied, it reports success, and it changes
+-- nothing. The replacement runs unconditionally and rolls itself back if the
+-- result is wrong.
+--
+-- Kept only so the applied-migration history is not silently rewritten.
+-- DO NOT RUN THIS FILE. It is a no-op.
+--
+-- ############################################################################
+--
 -- Normalise 98 double-encoded product_specs values.
 --
 -- WHAT IS WRONG
