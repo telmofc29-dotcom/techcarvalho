@@ -347,8 +347,21 @@ async function main(): Promise<void> {
     }
 
     // claims — never specs
+    //
+    // product_claims has no unique constraint on (product_id, claim), so an
+    // insert is not idempotent. The first re-import duplicated all 190 claims.
+    // Existing claim text is read once per product and skipped, the same fix
+    // source_records needed.
+    let existingClaims = new Set<string>();
+    if (can.claims && p.claims.length) {
+      const { data: cl, error: clErr } = await db
+        .from("product_claims").select("claim").eq("product_id", pid);
+      if (clErr) problems.push(`${p.slug} reading claims: ${clErr.message}`);
+      else existingClaims = new Set((cl as { claim: string }[]).map((r) => r.claim));
+    }
     for (const c of p.claims) {
       if (!can.claims) { bump("claim.skipped_no_table"); continue; }
+      if (existingClaims.has(c.claim)) { bump("claim.already_present"); continue; }
       if (APPLY) {
         const { error } = await db.from("product_claims").insert({
           product_id: pid, claim: c.claim, claim_kind: c.kind,
@@ -432,8 +445,17 @@ async function main(): Promise<void> {
       };
       if (can.relBasis) { row.basis = r.basis; row.source_url = r.sourceUrl; }
       const { error } = await db.from("product_relationships").insert(row);
-      if (error && !/duplicate/i.test(error.message)) {
+      if (error) {
+        // A unique constraint rejecting a repeat is the NORMAL idempotent path
+        // and must be reported as such. Counting it as "written" made the
+        // second run look identical to the first and hid the fact that the
+        // claims table — which has no such constraint — really was duplicating.
+        if (/duplicate|23505/i.test(`${error.code} ${error.message}`)) {
+          bump("relationship.already_present");
+          continue;
+        }
         problems.push(`relationship ${r.fromSlug}->${r.toSlug}: ${error.message}`);
+        bump("relationship.failed");
         continue;
       }
     }

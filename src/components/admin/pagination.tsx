@@ -5,13 +5,26 @@ export function Pagination({
   pageCount,
   basePath,
   searchParams = {},
+  total,
+  itemNoun = "item",
 }: {
   page: number;
   pageCount: number;
   basePath: string;
   searchParams?: Record<string, string | undefined>;
+  /**
+   * Total matching rows. Shown beside the page position.
+   *
+   * Without it a paginated list gives no sense of scale: /admin/media showed 25
+   * cards and "Page 1 of 5" and nothing else, so a 112-asset library read as a
+   * small one. The page count alone answers "where am I", never "how much is
+   * there".
+   */
+  total?: number;
+  /** Singular noun for the total, e.g. "asset" -> "112 assets". */
+  itemNoun?: string;
 }) {
-  if (pageCount <= 1) return null;
+  if (pageCount <= 1 && total === undefined) return null;
 
   const hrefFor = (targetPage: number) => {
     const params = new URLSearchParams();
@@ -27,6 +40,10 @@ export function Pagination({
     <nav aria-label="Pagination" className="flex items-center justify-between mt-4 text-sm">
       <span className="text-neutral-500">
         Page {page} of {pageCount}
+        {total !== undefined && (
+          <> · <span className="tabular-nums font-medium text-neutral-700">{total}</span>{" "}
+            {itemNoun}{total === 1 ? "" : "s"}</>
+        )}
       </span>
       <div className="flex items-center gap-2">
         {page > 1 ? (

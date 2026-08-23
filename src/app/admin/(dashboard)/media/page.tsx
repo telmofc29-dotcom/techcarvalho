@@ -8,6 +8,7 @@ import { SearchBox } from "@/components/admin/search-box";
 import { AdminFilterSelect } from "@/components/admin/filter-select";
 import { Pagination } from "@/components/admin/pagination";
 import { MediaGrid } from "./media-grid";
+import { getMediaComposition } from "@/lib/admin/media-composition";
 import type { MediaRightsStatus, MediaSourceType } from "@/lib/types/database";
 
 const RIGHTS_FILTERS: { label: string; value: MediaRightsStatus | "" }[] = [
@@ -68,6 +69,10 @@ export default async function MediaListPage({
   if (brand === "editorial") query = query.is("brand_role", null);
 
   const { data, count, error } = await query;
+  // What the library is MADE OF, not merely how many rows it has. "112 assets"
+  // was accurate and told nobody that 65 of them are generated graphics and
+  // none are our own photographs.
+  const composition = await getMediaComposition();
   const media = data ?? [];
   const pageCount = Math.max(1, Math.ceil((count ?? 0) / ADMIN_PAGE_SIZE));
   const previewUrls = await Promise.all(media.map((m) => getAdminPreviewUrl(m)));
@@ -87,6 +92,43 @@ export default async function MediaListPage({
           </div>
         }
       />
+
+      {/* The composition strip. A total on its own cannot change a decision;
+          the split between real photography and generated graphics can, and it
+          is the reason the public site looks synthetic. */}
+      <dl className="mb-4 grid grid-cols-2 gap-3 rounded-lg border border-neutral-200 bg-neutral-50 p-4 sm:grid-cols-4 lg:grid-cols-7">
+        {[
+          ["Records", composition.records, null],
+          ["Unique files", composition.distinctPaths, null],
+          ["Photographs", composition.photographs, null],
+          ["Ours", composition.ownedPhotographs, composition.ownedPhotographs === 0 ? "amber" : null],
+          ["Generated", composition.generated, null],
+          ["Logos", composition.logos, null],
+          ["Unattached", composition.unattached, composition.unattached > 0 ? "amber" : null],
+        ].map(([label, value, tone]) => (
+          <div key={String(label)}>
+            <dt className="text-xs text-neutral-500">{label}</dt>
+            <dd
+              className={`text-xl font-semibold tabular-nums ${
+                tone === "amber" ? "text-amber-700" : "text-neutral-900"
+              }`}
+            >
+              {value}
+            </dd>
+          </div>
+        ))}
+      </dl>
+      {composition.ownedPhotographs === 0 && (
+        <p className="mb-4 text-xs leading-relaxed text-neutral-500">
+          No photographs taken by {"Tech Carvalho"} yet. {composition.generated} of{" "}
+          {composition.records} records are generated graphics, which is why article cards
+          look alike on the public site. See{" "}
+          <a href="/admin/photography" className="underline hover:text-neutral-800">
+            photography triage
+          </a>{" "}
+          for what to shoot first.
+        </p>
+      )}
 
       <div className="flex flex-col gap-3 mb-4">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -175,7 +217,7 @@ export default async function MediaListPage({
       ) : (
         <>
           <MediaGrid items={items} />
-          <Pagination page={page} pageCount={pageCount} basePath="/admin/media" searchParams={otherParams} />
+          <Pagination page={page} pageCount={pageCount} basePath="/admin/media" searchParams={otherParams} total={count ?? undefined} itemNoun="asset" />
         </>
       )}
     </div>
