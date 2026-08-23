@@ -8,11 +8,13 @@ import {
   productJsonLd,
   articleJsonLd,
   collectionPageJsonLd,
+  publisherPersonJsonLd,
   safeJsonLdString,
   ORGANIZATION_ID,
   WEBSITE_ID,
 } from "./jsonld.ts";
 import { SITE_URL } from "./site.ts";
+import { PUBLISHER_NAME, PUBLISHER_PERSON_ID } from "./publisher.ts";
 
 test("organizationJsonLd has required schema.org fields", () => {
   const result = organizationJsonLd();
@@ -136,6 +138,59 @@ test("articleJsonLd attributes authorship to the Organization, never an invented
   const result = articleJsonLd({ title: "T", slug: "t", publishedAt: null });
   assert.deepEqual(result.author, { "@id": ORGANIZATION_ID });
   assert.deepEqual(result.publisher, { "@id": ORGANIZATION_ID });
+});
+
+// The byline rule, in the one place it can be tested without a database: a
+// Person appears if and only if the caller was handed a real author record.
+// getArticleDetail only produces one when content_items.author_id is set AND
+// the matching author_profiles row is is_public.
+test("articleJsonLd emits a Person only when a real author record is passed", () => {
+  const anonymous = articleJsonLd({ title: "T", slug: "t", publishedAt: null, author: null });
+  assert.deepEqual(anonymous.author, { "@id": ORGANIZATION_ID });
+
+  const named = articleJsonLd({
+    title: "T",
+    slug: "t",
+    publishedAt: null,
+    author: { name: "A Contributor", role: "Contributor" },
+  });
+  assert.equal((named.author as { "@type": string })["@type"], "Person");
+  assert.equal((named.author as { name: string }).name, "A Contributor");
+  assert.equal((named.author as { jobTitle?: string }).jobTitle, "Contributor");
+  // Not the publisher, so it must NOT claim the publisher's node identity.
+  assert.equal("@id" in (named.author as object), false);
+});
+
+test("articleJsonLd reuses the publisher's Person node when the byline is the publisher", () => {
+  const result = articleJsonLd({
+    title: "T",
+    slug: "t",
+    publishedAt: null,
+    author: { name: PUBLISHER_NAME },
+  });
+  assert.equal((result.author as { "@id": string })["@id"], PUBLISHER_PERSON_ID);
+});
+
+// --- publisher identity ----------------------------------------------------
+
+test("organizationJsonLd names the publisher and points at the editorial policy", () => {
+  const result = organizationJsonLd();
+  assert.equal(result.founder["@type"], "Person");
+  assert.equal(result.founder.name, PUBLISHER_NAME);
+  assert.equal(result.founder["@id"], PUBLISHER_PERSON_ID);
+  assert.equal(result.publishingPrinciples, `${SITE_URL}/editorial-policy`);
+});
+
+test("publisherPersonJsonLd claims a name, a role and nothing else about the person", () => {
+  const result = publisherPersonJsonLd();
+  assert.equal(result["@type"], "Person");
+  assert.equal(result.name, PUBLISHER_NAME);
+  assert.deepEqual(result.worksFor, { "@id": ORGANIZATION_ID });
+  // Every one of these would be a claim about a human being that nothing in
+  // this codebase can support.
+  for (const forbidden of ["sameAs", "alumniOf", "award", "knowsAbout", "hasCredential", "description"]) {
+    assert.equal(forbidden in result, false, `publisherPersonJsonLd must not emit ${forbidden}`);
+  }
 });
 
 test("articleJsonLd omits `about` entirely when no products are linked", () => {

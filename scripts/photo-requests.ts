@@ -25,8 +25,10 @@ async function read<T>(db: Db, table: string, columns: string): Promise<T[]> {
 async function main(): Promise<void> {
   const db = (await createAdminClient()) as unknown as Db;
 
-  // owner_access arrives with supabase/migrations_pending/20260825_product_owner_access.sql.
-  // Until that is applied the column does not exist and PostgREST rejects the
+  // owner_access arrives with supabase/migrations/20260825_product_owner_access.sql,
+  // which IS applied to production. The fallback below is kept because it costs
+  // nothing and this script also runs against environments where it is not.
+  // Where the column does not exist PostgREST rejects the
   // select outright (42703), so this falls back to the narrower query — and SAYS
   // SO. It does not swallow the error: an unreported fallback is how a run
   // reports "nothing is obtainable" when the truth is "the column is missing".
@@ -44,7 +46,7 @@ async function main(): Promise<void> {
       }
       accessKnown = false;
       console.log(
-        "NOTE: products.owner_access does not exist yet — 20260825_product_owner_access.sql\n" +
+        "NOTE: products.owner_access does not exist here — 20260825_product_owner_access.sql\n" +
         "      is not applied. Every product is treated as access UNKNOWN, which means\n" +
         "      'nobody has assessed it', so nothing is filtered out. Access-based ranking\n" +
         "      is inactive until the migration runs.\n"

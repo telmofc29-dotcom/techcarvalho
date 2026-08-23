@@ -1,4 +1,10 @@
 import { SITE_NAME, SITE_TAGLINE, SITE_URL, absoluteUrl } from "./site.ts";
+import {
+  PUBLISHER_NAME,
+  PUBLISHER_ROLE,
+  PUBLISHER_PERSON_ID,
+  PUBLISHER_PAGE,
+} from "./publisher.ts";
 
 // JSON.stringify doesn't escape "<" — if any field ever contains
 // "</script>" (e.g. an admin-authored title), that would close the script
@@ -49,9 +55,49 @@ export function organizationJsonLd() {
       width: 1400,
       height: 367,
     },
+    // The named human behind the publication. Until this existed, the graph
+    // said a company published these articles and never said who that was —
+    // and articleJsonLd's own comment explains why it could not: admin_users
+    // is not readable by `anon`, so there was no name to emit. The name now
+    // comes from one place (lib/seo/publisher.ts), the same place /about, the
+    // footer and the byline read from, so the graph and the page cannot drift
+    // apart.
+    //
+    // `founder` is the only relationship claimed. NOT `employee` (he is not
+    // employed by it) and NOT any credential, qualification or expertise
+    // claim — none is known to this codebase and none is emitted.
+    founder: {
+      "@type": "Person",
+      "@id": PUBLISHER_PERSON_ID,
+      name: PUBLISHER_NAME,
+      jobTitle: PUBLISHER_ROLE,
+      url: absoluteUrl(PUBLISHER_PAGE),
+    },
+    // A real, substantive page describing how the site works, including what
+    // it does not do. Not a boilerplate URL: /editorial-policy states in
+    // writing that the site publishes no hands-on testing.
+    publishingPrinciples: absoluteUrl("/editorial-policy"),
     // No `sameAs`: this publication has no verified social profiles yet, and
     // linking to accounts we don't control (or don't have) is exactly the
     // kind of unbacked claim this file exists to refuse.
+  };
+}
+
+// The publisher as a standalone Person node, for the page whose subject IS
+// the publisher (/about). `worksFor` points back at the one Organization node
+// rather than restating the publication.
+//
+// No `sameAs`, no `alumniOf`, no `award`, no `knowsAbout`: every one of those
+// would be a claim about a person that this codebase cannot support.
+export function publisherPersonJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "@id": PUBLISHER_PERSON_ID,
+    name: PUBLISHER_NAME,
+    jobTitle: PUBLISHER_ROLE,
+    url: absoluteUrl(PUBLISHER_PAGE),
+    worksFor: { "@id": ORGANIZATION_ID },
   };
 }
 
@@ -210,8 +256,27 @@ export function articleJsonLd(article: {
   section?: string | null;
   // Products this article is genuinely linked to via content_products.
   about?: { name: string; slug: string }[];
+  /**
+   * The named author, ONLY when a real, publicly-published author record backs
+   * it: content_items.author_id set, and a matching author_profiles row with
+   * is_public = true. Absent (undefined/null) means no such record exists, and
+   * the Organization stays the author — see the note below. There is no code
+   * path anywhere that manufactures this value.
+   */
+  author?: { name: string; role?: string | null } | null;
 }) {
   const url = absoluteUrl(`/articles/${article.slug}`);
+  // Same person, same node: when the byline is the site's publisher, reuse the
+  // Person @id that organizationJsonLd already emits so the graph links one
+  // human to the publication instead of describing two similarly-named ones.
+  const authorNode = article.author
+    ? {
+        "@type": "Person" as const,
+        ...(article.author.name === PUBLISHER_NAME ? { "@id": PUBLISHER_PERSON_ID } : {}),
+        name: article.author.name,
+        ...(article.author.role ? { jobTitle: article.author.role } : {}),
+      }
+    : { "@id": ORGANIZATION_ID };
   return {
     "@context": "https://schema.org",
     "@type": articleTypeFor(article.contentType),
@@ -220,12 +285,17 @@ export function articleJsonLd(article: {
     image: article.image?.url ? [article.image.url] : undefined,
     datePublished: article.publishedAt ?? undefined,
     dateModified: article.updatedAt ?? article.publishedAt ?? undefined,
-    // Organization-as-author, not a person. content_items.author_id points at
-    // admin_users, whose RLS policy is "admins can read own row" — `anon`
-    // cannot read a display name at all, so naming an individual here would
-    // mean inventing one. The site publishes under the masthead (see
-    // /editorial-policy), so the Organization is the truthful author.
-    author: { "@id": ORGANIZATION_ID },
+    // A Person when — and only when — a real author record exists; otherwise
+    // the Organization, exactly as before.
+    //
+    // The original reason for organization-as-author still stands and is worth
+    // keeping: content_items.author_id points at admin_users, whose RLS policy
+    // is "admins can read own row", so `anon` cannot read a display name and
+    // naming an individual from that table would mean inventing one. The fix
+    // was not to relax that policy — it was public.author_profiles
+    // (supabase/migrations_pending/20260825_author_profiles.sql), a separate,
+    // opt-in, publicly-readable editorial identity. No record, no Person.
+    author: authorNode,
     publisher: { "@id": ORGANIZATION_ID },
     isPartOf: { "@id": WEBSITE_ID },
     mainEntityOfPage: { "@type": "WebPage", "@id": url },

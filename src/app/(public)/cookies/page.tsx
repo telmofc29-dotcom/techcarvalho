@@ -7,7 +7,18 @@ export const metadata: Metadata = buildMetadata({ title: "Cookie Policy", path: 
 
 export default function CookiesPage() {
   return (
-    <LegalPage title="Cookie Policy" crumbLabel="Cookies" crumbPath="/cookies">
+    <LegalPage
+      title="Cookie Policy"
+      crumbLabel="Cookies"
+      crumbPath="/cookies"
+      // Not provisional. This page names the actual storage mechanisms
+      // category by category — the admin session cookie, GA4's own cookies,
+      // the sessionStorage session id and the localStorage visitor id, and the
+      // consent-independent outbound click counter. That is a finished
+      // description of real behaviour, and the placeholder banner was untrue
+      // of it. See the note on /privacy for why the banner mattered.
+      provisional={false}
+    >
       <p>
         {SITE_NAME} uses a small number of cookies and similar browser storage. Some are required for the site to
         function; others are only used after you grant consent through the consent banner. You can change your
@@ -31,8 +42,9 @@ export default function CookiesPage() {
         IP address or full browser user-agent string for analytics purposes.
       </p>
       <p>
-        Separately, when you click a retailer or affiliate link, we record that a click happened (which page, which
-        retailer) without any visitor or session identifier attached at all — this anonymous count exists regardless
+        Separately, when you click a link that leaves the site — today that means a manufacturer&apos;s own page; it
+        would also cover a retailer link if one were ever added — we record that a click happened (which page, which
+        destination) without any visitor or session identifier attached at all. This anonymous count exists regardless
         of your cookie choice, since it cannot be linked to you or your browsing across the site.
       </p>
       <h2 className="font-display text-base font-semibold text-zinc-900 mt-2">Advertising — only after consent</h2>

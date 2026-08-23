@@ -94,7 +94,7 @@ export default async function ArticlePage({
   const detail = await getArticleDetail(slug);
   if (!detail) notFound();
 
-  const { content, category, products, tags, freshness, related, heroImage, seo, sources } = detail;
+  const { content, category, products, tags, freshness, related, heroImage, seo, sources, author } = detail;
   const { clusterMembers, clusterPillars, comparisonSiblings, hubs } = detail;
   const lastVerified = freshness[0]?.reviewed_at ?? null;
 
@@ -168,6 +168,11 @@ export default async function ArticlePage({
     // Only products actually linked through content_products, and only the
     // published ones — getArticleDetail already filters on is_published.
     about: products.map((p) => ({ name: p.name, slug: p.slug })),
+    // The same author the reader sees in the byline, or none at all. The two
+    // cannot disagree because they read the same resolved value — the mistake
+    // made with dateModified, where the crawler was told one thing and the
+    // reader another, is not repeated here.
+    author,
   });
 
   return (
@@ -233,10 +238,28 @@ export default async function ArticlePage({
           never been revised overstates the maintenance. */}
       <div className="mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-500">
         <Badge tone="amber">{CONTENT_TYPE_LABEL[content.type] ?? content.type}</Badge>
+        {/* The byline, and only when a real author record backs it.
+            `author` is non-null only if an editor set content_items.author_id
+            AND the matching author_profiles row is is_public — see
+            getArticleDetail. There is deliberately no fallback: no "Staff", no
+            "Editorial team", no site name standing in for a person. A page with
+            no byline is telling the truth about what this site knows. */}
+        {author && (
+          <span>
+            By <span className="font-medium text-zinc-700">{author.name}</span>
+          </span>
+        )}
         {displayDate && (
-          <time dateTime={displayDate.iso}>
-            {displayDate.revised ? "Updated" : "Published"} {displayDate.label}
-          </time>
+          <>
+            {author && (
+              <span aria-hidden="true" className="text-zinc-300">
+                •
+              </span>
+            )}
+            <time dateTime={displayDate.iso}>
+              {displayDate.revised ? "Updated" : "Published"} {displayDate.label}
+            </time>
+          </>
         )}
         {readingTime && (
           <>

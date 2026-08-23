@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { SITE_NAME, SITE_TAGLINE } from "@/lib/seo/site";
+import { PUBLISHER_CREDIT } from "@/lib/seo/publisher";
 import { PLANNED_CATEGORIES } from "@/lib/public/categories";
 import { CookieSettingsButton } from "@/components/consent/cookie-settings-button";
 
@@ -99,8 +100,16 @@ export function SiteFooter() {
             </ul>
           </div>
         </div>
+        {/* The copyright line was "© 2026 Tech Carvalho" and nothing else — no
+            person, no entity, no route to anyone. A named publisher on every
+            page is the cheapest answer there is to "who is behind this site?",
+            and it reads from the same constant as /about, the byline and the
+            JSON-LD so the four can never drift apart. */}
         <div className="border-t border-border-subtle pt-6 text-xs text-zinc-400">
-          &copy; {new Date().getFullYear()} {SITE_NAME}
+          {/* No new links here on purpose: About and Contact already appear in
+              the policies column above with proper 44px targets, and a second
+              copy would be two more sub-44px taps for no navigational gain. */}
+          &copy; {new Date().getFullYear()} {SITE_NAME}. {PUBLISHER_CREDIT}.
         </div>
       </div>
     </footer>

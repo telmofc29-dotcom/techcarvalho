@@ -11,6 +11,17 @@ export type RelationshipType =
   | "compatible_with"
   | "requires";
 export type SpecDataType = "text" | "number" | "boolean" | "enum";
+// Added by supabase/migrations/20260825_product_owner_access.sql. Deliberately
+// re-declared here rather than imported from src/lib/media/resolution.ts — this
+// file has no imports at all (see the Locale note below) — but resolution.ts's
+// OwnerAccess is the vocabulary of record and the CHECK constraint on
+// public.products.owner_access is the source of truth. Keep all three in sync.
+export type ProductOwnerAccess =
+  | "owned"
+  | "borrowable"
+  | "retail_display"
+  | "not_accessible"
+  | "unknown";
 // 'troubleshooting' added by supabase/migrations/20260820_content_troubleshooting_type.sql.
 export type ContentType = "review" | "guide" | "comparison" | "news" | "troubleshooting";
 // Widened by supabase/migrations/20260820_editorial_workflow_statuses.sql — the original
@@ -222,6 +233,12 @@ export type EngineResolutionDecision =
   | "ignored";
 export type EngineJobStatus = "running" | "success" | "partial" | "failed" | "skipped";
 export type EngineOpportunitySubject = "category" | "topic" | "product" | "content" | "search_term";
+// Added by supabase/migrations_pending/20260825_contact_messages.sql — not yet
+// applied. Both vocabularies are CHECK constraints there; CONTACT_SUBJECTS in
+// src/lib/contact/message.ts carries the reader-facing labels. Keep all three
+// in sync.
+export type ContactMessageSubject = "correction" | "sourcing" | "permissions" | "general";
+export type ContactMessageStatus = "new" | "read" | "archived";
 
 export interface Database {
   public: {
@@ -238,6 +255,77 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["admin_users"]["Insert"]>;
+        Relationships: [];
+      };
+      // Added by supabase/migrations_pending/20260825_author_profiles.sql —
+      // NOT YET APPLIED, so this table does not exist in production yet and a
+      // query against it currently fails rather than returning zero rows.
+      //
+      // Deliberately NOT admin_users. admin_users is the authorization table;
+      // making it publicly readable would publish the site's admin membership
+      // list as a side effect of wanting a byline. This is an opt-in editorial
+      // identity, private until is_public is set.
+      author_profiles: {
+        Row: {
+          /** 1:1 with admin_users.id. An author must be able to publish here. */
+          id: string;
+          display_name: string;
+          role_title: string | null;
+          /** Written by a person. Never generated, never credentials. */
+          short_bio: string | null;
+          /** Gates the anon SELECT policy. Default FALSE — publishing a real name is irreversible. */
+          is_public: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id: string;
+          display_name: string;
+          role_title?: string | null;
+          short_bio?: string | null;
+          is_public?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["author_profiles"]["Insert"]>;
+        Relationships: [];
+      };
+      // Added by supabase/migrations_pending/20260825_contact_messages.sql —
+      // NOT YET APPLIED.
+      //
+      // Contains third-party email addresses and unpublished messages. `anon`
+      // has NO privilege on it at all: the only write path is the SECURITY
+      // DEFINER function submit_contact_message() (see Functions below), and
+      // reads are admin-only. There is no Insert path from the app.
+      contact_messages: {
+        Row: {
+          id: string;
+          name: string | null;
+          email: string;
+          /** Closed vocabulary — mirrors CONTACT_SUBJECTS in src/lib/contact/message.ts. */
+          subject: ContactMessageSubject;
+          message: string;
+          page_path: string | null;
+          status: ContactMessageStatus;
+          created_at: string;
+          handled_at: string | null;
+          handled_by: string | null;
+        };
+        // Insert is typed for completeness only. Nothing in the app inserts
+        // directly — anon cannot, and the admin UI has no reason to.
+        Insert: {
+          id?: string;
+          name?: string | null;
+          email: string;
+          subject: ContactMessageSubject;
+          message: string;
+          page_path?: string | null;
+          status?: ContactMessageStatus;
+          created_at?: string;
+          handled_at?: string | null;
+          handled_by?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["contact_messages"]["Insert"]>;
         Relationships: [];
       };
       media_assets: {
@@ -447,6 +535,12 @@ export interface Database {
           status: ProductStatus;
           summary: string | null;
           is_published: boolean;
+          // Added by supabase/migrations/20260825_product_owner_access.sql, applied to
+          // production. NOT NULL with default 'unknown', which means NOBODY HAS ASSESSED
+          // IT — never "cannot be photographed".
+          owner_access: ProductOwnerAccess;
+          owner_access_note: string | null;
+          owner_access_set_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -462,6 +556,9 @@ export interface Database {
           status?: ProductStatus;
           summary?: string | null;
           is_published?: boolean;
+          owner_access?: ProductOwnerAccess;
+          owner_access_note?: string | null;
+          owner_access_set_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -1418,6 +1515,21 @@ export interface Database {
     };
     Views: { [_ in never]: never };
     Functions: {
+      // Added by supabase/migrations_pending/20260825_contact_messages.sql —
+      // NOT YET APPLIED. The ONLY write path into contact_messages: `anon` has
+      // no privilege on that table and no insert policy exists for any role.
+      // Returns {ok: true, id} or {ok: false, reason} — a rejected message is a
+      // normal result, not an error, so the form can explain it to the sender.
+      submit_contact_message: {
+        Args: {
+          p_name: string | null;
+          p_email: string;
+          p_subject: string;
+          p_message: string;
+          p_page_path?: string | null;
+        };
+        Returns: { ok: boolean; reason?: string; id?: string };
+      };
       compute_analytics_rollup: {
         Args: { target_day: string };
         Returns: void;

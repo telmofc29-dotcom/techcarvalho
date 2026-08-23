@@ -25,12 +25,17 @@ const NAV_SECTIONS: { title: string; items: { href: string; label: string }[] }[
     items: [
       { href: "/admin/content", label: "Content" },
       { href: "/admin/media", label: "Media" },
+      { href: "/admin/photography", label: "Photography" },
       { href: "/admin/quality", label: "Content Quality" },
       { href: "/admin/translations", label: "Translations" },
       { href: "/admin/freshness", label: "Freshness" },
       { href: "/admin/source-records", label: "Source Records" },
       { href: "/admin/evidence-records", label: "Evidence Records" },
     ],
+  },
+  {
+    title: "Inbox",
+    items: [{ href: "/admin/messages", label: "Messages" }],
   },
   {
     title: "Growth",
