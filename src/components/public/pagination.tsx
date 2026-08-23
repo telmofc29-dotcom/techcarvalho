@@ -37,9 +37,16 @@ export function PublicPagination({
     return qs ? `${basePath}?${qs}` : basePath;
   };
 
-  const stepClass = "rounded-full border border-border-subtle px-4 py-2 hover:border-accent/40";
+  // Touch sizing: these were 36-38px tall and the number links 40px wide.
+  // min-h-11/min-w-11 with flex centring makes every pager control a full
+  // 44x44 target; the type size and the pill shape are unchanged, the box
+  // around them just stops being a near-miss for a thumb. Applied to the
+  // disabled <span> variants too, so the row does not change height between
+  // page 1 and page 2.
+  const stepClass =
+    "inline-flex min-h-11 items-center justify-center rounded-full border border-border-subtle px-4 hover:border-accent/40";
   const numberClass =
-    "inline-flex min-w-10 justify-center rounded-full border border-border-subtle px-3 py-2 hover:border-accent/40";
+    "inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-border-subtle px-3 hover:border-accent/40";
 
   return (
     <nav

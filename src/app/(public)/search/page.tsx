@@ -109,7 +109,7 @@ export default async function SearchPage({
                       <li key={c.id} data-result-type="category" data-result-position={++resultPosition}>
                         <Link
                           href={`/${c.slug}`}
-                          className="rounded-full border border-border-subtle bg-white px-4 py-2 text-sm hover:border-accent/40"
+                          className="inline-flex min-h-11 items-center rounded-full border border-border-subtle bg-white px-4 text-sm hover:border-accent/40"
                         >
                           {c.name} <span className="text-zinc-400">· category</span>
                         </Link>
@@ -119,7 +119,7 @@ export default async function SearchPage({
                       <li key={m.id} data-result-type="manufacturer" data-result-position={++resultPosition}>
                         <Link
                           href={`/manufacturers/${m.slug}`}
-                          className="rounded-full border border-border-subtle bg-white px-4 py-2 text-sm hover:border-accent/40"
+                          className="inline-flex min-h-11 items-center rounded-full border border-border-subtle bg-white px-4 text-sm hover:border-accent/40"
                         >
                           {m.name} <span className="text-zinc-400">· manufacturer</span>
                         </Link>

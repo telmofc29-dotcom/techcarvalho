@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Badge } from "@/components/shared/ui";
+import { Badge, TOUCH_TARGET } from "@/components/shared/ui";
 import { InternalLinkTracker } from "@/components/analytics/internal-link-tracker";
 import { CONTENT_TYPE_LABEL, MediaFrame, SectionHeading, CARD_FOCUS, ArrowGlyph } from "@/components/public/cards";
 import { findPlannedCategory } from "@/lib/public/categories";
@@ -110,7 +110,7 @@ export function CategorySectionBlock({ section }: { section: CategorySection }) 
         action={
           <Link
             href={`/${section.slug}`}
-            className={`inline-flex items-center gap-1.5 rounded text-sm font-semibold text-accent hover:underline ${CARD_FOCUS}`}
+            className={`${TOUCH_TARGET} gap-1.5 rounded text-sm font-semibold text-accent hover:underline ${CARD_FOCUS}`}
           >
             All {section.name}
             <ArrowGlyph className="h-4 w-4" />
@@ -157,7 +157,7 @@ export function ReferencedGuides({ guides }: { guides: HomeStory[] }) {
         action={
           <Link
             href="/articles?type=guide"
-            className={`inline-flex items-center gap-1.5 rounded text-sm font-semibold text-accent hover:underline ${CARD_FOCUS}`}
+            className={`${TOUCH_TARGET} gap-1.5 rounded text-sm font-semibold text-accent hover:underline ${CARD_FOCUS}`}
           >
             All guides
             <ArrowGlyph className="h-4 w-4" />
@@ -225,7 +225,7 @@ export function QuestionRail({ questions }: { questions: HomeQuestion[] }) {
         action={
           <Link
             href="/articles"
-            className={`inline-flex items-center gap-1.5 rounded text-sm font-semibold text-accent hover:underline ${CARD_FOCUS}`}
+            className={`${TOUCH_TARGET} gap-1.5 rounded text-sm font-semibold text-accent hover:underline ${CARD_FOCUS}`}
           >
             Browse everything
             <ArrowGlyph className="h-4 w-4" />

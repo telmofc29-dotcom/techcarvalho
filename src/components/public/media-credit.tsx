@@ -1,4 +1,13 @@
 import { licenceUrl, sourceLabel } from "@/lib/media/licence-links";
+import { TOUCH_INLINE } from "@/components/shared/ui";
+
+// These two links are a licence CONDITION (see below), so they have to be
+// genuinely tappable, not merely present. At text-xs they were 16px tall.
+// They sit inside a caption sentence, so the hit area is grown with a
+// ::before overlay rather than by padding the visible box, which would push
+// the caption's lines apart. The enclosing span is whitespace-nowrap, so
+// neither link wraps and its overlay stays a single clean rectangle.
+const CREDIT_LINK = `${TOUCH_INLINE} underline decoration-dotted underline-offset-2 hover:text-zinc-700`;
 
 // A CC BY / CC BY-SA credit is a licence CONDITION, not decoration.
 //
@@ -46,7 +55,7 @@ export function MediaCredit({
                 href={deed}
                 rel="license noopener noreferrer"
                 target="_blank"
-                className="underline decoration-dotted underline-offset-2 hover:text-zinc-700"
+                className={CREDIT_LINK}
               >
                 {license}
               </a>
@@ -57,7 +66,7 @@ export function MediaCredit({
                 href={sourceUrl}
                 rel="noopener noreferrer"
                 target="_blank"
-                className="underline decoration-dotted underline-offset-2 hover:text-zinc-700"
+                className={CREDIT_LINK}
               >
                 {source}
               </a>

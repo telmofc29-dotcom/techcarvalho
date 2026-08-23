@@ -25,6 +25,7 @@ const NAV_SECTIONS: { title: string; items: { href: string; label: string }[] }[
     items: [
       { href: "/admin/content", label: "Content" },
       { href: "/admin/media", label: "Media" },
+      { href: "/admin/quality", label: "Content Quality" },
       { href: "/admin/freshness", label: "Freshness" },
       { href: "/admin/source-records", label: "Source Records" },
       { href: "/admin/evidence-records", label: "Evidence Records" },

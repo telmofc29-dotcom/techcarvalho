@@ -187,12 +187,12 @@ export default async function ManufacturerPage({
                 <Link
                   key={f.id}
                   href={`/families/${f.slug}`}
-                  className="rounded-full border border-border-subtle bg-white px-3 py-1 text-sm font-medium text-zinc-700 hover:border-accent/40 hover:text-accent"
+                  className="inline-flex min-h-11 items-center rounded-full border border-border-subtle bg-white px-3 text-sm font-medium text-zinc-700 hover:border-accent/40 hover:text-accent"
                 >
                   {f.name}
                 </Link>
               ) : (
-                <span key={f.id} className="rounded-full border border-border-subtle bg-white px-3 py-1 text-sm text-zinc-600">
+                <span key={f.id} className="inline-flex min-h-11 items-center rounded-full border border-border-subtle bg-white px-3 text-sm text-zinc-600">
                   {f.name}
                 </span>
               )

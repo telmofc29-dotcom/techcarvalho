@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { useConsent, type ConsentCategory, type ConsentState } from "@/lib/consent/consent-context";
+import { TOUCH_INLINE } from "@/components/shared/ui";
 
 // Homemade consent banner — the UI half of the consent foundation described
 // in consent-context.tsx. Not a certified CMP; see that file's header for
@@ -51,10 +52,15 @@ const BUTTON_CHOICE = `${BUTTON_BASE} border-2 border-zinc-900 bg-white font-sem
 // The route to the per-category panel — a different kind of action, not a
 // third answer, so it is allowed (and helpful) to read as secondary.
 const BUTTON_SECONDARY = `${BUTTON_BASE} border border-zinc-300 font-medium text-zinc-600 hover:bg-zinc-50`;
-// Inline policy links: vertical padding on an inline element expands the
-// hit rectangle without affecting the line box, so the sentence keeps its
-// leading while the tap target stops being 18px tall.
-const INLINE_LINK = "-my-1 rounded py-1 underline hover:text-zinc-900";
+// Inline policy links. The earlier `-my-1 py-1` trick got these to 26px —
+// better than the original 18px, still short of the project's 44px standard,
+// because padding-derived height is a function of the inherited line-height
+// and this paragraph is text-sm/leading-snug. TOUCH_INLINE replaces it with a
+// fixed 44px ::before overlay, which does not depend on type size and does
+// not touch the line box, so the sentence still reads as one sentence.
+// These are consent controls in a control surface, not body prose, so the
+// WCAG 2.5.8 inline-text exemption is not being leaned on here.
+const INLINE_LINK = `${TOUCH_INLINE} rounded underline hover:text-zinc-900`;
 
 export function ConsentBanner() {
   const { consent, hasChosen, acceptAll, rejectAll, isPreferencesOpen, openPreferences, closePreferences } =

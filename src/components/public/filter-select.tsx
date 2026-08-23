@@ -24,7 +24,13 @@ export function FilterSelect({
       {Object.entries(otherParams).map(
         ([key, val]) => val && <input key={key} type="hidden" name={key} value={val} />
       )}
-      <label htmlFor={`filter-${paramName}`} className="text-xs font-medium text-zinc-500">
+      {/* The label is a real target — tapping it focuses/opens the select —
+          so it gets the same 44px height as the control it labels, rather
+          than being a 16px strip next to a 34px one. */}
+      <label
+        htmlFor={`filter-${paramName}`}
+        className="inline-flex min-h-11 items-center text-xs font-medium text-zinc-500"
+      >
         {label}
       </label>
       <select
@@ -32,7 +38,9 @@ export function FilterSelect({
         name={paramName}
         defaultValue={value ?? ""}
         onChange={(e) => e.currentTarget.form?.requestSubmit()}
-        className="rounded-full border border-border-subtle bg-white px-3 py-1.5 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+        // min-h-11 rather than more py: a <select> renders its own internal
+        // padding, so height is set explicitly to land exactly on 44px.
+        className="min-h-11 rounded-full border border-border-subtle bg-white px-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
       >
         <option value="">All</option>
         {options.map((opt) => (

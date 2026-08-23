@@ -29,6 +29,8 @@
 //
 // Pure. No I/O.
 
+import { isShootable, ACCESS_RANK, type OwnerAccess } from "./resolution.ts";
+
 export type CurrentMediaState =
   /** No usable image at all. */
   | "none"
@@ -53,6 +55,16 @@ export type PhotoRequestInput = {
   currentMedia: CurrentMediaState;
   /** True when the catalogue already holds a real photograph of this product. */
   hasRealPhotograph: boolean;
+  /**
+   * Whether the object can realistically be got at.
+   *
+   * Defaults to "unknown", which means NOBODY HAS ASSESSED IT — not "no". The
+   * distinction is the whole point of this field: without it the list ranked a
+   * £4,000 camera body nobody owns above a router on the owner's own desk,
+   * purely because more articles linked to the camera. Site value and physical
+   * feasibility are different questions and are now answered separately.
+   */
+  ownerAccess?: OwnerAccess;
 };
 
 export type PhotoRequestPriority = "high" | "medium" | "low";
@@ -69,6 +81,16 @@ export type PhotoRequest = {
   shotList: string[];
   /** Why this is being asked for, in words. */
   reason: string;
+  /** How obtainable the object is. */
+  ownerAccess: OwnerAccess;
+  /**
+   * False when the object cannot be got at. Such a request is still RETURNED —
+   * the site's need for the image is real and does not go away — but it is
+   * sorted below everything shootable and labelled, so the list never opens
+   * with something nobody can do. The fix for these is a licensed image or an
+   * illustration, not a camera; see resolveMediaStrategy.
+   */
+  shootable: boolean;
 };
 
 /**
@@ -133,6 +155,14 @@ export function rankPhotoRequests(inputs: PhotoRequestInput[]): PhotoRequest[] {
     const priority: PhotoRequestPriority =
       pagesAffected >= 3 ? "high" : pagesAffected === 2 ? "medium" : "low";
 
+    const ownerAccess = input.ownerAccess ?? "unknown";
+    const shootable = isShootable(ownerAccess);
+    if (!shootable) {
+      reason +=
+        " The object is recorded as not obtainable, so this will not be fixed by a camera — " +
+        "it needs a licensed photograph or an illustration instead.";
+    }
+
     requests.push({
       productId: input.productId,
       productName: input.productName,
@@ -142,12 +172,28 @@ export function rankPhotoRequests(inputs: PhotoRequestInput[]): PhotoRequest[] {
       articleTitles: input.articleTitles,
       shotList: [...BASE_SHOT_LIST],
       reason,
+      ownerAccess,
+      shootable,
     });
   }
 
-  // Most pages improved first; ties broken by name so the list is stable
-  // between runs and a reader can find the same row twice.
+  // Sort order, in precedence:
+  //   1. Shootable before not — a backlog must never open with something
+  //      nobody can act on.
+  //   2. Most pages improved — the site-value question.
+  //   3. Easiest access — a tie between two equally valuable shots goes to the
+  //      one already on the desk.
+  //   4. Name, so the list is stable between runs and a reader can find the
+  //      same row twice.
+  //
+  // Access is the TIE-BREAKER and not the primary key on purpose: sorting by
+  // convenience first would bury the photograph that fixes four pages beneath
+  // one that fixes a single unpublished product.
   return requests.sort(
-    (a, b) => b.pagesAffected - a.pagesAffected || a.productName.localeCompare(b.productName)
+    (a, b) =>
+      Number(b.shootable) - Number(a.shootable) ||
+      b.pagesAffected - a.pagesAffected ||
+      ACCESS_RANK[a.ownerAccess] - ACCESS_RANK[b.ownerAccess] ||
+      a.productName.localeCompare(b.productName)
   );
 }

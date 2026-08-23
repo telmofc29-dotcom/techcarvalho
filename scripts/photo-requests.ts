@@ -8,6 +8,7 @@
 
 import { loadEnvLocal, createAdminClient } from "./_shared.ts";
 import { rankPhotoRequests, type PhotoRequestInput, type CurrentMediaState } from "../src/lib/media/photo-requests.ts";
+import { ACCESS_LABEL, type OwnerAccess } from "../src/lib/media/resolution.ts";
 
 loadEnvLocal();
 
@@ -24,9 +25,36 @@ async function read<T>(db: Db, table: string, columns: string): Promise<T[]> {
 async function main(): Promise<void> {
   const db = (await createAdminClient()) as unknown as Db;
 
-  const products = await read<{ id: string; name: string; slug: string; is_published: boolean }>(
-    db, "products", "id,name,slug,is_published"
-  );
+  // owner_access arrives with supabase/migrations_pending/20260825_product_owner_access.sql.
+  // Until that is applied the column does not exist and PostgREST rejects the
+  // select outright (42703), so this falls back to the narrower query — and SAYS
+  // SO. It does not swallow the error: an unreported fallback is how a run
+  // reports "nothing is obtainable" when the truth is "the column is missing".
+  type ProductRow = {
+    id: string; name: string; slug: string; is_published: boolean;
+    owner_access?: string | null;
+  };
+  let products: ProductRow[];
+  let accessKnown = true;
+  {
+    const withAccess = await db.from("products").select("id,name,slug,is_published,owner_access");
+    if (withAccess.error) {
+      if (!/owner_access/.test(withAccess.error.message)) {
+        throw new Error(`reading products failed: ${withAccess.error.message}`);
+      }
+      accessKnown = false;
+      console.log(
+        "NOTE: products.owner_access does not exist yet — 20260825_product_owner_access.sql\n" +
+        "      is not applied. Every product is treated as access UNKNOWN, which means\n" +
+        "      'nobody has assessed it', so nothing is filtered out. Access-based ranking\n" +
+        "      is inactive until the migration runs.\n"
+      );
+      products = await read<ProductRow>(db, "products", "id,name,slug,is_published");
+    } else {
+      if (withAccess.data === null) throw new Error("reading products returned null rather than rows");
+      products = withAccess.data as ProductRow[];
+    }
+  }
   const contentProducts = await read<{ content_id: string; product_id: string }>(
     db, "content_products", "content_id,product_id"
   );
@@ -75,6 +103,7 @@ async function main(): Promise<void> {
       productPublished: p.is_published,
       currentMedia,
       hasRealPhotograph: anyReal,
+      ownerAccess: (p.owner_access as OwnerAccess | undefined) ?? "unknown",
     };
   });
 
@@ -82,11 +111,16 @@ async function main(): Promise<void> {
 
   console.log(`=== PHOTOGRAPHY REQUESTS — ${requests.length} of ${products.length} products ===\n`);
   const byPriority = (p: string) => requests.filter((r) => r.priority === p);
-  console.log(`high ${byPriority("high").length}   medium ${byPriority("medium").length}   low ${byPriority("low").length}\n`);
+  console.log(`high ${byPriority("high").length}   medium ${byPriority("medium").length}   low ${byPriority("low").length}`);
+  const blocked = requests.filter((r) => !r.shootable).length;
+  console.log(
+    `shootable ${requests.length - blocked}   not obtainable ${blocked}` +
+      (accessKnown ? "" : "   (access not yet assessed for any product)") + "\n"
+  );
 
   for (const r of requests.slice(0, 15)) {
     console.log(`PHOTO REQUEST — ${r.productName}`);
-    console.log(`  priority : ${r.priority.toUpperCase()}   pages improved: ${r.pagesAffected}`);
+    console.log(`  priority : ${r.priority.toUpperCase()}   pages improved: ${r.pagesAffected}   access: ${ACCESS_LABEL[r.ownerAccess]}`);
     console.log(`  reason   : ${r.reason}`);
     if (r.articleTitles.length > 0) {
       console.log(`  waiting  : ${r.articleTitles.slice(0, 3).map((t) => t.slice(0, 54)).join(" | ")}`);

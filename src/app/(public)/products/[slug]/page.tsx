@@ -14,7 +14,7 @@ import { OutboundLink } from "@/components/public/outbound-link";
 import { LaunchPricingDisplay } from "@/components/public/launch-pricing";
 import { ProductLeadMedia } from "@/components/public/product-lead-media";
 import { outboundLinkKindFor, destinationDomainOf } from "@/lib/monetisation/affiliate";
-import { Badge, EmptyState } from "@/components/shared/ui";
+import { Badge, EmptyState, TOUCH_INLINE } from "@/components/shared/ui";
 import { PageViewTracker } from "@/components/analytics/page-view-tracker";
 import { ScrollDepthTracker } from "@/components/analytics/scroll-depth-tracker";
 import { TrackedLink } from "@/components/analytics/tracked-link";
@@ -146,7 +146,7 @@ export default async function ProductPage({
               <TrackedLink
                 href={`/manufacturers/${manufacturer.slug}`}
                 linkPosition="product_page"
-                className="text-sm font-medium text-zinc-500 hover:text-accent"
+                className="inline-flex min-h-11 min-w-11 items-center text-sm font-medium text-zinc-500 hover:text-accent"
               >
                 {manufacturer.name}
               </TrackedLink>
@@ -269,7 +269,7 @@ export default async function ProductPage({
                 .filter(Boolean)
                 .join(" · ")}{" "}
               — see our{" "}
-              <Link href="/editorial-policy" className="underline hover:text-accent">
+              <Link href="/editorial-policy" className={`${TOUCH_INLINE} underline hover:text-accent`}>
                 editorial policy
               </Link>{" "}
               for how we verify facts.
@@ -287,7 +287,7 @@ export default async function ProductPage({
                 <div className="flex justify-between">
                   <dt className="text-zinc-500">Manufacturer</dt>
                   <dd className="font-medium text-zinc-900">
-                    <Link href={`/manufacturers/${manufacturer.slug}`} className="hover:text-accent">
+                    <Link href={`/manufacturers/${manufacturer.slug}`} className="inline-flex min-h-11 min-w-11 items-center justify-center hover:text-accent">
                       {manufacturer.name}
                     </Link>
                   </dd>
@@ -303,7 +303,7 @@ export default async function ProductPage({
                       hub is guaranteed to have at least this one member and
                       can never render as an empty page from here. */}
                   <dd className="font-medium text-zinc-900">
-                    <Link href={`/families/${family.slug}`} className="hover:text-accent">
+                    <Link href={`/families/${family.slug}`} className="inline-flex min-h-11 min-w-11 items-center justify-center hover:text-accent">
                       {family.name}
                     </Link>
                   </dd>

@@ -99,7 +99,7 @@ export default async function ArticlesIndexPage({
       <div className="flex flex-wrap gap-2 mb-10">
         <Link
           href="/articles"
-          className={`rounded-full px-4 py-1.5 text-sm font-medium ${
+          className={`inline-flex min-h-11 items-center rounded-full px-4 text-sm font-medium ${
             type ? "bg-zinc-100 text-zinc-600 hover:bg-zinc-200" : "bg-zinc-900 text-white"
           }`}
         >
@@ -109,7 +109,7 @@ export default async function ArticlesIndexPage({
           <Link
             key={f.type}
             href={`/articles?type=${f.type}`}
-            className={`rounded-full px-4 py-1.5 text-sm font-medium ${
+            className={`inline-flex min-h-11 items-center rounded-full px-4 text-sm font-medium ${
               type === f.type ? "bg-zinc-900 text-white" : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
             }`}
           >

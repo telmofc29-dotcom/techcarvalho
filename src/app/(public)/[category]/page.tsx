@@ -323,7 +323,7 @@ export default async function CategoryPage({
                       <li key={sc.id} data-entity-type="category" data-category-slug={sc.slug}>
                         <Link
                           href={`/${sc.slug}`}
-                          className="rounded-full border border-border-subtle bg-white px-4 py-2 text-sm font-medium hover:border-accent/40"
+                          className="inline-flex min-h-11 items-center rounded-full border border-border-subtle bg-white px-4 text-sm font-medium hover:border-accent/40"
                         >
                           {sc.name}
                         </Link>
@@ -414,7 +414,7 @@ export default async function CategoryPage({
                       <li key={m.id} data-entity-type="manufacturer" data-entity-id={m.id}>
                         <Link
                           href={`/manufacturers/${m.slug}`}
-                          className="rounded-full border border-border-subtle bg-white px-4 py-2 text-sm font-medium hover:border-accent/40"
+                          className="inline-flex min-h-11 items-center rounded-full border border-border-subtle bg-white px-4 text-sm font-medium hover:border-accent/40"
                         >
                           {m.name}
                         </Link>

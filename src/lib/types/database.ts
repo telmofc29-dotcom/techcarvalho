@@ -1031,6 +1031,11 @@ export interface Database {
           // Non-null means this source is repeating someone else's claim, so
           // it is excluded from corroboration — see confidence.ts.
           originates_from_url: string | null;
+          // Added by supabase/migrations_pending/20260823_engine_evidence_provenance.sql.
+          // false means NOBODY LOOKED for an upstream citation, which is not the
+          // same as "this source is original" — independence.ts counts an
+          // unexamined source at half corroboration weight for exactly that reason.
+          origin_examined: boolean;
           retrieved_at: string;
           created_at: string;
         };
@@ -1370,6 +1375,15 @@ export interface Database {
           p_source_url: string | null;
           p_publisher: string | null;
           p_trust_level: string;
+          // Added by supabase/migrations_pending/20260823_engine_evidence_provenance.sql.
+          // OPTIONAL here on purpose: the migration is applied by hand, out of
+          // band from a deploy, so both shapes must typecheck while the two are
+          // out of step. src/lib/engine/jobs/discovery.ts calls the 14-argument
+          // shape first and falls back to the 10-argument one on PGRST202.
+          p_source_id?: string | null;
+          p_excerpt?: string | null;
+          p_originates_from_url?: string | null;
+          p_origin_examined?: boolean;
         };
         Returns: string;
       };

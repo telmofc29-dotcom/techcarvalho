@@ -3,7 +3,7 @@ import { SITE_NAME, SITE_TAGLINE } from "@/lib/seo/site";
 import { buildMetadata } from "@/lib/seo/metadata";
 import { getHomepageData, composeHomepage } from "@/lib/public/homepage";
 import { getTrendingContent } from "@/lib/public/trending";
-import { EmptyState } from "@/components/shared/ui";
+import { EmptyState, TOUCH_TARGET } from "@/components/shared/ui";
 import { mediaFit } from "@/lib/media/presentation";
 import { classifiable } from "@/lib/public/hero-image";
 import { ContentCard, ProductCard, SectionHeading, CARD_FOCUS, ArrowGlyph } from "@/components/public/cards";
@@ -93,50 +93,40 @@ export default async function HomePage() {
     <div>
       <PageViewTracker />
 
-      {/* Intentionally compact. This masthead previously ran py-20/py-28,
-          which pushed the Trending block entirely below the fold — the whole
-          point of Trending Now is that a visitor sees what is current without
-          scrolling, so the masthead yields vertical space to it. */}
-      <section className="border-b border-border-subtle bg-gradient-to-b from-accent-soft/60 to-white">
-        <div className="mx-auto max-w-6xl px-6 py-9 sm:py-11">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-accent">{SITE_NAME}</p>
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <h1 className="font-display max-w-2xl text-3xl font-bold leading-[1.1] tracking-tight text-zinc-900 sm:text-4xl">
-                {SITE_TAGLINE}
-              </h1>
-              <p className="mt-3 max-w-xl text-base leading-relaxed text-zinc-600">
-                Reviews, guides, and comparisons built on real testing and real sourcing — cameras, drones,
-                computing, networking, and gaming, explained without the noise.
-              </p>
-              {stats.length > 0 && (
-                <p className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium text-zinc-500">
-                  {stats.map((stat, index) => (
-                    <span key={stat} className="flex items-center gap-2">
-                      {index > 0 && (
-                        <span aria-hidden="true" className="h-1 w-1 rounded-full bg-zinc-300" />
-                      )}
-                      {stat}
-                    </span>
-                  ))}
-                </p>
-              )}
-            </div>
-            <form action="/search" method="get" className="w-full max-w-md lg:w-80 lg:shrink-0">
-              <input
-                type="search"
-                name="q"
-                placeholder="Search reviews, guides, products..."
-                aria-label="Search Tech Carvalho"
-                className="w-full rounded-full border border-border-subtle bg-white px-5 py-3 text-sm shadow-sm focus:border-accent/50 focus:outline-none focus:ring-2 focus:ring-accent/30"
-              />
-            </form>
-          </div>
-        </div>
-      </section>
+      {/* THE FRONT LINE.
+          ---------------------------------------------------------------
+          There is deliberately no masthead here. The one that used to
+          occupy this space spent the most valuable viewport on the site
+          repeating three things the header already carries — the wordmark,
+          a second search box, and the subject-area links — plus a tagline
+          and a description of the site. A visitor arriving on the front
+          page of a publication wants to know what is happening, not to be
+          told the publication exists; the header has already established
+          that by the time this renders.
 
-      <div className="mx-auto max-w-6xl px-6">
+          So the first thing below the header is the lead story itself, at
+          full width, with its own image, category, type and freshness. Its
+          headline is the page's h1 (see TrendingSection's leadAsPageHeading)
+          — the largest thing on the page is now also the most important
+          thing in the document outline, which was not true before.
+
+          The stat line survived the masthead because it is the only part
+          of it that answered "why care": it is real, checkable scale
+          (counts of rows a visitor can click through), not a claim. It now
+          sits inside the section it describes. */}
+      <div className="mx-auto max-w-6xl px-6 pt-8 sm:pt-10">
         <div className="divide-y divide-border-subtle">
+          {/* The lead story's headline is normally this page's h1. When there
+              is no lead — nothing published, or everything filtered out — the
+              page would otherwise have no h1 at all, so it falls back to
+              stating what the site is. This is the ONLY path on which the
+              tagline is rendered as a heading. */}
+          {!trending.lead && (
+            <h1 className="font-display pt-2 text-3xl font-bold leading-[1.1] tracking-tight text-zinc-900 sm:text-4xl">
+              {SITE_TAGLINE}
+            </h1>
+          )}
+
           {!hasAnyContent && (
             <div className="py-16">
               <EmptyState
@@ -147,12 +137,14 @@ export default async function HomePage() {
           )}
 
           {trending.lead && (
-            <div className="py-10 sm:py-12">
+            <div className="pb-10 sm:pb-12">
               <TrendingSection
                 lead={trending.lead}
                 supporting={trending.supporting}
                 isRecencyFallback={trending.isRecencyFallback}
                 linkPosition="home"
+                leadAsPageHeading
+                stats={stats}
               />
             </div>
           )}
@@ -167,7 +159,7 @@ export default async function HomePage() {
                       href="/articles"
                       ctaId="home_view_all_articles"
                       linkPosition="home"
-                      className={`inline-flex items-center gap-1.5 rounded text-sm font-semibold text-accent hover:underline ${CARD_FOCUS}`}
+                      className={`${TOUCH_TARGET} gap-1.5 rounded text-sm font-semibold text-accent hover:underline ${CARD_FOCUS}`}
                     >
                       View all articles
                       <ArrowGlyph className="h-4 w-4" />
@@ -270,7 +262,7 @@ export default async function HomePage() {
                       href="/products"
                       ctaId="home_view_all_products"
                       linkPosition="home"
-                      className={`inline-flex items-center gap-1.5 rounded text-sm font-semibold text-accent hover:underline ${CARD_FOCUS}`}
+                      className={`${TOUCH_TARGET} gap-1.5 rounded text-sm font-semibold text-accent hover:underline ${CARD_FOCUS}`}
                     >
                       View all products
                       <ArrowGlyph className="h-4 w-4" />

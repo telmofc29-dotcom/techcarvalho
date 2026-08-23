@@ -18,6 +18,9 @@ import {
 import { RelatedContentTracker } from "@/components/public/related-content-tracker";
 import { Badge } from "@/components/shared/ui";
 import { parseBodyBlocks, excerptFromBody } from "@/lib/content/body-format";
+import { assessSourceConfidence, shouldShowConfidence } from "@/lib/public/source-confidence";
+import { SourceConfidenceNote } from "@/components/public/source-confidence";
+import type { ReliabilityTier } from "@/lib/types/database";
 import { estimateReadingTime } from "@/lib/content/reading-time";
 import { articleDisplayDate, articleDeck } from "@/lib/content/article-header";
 import { getArticleComparison } from "@/lib/public/article-comparison";
@@ -97,6 +100,33 @@ export default async function ArticlePage({
     body: content.body,
     title: content.title,
   });
+
+  // Source confidence, on news stories only. A review or guide is our own
+  // editorial work rather than a report of someone else's claim, so a chip
+  // there would appear on every piece identically and therefore say nothing —
+  // see BANDED_TYPES in lib/public/source-confidence.ts.
+  //
+  // The three editorial flags (`developing`, `conflicting`, `unconfirmed`) are
+  // not passed here yet: none can be inferred from a source list, and the
+  // columns carrying a human's judgement are still in
+  // supabase/migrations_pending/20260825_editorial_claim_state.sql.
+  //
+  // Until that is applied the band comes from source independence alone. That
+  // is honest but incomplete, and there is a known live consequence:
+  // "next-gen-console-rumor-tracker-ps6-xbox" reads as "Strongly supported"
+  // because three reputable outlets covered it, even though its subject is
+  // explicitly rumour. reliability_tier grades the publisher, not the claim.
+  // Applying the migration and flagging that article is what fixes it.
+  const confidence = shouldShowConfidence(content.type)
+    ? assessSourceConfidence(
+        sources.map((s) => ({
+          url: s.url,
+          publisher: s.publisher,
+          reliabilityTier: s.reliability_tier as ReliabilityTier,
+        }))
+      )
+    : null;
+
   const gallery = await getPublishedGallery("content", content.id);
 
   // Structured comparison data, where real specifications exist for two or more
@@ -207,6 +237,21 @@ export default async function ArticlePage({
         <p className="mb-6 text-lg leading-relaxed text-zinc-600">{deck}</p>
       )}
 
+      {/* How much weight this story's sourcing carries, on news only.
+          ---------------------------------------------------------------
+          It goes HERE, above the body, because its job is to change how the
+          next 800 words are read; under the sources at the foot it would
+          arrive after the reader had already formed a view.
+
+          Nothing is shown when the piece has no recorded sources —
+          assessSourceConfidence returns null — because an unsourced story has
+          not been judged weak, it has not been judged, and a "Rumour" chip
+          would be a finding we never made. The absent Sources section below
+          already makes that gap visible. */}
+      {confidence && (
+        <SourceConfidenceNote assessment={confidence} hasSourceList={sources.length > 0} />
+      )}
+
       {lastVerified && (
         <p className="text-xs text-zinc-400 mb-6">
           Last verified{" "}
@@ -229,7 +274,7 @@ export default async function ArticlePage({
           <ul className="flex flex-col gap-1">
             {clusterPillars.map((p) => (
               <li key={p.id}>
-                <Link href={`/articles/${p.slug}`} className="text-sm font-medium text-zinc-900 hover:text-accent">
+                <Link href={`/articles/${p.slug}`} className="inline-flex min-h-11 items-center text-sm font-medium text-zinc-900 hover:text-accent">
                   {p.title}
                 </Link>
               </li>
@@ -325,7 +370,7 @@ export default async function ArticlePage({
                   href={`/products/${p.slug}`}
                   data-entity-type="product"
                   data-entity-id={p.id}
-                  className="rounded-full border border-border-subtle bg-white px-3 py-1 text-sm hover:border-accent/40"
+                  className="inline-flex min-h-11 items-center rounded-full border border-border-subtle bg-white px-3 text-sm hover:border-accent/40"
                 >
                   {p.name}
                 </Link>
@@ -488,7 +533,7 @@ export default async function ArticlePage({
                 <li key={`${hub.kind}-${hub.path}`}>
                   <Link
                     href={hub.path}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-border-subtle bg-white px-3.5 py-1.5 text-sm font-medium text-zinc-700 hover:border-accent/40 hover:text-accent"
+                    className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border-subtle bg-white px-3.5 text-sm font-medium text-zinc-700 hover:border-accent/40 hover:text-accent"
                   >
                     <span className="text-[11px] uppercase tracking-wider text-zinc-400">
                       {hub.kind === "family" ? "Line" : hub.kind === "manufacturer" ? "Brand" : "Topic"}
