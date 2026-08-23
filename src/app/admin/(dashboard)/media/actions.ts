@@ -9,38 +9,22 @@ import { MEDIA_PRIVATE_BUCKET, MEDIA_PUBLIC_BUCKET } from "@/lib/media/constants
 import { evaluatePublishEligibility } from "@/lib/media/rights";
 import { resolvePublicationSource } from "@/lib/media/publication-source";
 import type { MediaType, MediaRole, MediaSourceType, MediaRightsStatus, MediaBrandRole, MediaAssetRole, Insert } from "@/lib/types/database";
+import {
+  ASSET_ROLES_PENDING_MIGRATION,
+  isValidAssetRole,
+  isValidBrandRole,
+  isValidMediaType,
+  isValidRightsStatus,
+  isValidSourceType,
+} from "@/lib/media/form-options";
 import type { FormState } from "@/components/admin/reference-form";
 
-const VALID_MEDIA_TYPES: MediaType[] = ["image", "video"];
+// Every enumerated choice comes from src/lib/media/form-options.ts, which the
+// upload form ALSO renders from. Two hand-maintained copies of the same enum is
+// exactly how this route came to offer "Public domain / Creative Commons" and
+// "TechCarvalho-created graphic/diagram" in the menu while refusing both on
+// submit — values the database itself accepts. One list, no drift.
 const VALID_ROLES: MediaRole[] = ["hero", "gallery", "thumbnail"];
-const VALID_SOURCE_TYPES: MediaSourceType[] = [
-  "manufacturer",
-  "staff_photograph",
-  "stock_licensed",
-  "user_submitted",
-  "press_kit",
-  "other",
-];
-const VALID_RIGHTS_STATUSES: MediaRightsStatus[] = ["unknown", "pending_verification", "verified", "restricted"];
-// Keyed by the union so omitting a member is a compile error. An array typed
-// MediaAssetRole[] accepts a short list silently, which is how a validator ends
-// up rejecting roles the database happily stores.
-const ASSET_ROLE_KEYS: Record<MediaAssetRole, true> = {
-  product_photo: true, article_hero: true, banner: true, category_hero: true,
-  homepage_feature: true, background: true, diagram: true, chart: true,
-  comparison_graphic: true, social_og: true, logo_brand: true, icon: true,
-  screenshot: true, concept_render: true,
-};
-const VALID_ASSET_ROLES = Object.keys(ASSET_ROLE_KEYS) as MediaAssetRole[];
-const VALID_BRAND_ROLES: MediaBrandRole[] = [
-  "logo_full",
-  "logo_full_tagline",
-  "wordmark",
-  "wordmark_tagline",
-  "mark",
-  "favicon",
-  "og_image",
-];
 
 type MediaMetadata = Omit<Insert<"media_assets">, "storage_path">;
 type PrimaryFields = Pick<MediaMetadata, "media_type" | "alt_text" | "width" | "height" | "license" | "creator">;
@@ -78,7 +62,7 @@ function readPrimaryFields(formData: FormData): ValidationResult<PrimaryFields> 
   const widthRaw = String(formData.get("width") ?? "").trim();
   const heightRaw = String(formData.get("height") ?? "").trim();
 
-  if (!VALID_MEDIA_TYPES.includes(mediaType as MediaType)) {
+  if (!isValidMediaType(mediaType)) {
     return { error: "Choose a valid media type." };
   }
 
@@ -107,19 +91,19 @@ function readProvenanceFields(formData: FormData): ValidationResult<ProvenanceFi
   const assetRole = String(formData.get("asset_role") ?? "").trim();
   const modificationRaw = String(formData.get("licence_permits_modification") ?? "").trim();
 
-  if (sourceType && !VALID_SOURCE_TYPES.includes(sourceType as MediaSourceType)) {
+  if (sourceType && !isValidSourceType(sourceType)) {
     return { error: "Choose a valid source type." };
   }
-  if (assetRole && !VALID_ASSET_ROLES.includes(assetRole as MediaAssetRole)) {
+  if (assetRole && !isValidAssetRole(assetRole)) {
     return { error: "Choose a valid editorial role." };
   }
   if (modificationRaw && !["true", "false"].includes(modificationRaw)) {
     return { error: "Modification permission must be yes, no, or unassessed." };
   }
-  if (!VALID_RIGHTS_STATUSES.includes(rightsStatus as MediaRightsStatus)) {
+  if (!isValidRightsStatus(rightsStatus)) {
     return { error: "Choose a valid rights status." };
   }
-  if (brandRole && !VALID_BRAND_ROLES.includes(brandRole as MediaBrandRole)) {
+  if (brandRole && !isValidBrandRole(brandRole)) {
     return { error: "Choose a valid brand asset role." };
   }
 
@@ -143,6 +127,19 @@ function readProvenanceFields(formData: FormData): ValidationResult<ProvenanceFi
       ai_generated: assetRole === "concept_render" ? true : aiGenerated,
     },
   };
+}
+
+/**
+ * True when an insert failed the asset_role CHECK because the role submitted is
+ * one whose widening migration has not been applied in this environment.
+ *
+ * 23514 is check_violation. Pairing it with the submitted role keeps the
+ * migration hint off unrelated constraint failures, which would otherwise send
+ * an admin to run a migration that has nothing to do with their problem.
+ */
+function isPendingMigrationRoleViolation(code: string | undefined, assetRole: MediaAssetRole | null | undefined): boolean {
+  if (code !== "23514" || !assetRole) return false;
+  return (ASSET_ROLES_PENDING_MIGRATION as readonly string[]).includes(assetRole);
 }
 
 function sanitizeFileName(name: string): string {
@@ -222,10 +219,15 @@ export async function uploadMediaAssetBatchItem(formData: FormData): Promise<Bat
     .insert({ storage_path: path, ...meta.payload })
     .select("id")
     .single();
-  if (insertError && /asset_role/.test(insertError.message)) {
-    // The CHECK rejects a role the code offers. That means
-    // 20260828_concept_render_role.sql has not been applied — say so, rather
-    // than surfacing a bare 23514 that reads as a bug in the upload.
+  // The CHECK rejects a role the code offers. That means
+  // 20260828_concept_render_role.sql has not been applied — say so, rather than
+  // surfacing a bare 23514 that reads as a bug in the upload.
+  //
+  // Matched on the SQLSTATE plus the role actually submitted, not on the text of
+  // the error message: Postgres is free to reword a constraint violation, and a
+  // diagnostic that depends on the wording is one upgrade away from silently
+  // falling back to the generic branch.
+  if (insertError && isPendingMigrationRoleViolation(insertError.code, meta.payload.asset_role)) {
     await supabase.storage.from(MEDIA_PRIVATE_BUCKET).remove([path]);
     return {
       id: null,
@@ -350,7 +352,7 @@ export async function bulkUnpublishMediaAssets(ids: string[]): Promise<BulkActio
 
 export async function bulkSetRightsStatus(ids: string[], rightsStatus: MediaRightsStatus): Promise<BulkActionSummary> {
   await requireAdmin();
-  if (ids.length === 0 || !VALID_RIGHTS_STATUSES.includes(rightsStatus)) return { succeeded: 0, skipped: [] };
+  if (ids.length === 0 || !isValidRightsStatus(rightsStatus)) return { succeeded: 0, skipped: [] };
 
   const supabase = await createClient();
   const { error, count } = await supabase

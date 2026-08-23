@@ -5,6 +5,15 @@ import Link from "next/link";
 import Image from "next/image";
 import { Field, TextInput, Textarea, Select, Checkbox } from "@/components/admin/ui";
 import { uploadMediaAssetBatchItem } from "./actions";
+// Rendered from the same module the server action validates against, so a menu
+// entry the server would refuse cannot exist. See src/lib/media/form-options.ts.
+import {
+  ASSET_ROLE_OPTIONS,
+  BRAND_ROLE_OPTIONS,
+  MEDIA_TYPE_OPTIONS,
+  RIGHTS_STATUS_OPTIONS,
+  SOURCE_TYPE_OPTIONS,
+} from "@/lib/media/form-options";
 
 const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024; // 15MB — generous for photography/logo assets, well under
 // Supabase's own default upload limits, and small enough that a batch of a
@@ -289,8 +298,11 @@ export function MediaUploadForm({ existingFileNames }: { existingFileNames: stri
         <h2 className="text-sm font-semibold text-neutral-900">Basic</h2>
         <Field label="Media type" htmlFor="media_type">
           <Select id="media_type" name="media_type" defaultValue="image" required>
-            <option value="image">Image</option>
-            <option value="video">Video</option>
+            {MEDIA_TYPE_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
           </Select>
         </Field>
         {/* The editorial role. Previously absent from this form entirely, which
@@ -308,20 +320,11 @@ export function MediaUploadForm({ existingFileNames }: { existingFileNames: stri
             onChange={(e) => setAssetRole(e.target.value)}
           >
             <option value="">— not set —</option>
-            <option value="product_photo">Product photograph</option>
-            <option value="article_hero">Article hero</option>
-            <option value="concept_render">Concept render (unreleased / unrevealed product)</option>
-            <option value="diagram">Diagram</option>
-            <option value="chart">Data chart</option>
-            <option value="comparison_graphic">Comparison graphic</option>
-            <option value="screenshot">Screenshot</option>
-            <option value="logo_brand">Logo / brand mark</option>
-            <option value="icon">Icon</option>
-            <option value="category_hero">Category hero</option>
-            <option value="homepage_feature">Homepage feature</option>
-            <option value="banner">Banner</option>
-            <option value="background">Background</option>
-            <option value="social_og">Social / OG image</option>
+            {ASSET_ROLE_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
           </Select>
         </Field>
 
@@ -400,14 +403,11 @@ export function MediaUploadForm({ existingFileNames }: { existingFileNames: stri
                 <Field label="Source type" htmlFor="source_type">
                   <Select id="source_type" name="source_type" defaultValue="">
                     <option value="">Not specified</option>
-                    <option value="manufacturer">Manufacturer</option>
-                    <option value="staff_photograph">Staff photograph</option>
-                    <option value="stock_licensed">Stock (licensed)</option>
-                    <option value="user_submitted">User submitted</option>
-                    <option value="press_kit">Press kit</option>
-                    <option value="public_domain_or_cc">Public domain / Creative Commons</option>
-                    <option value="tc_graphic">TechCarvalho-created graphic/diagram</option>
-                    <option value="other">Other</option>
+                    {SOURCE_TYPE_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
                   </Select>
                 </Field>
                 <Field label="Creator" htmlFor="creator" hint="Who made this — photographer, illustrator, studio.">
@@ -445,10 +445,11 @@ export function MediaUploadForm({ existingFileNames }: { existingFileNames: stri
                   hint="Only Verified assets — or ones marked Owned, or a staff photograph — can be published."
                 >
                   <Select id="rights_status" name="rights_status" defaultValue="unknown">
-                    <option value="unknown">Unknown</option>
-                    <option value="pending_verification">Pending verification</option>
-                    <option value="verified">Verified</option>
-                    <option value="restricted">Restricted (never publish)</option>
+                    {RIGHTS_STATUS_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
                   </Select>
                 </Field>
               </>
@@ -461,13 +462,11 @@ export function MediaUploadForm({ existingFileNames }: { existingFileNames: stri
             >
               <Select id="brand_role" name="brand_role" defaultValue="">
                 <option value="">Not a brand asset</option>
-                <option value="logo_full">Full logo (mark + wordmark)</option>
-                <option value="logo_full_tagline">Full logo + tagline</option>
-                <option value="wordmark">Wordmark only</option>
-                <option value="wordmark_tagline">Wordmark + tagline</option>
-                <option value="mark">Mark / monogram only</option>
-                <option value="favicon">Favicon candidate</option>
-                <option value="og_image">Social / OG image candidate</option>
+                {BRAND_ROLE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
               </Select>
             </Field>
           </div>
