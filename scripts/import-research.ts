@@ -242,11 +242,16 @@ async function main(): Promise<void> {
     for (const f of rawFamilies) {
       const slug = String(f.slug ?? "");
       if (!slug || famBySlug.has(slug)) continue;
-      const mid = mfrBySlug.get(String(f.manufacturer_slug ?? ""));
-      if (!mid) { problems.push(`family ${slug}: unknown manufacturer`); continue; }
+      // product_families is scoped by CATEGORY, not by manufacturer — a family
+      // is "RF L-series", which belongs to the lens category. The research
+      // carries manufacturer_slug for readability; it is not a column here.
       if (APPLY) {
         const { data, error: e } = await db.from("product_families")
-          .insert({ slug, name: String(f.name ?? slug), manufacturer_id: mid }).select("id").single();
+          .insert({
+            slug, name: String(f.name ?? slug),
+            category_id: categoryId,
+            description: typeof f.note === "string" ? f.note : null,
+          }).select("id").single();
         if (e) { problems.push(`family ${slug}: ${e.message}`); continue; }
         famBySlug.set(slug, data.id);
       } else {
@@ -395,7 +400,18 @@ async function main(): Promise<void> {
   }
 
   // ---- relationships ------------------------------------------------------
-  for (const raw of rawRels) {
+  if (rawRels.length && !can.relBasis) {
+    // An edge without its justification is precisely what the basis column
+    // exists to prevent. Writing them now and backfilling "later" means a
+    // catalogue of unexplained successor claims that nobody can review, so
+    // they are held rather than imported bare.
+    problems.push(
+      `${rawRels.length} relationships NOT imported: product_relationships.basis does not exist yet. ` +
+      `An edge without its basis is an unreviewable assertion. Apply 20260827_knowledge_graph.sql and re-run.`
+    );
+    bump("relationship.held_no_basis_column", rawRels.length);
+  }
+  for (const raw of can.relBasis ? rawRels : []) {
     const r = validateRelationship(raw);
     if ("rejected" in r) { problems.push(`REJECTED relationship: ${r.rejected}`); bump("relationship.rejected"); continue; }
     // Relationship endpoints reference the slug the RESEARCH used. Look it up in

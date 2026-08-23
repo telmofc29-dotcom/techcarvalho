@@ -1,0 +1,226 @@
+[
+  {
+    "slug": "nikon-f-mount",
+    "name": "Nikon F mount",
+    "kind": "mount",
+    "summary": "The F mount is Nikon's bayonet lens mount for its single-lens reflex cameras, and it is still the mount used by every AF-S, AF-P and AF-D NIKKOR listed in Nikon's F-mount lens lineup. Nikon's F-mount lens index groups current lenses by zoom/prime/special-purpose and by DX or FX coverage, which is the manufacturer's own way of saying the mount serves both sensor formats. Nikon does not publish the F mount's flange focal distance or throat diameter anywhere reachable on imaging.nikon.com, so those figures are deliberately not recorded here.",
+    "source_urls": ["https://imaging.nikon.com/imaging/lineup/lens/f-mount/", "https://imaging.nikon.com/imaging/lineup/lens/"],
+    "applies_to_mounts": ["F"]
+  },
+  {
+    "slug": "nikon-z-mount",
+    "name": "Nikon Z mount",
+    "kind": "mount",
+    "summary": "The Z mount is the lens mount of Nikon's mirrorless system and the mount of every NIKKOR Z lens. Nikon's own product copy repeatedly attributes optical gains to the mount itself — for the NIKKOR Z MC 105mm f/2.8 VR S it states that 'adoption of the large-diameter Z mount has enabled a dramatic increase in optical performance compared to the existing F-mount model', and for the NIKKOR Z 40mm f/2 that its rendering in a small body is achieved 'thanks to the advantages of the Z mount system'. Those are manufacturer claims, not measurements. Nikon's published Z-mount lens index covers both FX (full-frame) and DX (APS-C) lenses on the same mount.",
+    "source_urls": ["https://imaging.nikon.com/imaging/lineup/lens/z-mount/", "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_mc105mmf28_vr_s/", "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_40mmf2/"],
+    "applies_to_mounts": ["Z"]
+  },
+  {
+    "slug": "nikon-mount-flange-distances",
+    "name": "Nikon Z and F flange focal distances",
+    "kind": "mount",
+    "summary": "NOT SOURCED. The flange focal distance of the Nikon Z mount and of the Nikon F mount could not be obtained from a Nikon-owned page during this research pass: nikon.com's lineup paths returned HTTP 404, the FTZ II adapter page path returned 404, and Nikon's own NIKKOR lens glossary defines optical technologies (SWM, STM, VR, ED, Nano Crystal Coat, IF, PF) but contains no mount geometry at all. Per the sourcing rule for this dataset, no figure is recorded rather than one filled in from memory or a third party. This entry exists so the gap is visible instead of silently absent.",
+    "source_urls": ["https://imaging.nikon.com/imaging/lineup/lens/glossary/"],
+    "applies_to_mounts": ["Z", "F"]
+  },
+  {
+    "slug": "nikon-dx-format",
+    "name": "Nikon DX format",
+    "kind": "other",
+    "summary": "DX is Nikon's designation for its APS-C-sized image sensor format and for the lenses that cover only that smaller image circle. Nikon prints the format on every lens specification table as a 'Format' row — NIKKOR Z DX lenses such as the Z DX 16-50mm f/3.5-6.3 VR and Z DX 24mm f/1.7 read 'DX', and DX lenses exist on both the F and Z mounts. Nikon's FX-format lens spec tables additionally quote a DX-format angle of view, which is how the manufacturer expresses that a full-frame lens can also be used in DX crop.",
+    "source_urls": ["https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_dx_16-50mmf35-63_vr/", "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_dx_24mmf17/", "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_24-70mmf28s/"],
+    "applies_to_mounts": ["Z", "F"]
+  },
+  {
+    "slug": "nikon-fx-format",
+    "name": "Nikon FX format",
+    "kind": "other",
+    "summary": "FX is Nikon's designation for its full-frame (35mm-format) sensor size and for lenses covering that image circle. It appears as the 'Format' row of the specification table on lenses such as the NIKKOR Z 24-70mm f/2.8 S, whose angle of view Nikon quotes twice — 'FX format: 84° - 34°20'; DX format: 61° - 22°50'' — showing that FX is the lens's native coverage and DX the cropped use.",
+    "source_urls": ["https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_24-70mmf28s/", "https://imaging.nikon.com/imaging/lineup/lens/f-mount/zoom/telephotozoom/af-s_200-500mmf_56e_ed_vr/"],
+    "applies_to_mounts": ["Z", "F"]
+  },
+  {
+    "slug": "nikon-af-s",
+    "name": "Nikon AF-S (Silent Wave Motor)",
+    "kind": "focus_motor",
+    "summary": "AF-S is the prefix Nikon gives F-mount lenses driven by its Silent Wave Motor. Nikon's glossary defines SWM as a motor that 'converts \"traveling waves\" into rotational energy to drive the optics used for focusing'. Because the motor is inside the lens, AF-S lenses autofocus on bodies with no built-in focus screw drive; the AF-S NIKKOR 50mm f/1.8G page states plainly that 'Silent Wave Motor (SWM) realizes quiet AF operation'.",
+    "source_urls": ["https://imaging.nikon.com/imaging/lineup/lens/glossary/", "https://imaging.nikon.com/imaging/lineup/lens/f-mount/singlefocal/normal/af-s_50mmf_18g/"],
+    "applies_to_mounts": ["F"]
+  },
+  {
+    "slug": "nikon-af-p",
+    "name": "Nikon AF-P (stepping motor F-mount)",
+    "kind": "focus_motor",
+    "summary": "AF-P is Nikon's prefix for F-mount lenses focused by a stepping motor rather than the Silent Wave Motor. Nikon's glossary describes stepping-motor operation as 'synchronized with pulse electric power, rotating one step per electric pulse', offering 'high response and controllability for starting and stopping' — the characteristics that make AF-P lenses quiet and smooth for video. AF-P lenses appear in Nikon's current F-mount lineup alongside AF-S ones, for example the AF-P NIKKOR 70-300mm f/4.5-5.6E ED VR and the AF-P DX NIKKOR 10-20mm f/4.5-5.6G VR.",
+    "source_urls": ["https://imaging.nikon.com/imaging/lineup/lens/glossary/", "https://imaging.nikon.com/imaging/lineup/lens/f-mount/"],
+    "applies_to_mounts": ["F"]
+  },
+  {
+    "slug": "nikon-af-and-af-d",
+    "name": "Nikon AF and AF-D NIKKOR",
+    "kind": "focus_motor",
+    "summary": "NOT SOURCED IN DETAIL. Nikon's current F-mount lens index no longer lists screw-drive AF or AF-D NIKKOR lenses, and Nikon's NIKKOR glossary does not define the AF or AF-D designations, so no manufacturer-stated definition of the D-type distance-information contact or of screw-drive autofocus could be captured in this pass. Only the fact of their absence from the current lineup is recorded.",
+    "source_urls": ["https://imaging.nikon.com/imaging/lineup/lens/f-mount/", "https://imaging.nikon.com/imaging/lineup/lens/glossary/"],
+    "applies_to_mounts": ["F"]
+  },
+  {
+    "slug": "nikon-stm",
+    "name": "Nikon STM (stepping motor, Z lenses)",
+    "kind": "focus_motor",
+    "summary": "STM is the stepping motor Nikon uses to drive focus in many NIKKOR Z lenses, including the Z 28-75mm f/2.8, Z 17-28mm f/2.8, Z 28-400mm f/4-8 VR, Z MC 50mm f/2.8, Z DX 24mm f/1.7 and Z DX 50-250mm f/4.5-6.3 VR. Nikon's glossary defines the mechanism as motor operation 'synchronized with pulse electric power, rotating one step per electric pulse', which 'offers high response and controllability for starting and stopping'. Nikon does not state a motor type in the specification tables of most S-Line lenses, so this dataset leaves those null rather than assuming.",
+    "source_urls": ["https://imaging.nikon.com/imaging/lineup/lens/glossary/", "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_28-75mmf28/", "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_dx_24mmf17/"],
+    "applies_to_mounts": ["Z"]
+  },
+  {
+    "slug": "nikon-vr",
+    "name": "Nikon VR (Vibration Reduction)",
+    "kind": "stabilisation",
+    "summary": "VR is Nikon's in-lens optical stabilisation. Nikon's glossary describes it as a system in which 'camera shake information is detected by the VR sensor of the VR lens unit, which is continually in motion inside the lens, aligning the optical axis with your camera's imaging sensor'. Nikon quotes its effect in stops against the CIPA standard and states the measurement condition: the NIKKOR Z 70-200mm f/2.8 VR S claims 5.5 stops (NORMAL mode, telephoto position), the Z 28-400mm f/4-8 VR claims '5.0 stops (CIPA standards, Normal mode, maximum telephoto)', and the AF-S NIKKOR 70-200mm f/2.8E FL ED VR claims 4.0 stops. Those numbers are manufacturer claims under a defined test, not independent measurements.",
+    "source_urls": ["https://imaging.nikon.com/imaging/lineup/lens/glossary/", "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_70-200mmf28_vr_s/", "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_28-400mmf4-8_vr/"],
+    "applies_to_mounts": ["Z", "F"]
+  },
+  {
+    "slug": "nikon-s-line",
+    "name": "NIKKOR Z S-Line",
+    "kind": "lens_line",
+    "summary": "S-Line is the badge Nikon applies to its higher-grade NIKKOR Z lenses; Nikon's own Z-mount lens index is split into 'S-Line Prime Lenses', 'S-Line Zoom Lenses' and 'S-Line Special Purpose' sections separate from the 'Other' prime and zoom sections. Nikon's marketing copy for S-Line lenses emphasises resolving power, bokeh and video behaviour — the Z 50mm f/1.8 S page claims 'great movie recording performance is realized by intensive consideration even of details such as focus breathing compensation'. Nikon does not publish a numeric standard that a lens must meet to carry the S badge, so S-Line should be treated as a manufacturer's product tier, not a specification.",
+    "source_urls": ["https://imaging.nikon.com/imaging/lineup/lens/z-mount/", "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_50mmf18s/"],
+    "applies_to_mounts": ["Z"]
+  },
+  {
+    "slug": "nikon-ed-glass",
+    "name": "Nikon ED glass",
+    "kind": "optical_design",
+    "summary": "ED stands for Extra-low Dispersion glass. Nikon's glossary states that 'Nikon was the world's first camera maker to develop ED (Extra-low Dispersion) glass that could minimize prism-caused color dispersion.' ED elements are counted in the lens-construction row of Nikon's spec tables — the NIKKOR Z 24-70mm f/2.8 S is given as '17 elements in 15 groups (including 2 ED glass and 4 aspherical lens elements)'.",
+    "source_urls": ["https://imaging.nikon.com/imaging/lineup/lens/glossary/", "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_24-70mmf28s/"],
+    "applies_to_mounts": ["Z", "F"]
+  },
+  {
+    "slug": "nikon-nano-crystal-coat",
+    "name": "Nikon Nano Crystal Coat",
+    "kind": "optical_design",
+    "summary": "Nano Crystal Coat is Nikon's antireflective coating, defined in Nikon's glossary as 'an antireflective coating that employs an extra-low refractive index coating featuring ultra-fine, nano-sized crystal particles'. Nikon credits it with flare and ghost control; the NIKKOR Z 35mm f/1.8 S page describes 'Nano Crystal Coat that effectively reduces ghost and flare'.",
+    "source_urls": ["https://imaging.nikon.com/imaging/lineup/lens/glossary/", "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_35mmf18s/"],
+    "applies_to_mounts": ["Z", "F"]
+  },
+  {
+    "slug": "nikon-internal-focusing",
+    "name": "Nikon IF (Internal Focusing)",
+    "kind": "optical_design",
+    "summary": "Nikon's glossary defines Internal Focusing as 'a system by which lens elements are divided into front, middle, and rear groups, and only the middle group moves with focusing'. Nikon states the practical consequence on the AF-S Micro NIKKOR 60mm f/2.8G ED page: the IF design 'allows faster, smoother autofocusing and eliminates changes in lens barrel length'.",
+    "source_urls": ["https://imaging.nikon.com/imaging/lineup/lens/glossary/", "https://imaging.nikon.com/imaging/lineup/lens/f-mount/specialpurpose/micro/af-s_micro60mmf_28g/"],
+    "applies_to_mounts": ["Z", "F"]
+  },
+  {
+    "slug": "nikon-pf-lens",
+    "name": "Nikon PF (Phase Fresnel)",
+    "kind": "optical_design",
+    "summary": "Nikon's glossary states that 'the PF (Phase Fresnel) lens, developed by Nikon, effectively compensates chromatic aberration utilizing the photo diffraction phenomenon'. It is the element type behind Nikon's unusually small long telephotos, such as the AF-S NIKKOR 300mm f/4E PF ED VR and AF-S NIKKOR 500mm f/5.6E PF ED VR in the current F-mount lineup.",
+    "source_urls": ["https://imaging.nikon.com/imaging/lineup/lens/glossary/", "https://imaging.nikon.com/imaging/lineup/lens/f-mount/"],
+    "applies_to_mounts": ["Z", "F"]
+  },
+  {
+    "slug": "sony-a-mount",
+    "name": "Sony A mount",
+    "kind": "mount",
+    "summary": "The A mount is Sony's SLR/SLT lens mount, now supported on E-mount bodies only through an adapter. Sony's own LA-EA5 page describes the product as a '35mm full size sensor compatible mount adapter' that lets A-mount lenses be used on E-mount camera bodies, and it distinguishes A-mount lens generations by how they focus: SSM and SAM lenses (which contain their own motor) work with the E-mount body's AF system, while lenses without a motor are driven by the adapter's built-in AF motor. No A-mount lens is included in this dataset.",
+    "source_urls": ["https://www.sony.jp/ichigan/products/LA-EA5/"],
+    "applies_to_mounts": ["A"]
+  },
+  {
+    "slug": "sony-e-mount",
+    "name": "Sony E mount",
+    "kind": "mount",
+    "summary": "E mount is Sony's mirrorless lens mount, shared by its APS-C and full-frame Alpha bodies; Sony's product model codes for E-mount lenses all begin 'SEL'. Sony's LA-EA5 adapter page frames the E mount as the current mount to which older A-mount glass must be adapted, which is the manufacturer's own statement of the generational relationship. Sony's Japanese specification tables quote a 35mm-equivalent focal length for APS-C E-mount lenses (for example 24-82.5 mm for the E 16-55mm F2.8 G), which is how Sony expresses the crop relationship between the two coverages on one mount.",
+    "source_urls": ["https://www.sony.jp/ichigan/products/LA-EA5/", "https://www.sony.jp/ichigan/products/SEL1655G/spec.html"],
+    "applies_to_mounts": ["E", "FE"]
+  },
+  {
+    "slug": "sony-e-mount-flange-distance",
+    "name": "Sony E-mount flange back distance",
+    "kind": "mount",
+    "summary": "NOT SOURCED. The E mount's flange back distance could not be obtained from a Sony-owned page in this pass: sony.co.uk and sony-asia.com returned HTTP 403 to every request, electronics.sony.com is not fetchable, and the sony.jp technology index path returned HTTP 404. As with the Nikon mount geometry, no number is recorded rather than one taken from a third party or from memory. This entry marks the gap so it can be filled later from a reachable Sony page.",
+    "source_urls": [],
+    "applies_to_mounts": ["E", "FE"]
+  },
+  {
+    "slug": "sony-fe-designation",
+    "name": "Sony FE (full-frame E mount)",
+    "kind": "other",
+    "summary": "FE is the prefix Sony puts on E-mount lenses that cover the full-frame 35mm image circle — FE 24-70mm F2.8 GM II, FE 200-600mm F5.6-6.3 G OSS, FE 85mm F1.8 and so on. Sony's spec tables for these lenses give a single focal length with no APS-C equivalent, whereas its APS-C E-mount lenses carry no FE prefix and are given both a real and a 35mm-equivalent focal length. That difference in Sony's own tables is the cleanest manufacturer-stated marker of which lenses are full-frame.",
+    "source_urls": ["https://www.sony.jp/ichigan/products/SEL2470GM2/spec.html", "https://www.sony.jp/ichigan/products/SEL1655G/spec.html"],
+    "applies_to_mounts": ["FE"]
+  },
+  {
+    "slug": "sony-aps-c-e-mount",
+    "name": "Sony APS-C E-mount lenses",
+    "kind": "other",
+    "summary": "Sony's APS-C E-mount lenses are named without the FE prefix — E 16-55mm F2.8 G, E 70-350mm F4.5-6.3 G OSS, E 11mm F1.8, E 15mm F1.4 G. Sony's specification tables for these lenses add a '35mm equivalent' row: 24-82.5 mm for the E 16-55mm F2.8 G, 105-525 mm for the E 70-350mm F4.5-6.3 G OSS, 16.5 mm for the E 11mm F1.8 and 22.5 mm for the E 15mm F1.4 G. They mount on the same E mount as full-frame lenses but cover the smaller image circle.",
+    "source_urls": ["https://www.sony.jp/ichigan/products/SEL1655G/spec.html", "https://www.sony.jp/ichigan/products/SEL70350G/spec.html", "https://www.sony.jp/ichigan/products/SEL11F18/spec.html", "https://www.sony.jp/ichigan/products/SEL15F14G/spec.html"],
+    "applies_to_mounts": ["E"]
+  },
+  {
+    "slug": "sony-ssm",
+    "name": "Sony SSM (Super Sonic wave Motor) and DDSSM",
+    "kind": "focus_motor",
+    "summary": "SSM is Sony's ultrasonic focus motor, originating on the A mount and still used in Direct Drive form on large E-mount telephotos. Sony's FE 200-600mm F5.6-6.3 G OSS feature page names the focus drive as 'ダイレクトドライブSSM (DDSSM)' — Direct Drive Super Sonic Motor — and describes it as enabling high-speed focus drive with smooth focusing. On the A mount, Sony's LA-EA5 page treats 'SSM/SAM lenses' as the class that already contains its own focus motor and therefore keeps autofocus when adapted.",
+    "source_urls": ["https://www.sony.jp/ichigan/products/SEL200600G/feature_1.html", "https://www.sony.jp/ichigan/products/LA-EA5/"],
+    "applies_to_mounts": ["A", "FE"]
+  },
+  {
+    "slug": "sony-sam",
+    "name": "Sony SAM (Smooth Autofocus Motor)",
+    "kind": "focus_motor",
+    "summary": "SAM is the in-lens focus motor Sony fitted to a range of A-mount lenses. The only Sony statement captured in this pass is on the LA-EA5 adapter page, which groups 'SSM/SAM lenses' together as A-mount lenses that carry their own motor and can therefore autofocus using the E-mount body's AF system rather than needing the adapter's built-in motor. Sony's own definition of what the SAM motor is mechanically was not reachable, so none is asserted here.",
+    "source_urls": ["https://www.sony.jp/ichigan/products/LA-EA5/"],
+    "applies_to_mounts": ["A"]
+  },
+  {
+    "slug": "sony-xd-linear-motor",
+    "name": "Sony XD Linear Motor",
+    "kind": "focus_motor",
+    "summary": "XD Linear Motor (XDリニアモーター) is Sony's high-thrust linear focus actuator used in its recent G Master lenses. Sony's FE 24-70mm F2.8 GM II feature page states that four XD linear motors drive focus in that lens and claims the arrangement gives approximately double the autofocus speed of the previous model, the SEL2470GM. That speed figure is a manufacturer comparison against its own predecessor, not an independent measurement. Sony does not put the motor type in its specification tables, so most Sony lenses in this dataset carry a null focus_motor.",
+    "source_urls": ["https://www.sony.jp/ichigan/products/SEL2470GM2/feature_1.html"],
+    "applies_to_mounts": ["FE", "E"]
+  },
+  {
+    "slug": "sony-oss",
+    "name": "Sony OSS (Optical SteadyShot)",
+    "kind": "stabilisation",
+    "summary": "OSS is Sony's in-lens optical stabilisation, and Sony marks it in the lens name itself — FE 70-200mm F2.8 GM OSS II, FE 200-600mm F5.6-6.3 G OSS, E 70-350mm F4.5-6.3 G OSS. Sony's FE 200-600mm feature page describes 光学式手ブレ補正 with three selectable modes, MODE1, MODE2 and MODE3, the last aimed at irregular movement such as sports. Unlike Nikon, Sony does not quote a CIPA stop rating in the Japanese specification tables used here, so every Sony entry in this dataset has a null stabilisation_stops_claim.",
+    "source_urls": ["https://www.sony.jp/ichigan/products/SEL200600G/feature_1.html", "https://www.sony.jp/ichigan/products/SEL70200GM2/spec.html"],
+    "applies_to_mounts": ["FE", "E", "A"]
+  },
+  {
+    "slug": "sony-g-lens",
+    "name": "Sony G Lens",
+    "kind": "lens_line",
+    "summary": "G is Sony's mid-to-high lens grade, carried by lenses such as the FE 200-600mm F5.6-6.3 G OSS, FE 24-105mm F4 G OSS, FE 20mm F1.8 G, FE 40mm F2.5 G, E 16-55mm F2.8 G and E 15mm F1.4 G, and it sits below G Master in Sony's naming. Sony's Japanese product pages consulted in this pass name the badge but do not define what a lens must achieve to earn it — the FE 200-600mm feature page describes the lens's optics and motor without explaining the G designation itself. G should therefore be treated as a manufacturer tier marker, not a measured standard.",
+    "source_urls": ["https://www.sony.jp/ichigan/products/SEL200600G/feature_1.html", "https://www.sony.jp/ichigan/products/SEL20F18G/spec.html"],
+    "applies_to_mounts": ["FE", "E", "A"]
+  },
+  {
+    "slug": "sony-g-master",
+    "name": "Sony G Master (GM)",
+    "kind": "lens_line",
+    "summary": "G Master is Sony's top lens grade, marked 'GM' in the product name. Sony's FE 24-70mm F2.8 GM II feature page presents the G Master concept as the pursuit of both high resolution and beautiful bokeh in one lens — the page's own framing, and a stated design goal rather than a verified result. In practice the GM badge in this dataset correlates with 11 aperture blades (FE 24-70mm F2.8 GM II, FE 85mm F1.4 GM, FE 35mm F1.4 GM, FE 24mm F1.4 GM, FE 16-35mm F2.8 GM) and with the newest focus hardware, but Sony publishes no numeric criterion for the grade.",
+    "source_urls": ["https://www.sony.jp/ichigan/products/SEL2470GM2/feature_1.html", "https://www.sony.jp/ichigan/products/SEL85F14GM/spec.html"],
+    "applies_to_mounts": ["FE", "A"]
+  },
+  {
+    "slug": "sony-zeiss-branding",
+    "name": "Zeiss branding on Sony lenses (ZA, Sonnar T*, Vario-Tessar T*)",
+    "kind": "lens_line",
+    "summary": "Some Sony lenses carry Zeiss names and a ZA suffix — in this dataset the Sonnar T* FE 55mm F1.8 ZA and the Vario-Tessar T* FE 24-70mm F4 ZA OSS. What this is: a Sony-manufactured, Sony-sold E-mount lens listed on Sony's own product site under a Sony model code (SEL55F18Z, SEL2470Z) and specified entirely in Sony's own spec tables, with Zeiss optical names (Sonnar, Vario-Tessar) and the T* coating designation licensed onto it. What it is not: a Zeiss product, a separate Zeiss-made lens line, or a claim of performance Sony has quantified anywhere in the specification. Sony's own pages for these two lenses state no performance grade at all — they are not badged G or G Master — so the Zeiss name should not be read as a tier above or below either. Neither page states dust and moisture resistance.",
+    "source_urls": ["https://www.sony.jp/ichigan/products/SEL55F18Z/spec.html", "https://www.sony.jp/ichigan/products/SEL2470Z/spec.html"],
+    "applies_to_mounts": ["FE"]
+  },
+  {
+    "slug": "sony-dust-moisture-resistant-design",
+    "name": "Sony dust- and moisture-resistant design (防塵防滴に配慮した設計)",
+    "kind": "other",
+    "summary": "Sony's sealing claim is a carefully hedged phrase: 防塵防滴に配慮した設計, 'design with consideration for dust and moisture resistance'. Sony's FE 200-600mm F5.6-6.3 G OSS feature page states the design and then explicitly says it does not provide complete protection against dust and water intrusion. The claim lives on Sony's feature pages, not in the specification tables, which is why most Sony lenses in this dataset carry weather_sealed = null: the field was left unknown wherever a feature page was not read, rather than guessed from the lens's price or grade.",
+    "source_urls": ["https://www.sony.jp/ichigan/products/SEL200600G/feature_1.html", "https://www.sony.jp/ichigan/products/SEL2470GM2/feature_1.html"],
+    "applies_to_mounts": ["FE", "E"]
+  }
+]

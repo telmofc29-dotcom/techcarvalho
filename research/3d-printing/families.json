@@ -1,0 +1,86 @@
+[
+  {
+    "slug": "bambu-lab-x1",
+    "name": "Bambu Lab X1",
+    "manufacturer_slug": "bambu-lab",
+    "note": "Bambu's flagship CoreXY line. Bambu's own page is headed 'Tech specs of the X1 Series' and compares the X1C and X1 columns side by side; the X1E is presented on its own page as the enterprise variant with Ethernet, WPA2-Enterprise, an active 60 °C chamber and a 320 °C nozzle."
+  },
+  {
+    "slug": "bambu-lab-p1",
+    "name": "Bambu Lab P1",
+    "manufacturer_slug": "bambu-lab",
+    "note": "Bambu presents P1P and P1S in a single 'Parameters Comparison' table with shared 256 x 256 x 256 mm volume, 300 °C hotend and 100 °C bed; the P1S column differs only by the enclosure, the cooling and filtration hardware that is optional on the P1P, and the included chamber camera."
+  },
+  {
+    "slug": "bambu-lab-a1",
+    "name": "Bambu Lab A1",
+    "manufacturer_slug": "bambu-lab",
+    "note": "Bambu's open-frame line, sold as A1 (256 mm cube, 100 °C bed) and A1 mini (180 mm cube, 80 °C bed). Both tech-spec pages rate ABS, ASA, PC, PA, PET and fibre-filled filaments 'Not Recommended', which is the practical definition of the family."
+  },
+  {
+    "slug": "bambu-lab-h2",
+    "name": "Bambu Lab H2",
+    "manufacturer_slug": "bambu-lab",
+    "note": "Bambu's large-format dual-nozzle line. Only the H2D is in this dataset; Bambu's sitemap also lists H2S, H2C and H2D Pro tech-spec pages that were not retrieved."
+  },
+  {
+    "slug": "creality-ender-3",
+    "name": "Creality Ender-3",
+    "manufacturer_slug": "creality",
+    "note": "Creality's long-running budget bedslinger line, spanning the original Ender-3 through V2, Neo, S1 and the current V3 SE / V3 KE / V3. Creality no longer publishes a parameter table for the pre-V3 models on creality.com, so only the V3 generation carries sourced specs here."
+  },
+  {
+    "slug": "creality-k1",
+    "name": "Creality K1",
+    "manufacturer_slug": "creality",
+    "note": "Creality's enclosed CoreXY line: K1 and K1C at 220 x 220 x 250 mm, K1 Max at 300 x 300 x 300 mm, plus a K1 SE listed on creality.com but not retrieved. The K1C is the carbon-capable variant, adding ASA to the supported list."
+  },
+  {
+    "slug": "creality-k2",
+    "name": "Creality K2",
+    "manufacturer_slug": "creality",
+    "note": "Creality's current CoreXY line with the CFS multi-material unit. Creality's site lists K2, K2 SE, K2 Plus and a 'K2 Plus CFS Combo' as separate products; only the page titled simply 'K2' (260 x 260 x 260 mm) returned a parameter table."
+  },
+  {
+    "slug": "creality-halot",
+    "name": "Creality HALOT",
+    "manufacturer_slug": "creality",
+    "note": "Creality's resin line (HALOT-ONE, -SKY, -RAY, -MAGE, -MAGE PRO, -MAGE S, -R6, -X1). No HALOT product or support page served a parameter table on 2026-08-23, so the single HALOT-MAGE record here is an almost-entirely-null placeholder."
+  },
+  {
+    "slug": "elegoo-neptune",
+    "name": "Elegoo Neptune",
+    "manufacturer_slug": "elegoo",
+    "note": "Elegoo's FDM bedslinger line. The Neptune 3 generation (3, 3 Pro, 3 Plus, 3 Max) is Marlin-based; the Neptune 4 generation (4, 4 Pro, 4 Plus, 4 Max) ships pre-installed Klipper with input shaping and pressure advance."
+  },
+  {
+    "slug": "elegoo-mars",
+    "name": "Elegoo Mars",
+    "manufacturer_slug": "elegoo",
+    "note": "Elegoo's compact MSLA resin line. The Mars 4 generation splits into Mars 4 (7-inch 9K LCD, COB light source), Mars 4 Ultra (adds Wi-Fi, Linux OS, ACF release film), Mars 4 Max (6K) and Mars 4 DLP."
+  },
+  {
+    "slug": "elegoo-saturn",
+    "name": "Elegoo Saturn",
+    "manufacturer_slug": "elegoo",
+    "note": "Elegoo's larger MSLA resin line (Saturn, Saturn 4, Saturn 4 Ultra, Saturn 4 Ultra 16K). Listed here for completeness of the family taxonomy; no Saturn model returned sourceable specs in this pass, so none appears in printers.json."
+  },
+  {
+    "slug": "elegoo-centauri",
+    "name": "Elegoo Centauri",
+    "manufacturer_slug": "elegoo",
+    "note": "Elegoo's CoreXY FDM line, spanning Centauri, Centauri Carbon, Centauri 2 and Centauri Carbon 2. Elegoo's own page title describes the Centauri Carbon as a 'High-Speed CoreXY 3D Printer'; the detailed spec table is served client-side and was not retrievable."
+  },
+  {
+    "slug": "anycubic-kobra",
+    "name": "Anycubic Kobra",
+    "manufacturer_slug": "anycubic",
+    "note": "Anycubic's FDM line, generation by generation: Kobra / Kobra Neo / Kobra Go / Kobra Plus / Kobra Max, then Kobra 2 (2, 2 Neo, 2 Pro, 2 Plus, 2 Max), then Kobra 3, Kobra S1, Kobra 4 and Kobra X. Every generation is a bedslinger with a LeviQ automatic levelling system."
+  },
+  {
+    "slug": "anycubic-photon",
+    "name": "Anycubic Photon",
+    "manufacturer_slug": "anycubic",
+    "note": "Anycubic's resin line. The Photon Mono sub-line (Mono, Mono 2, Mono 4, Mono X, M5s) is monochrome-LCD MSLA; Photon D2 is DLP, a different exposure technology despite the shared family name."
+  }
+]

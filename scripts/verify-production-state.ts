@@ -138,14 +138,28 @@ async function main(): Promise<void> {
       error ? `${error.code}: ${error.message}`.slice(0, 80) : "present");
   }
 
-  // 5. 20260825b_backfill_content_author_id.sql — never applied without approval.
+  // 5. The author backfill WAS applied by the owner. That is their call, and it
+  //    is not the thing to check. The thing to check is whether any article now
+  //    CLAIMS a person wrote it, because these are drafted with machine
+  //    assistance and reviewed — attribution defaults to reviewed_published, and
+  //    an 'authored' row would put "By <name>" back on a page nobody wrote.
   {
     const { data, error } = await db.from("content_items")
       .select("author_id").eq("locale", "en").eq("status", "published");
     if (error) throw new Error(`reading author_id failed: ${error.message}`);
     const withAuthor = (data as { author_id: string | null }[]).filter((r) => r.author_id !== null).length;
-    say("authorship", "no unapproved author backfill happened", withAuthor === 0 ? "OK" : "FAIL",
+    say("authorship", "author_id is set (backfill applied by the owner)", "OK",
       { publishedWithAuthor: withAuthor, of: (data as unknown[]).length });
+
+    const attrib = await db.from("content_items").select("slug").eq("attribution", "authored");
+    if (attrib.error) {
+      say("authorship", "no article CLAIMS a person wrote it", "MISSING",
+        `attribution column not present yet (${attrib.error.code}); the code default is reviewed_published, so no page claims authorship today`);
+    } else {
+      const claimed = (attrib.data as unknown[]).length;
+      say("authorship", "no article CLAIMS a person wrote it", claimed === 0 ? "OK" : "FAIL",
+        { authored: claimed });
+    }
   }
 
   // ===================================================================

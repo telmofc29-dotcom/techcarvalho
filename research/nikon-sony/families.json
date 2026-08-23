@@ -1,0 +1,68 @@
+[
+  {
+    "slug": "nikkor-z-s-line",
+    "name": "NIKKOR Z S-Line",
+    "manufacturer_slug": "nikon",
+    "note": "Nikon's own Z-mount lens index splits the lineup into 'S-Line Prime Lenses', 'S-Line Zoom Lenses' and 'S-Line Special Purpose' sections. Membership here follows that published grouping exactly, not a judgement about optical quality. Source: https://imaging.nikon.com/imaging/lineup/lens/z-mount/"
+  },
+  {
+    "slug": "nikkor-z-non-s",
+    "name": "NIKKOR Z (non-S)",
+    "manufacturer_slug": "nikon",
+    "note": "Nikon lists these under 'Other Prime Lenses', 'Other Zoom Lenses' and 'Other Special Purpose' on the same index page — the manufacturer's own residual category for Z-mount lenses without the S badge. Includes the compact primes (Z 26mm f/2.8, Z 28mm f/2.8, Z 40mm f/2), the f/2.8 zooms without S (Z 17-28mm, Z 28-75mm), the travel zooms (Z 24-200mm, Z 28-400mm) and the Z MC 50mm f/2.8 macro."
+  },
+  {
+    "slug": "nikkor-z-dx",
+    "name": "NIKKOR Z DX",
+    "manufacturer_slug": "nikon",
+    "note": "Z-mount lenses whose specification table gives 'DX' as the Format row, i.e. they cover Nikon's APS-C image circle. Nikon prints DX in the product name itself for every one of them. No Z DX lens carries the S badge."
+  },
+  {
+    "slug": "nikkor-f-af-s",
+    "name": "AF-S NIKKOR (F mount)",
+    "manufacturer_slug": "nikon",
+    "note": "F-mount lenses whose name begins AF-S, meaning focus is driven by Nikon's in-lens Silent Wave Motor. Nikon's current F-mount index still lists these as shipping products. Both FX and DX AF-S lenses exist; the format is stated per lens, not by the AF-S prefix."
+  },
+  {
+    "slug": "nikkor-f-af-p",
+    "name": "AF-P NIKKOR (F mount)",
+    "manufacturer_slug": "nikon",
+    "note": "F-mount lenses focused by a stepping motor rather than a Silent Wave Motor, named with the AF-P prefix. Present in Nikon's current F-mount index (e.g. AF-P NIKKOR 70-300mm f/4.5-5.6E ED VR, AF-P DX NIKKOR 10-20mm f/4.5-5.6G VR) but no AF-P lens was captured with full specifications in this pass."
+  },
+  {
+    "slug": "nikkor-micro-and-mc",
+    "name": "NIKKOR Micro / MC",
+    "manufacturer_slug": "nikon",
+    "note": "Nikon's macro lenses. F-mount ones are branded 'Micro' (AF-S Micro NIKKOR 60mm f/2.8G ED), Z-mount ones 'MC' (NIKKOR Z MC 50mm f/2.8, NIKKOR Z MC 105mm f/2.8 VR S). Nikon lists them under 'Special Purpose' on both mount index pages. All three reach a stated 1:1 maximum reproduction ratio."
+  },
+  {
+    "slug": "sony-g-master",
+    "name": "Sony G Master",
+    "manufacturer_slug": "sony",
+    "note": "Sony's top lens grade, marked GM in the product name. Sony states the concept as pursuing high resolution and beautiful bokeh together but publishes no numeric criterion for the badge, so membership is by Sony's naming only. In this dataset every GM lens has 11 aperture blades where Sony states a blade count."
+  },
+  {
+    "slug": "sony-g-lens",
+    "name": "Sony G Lens",
+    "manufacturer_slug": "sony",
+    "note": "Sony's mid-to-high grade, marked G in the product name, below G Master. Spans full-frame FE (FE 200-600mm F5.6-6.3 G OSS, FE 24-105mm F4 G OSS, FE 20mm F1.8 G, FE 40mm F2.5 G, FE 70-200mm F4 G OSS, FE 90mm F2.8 Macro G OSS) and APS-C E (E 16-55mm F2.8 G, E 70-350mm F4.5-6.3 G OSS, E 15mm F1.4 G). Sony does not define the badge on the pages read here."
+  },
+  {
+    "slug": "sony-fe-unbadged",
+    "name": "Sony FE (no grade badge)",
+    "manufacturer_slug": "sony",
+    "note": "Full-frame E-mount lenses Sony ships with neither a G nor a GM badge — FE 85mm F1.8, FE 50mm F1.8, FE 35mm F1.8, FE 28-70mm F3.5-5.6 OSS, FE 28-60mm F4-5.6. Mostly the compact and kit end of the range. Sony states no dust- and moisture-resistance design for any of them on the pages read here."
+  },
+  {
+    "slug": "sony-e-aps-c",
+    "name": "Sony E-mount APS-C",
+    "manufacturer_slug": "sony",
+    "note": "E-mount lenses covering the APS-C image circle, named without the FE prefix. Sony's specification tables identify them by adding a 35mm-equivalent focal length row, which the full-frame FE tables do not have."
+  },
+  {
+    "slug": "sony-zeiss-za",
+    "name": "Sony ZA (Zeiss-branded)",
+    "manufacturer_slug": "sony",
+    "note": "Sony-made, Sony-sold E-mount lenses carrying licensed Zeiss optical names and the T* coating designation, suffixed ZA — Sonnar T* FE 55mm F1.8 ZA (SEL55F18Z) and Vario-Tessar T* FE 24-70mm F4 ZA OSS (SEL2470Z). They are not Zeiss products and are not a Sony performance grade: Sony badges them neither G nor G Master."
+  }
+]

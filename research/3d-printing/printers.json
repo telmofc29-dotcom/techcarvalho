@@ -23,7 +23,13 @@
     "multi_material_system": "AMS",
     "max_colours": null,
     "filament_diameter_mm": null,
-    "supported_materials": ["PLA", "PETG", "PA", "PC", "carbon-fibre / glass-fibre reinforced polymer"],
+    "supported_materials": [
+      "PLA",
+      "PETG",
+      "PA",
+      "PC",
+      "carbon-fibre / glass-fibre reinforced polymer"
+    ],
     "lcd_resolution": null,
     "lcd_size_in": null,
     "layer_min_mm": null,
@@ -35,16 +41,48 @@
     "announced": null,
     "discontinued": null,
     "status": "unknown",
-    "source_urls": ["https://bambulab.com/en/x1", "https://bambulab.com/en/x1e"],
+    "source_urls": [
+      "https://bambulab.com/en/x1",
+      "https://bambulab.com/en/x1e"
+    ],
     "retrieved_at": "2026-08-23",
     "manufacturer_claims": [
-      {"claim": "CoreXY 20 m/s² Acceleration", "source_url": "https://bambulab.com/en/x1"},
-      {"claim": "500 mm/s Velocity", "source_url": "https://bambulab.com/en/x1"},
-      {"claim": "32 mm³/s Flow", "source_url": "https://bambulab.com/en/x1"},
-      {"claim": "16 mins 30 s Benchy", "source_url": "https://bambulab.com/en/x1"},
-      {"claim": "Chamber Temperature 60℃ (listed as an advanced-materials capability figure, not an actively controlled chamber; the X1E comparison table records 'Active Chamber Heating: No' for the X1-Carbon)", "source_url": "https://bambulab.com/en/x1"}
+      {
+        "claim": "CoreXY 20 m/s² Acceleration",
+        "source_url": "https://bambulab.com/en/x1"
+      },
+      {
+        "claim": "500 mm/s Velocity",
+        "source_url": "https://bambulab.com/en/x1"
+      },
+      {
+        "claim": "32 mm³/s Flow",
+        "source_url": "https://bambulab.com/en/x1"
+      },
+      {
+        "claim": "16 mins 30 s Benchy",
+        "source_url": "https://bambulab.com/en/x1"
+      },
+      {
+        "claim": "Chamber Temperature 60℃ (listed as an advanced-materials capability figure, not an actively controlled chamber; the X1E comparison table records 'Active Chamber Heating: No' for the X1-Carbon)",
+        "source_url": "https://bambulab.com/en/x1"
+      }
     ],
-    "unsourced_fields": ["build_volume_x_mm", "build_volume_y_mm", "build_volume_z_mm", "nozzle_diameter_mm", "direct_drive", "input_shaping", "max_colours", "filament_diameter_mm", "connectivity", "slicer", "firmware", "announced", "status"]
+    "unsourced_fields": [
+      "build_volume_x_mm",
+      "build_volume_y_mm",
+      "build_volume_z_mm",
+      "nozzle_diameter_mm",
+      "direct_drive",
+      "input_shaping",
+      "max_colours",
+      "filament_diameter_mm",
+      "connectivity",
+      "slicer",
+      "firmware",
+      "announced",
+      "status"
+    ]
   },
   {
     "name": "Bambu Lab X1E",
@@ -70,25 +108,61 @@
     "multi_material_system": "AMS",
     "max_colours": 16,
     "filament_diameter_mm": null,
-    "supported_materials": ["ABS", "PC", "PPA-CF", "PPA-GF", "PPS", "PPS-CF"],
+    "supported_materials": [
+      "ABS",
+      "PC",
+      "PPA-CF",
+      "PPA-GF",
+      "PPS",
+      "PPS-CF"
+    ],
     "lcd_resolution": null,
     "lcd_size_in": null,
     "layer_min_mm": null,
     "light_source": null,
-    "connectivity": ["Ethernet 100 Mbps full duplex", "Wi-Fi with WPA2-Enterprise authentication (EAP-PEAP / EAP-TLS / EAP-TTLS)", "LAN-only operation without Bambu Cloud"],
+    "connectivity": [
+      "Ethernet 100 Mbps full duplex",
+      "Wi-Fi with WPA2-Enterprise authentication (EAP-PEAP / EAP-TLS / EAP-TTLS)",
+      "LAN-only operation without Bambu Cloud"
+    ],
     "camera": null,
     "slicer": null,
     "firmware": null,
     "announced": null,
     "discontinued": null,
     "status": "unknown",
-    "source_urls": ["https://bambulab.com/en/x1e"],
+    "source_urls": [
+      "https://bambulab.com/en/x1e"
+    ],
     "retrieved_at": "2026-08-23",
     "manufacturer_claims": [
-      {"claim": "the superior carbon-fiber rods in the CoreXY motion structure enable the X1E to achieve a toolhead acceleration of 20,000 mm/s² by reducing the weight of moving parts", "source_url": "https://bambulab.com/en/x1e"},
-      {"claim": "This faster acceleration allows the X1E to maintain its maximum travel speed of 500 mm/s for longer periods, significantly reducing overall print time.", "source_url": "https://bambulab.com/en/x1e"}
+      {
+        "claim": "the superior carbon-fiber rods in the CoreXY motion structure enable the X1E to achieve a toolhead acceleration of 20,000 mm/s² by reducing the weight of moving parts",
+        "source_url": "https://bambulab.com/en/x1e"
+      },
+      {
+        "claim": "This faster acceleration allows the X1E to maintain its maximum travel speed of 500 mm/s for longer periods, significantly reducing overall print time.",
+        "source_url": "https://bambulab.com/en/x1e"
+      }
     ],
-    "unsourced_fields": ["build_volume_x_mm", "build_volume_y_mm", "build_volume_z_mm", "nozzle_diameter_mm", "bed_temp_max_c", "hotend_type", "direct_drive", "auto_bed_levelling", "levelling_method", "input_shaping", "filament_diameter_mm", "camera", "slicer", "firmware", "announced", "status"]
+    "unsourced_fields": [
+      "build_volume_x_mm",
+      "build_volume_y_mm",
+      "build_volume_z_mm",
+      "nozzle_diameter_mm",
+      "bed_temp_max_c",
+      "hotend_type",
+      "direct_drive",
+      "auto_bed_levelling",
+      "levelling_method",
+      "input_shaping",
+      "filament_diameter_mm",
+      "camera",
+      "slicer",
+      "firmware",
+      "announced",
+      "status"
+    ]
   },
   {
     "name": "Bambu Lab P1S",
@@ -114,7 +188,17 @@
     "multi_material_system": "AMS",
     "max_colours": 16,
     "filament_diameter_mm": null,
-    "supported_materials": ["PLA", "PETG", "TPU", "PVA", "PET", "ABS", "ASA", "PA", "PC"],
+    "supported_materials": [
+      "PLA",
+      "PETG",
+      "TPU",
+      "PVA",
+      "PET",
+      "ABS",
+      "ASA",
+      "PA",
+      "PC"
+    ],
     "lcd_resolution": null,
     "lcd_size_in": null,
     "layer_min_mm": null,
@@ -126,16 +210,43 @@
     "announced": null,
     "discontinued": null,
     "status": "shipping",
-    "source_urls": ["https://uk.store.bambulab.com/products/p1s", "https://bambulab.com/en/p1"],
+    "source_urls": [
+      "https://uk.store.bambulab.com/products/p1s",
+      "https://bambulab.com/en/p1"
+    ],
     "retrieved_at": "2026-08-23",
     "manufacturer_claims": [
-      {"claim": "Max Speed of Tool Head 500 mm/s", "source_url": "https://uk.store.bambulab.com/products/p1s"},
-      {"claim": "Max Acceleration of Tool Head 20 m/s²", "source_url": "https://uk.store.bambulab.com/products/p1s"},
-      {"claim": "CoreXY up to 20000 mm/s² Acceleration", "source_url": "https://bambulab.com/en/p1"},
-      {"claim": "It prints with a top speed of 500 mm/s, the acceleration from zero to 500 mm/s takes just 0.025 seconds.", "source_url": "https://bambulab.com/en/p1"},
-      {"claim": "Cutting-edge control algorithm with the help of vibration compensation and pressure advance, bringing you lightning-fast print speed without compromising on quality.", "source_url": "https://uk.store.bambulab.com/products/p1s"}
+      {
+        "claim": "Max Speed of Tool Head 500 mm/s",
+        "source_url": "https://uk.store.bambulab.com/products/p1s"
+      },
+      {
+        "claim": "Max Acceleration of Tool Head 20 m/s²",
+        "source_url": "https://uk.store.bambulab.com/products/p1s"
+      },
+      {
+        "claim": "CoreXY up to 20000 mm/s² Acceleration",
+        "source_url": "https://bambulab.com/en/p1"
+      },
+      {
+        "claim": "It prints with a top speed of 500 mm/s, the acceleration from zero to 500 mm/s takes just 0.025 seconds.",
+        "source_url": "https://bambulab.com/en/p1"
+      },
+      {
+        "claim": "Cutting-edge control algorithm with the help of vibration compensation and pressure advance, bringing you lightning-fast print speed without compromising on quality.",
+        "source_url": "https://uk.store.bambulab.com/products/p1s"
+      }
     ],
-    "unsourced_fields": ["heated_chamber", "chamber_temp_max_c", "filament_diameter_mm", "connectivity", "slicer", "firmware", "announced", "lcd_size_in"]
+    "unsourced_fields": [
+      "heated_chamber",
+      "chamber_temp_max_c",
+      "filament_diameter_mm",
+      "connectivity",
+      "slicer",
+      "firmware",
+      "announced",
+      "lcd_size_in"
+    ]
   },
   {
     "name": "Bambu Lab P1P",
@@ -161,7 +272,17 @@
     "multi_material_system": "AMS",
     "max_colours": 16,
     "filament_diameter_mm": null,
-    "supported_materials": ["PLA", "PETG", "TPU", "PVA", "PET", "PA", "PC", "ABS", "ASA"],
+    "supported_materials": [
+      "PLA",
+      "PETG",
+      "TPU",
+      "PVA",
+      "PET",
+      "PA",
+      "PC",
+      "ABS",
+      "ASA"
+    ],
     "lcd_resolution": null,
     "lcd_size_in": null,
     "layer_min_mm": null,
@@ -173,14 +294,35 @@
     "announced": null,
     "discontinued": null,
     "status": "unknown",
-    "source_urls": ["https://uk.store.bambulab.com/products/p1s", "https://bambulab.com/en/p1"],
+    "source_urls": [
+      "https://uk.store.bambulab.com/products/p1s",
+      "https://bambulab.com/en/p1"
+    ],
     "retrieved_at": "2026-08-23",
     "manufacturer_claims": [
-      {"claim": "Max Speed of Tool Head 500 mm/s", "source_url": "https://uk.store.bambulab.com/products/p1s"},
-      {"claim": "Max Acceleration of Tool Head 20 m/s²", "source_url": "https://uk.store.bambulab.com/products/p1s"},
-      {"claim": "CoreXY up to 20000 mm/s² Acceleration", "source_url": "https://bambulab.com/en/p1"}
+      {
+        "claim": "Max Speed of Tool Head 500 mm/s",
+        "source_url": "https://uk.store.bambulab.com/products/p1s"
+      },
+      {
+        "claim": "Max Acceleration of Tool Head 20 m/s²",
+        "source_url": "https://uk.store.bambulab.com/products/p1s"
+      },
+      {
+        "claim": "CoreXY up to 20000 mm/s² Acceleration",
+        "source_url": "https://bambulab.com/en/p1"
+      }
     ],
-    "unsourced_fields": ["chamber_temp_max_c", "filament_diameter_mm", "connectivity", "slicer", "firmware", "announced", "status", "lcd_size_in"]
+    "unsourced_fields": [
+      "chamber_temp_max_c",
+      "filament_diameter_mm",
+      "connectivity",
+      "slicer",
+      "firmware",
+      "announced",
+      "status",
+      "lcd_size_in"
+    ]
   },
   {
     "name": "Bambu Lab A1",
@@ -206,26 +348,60 @@
     "multi_material_system": null,
     "max_colours": null,
     "filament_diameter_mm": 1.75,
-    "supported_materials": ["PLA", "PETG", "TPU", "PVA"],
+    "supported_materials": [
+      "PLA",
+      "PETG",
+      "TPU",
+      "PVA"
+    ],
     "lcd_resolution": null,
     "lcd_size_in": null,
     "layer_min_mm": null,
     "light_source": null,
-    "connectivity": ["Wi-Fi (IEEE 802.11 b/g/n)", "Bambu-Bus", "Micro SD Card"],
+    "connectivity": [
+      "Wi-Fi (IEEE 802.11 b/g/n)",
+      "Bambu-Bus",
+      "Micro SD Card"
+    ],
     "camera": "Low rate camera (up to 1080p), timelapse supported",
-    "slicer": ["Bambu Studio"],
+    "slicer": [
+      "Bambu Studio"
+    ],
     "firmware": null,
     "announced": null,
     "discontinued": null,
     "status": "shipping",
-    "source_urls": ["https://bambulab.com/en/a1/tech-specs"],
+    "source_urls": [
+      "https://bambulab.com/en/a1/tech-specs"
+    ],
     "retrieved_at": "2026-08-23",
     "manufacturer_claims": [
-      {"claim": "Max Speed of Toolhead: 500 mm/s", "source_url": "https://bambulab.com/en/a1/tech-specs"},
-      {"claim": "Max Acceleration of Toolhead: 10000 mm/s²", "source_url": "https://bambulab.com/en/a1/tech-specs"},
-      {"claim": "Max Hot End Flow: 28 mm³/s @ABS (Model: 150*150 mm single wall; Material: Bambu ABS; Temperature: 280 ℃)", "source_url": "https://bambulab.com/en/a1/tech-specs"}
+      {
+        "claim": "Max Speed of Toolhead: 500 mm/s",
+        "source_url": "https://bambulab.com/en/a1/tech-specs"
+      },
+      {
+        "claim": "Max Acceleration of Toolhead: 10000 mm/s²",
+        "source_url": "https://bambulab.com/en/a1/tech-specs"
+      },
+      {
+        "claim": "Max Hot End Flow: 28 mm³/s @ABS (Model: 150*150 mm single wall; Material: Bambu ABS; Temperature: 280 ℃)",
+        "source_url": "https://bambulab.com/en/a1/tech-specs"
+      }
     ],
-    "unsourced_fields": ["kinematics", "chamber_temp_max_c", "direct_drive", "auto_bed_levelling", "levelling_method", "input_shaping", "multi_material", "multi_material_system", "max_colours", "firmware", "announced"]
+    "unsourced_fields": [
+      "kinematics",
+      "chamber_temp_max_c",
+      "direct_drive",
+      "auto_bed_levelling",
+      "levelling_method",
+      "input_shaping",
+      "multi_material",
+      "multi_material_system",
+      "max_colours",
+      "firmware",
+      "announced"
+    ]
   },
   {
     "name": "Bambu Lab A1 mini",
@@ -251,26 +427,60 @@
     "multi_material_system": null,
     "max_colours": null,
     "filament_diameter_mm": 1.75,
-    "supported_materials": ["PLA", "PETG", "TPU", "PVA"],
+    "supported_materials": [
+      "PLA",
+      "PETG",
+      "TPU",
+      "PVA"
+    ],
     "lcd_resolution": "320x240",
     "lcd_size_in": 2.4,
     "layer_min_mm": null,
     "light_source": null,
-    "connectivity": ["Wi-Fi (IEEE 802.11 b/g/n)", "Bambu-Bus", "Micro SD Card"],
+    "connectivity": [
+      "Wi-Fi (IEEE 802.11 b/g/n)",
+      "Bambu-Bus",
+      "Micro SD Card"
+    ],
     "camera": "Low rate camera (up to 1080p), timelapse supported",
-    "slicer": ["Bambu Studio"],
+    "slicer": [
+      "Bambu Studio"
+    ],
     "firmware": null,
     "announced": null,
     "discontinued": null,
     "status": "shipping",
-    "source_urls": ["https://bambulab.com/en/a1-mini/tech-specs"],
+    "source_urls": [
+      "https://bambulab.com/en/a1-mini/tech-specs"
+    ],
     "retrieved_at": "2026-08-23",
     "manufacturer_claims": [
-      {"claim": "Max Speed of Toolhead: 500 mm/s", "source_url": "https://bambulab.com/en/a1-mini/tech-specs"},
-      {"claim": "Max Acceleration of Toolhead: 10000 mm/s²", "source_url": "https://bambulab.com/en/a1-mini/tech-specs"},
-      {"claim": "Max Hot End Flow: 28 mm³/s @ABS (Model: 150*150 mm single wall; Material: Bambu ABS; Temperature: 280 ℃)", "source_url": "https://bambulab.com/en/a1-mini/tech-specs"}
+      {
+        "claim": "Max Speed of Toolhead: 500 mm/s",
+        "source_url": "https://bambulab.com/en/a1-mini/tech-specs"
+      },
+      {
+        "claim": "Max Acceleration of Toolhead: 10000 mm/s²",
+        "source_url": "https://bambulab.com/en/a1-mini/tech-specs"
+      },
+      {
+        "claim": "Max Hot End Flow: 28 mm³/s @ABS (Model: 150*150 mm single wall; Material: Bambu ABS; Temperature: 280 ℃)",
+        "source_url": "https://bambulab.com/en/a1-mini/tech-specs"
+      }
     ],
-    "unsourced_fields": ["kinematics", "chamber_temp_max_c", "direct_drive", "auto_bed_levelling", "levelling_method", "input_shaping", "multi_material", "multi_material_system", "max_colours", "firmware", "announced"]
+    "unsourced_fields": [
+      "kinematics",
+      "chamber_temp_max_c",
+      "direct_drive",
+      "auto_bed_levelling",
+      "levelling_method",
+      "input_shaping",
+      "multi_material",
+      "multi_material_system",
+      "max_colours",
+      "firmware",
+      "announced"
+    ]
   },
   {
     "name": "Bambu Lab H2D",
@@ -296,7 +506,22 @@
     "multi_material_system": "AMS",
     "max_colours": null,
     "filament_diameter_mm": 1.75,
-    "supported_materials": ["PLA", "PETG", "TPU", "PVA", "BVOH", "ABS", "ASA", "PC", "PA", "PET", "carbon/glass fibre reinforced PLA, PETG, PA, PET, PC, ABS, ASA", "PPA-CF/GF", "PPS", "PPS-CF/GF"],
+    "supported_materials": [
+      "PLA",
+      "PETG",
+      "TPU",
+      "PVA",
+      "BVOH",
+      "ABS",
+      "ASA",
+      "PC",
+      "PA",
+      "PET",
+      "carbon/glass fibre reinforced PLA, PETG, PA, PET, PC, ABS, ASA",
+      "PPA-CF/GF",
+      "PPS",
+      "PPS-CF/GF"
+    ],
     "lcd_resolution": null,
     "lcd_size_in": null,
     "layer_min_mm": null,
@@ -308,14 +533,1350 @@
     "announced": null,
     "discontinued": null,
     "status": "shipping",
-    "source_urls": ["https://bambulab.com/en/h2d/tech-specs"],
+    "source_urls": [
+      "https://bambulab.com/en/h2d/tech-specs"
+    ],
     "retrieved_at": "2026-08-23",
     "manufacturer_claims": [
-      {"claim": "Max Speed of Toolhead 1000 mm/s", "source_url": "https://bambulab.com/en/h2d/tech-specs"},
-      {"claim": "Max Acceleration of Toolhead 20,000 mm/s²", "source_url": "https://bambulab.com/en/h2d/tech-specs"},
-      {"claim": "Max Flow for Hotend (Standard Flow Hotend) 40 mm³/s (Test parameters: 250 mm round model with a single outer wall; Bambu Lab ABS; 280 °C printing temperature)", "source_url": "https://bambulab.com/en/h2d/tech-specs"},
-      {"claim": "Max Flow for Hotend (Optional High Flow Hotend) 65 mm³/s (Test parameters: 250 mm round model with a single outer wall; Bambu Lab ABS; 280 °C printing temperature)", "source_url": "https://bambulab.com/en/h2d/tech-specs"}
+      {
+        "claim": "Max Speed of Toolhead 1000 mm/s",
+        "source_url": "https://bambulab.com/en/h2d/tech-specs"
+      },
+      {
+        "claim": "Max Acceleration of Toolhead 20,000 mm/s²",
+        "source_url": "https://bambulab.com/en/h2d/tech-specs"
+      },
+      {
+        "claim": "Max Flow for Hotend (Standard Flow Hotend) 40 mm³/s (Test parameters: 250 mm round model with a single outer wall; Bambu Lab ABS; 280 °C printing temperature)",
+        "source_url": "https://bambulab.com/en/h2d/tech-specs"
+      },
+      {
+        "claim": "Max Flow for Hotend (Optional High Flow Hotend) 65 mm³/s (Test parameters: 250 mm round model with a single outer wall; Bambu Lab ABS; 280 °C printing temperature)",
+        "source_url": "https://bambulab.com/en/h2d/tech-specs"
+      }
     ],
-    "unsourced_fields": ["kinematics", "direct_drive", "auto_bed_levelling", "levelling_method", "input_shaping", "max_colours", "connectivity", "slicer", "firmware", "announced", "lcd_resolution", "lcd_size_in"]
+    "unsourced_fields": [
+      "kinematics",
+      "direct_drive",
+      "auto_bed_levelling",
+      "levelling_method",
+      "input_shaping",
+      "max_colours",
+      "connectivity",
+      "slicer",
+      "firmware",
+      "announced",
+      "lcd_resolution",
+      "lcd_size_in"
+    ]
+  },
+  {
+    "name": "Ender-3",
+    "slug": "creality-ender-3",
+    "manufacturer_slug": "creality",
+    "technology": "FDM",
+    "kinematics": null,
+    "enclosed": null,
+    "heated_chamber": null,
+    "chamber_temp_max_c": null,
+    "build_volume_x_mm": null,
+    "build_volume_y_mm": null,
+    "build_volume_z_mm": null,
+    "nozzle_diameter_mm": null,
+    "nozzle_temp_max_c": null,
+    "bed_temp_max_c": null,
+    "hotend_type": null,
+    "direct_drive": null,
+    "auto_bed_levelling": null,
+    "levelling_method": null,
+    "input_shaping": null,
+    "multi_material": null,
+    "multi_material_system": null,
+    "max_colours": null,
+    "filament_diameter_mm": null,
+    "supported_materials": null,
+    "lcd_resolution": null,
+    "lcd_size_in": null,
+    "layer_min_mm": null,
+    "light_source": null,
+    "connectivity": null,
+    "camera": null,
+    "slicer": null,
+    "firmware": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "unknown",
+    "source_urls": [
+      "https://www.creality.com/support/ender-3-3d-printer",
+      "https://www.creality.com/products/ender-3-3d-printer"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [],
+    "unsourced_fields": [
+      "kinematics",
+      "build_volume_x_mm",
+      "build_volume_y_mm",
+      "build_volume_z_mm",
+      "nozzle_diameter_mm",
+      "nozzle_temp_max_c",
+      "bed_temp_max_c",
+      "hotend_type",
+      "direct_drive",
+      "auto_bed_levelling",
+      "levelling_method",
+      "input_shaping",
+      "multi_material",
+      "filament_diameter_mm",
+      "supported_materials",
+      "connectivity",
+      "camera",
+      "slicer",
+      "firmware",
+      "announced",
+      "discontinued",
+      "status",
+      "enclosed",
+      "heated_chamber"
+    ]
+  },
+  {
+    "name": "Ender-3 V3 SE",
+    "slug": "creality-ender-3-v3-se",
+    "manufacturer_slug": "creality",
+    "technology": "FDM",
+    "kinematics": "bedslinger",
+    "enclosed": false,
+    "heated_chamber": false,
+    "chamber_temp_max_c": null,
+    "build_volume_x_mm": 220,
+    "build_volume_y_mm": 220,
+    "build_volume_z_mm": 250,
+    "nozzle_diameter_mm": 0.4,
+    "nozzle_temp_max_c": 260,
+    "bed_temp_max_c": 100,
+    "hotend_type": "Metal hotend, brass nozzle",
+    "direct_drive": true,
+    "auto_bed_levelling": null,
+    "levelling_method": null,
+    "input_shaping": null,
+    "multi_material": null,
+    "multi_material_system": null,
+    "max_colours": null,
+    "filament_diameter_mm": null,
+    "supported_materials": [
+      "PLA",
+      "TPU95A",
+      "PETG"
+    ],
+    "lcd_resolution": null,
+    "lcd_size_in": null,
+    "layer_min_mm": 0.1,
+    "light_source": null,
+    "connectivity": null,
+    "camera": null,
+    "slicer": null,
+    "firmware": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "shipping",
+    "source_urls": [
+      "https://www.creality.com/support/creality-ender-3-v3-se"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "Printing Speed 250mm/s",
+        "source_url": "https://www.creality.com/support/creality-ender-3-v3-se"
+      },
+      {
+        "claim": "Acceleration ≤2500mm/s²",
+        "source_url": "https://www.creality.com/support/creality-ender-3-v3-se"
+      }
+    ],
+    "unsourced_fields": [
+      "chamber_temp_max_c",
+      "auto_bed_levelling",
+      "levelling_method",
+      "input_shaping",
+      "multi_material",
+      "filament_diameter_mm",
+      "connectivity",
+      "camera",
+      "slicer",
+      "firmware",
+      "announced"
+    ]
+  },
+  {
+    "name": "Ender-3 V3 KE",
+    "slug": "creality-ender-3-v3-ke",
+    "manufacturer_slug": "creality",
+    "technology": "FDM",
+    "kinematics": "bedslinger",
+    "enclosed": false,
+    "heated_chamber": false,
+    "chamber_temp_max_c": null,
+    "build_volume_x_mm": null,
+    "build_volume_y_mm": null,
+    "build_volume_z_mm": null,
+    "nozzle_diameter_mm": 0.4,
+    "nozzle_temp_max_c": 300,
+    "bed_temp_max_c": 100,
+    "hotend_type": "Metal hotend, brass nozzle, 60 W ceramic heater, bi-metal (copper + titanium alloy) heatbreak",
+    "direct_drive": true,
+    "auto_bed_levelling": true,
+    "levelling_method": "Auto levelling as part of the smart self-test routine",
+    "input_shaping": true,
+    "multi_material": null,
+    "multi_material_system": null,
+    "max_colours": null,
+    "filament_diameter_mm": 1.75,
+    "supported_materials": [
+      "PLA",
+      "TPU95A",
+      "ASA",
+      "PETG",
+      "ABS"
+    ],
+    "lcd_resolution": null,
+    "lcd_size_in": null,
+    "layer_min_mm": 0.1,
+    "light_source": null,
+    "connectivity": [
+      "USB",
+      "Wi-Fi (LAN and cloud printing via Creality Print / Creality Cloud)"
+    ],
+    "camera": null,
+    "slicer": [
+      "Creality Print"
+    ],
+    "firmware": "Creality OS (Klipper-based)",
+    "announced": null,
+    "discontinued": null,
+    "status": "shipping",
+    "source_urls": [
+      "https://www.creality.com/support/creality-ender-3-v3-ke",
+      "https://www.creality.com/products/creality-ender-3-v3-ke"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "Printing Speed 500mm/s",
+        "source_url": "https://www.creality.com/support/creality-ender-3-v3-ke"
+      },
+      {
+        "claim": "Acceleration ≤8000mm/s²",
+        "source_url": "https://www.creality.com/support/creality-ender-3-v3-ke"
+      },
+      {
+        "claim": "500mm/s Max Printing Speed",
+        "source_url": "https://www.creality.com/products/creality-ender-3-v3-ke"
+      }
+    ],
+    "unsourced_fields": [
+      "build_volume_x_mm",
+      "build_volume_y_mm",
+      "build_volume_z_mm",
+      "chamber_temp_max_c",
+      "multi_material",
+      "camera",
+      "announced",
+      "lcd_size_in"
+    ]
+  },
+  {
+    "name": "Ender-3 V3",
+    "slug": "creality-ender-3-v3",
+    "manufacturer_slug": "creality",
+    "technology": "FDM",
+    "kinematics": "CoreXZ",
+    "enclosed": false,
+    "heated_chamber": false,
+    "chamber_temp_max_c": null,
+    "build_volume_x_mm": 220,
+    "build_volume_y_mm": 220,
+    "build_volume_z_mm": 250,
+    "nozzle_diameter_mm": 0.4,
+    "nozzle_temp_max_c": 300,
+    "bed_temp_max_c": 110,
+    "hotend_type": "Metal hotend, hardened steel nozzle",
+    "direct_drive": true,
+    "auto_bed_levelling": true,
+    "levelling_method": "Auto levelling (stated as an automatic levelling system on the product page, method not specified)",
+    "input_shaping": null,
+    "multi_material": null,
+    "multi_material_system": null,
+    "max_colours": null,
+    "filament_diameter_mm": 1.75,
+    "supported_materials": [
+      "PLA",
+      "TPU90A",
+      "PLA-CF",
+      "PETG-CF",
+      "PETG",
+      "ABS"
+    ],
+    "lcd_resolution": null,
+    "lcd_size_in": null,
+    "layer_min_mm": 0.1,
+    "light_source": null,
+    "connectivity": null,
+    "camera": null,
+    "slicer": null,
+    "firmware": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "shipping",
+    "source_urls": [
+      "https://www.creality.com/support/creality-ender-3-v3"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "Printing Speed 600mm/s",
+        "source_url": "https://www.creality.com/support/creality-ender-3-v3"
+      },
+      {
+        "claim": "Acceleration 20000mm/s²",
+        "source_url": "https://www.creality.com/support/creality-ender-3-v3"
+      }
+    ],
+    "unsourced_fields": [
+      "chamber_temp_max_c",
+      "input_shaping",
+      "multi_material",
+      "connectivity",
+      "camera",
+      "slicer",
+      "firmware",
+      "announced",
+      "lcd_size_in"
+    ]
+  },
+  {
+    "name": "K1",
+    "slug": "creality-k1",
+    "manufacturer_slug": "creality",
+    "technology": "FDM",
+    "kinematics": null,
+    "enclosed": null,
+    "heated_chamber": null,
+    "chamber_temp_max_c": null,
+    "build_volume_x_mm": 220,
+    "build_volume_y_mm": 220,
+    "build_volume_z_mm": 250,
+    "nozzle_diameter_mm": null,
+    "nozzle_temp_max_c": 300,
+    "bed_temp_max_c": 100,
+    "hotend_type": "Hardened steel nozzle",
+    "direct_drive": null,
+    "auto_bed_levelling": null,
+    "levelling_method": null,
+    "input_shaping": null,
+    "multi_material": null,
+    "multi_material_system": null,
+    "max_colours": null,
+    "filament_diameter_mm": 1.75,
+    "supported_materials": [
+      "PLA",
+      "TPU95A",
+      "PA-CF",
+      "PLA-CF",
+      "PETG",
+      "ABS"
+    ],
+    "lcd_resolution": null,
+    "lcd_size_in": null,
+    "layer_min_mm": null,
+    "light_source": null,
+    "connectivity": [
+      "USB flash drive",
+      "LAN",
+      "Cloud printing"
+    ],
+    "camera": null,
+    "slicer": [
+      "Creality Print",
+      "PrusaSlicer",
+      "Ultimaker Cura",
+      "Simplify3D"
+    ],
+    "firmware": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "unknown",
+    "source_urls": [
+      "https://www.creality.com/support/creality-k1-3d-printer"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [],
+    "unsourced_fields": [
+      "enclosed",
+      "heated_chamber",
+      "chamber_temp_max_c",
+      "nozzle_diameter_mm",
+      "direct_drive",
+      "auto_bed_levelling",
+      "levelling_method",
+      "input_shaping",
+      "multi_material",
+      "camera",
+      "firmware",
+      "announced",
+      "status",
+      "kinematics"
+    ]
+  },
+  {
+    "name": "K1C",
+    "slug": "creality-k1c",
+    "manufacturer_slug": "creality",
+    "technology": "FDM",
+    "kinematics": null,
+    "enclosed": null,
+    "heated_chamber": null,
+    "chamber_temp_max_c": null,
+    "build_volume_x_mm": 220,
+    "build_volume_y_mm": 220,
+    "build_volume_z_mm": 250,
+    "nozzle_diameter_mm": null,
+    "nozzle_temp_max_c": 300,
+    "bed_temp_max_c": 100,
+    "hotend_type": "Hardened steel nozzle",
+    "direct_drive": null,
+    "auto_bed_levelling": null,
+    "levelling_method": null,
+    "input_shaping": null,
+    "multi_material": null,
+    "multi_material_system": null,
+    "max_colours": null,
+    "filament_diameter_mm": 1.75,
+    "supported_materials": [
+      "PLA",
+      "TPU95A",
+      "PA-CF",
+      "ASA",
+      "PLA-CF",
+      "PETG",
+      "ABS"
+    ],
+    "lcd_resolution": null,
+    "lcd_size_in": null,
+    "layer_min_mm": null,
+    "light_source": null,
+    "connectivity": [
+      "USB flash drive",
+      "LAN",
+      "Cloud printing"
+    ],
+    "camera": null,
+    "slicer": [
+      "Creality Print",
+      "PrusaSlicer",
+      "Ultimaker Cura",
+      "Simplify3D"
+    ],
+    "firmware": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "shipping",
+    "source_urls": [
+      "https://www.creality.com/support/k1c-carbon-3d-printer"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [],
+    "unsourced_fields": [
+      "enclosed",
+      "heated_chamber",
+      "chamber_temp_max_c",
+      "nozzle_diameter_mm",
+      "direct_drive",
+      "auto_bed_levelling",
+      "levelling_method",
+      "input_shaping",
+      "multi_material",
+      "camera",
+      "firmware",
+      "announced",
+      "kinematics"
+    ]
+  },
+  {
+    "name": "K1 Max",
+    "slug": "creality-k1-max",
+    "manufacturer_slug": "creality",
+    "technology": "FDM",
+    "kinematics": null,
+    "enclosed": null,
+    "heated_chamber": null,
+    "chamber_temp_max_c": null,
+    "build_volume_x_mm": 300,
+    "build_volume_y_mm": 300,
+    "build_volume_z_mm": 300,
+    "nozzle_diameter_mm": null,
+    "nozzle_temp_max_c": null,
+    "bed_temp_max_c": null,
+    "hotend_type": null,
+    "direct_drive": null,
+    "auto_bed_levelling": true,
+    "levelling_method": null,
+    "input_shaping": null,
+    "multi_material": null,
+    "multi_material_system": null,
+    "max_colours": null,
+    "filament_diameter_mm": null,
+    "supported_materials": null,
+    "lcd_resolution": null,
+    "lcd_size_in": null,
+    "layer_min_mm": null,
+    "light_source": null,
+    "connectivity": [
+      "USB flash drive",
+      "LAN",
+      "Cloud printing",
+      "RJ45"
+    ],
+    "camera": null,
+    "slicer": [
+      "Creality Print",
+      "Ultimaker Cura",
+      "Simplify3D"
+    ],
+    "firmware": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "unknown",
+    "source_urls": [
+      "https://www.creality.com/support/creality-k1-max-3d-printer"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [],
+    "unsourced_fields": [
+      "enclosed",
+      "heated_chamber",
+      "chamber_temp_max_c",
+      "nozzle_diameter_mm",
+      "nozzle_temp_max_c",
+      "bed_temp_max_c",
+      "hotend_type",
+      "direct_drive",
+      "levelling_method",
+      "input_shaping",
+      "multi_material",
+      "filament_diameter_mm",
+      "supported_materials",
+      "camera",
+      "firmware",
+      "announced",
+      "status",
+      "kinematics"
+    ]
+  },
+  {
+    "name": "K2",
+    "slug": "creality-k2",
+    "manufacturer_slug": "creality",
+    "technology": "FDM",
+    "kinematics": null,
+    "enclosed": null,
+    "heated_chamber": null,
+    "chamber_temp_max_c": null,
+    "build_volume_x_mm": 260,
+    "build_volume_y_mm": 260,
+    "build_volume_z_mm": 260,
+    "nozzle_diameter_mm": 0.4,
+    "nozzle_temp_max_c": 300,
+    "bed_temp_max_c": 100,
+    "hotend_type": "All-metal hotend, hardened steel nozzle; default 0.4 mm, compatible 0.2 / 0.6 / 0.8 mm",
+    "direct_drive": null,
+    "auto_bed_levelling": null,
+    "levelling_method": null,
+    "input_shaping": null,
+    "multi_material": true,
+    "multi_material_system": "CFS",
+    "max_colours": null,
+    "filament_diameter_mm": 1.75,
+    "supported_materials": [
+      "PLA",
+      "PLA-CF",
+      "PETG",
+      "PET",
+      "ABS"
+    ],
+    "lcd_resolution": null,
+    "lcd_size_in": null,
+    "layer_min_mm": null,
+    "light_source": null,
+    "connectivity": [
+      "USB flash drive",
+      "LAN",
+      "Cloud printing"
+    ],
+    "camera": null,
+    "slicer": [
+      "Creality Print"
+    ],
+    "firmware": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "shipping",
+    "source_urls": [
+      "https://www.creality.com/support/k2-series-3d-printer"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [],
+    "unsourced_fields": [
+      "enclosed",
+      "heated_chamber",
+      "chamber_temp_max_c",
+      "direct_drive",
+      "auto_bed_levelling",
+      "levelling_method",
+      "input_shaping",
+      "max_colours",
+      "camera",
+      "firmware",
+      "announced",
+      "kinematics"
+    ]
+  },
+  {
+    "name": "HALOT-MAGE",
+    "slug": "creality-halot-mage",
+    "manufacturer_slug": "creality",
+    "technology": "resin",
+    "kinematics": null,
+    "enclosed": null,
+    "heated_chamber": null,
+    "chamber_temp_max_c": null,
+    "build_volume_x_mm": null,
+    "build_volume_y_mm": null,
+    "build_volume_z_mm": null,
+    "nozzle_diameter_mm": null,
+    "nozzle_temp_max_c": null,
+    "bed_temp_max_c": null,
+    "hotend_type": null,
+    "direct_drive": null,
+    "auto_bed_levelling": null,
+    "levelling_method": null,
+    "input_shaping": null,
+    "multi_material": false,
+    "multi_material_system": null,
+    "max_colours": null,
+    "filament_diameter_mm": null,
+    "supported_materials": null,
+    "lcd_resolution": null,
+    "lcd_size_in": null,
+    "layer_min_mm": null,
+    "light_source": null,
+    "connectivity": null,
+    "camera": null,
+    "slicer": null,
+    "firmware": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "unknown",
+    "source_urls": [
+      "https://www.creality.com/support/halot-mage-3d-printer",
+      "https://www.creality.com/products/halot-mage-3d-printer"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [],
+    "unsourced_fields": [
+      "build_volume_x_mm",
+      "build_volume_y_mm",
+      "build_volume_z_mm",
+      "lcd_resolution",
+      "lcd_size_in",
+      "layer_min_mm",
+      "light_source",
+      "connectivity",
+      "slicer",
+      "firmware",
+      "announced",
+      "status",
+      "enclosed"
+    ]
+  },
+  {
+    "name": "Neptune 4",
+    "slug": "elegoo-neptune-4",
+    "manufacturer_slug": "elegoo",
+    "technology": "FDM",
+    "kinematics": null,
+    "enclosed": false,
+    "heated_chamber": false,
+    "chamber_temp_max_c": null,
+    "build_volume_x_mm": 225,
+    "build_volume_y_mm": 225,
+    "build_volume_z_mm": 265,
+    "nozzle_diameter_mm": null,
+    "nozzle_temp_max_c": 300,
+    "bed_temp_max_c": null,
+    "hotend_type": "Extended hot end with copper-titanium all-metal throat pipe",
+    "direct_drive": true,
+    "auto_bed_levelling": true,
+    "levelling_method": "121-point (11x11) automatic bed levelling, plus hand-twist knobs for auxiliary levelling",
+    "input_shaping": true,
+    "multi_material": null,
+    "multi_material_system": null,
+    "max_colours": null,
+    "filament_diameter_mm": null,
+    "supported_materials": [
+      "PLA",
+      "PETG",
+      "ABS",
+      "TPU",
+      "nylon"
+    ],
+    "lcd_resolution": null,
+    "lcd_size_in": 4.3,
+    "layer_min_mm": null,
+    "light_source": null,
+    "connectivity": null,
+    "camera": null,
+    "slicer": null,
+    "firmware": "Klipper (pre-installed)",
+    "announced": null,
+    "discontinued": null,
+    "status": "shipping",
+    "source_urls": [
+      "https://www.elegoo.com/products/elegoo-neptune-4-fdm-3d-printer"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "ELEGOO Neptune 4 FDM 3D Printer with Up to 500mm/s High-Speed",
+        "source_url": "https://www.elegoo.com/products/elegoo-neptune-4-fdm-3d-printer"
+      },
+      {
+        "claim": "ELEGOO Neptune 4 can achieve printing speed of up to 500mm/s (recommended 250mm/s)",
+        "source_url": "https://www.elegoo.com/products/elegoo-neptune-4-fdm-3d-printer"
+      }
+    ],
+    "unsourced_fields": [
+      "nozzle_diameter_mm",
+      "bed_temp_max_c",
+      "chamber_temp_max_c",
+      "multi_material",
+      "filament_diameter_mm",
+      "connectivity",
+      "camera",
+      "slicer",
+      "announced",
+      "layer_min_mm",
+      "kinematics"
+    ]
+  },
+  {
+    "name": "Neptune 4 Pro",
+    "slug": "elegoo-neptune-4-pro",
+    "manufacturer_slug": "elegoo",
+    "technology": "FDM",
+    "kinematics": null,
+    "enclosed": false,
+    "heated_chamber": false,
+    "chamber_temp_max_c": null,
+    "build_volume_x_mm": 225,
+    "build_volume_y_mm": 225,
+    "build_volume_z_mm": 265,
+    "nozzle_diameter_mm": null,
+    "nozzle_temp_max_c": 300,
+    "bed_temp_max_c": null,
+    "hotend_type": "Extended hot end, dual-gear direct drive extruder with 5.2:1 reduction, copper-titanium bi-metal throat",
+    "direct_drive": true,
+    "auto_bed_levelling": true,
+    "levelling_method": "121-point (11x11) automatic bed levelling, plus hand-twist knobs for auxiliary levelling",
+    "input_shaping": true,
+    "multi_material": null,
+    "multi_material_system": null,
+    "max_colours": null,
+    "filament_diameter_mm": null,
+    "supported_materials": [
+      "PLA",
+      "PETG",
+      "ABS",
+      "TPU",
+      "nylon"
+    ],
+    "lcd_resolution": null,
+    "lcd_size_in": null,
+    "layer_min_mm": null,
+    "light_source": null,
+    "connectivity": null,
+    "camera": null,
+    "slicer": null,
+    "firmware": "Klipper (pre-installed)",
+    "announced": null,
+    "discontinued": null,
+    "status": "shipping",
+    "source_urls": [
+      "https://www.elegoo.com/products/elegoo-neptune-4-pro-fdm-3d-printer"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "ELEGOO Neptune 4 Pro FDM 3D Printer with Up to 500mm/s Printing Speed",
+        "source_url": "https://www.elegoo.com/products/elegoo-neptune-4-pro-fdm-3d-printer"
+      },
+      {
+        "claim": "allowing it to print at a amazing speed of up to 500mm/s (recommended 250mm/s)",
+        "source_url": "https://www.elegoo.com/products/elegoo-neptune-4-pro-fdm-3d-printer"
+      }
+    ],
+    "unsourced_fields": [
+      "nozzle_diameter_mm",
+      "bed_temp_max_c",
+      "chamber_temp_max_c",
+      "multi_material",
+      "filament_diameter_mm",
+      "connectivity",
+      "camera",
+      "slicer",
+      "announced",
+      "layer_min_mm",
+      "lcd_size_in",
+      "kinematics"
+    ]
+  },
+  {
+    "name": "Mars 4",
+    "slug": "elegoo-mars-4",
+    "manufacturer_slug": "elegoo",
+    "technology": "resin",
+    "kinematics": null,
+    "enclosed": null,
+    "heated_chamber": null,
+    "chamber_temp_max_c": null,
+    "build_volume_x_mm": 153.36,
+    "build_volume_y_mm": 77.76,
+    "build_volume_z_mm": 175,
+    "nozzle_diameter_mm": null,
+    "nozzle_temp_max_c": null,
+    "bed_temp_max_c": null,
+    "hotend_type": null,
+    "direct_drive": null,
+    "auto_bed_levelling": null,
+    "levelling_method": null,
+    "input_shaping": null,
+    "multi_material": false,
+    "multi_material_system": null,
+    "max_colours": null,
+    "filament_diameter_mm": null,
+    "supported_materials": null,
+    "lcd_resolution": "8520x4320",
+    "lcd_size_in": 7,
+    "layer_min_mm": null,
+    "light_source": "COB light source, 405 nm wavelength",
+    "connectivity": null,
+    "camera": null,
+    "slicer": null,
+    "firmware": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "shipping",
+    "source_urls": [
+      "https://www.elegoo.com/products/elegoo-mars-4-msla-resin-3d-printer-with-9k-mono-lcd"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [],
+    "unsourced_fields": [
+      "layer_min_mm",
+      "connectivity",
+      "slicer",
+      "firmware",
+      "announced",
+      "levelling_method",
+      "supported_materials",
+      "enclosed"
+    ]
+  },
+  {
+    "name": "Mars 4 Ultra",
+    "slug": "elegoo-mars-4-ultra",
+    "manufacturer_slug": "elegoo",
+    "technology": "resin",
+    "kinematics": null,
+    "enclosed": null,
+    "heated_chamber": null,
+    "chamber_temp_max_c": null,
+    "build_volume_x_mm": null,
+    "build_volume_y_mm": null,
+    "build_volume_z_mm": null,
+    "nozzle_diameter_mm": null,
+    "nozzle_temp_max_c": null,
+    "bed_temp_max_c": null,
+    "hotend_type": null,
+    "direct_drive": null,
+    "auto_bed_levelling": false,
+    "levelling_method": "4-point manual levelling system",
+    "input_shaping": null,
+    "multi_material": false,
+    "multi_material_system": null,
+    "max_colours": null,
+    "filament_diameter_mm": null,
+    "supported_materials": null,
+    "lcd_resolution": "8520x4320",
+    "lcd_size_in": 7,
+    "layer_min_mm": null,
+    "light_source": null,
+    "connectivity": [
+      "Wi-Fi (2.4 GHz and 5 GHz)"
+    ],
+    "camera": null,
+    "slicer": null,
+    "firmware": "Linux-based operating system",
+    "announced": null,
+    "discontinued": null,
+    "status": "shipping",
+    "source_urls": [
+      "https://www.elegoo.com/products/elegoo-mars-4-ultra-msla-resin-3d-printer-with-9k-mono-lcd"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "Brand new ACF release liner film with less release tension for a high printing success rate even at a faster printing speed.",
+        "source_url": "https://www.elegoo.com/products/elegoo-mars-4-ultra-msla-resin-3d-printer-with-9k-mono-lcd"
+      },
+      {
+        "claim": "supporting both 2.4G and 5G networks with a transfer speed of 6-10Mbps",
+        "source_url": "https://www.elegoo.com/products/elegoo-mars-4-ultra-msla-resin-3d-printer-with-9k-mono-lcd"
+      }
+    ],
+    "unsourced_fields": [
+      "build_volume_x_mm",
+      "build_volume_y_mm",
+      "build_volume_z_mm",
+      "layer_min_mm",
+      "light_source",
+      "slicer",
+      "announced",
+      "supported_materials",
+      "enclosed"
+    ]
+  },
+  {
+    "name": "Centauri Carbon",
+    "slug": "elegoo-centauri-carbon",
+    "manufacturer_slug": "elegoo",
+    "technology": "FDM",
+    "kinematics": "CoreXY",
+    "enclosed": null,
+    "heated_chamber": null,
+    "chamber_temp_max_c": null,
+    "build_volume_x_mm": null,
+    "build_volume_y_mm": null,
+    "build_volume_z_mm": null,
+    "nozzle_diameter_mm": null,
+    "nozzle_temp_max_c": null,
+    "bed_temp_max_c": null,
+    "hotend_type": null,
+    "direct_drive": null,
+    "auto_bed_levelling": null,
+    "levelling_method": null,
+    "input_shaping": null,
+    "multi_material": null,
+    "multi_material_system": null,
+    "max_colours": null,
+    "filament_diameter_mm": null,
+    "supported_materials": null,
+    "lcd_resolution": null,
+    "lcd_size_in": null,
+    "layer_min_mm": null,
+    "light_source": null,
+    "connectivity": null,
+    "camera": null,
+    "slicer": null,
+    "firmware": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "shipping",
+    "source_urls": [
+      "https://www.elegoo.com/products/centauri-carbon"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "Enjoy CoreXY high speed and advanced materials with Elegoo Centauri Carbon.",
+        "source_url": "https://www.elegoo.com/products/centauri-carbon"
+      }
+    ],
+    "unsourced_fields": [
+      "enclosed",
+      "heated_chamber",
+      "build_volume_x_mm",
+      "build_volume_y_mm",
+      "build_volume_z_mm",
+      "nozzle_diameter_mm",
+      "nozzle_temp_max_c",
+      "bed_temp_max_c",
+      "hotend_type",
+      "direct_drive",
+      "auto_bed_levelling",
+      "levelling_method",
+      "input_shaping",
+      "multi_material",
+      "filament_diameter_mm",
+      "supported_materials",
+      "connectivity",
+      "camera",
+      "slicer",
+      "firmware",
+      "announced"
+    ]
+  },
+  {
+    "name": "Anycubic Kobra 2",
+    "slug": "anycubic-kobra-2",
+    "manufacturer_slug": "anycubic",
+    "technology": "FDM",
+    "kinematics": null,
+    "enclosed": false,
+    "heated_chamber": false,
+    "chamber_temp_max_c": null,
+    "build_volume_x_mm": 220,
+    "build_volume_y_mm": 220,
+    "build_volume_z_mm": 250,
+    "nozzle_diameter_mm": 0.4,
+    "nozzle_temp_max_c": 260,
+    "bed_temp_max_c": 110,
+    "hotend_type": null,
+    "direct_drive": null,
+    "auto_bed_levelling": null,
+    "levelling_method": null,
+    "input_shaping": null,
+    "multi_material": null,
+    "multi_material_system": null,
+    "max_colours": null,
+    "filament_diameter_mm": null,
+    "supported_materials": [
+      "PLA",
+      "ABS",
+      "PETG",
+      "TPU"
+    ],
+    "lcd_resolution": null,
+    "lcd_size_in": 4.3,
+    "layer_min_mm": null,
+    "light_source": null,
+    "connectivity": [
+      "MicroSD Card"
+    ],
+    "camera": null,
+    "slicer": null,
+    "firmware": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "unknown",
+    "source_urls": [
+      "https://store.anycubic.com/products/kobra-2"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "Printing Speed 300mm/s(Max.) 200mm/s(Typ)",
+        "source_url": "https://store.anycubic.com/products/kobra-2"
+      }
+    ],
+    "unsourced_fields": [
+      "hotend_type",
+      "direct_drive",
+      "auto_bed_levelling",
+      "levelling_method",
+      "input_shaping",
+      "multi_material",
+      "filament_diameter_mm",
+      "camera",
+      "slicer",
+      "firmware",
+      "announced",
+      "status",
+      "kinematics",
+      "chamber_temp_max_c"
+    ]
+  },
+  {
+    "name": "Anycubic Kobra 2 Neo",
+    "slug": "anycubic-kobra-2-neo",
+    "manufacturer_slug": "anycubic",
+    "technology": "FDM",
+    "kinematics": null,
+    "enclosed": false,
+    "heated_chamber": false,
+    "chamber_temp_max_c": null,
+    "build_volume_x_mm": 220,
+    "build_volume_y_mm": 220,
+    "build_volume_z_mm": 250,
+    "nozzle_diameter_mm": 0.4,
+    "nozzle_temp_max_c": 260,
+    "bed_temp_max_c": 110,
+    "hotend_type": "60 W hot end, integrated direct extruder",
+    "direct_drive": true,
+    "auto_bed_levelling": true,
+    "levelling_method": "Anycubic LeviQ 2.0 Automatic Leveling System (25-point)",
+    "input_shaping": true,
+    "multi_material": null,
+    "multi_material_system": null,
+    "max_colours": null,
+    "filament_diameter_mm": null,
+    "supported_materials": [
+      "PLA",
+      "ABS",
+      "PETG",
+      "TPU"
+    ],
+    "lcd_resolution": null,
+    "lcd_size_in": 2.4,
+    "layer_min_mm": null,
+    "light_source": null,
+    "connectivity": [
+      "MicroSD Card"
+    ],
+    "camera": null,
+    "slicer": null,
+    "firmware": "Marlin",
+    "announced": null,
+    "discontinued": null,
+    "status": "unknown",
+    "source_urls": [
+      "https://store.anycubic.com/products/kobra-2-neo"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "Printing Speed 250mm/s(Max.) 150mm/s(Typ.)",
+        "source_url": "https://store.anycubic.com/products/kobra-2-neo"
+      },
+      {
+        "claim": "5X High-Speed ... [1] Compared to products an average printing speed of 50mm/s, data from Anycubic Lab, results are for reference only",
+        "source_url": "https://store.anycubic.com/products/kobra-2-neo"
+      },
+      {
+        "claim": "Boasting a remarkable maximum print speed of 250mm/s. And recommended print speed of 150mm/s",
+        "source_url": "https://store.anycubic.com/products/kobra-2-neo"
+      }
+    ],
+    "unsourced_fields": [
+      "multi_material",
+      "filament_diameter_mm",
+      "camera",
+      "slicer",
+      "announced",
+      "status",
+      "kinematics",
+      "chamber_temp_max_c",
+      "layer_min_mm"
+    ]
+  },
+  {
+    "name": "Anycubic Kobra 2 Pro",
+    "slug": "anycubic-kobra-2-pro",
+    "manufacturer_slug": "anycubic",
+    "technology": "FDM",
+    "kinematics": null,
+    "enclosed": false,
+    "heated_chamber": false,
+    "chamber_temp_max_c": null,
+    "build_volume_x_mm": 220,
+    "build_volume_y_mm": 220,
+    "build_volume_z_mm": 250,
+    "nozzle_diameter_mm": 0.4,
+    "nozzle_temp_max_c": 260,
+    "bed_temp_max_c": 110,
+    "hotend_type": "Direct extruder with double gears",
+    "direct_drive": true,
+    "auto_bed_levelling": true,
+    "levelling_method": "New Anycubic LeviQ 2.0 Automatic Leveling System (25-point)",
+    "input_shaping": true,
+    "multi_material": null,
+    "multi_material_system": null,
+    "max_colours": null,
+    "filament_diameter_mm": null,
+    "supported_materials": [
+      "PLA",
+      "ABS",
+      "PETG",
+      "TPU"
+    ],
+    "lcd_resolution": null,
+    "lcd_size_in": 4.3,
+    "layer_min_mm": null,
+    "light_source": null,
+    "connectivity": [
+      "USB Port x 3"
+    ],
+    "camera": null,
+    "slicer": null,
+    "firmware": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "unknown",
+    "source_urls": [
+      "https://store.anycubic.com/products/kobra-2-pro"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "Printing Speed 500mm/s(Max.) 300mm/s(Typ.)",
+        "source_url": "https://store.anycubic.com/products/kobra-2-pro"
+      },
+      {
+        "claim": "10X Boost in Speed [1] Compared to mainstream FDM 3D printers, the printing speed is increased by 10 times. The maximum printing speed up to 500mm/s. [1] Compared with products with a standard printing speed of 50mm/s. The data comes from Anycubic Lab, and the results are for reference only.",
+        "source_url": "https://store.anycubic.com/products/kobra-2-pro"
+      },
+      {
+        "claim": "One-click vibration compensation, by detecting the resonance frequency of the X/Y axis, smart adjustments are made to motion control",
+        "source_url": "https://store.anycubic.com/products/kobra-2-pro"
+      }
+    ],
+    "unsourced_fields": [
+      "multi_material",
+      "filament_diameter_mm",
+      "camera",
+      "slicer",
+      "firmware",
+      "announced",
+      "status",
+      "kinematics",
+      "chamber_temp_max_c",
+      "layer_min_mm"
+    ]
+  },
+  {
+    "name": "Anycubic Photon Mono",
+    "slug": "anycubic-photon-mono",
+    "manufacturer_slug": "anycubic",
+    "technology": "resin",
+    "kinematics": null,
+    "enclosed": null,
+    "heated_chamber": null,
+    "chamber_temp_max_c": null,
+    "build_volume_x_mm": 130,
+    "build_volume_y_mm": 80,
+    "build_volume_z_mm": 165,
+    "nozzle_diameter_mm": null,
+    "nozzle_temp_max_c": null,
+    "bed_temp_max_c": null,
+    "hotend_type": null,
+    "direct_drive": null,
+    "auto_bed_levelling": null,
+    "levelling_method": null,
+    "input_shaping": null,
+    "multi_material": false,
+    "multi_material_system": null,
+    "max_colours": null,
+    "filament_diameter_mm": null,
+    "supported_materials": [
+      "405 nm UV resin"
+    ],
+    "lcd_resolution": "2560x1620 (2K) monochrome",
+    "lcd_size_in": null,
+    "layer_min_mm": 0.01,
+    "light_source": "Matrix parallel light source, 405 nm wavelength",
+    "connectivity": [
+      "USB"
+    ],
+    "camera": null,
+    "slicer": [
+      "Anycubic Photon Workshop"
+    ],
+    "firmware": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "unknown",
+    "source_urls": [
+      "https://store.anycubic.com/products/photon-mono-resin-3d-printer"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "Printing Speed: MAX 50mm/h",
+        "source_url": "https://store.anycubic.com/products/photon-mono-resin-3d-printer"
+      },
+      {
+        "claim": "The exposure time is reduced to 1.5 seconds. A much longer lifespan: You can print up to 2000 hours with it, which is 4 times longer than color LCD.",
+        "source_url": "https://store.anycubic.com/products/photon-mono-resin-3d-printer"
+      },
+      {
+        "claim": "With the transparent cover, you can watch your prints while still blocking 99.95% of the UV light.",
+        "source_url": "https://store.anycubic.com/products/photon-mono-resin-3d-printer"
+      }
+    ],
+    "unsourced_fields": [
+      "lcd_size_in",
+      "levelling_method",
+      "auto_bed_levelling",
+      "firmware",
+      "announced",
+      "status",
+      "enclosed"
+    ]
+  },
+  {
+    "name": "Anycubic Photon Mono 2",
+    "slug": "anycubic-photon-mono-2",
+    "manufacturer_slug": "anycubic",
+    "technology": "resin",
+    "kinematics": null,
+    "enclosed": null,
+    "heated_chamber": null,
+    "chamber_temp_max_c": null,
+    "build_volume_x_mm": 89,
+    "build_volume_y_mm": 143,
+    "build_volume_z_mm": 165,
+    "nozzle_diameter_mm": null,
+    "nozzle_temp_max_c": null,
+    "bed_temp_max_c": null,
+    "hotend_type": null,
+    "direct_drive": null,
+    "auto_bed_levelling": false,
+    "levelling_method": "4-point manual leveling",
+    "input_shaping": null,
+    "multi_material": false,
+    "multi_material_system": null,
+    "max_colours": null,
+    "filament_diameter_mm": null,
+    "supported_materials": null,
+    "lcd_resolution": "4096x2560",
+    "lcd_size_in": 6.6,
+    "layer_min_mm": null,
+    "light_source": "Upgraded LighTurbo matrix parallel light source",
+    "connectivity": [
+      "USB Type-A 2.0"
+    ],
+    "camera": null,
+    "slicer": [
+      "Anycubic Photon Workshop 3.0"
+    ],
+    "firmware": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "unknown",
+    "source_urls": [
+      "https://store.anycubic.com/products/photon-mono-2-3d-printer"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "Printing Speed ≤50mm/hr",
+        "source_url": "https://store.anycubic.com/products/photon-mono-2-3d-printer"
+      },
+      {
+        "claim": "With up to 95% light transmittance, it can fully protect the LCD screen while ensuring printing accuracy.",
+        "source_url": "https://store.anycubic.com/products/photon-mono-2-3d-printer"
+      },
+      {
+        "claim": "Exposure Screen 6.6\" monochrome 4,096 x 2,560px 2,000 hours lifespan",
+        "source_url": "https://store.anycubic.com/products/photon-mono-2-3d-printer"
+      }
+    ],
+    "unsourced_fields": [
+      "layer_min_mm",
+      "supported_materials",
+      "firmware",
+      "announced",
+      "status",
+      "enclosed"
+    ]
   }
 ]

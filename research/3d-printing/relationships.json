@@ -1,0 +1,149 @@
+[
+  {
+    "from_slug": "bambu-lab-x1e",
+    "to_slug": "bambu-lab-x1-carbon",
+    "type": "same_family",
+    "basis": "Bambu Lab's X1E page is built as a two-column comparison against the X1-Carbon, sharing the CoreXY platform and differing on chamber heating, nozzle temperature, filtration and networking.",
+    "source_url": "https://bambulab.com/en/x1e"
+  },
+  {
+    "from_slug": "bambu-lab-x1e",
+    "to_slug": "bambu-lab-x1-carbon",
+    "type": "alternative_to",
+    "basis": "Same family, different positioning: the X1E adds active chamber heating to 60 °C, a 320 °C nozzle, an H12 HEPA stack, Ethernet with WPA2-Enterprise and network kill switches, all of which the X1-Carbon column records as absent.",
+    "source_url": "https://bambulab.com/en/x1e"
+  },
+  {
+    "from_slug": "bambu-lab-p1s",
+    "to_slug": "bambu-lab-p1p",
+    "type": "same_family",
+    "basis": "Bambu Lab publishes P1P and P1S as two columns of one 'Parameters Comparison' table with identical 256 x 256 x 256 mm volume, 300 °C hotend, 100 °C bed and motion specs.",
+    "source_url": "https://uk.store.bambulab.com/products/p1s"
+  },
+  {
+    "from_slug": "bambu-lab-p1s",
+    "to_slug": "bambu-lab-p1p",
+    "type": "alternative_to",
+    "basis": "Bambu Lab: 'Compared to the P1P, the P1S offers a fully enclosed printing chamber and a more powerful cooling solution... Furthermore, we have equipped it with an activated carbon filter'. The two are sold alongside each other rather than one replacing the other.",
+    "source_url": "https://bambulab.com/en/p1"
+  },
+  {
+    "from_slug": "bambu-lab-a1-mini",
+    "to_slug": "bambu-lab-a1",
+    "type": "same_family",
+    "basis": "Identical tech-spec structure, hotend (300 °C all-metal, stainless steel nozzle), filament handling and 'Ideal / Not Recommended' material lists; the mini differs in build volume (180 vs 256 mm cube), bed ceiling (80 vs 100 °C) and screen size.",
+    "source_url": "https://bambulab.com/en/a1-mini/tech-specs"
+  },
+  {
+    "from_slug": "creality-ender-3-v3-se",
+    "to_slug": "creality-ender-3",
+    "type": "successor_of",
+    "basis": "Generation link inside one named family: Creality sells both under the Ender-3 name, at the same 220 x 220 x 250 mm class, with the V3 SE adding a direct extruder and automatic levelling.",
+    "source_url": "https://www.creality.com/support/creality-ender-3-v3-se"
+  },
+  {
+    "from_slug": "creality-ender-3-v3-ke",
+    "to_slug": "creality-ender-3-v3-se",
+    "type": "alternative_to",
+    "basis": "Same Ender-3 V3 generation and same i3 gantry motion system; the KE raises the nozzle ceiling from 260 °C brass to 300 °C, adds input shaping, Wi-Fi and Klipper-based Creality OS, and extends the material list to ASA and ABS.",
+    "source_url": "https://www.creality.com/support/creality-ender-3-v3-ke"
+  },
+  {
+    "from_slug": "creality-ender-3-v3",
+    "to_slug": "creality-ender-3-v3-ke",
+    "type": "alternative_to",
+    "basis": "Same Ender-3 V3 generation; the V3 swaps the i3 gantry for a CoreXZ gantry, a hardened steel nozzle and a 110 °C bed, and adds PLA-CF and PETG-CF to the supported list.",
+    "source_url": "https://www.creality.com/support/creality-ender-3-v3"
+  },
+  {
+    "from_slug": "creality-k1c",
+    "to_slug": "creality-k1",
+    "type": "same_family",
+    "basis": "Identical 220 x 220 x 250 mm volume, 300 °C hardened steel nozzle, 100 °C bed and connectivity set in Creality's own parameter tables; the K1C's supported list adds ASA.",
+    "source_url": "https://www.creality.com/support/k1c-carbon-3d-printer"
+  },
+  {
+    "from_slug": "creality-k1-max",
+    "to_slug": "creality-k1",
+    "type": "same_family",
+    "basis": "Creality's K1 line; the Max is the 300 x 300 x 300 mm variant and adds RJ45 to the K1's USB / LAN / cloud transfer options.",
+    "source_url": "https://www.creality.com/support/creality-k1-max-3d-printer"
+  },
+  {
+    "from_slug": "creality-k2",
+    "to_slug": "creality-k1",
+    "type": "modern_equivalent",
+    "basis": "Creality's current enclosed CoreXY line occupying the K1's position: same 300 °C hardened steel all-metal hotend and 100 °C bed, a larger 260 mm cube, and the CFS multi-material unit that the K1 line lacks. Creality does not itself describe the K2 as replacing the K1, so this is positional, not a stated succession.",
+    "source_url": "https://www.creality.com/support/k2-series-3d-printer"
+  },
+  {
+    "from_slug": "elegoo-neptune-4-pro",
+    "to_slug": "elegoo-neptune-4",
+    "type": "same_family",
+    "basis": "Same 225 x 225 x 265 mm printing size, 300 °C nozzle, 121-point automatic levelling and pre-installed Klipper; the Pro adds the intelligent segmented heatbed and the 5.2:1 dual-gear direct extruder detail.",
+    "source_url": "https://www.elegoo.com/products/elegoo-neptune-4-pro-fdm-3d-printer"
+  },
+  {
+    "from_slug": "elegoo-mars-4-ultra",
+    "to_slug": "elegoo-mars-4",
+    "type": "same_family",
+    "basis": "Both are 7-inch 9K MSLA machines with the same 8520 x 4320 LCD and 18 µm XY resolution; the Ultra adds Wi-Fi, a Linux OS with 4 GB RAM, a 4-inch 800 x 480 IPS touchscreen and ACF release film.",
+    "source_url": "https://www.elegoo.com/products/elegoo-mars-4-ultra-msla-resin-3d-printer-with-9k-mono-lcd"
+  },
+  {
+    "from_slug": "anycubic-photon-mono-2",
+    "to_slug": "anycubic-photon-mono",
+    "type": "successor_of",
+    "basis": "Generation link inside one named family: Anycubic's Photon Mono 2 page positions it against the Photon Mono, raising the exposure screen from 6-inch 2560 x 1620 (2K) to 6.6-inch 4096 x 2560 while keeping the same ≤50 mm/hr vertical speed claim and 165 mm Z height.",
+    "source_url": "https://store.anycubic.com/products/photon-mono-2-3d-printer"
+  },
+  {
+    "from_slug": "anycubic-kobra-2-pro",
+    "to_slug": "anycubic-kobra-2",
+    "type": "same_family",
+    "basis": "Anycubic's Kobra 2 Pro page ends in a 'Comparison' table headed 'Anycubic Kobra 2 Pro | Anycubic Kobra 2', with the same 250 x 220 x 220 mm (HWD) printing dimensions and 260 °C / 110 °C temperature ceilings.",
+    "source_url": "https://store.anycubic.com/products/kobra-2-pro"
+  },
+  {
+    "from_slug": "anycubic-kobra-2-neo",
+    "to_slug": "anycubic-kobra-2",
+    "type": "same_family",
+    "basis": "Same Kobra 2 generation and same 250 x 220 x 220 mm (HWD) printing dimensions; the Neo is the reduced variant with a single Z rod, a 2.4-inch knob-control panel and a 250 mm/s rather than 300 mm/s speed claim.",
+    "source_url": "https://store.anycubic.com/products/kobra-2-neo"
+  },
+  {
+    "from_slug": "bambu-lab-p1s",
+    "to_slug": "creality-k1c",
+    "type": "competes_with",
+    "basis": "Same technology and architecture: both are enclosed CoreXY FDM printers with a 300 °C all-metal hotend and a 100 °C bed, in the same build-volume class (256 mm cube vs 220 x 220 x 250 mm), and both are sold as consumer machines rated for carbon-fibre-filled filaments via a hardened nozzle path.",
+    "source_url": "https://www.creality.com/support/k1c-carbon-3d-printer"
+  },
+  {
+    "from_slug": "creality-ender-3-v3-se",
+    "to_slug": "anycubic-kobra-2-neo",
+    "type": "competes_with",
+    "basis": "Same technology and near-identical specification: open-frame bedslinger FDM, 220 x 220 x 250 mm build volume, 260 °C nozzle ceiling, direct extruder, automatic bed levelling, and both positioned by their makers as the entry model of their line.",
+    "source_url": "https://store.anycubic.com/products/kobra-2-neo"
+  },
+  {
+    "from_slug": "elegoo-neptune-4-pro",
+    "to_slug": "anycubic-kobra-2-pro",
+    "type": "competes_with",
+    "basis": "Same technology and overlapping specification: open-frame bedslinger FDM at 225 x 225 x 265 mm vs 250 x 220 x 220 mm, both with dual-gear direct extruders, multi-point automatic bed levelling and resonance compensation, and both headlining an identical 500 mm/s maximum-speed claim.",
+    "source_url": "https://www.elegoo.com/products/elegoo-neptune-4-pro-fdm-3d-printer"
+  },
+  {
+    "from_slug": "elegoo-mars-4",
+    "to_slug": "anycubic-photon-mono-2",
+    "type": "competes_with",
+    "basis": "Same technology and size class: both are desktop MSLA resin printers with a sub-7-inch monochrome LCD (7-inch 8520 x 4320 vs 6.6-inch 4096 x 2560), a 405 nm matrix or COB light source, manual four-point levelling and a build height of 165-175 mm.",
+    "source_url": "https://www.elegoo.com/products/elegoo-mars-4-msla-resin-3d-printer-with-9k-mono-lcd"
+  },
+  {
+    "from_slug": "bambu-lab-a1",
+    "to_slug": "creality-ender-3-v3",
+    "type": "competes_with",
+    "basis": "Same technology and overlapping positioning: consumer open-frame FDM with a 300 °C hotend and a direct extruder, at 256 x 256 x 256 mm vs 220 x 220 x 250 mm, both sold as the maker's mainstream non-enclosed model.",
+    "source_url": "https://www.creality.com/support/creality-ender-3-v3"
+  }
+]

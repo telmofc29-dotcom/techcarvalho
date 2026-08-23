@@ -1,0 +1,247 @@
+[
+  {
+    "from_slug": "sony-fe-16-35mm-f2-8-gm-ii",
+    "to_slug": "sony-fe-16-35mm-f2-8-gm",
+    "type": "successor_of",
+    "basis": "Sony's own product naming: the two lenses carry the identical designation 'FE 16-35mm F2.8 GM' with 'II' appended to the newer one, and Sony lists them under separate model codes SEL1635GM2 and SEL1635GM. This is the manufacturer marking a generation, not an inference from matching focal lengths.",
+    "source_url": "https://www.sony.jp/ichigan/products/SEL1635GM2/spec.html"
+  },
+  {
+    "from_slug": "sony-fe-24-70mm-f2-8-gm-ii",
+    "to_slug": "sony-fe-24-70mm-f2-8-gm",
+    "type": "successor_of",
+    "basis": "Sony names the predecessor explicitly on the FE 24-70mm F2.8 GM II feature page, stating that the new lens's four XD linear motors give roughly double the AF speed of 'the previous model (SEL2470GM)'. NOTE: SEL2470GM is not itself a row in lenses.json — no spec page for it was retrieved in this pass.",
+    "source_url": "https://www.sony.jp/ichigan/products/SEL2470GM2/feature_1.html"
+  },
+  {
+    "from_slug": "nikkor-z-mc-105mm-f2-8-vr-s",
+    "to_slug": "af-s-vr-micro-nikkor-105mm-f2-8g-if-ed",
+    "type": "modern_equivalent",
+    "basis": "Nikon itself makes the cross-mount comparison on the Z MC 105mm product page: 'Adoption of the large-diameter Z mount has enabled a dramatic increase in optical performance compared to the existing F-mount model.' The F-mount 105mm Micro is therefore identified as the equivalent by the manufacturer, not by focal-length matching. NOTE: the F-mount lens is not a row in lenses.json — its page path 404'd during this pass.",
+    "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_mc105mmf28_vr_s/"
+  },
+  {
+    "from_slug": "nikkor-z-100-400mm-f4-5-5-6-vr-s",
+    "to_slug": "nikon-z-teleconverter-tc-14x",
+    "type": "supports_extender",
+    "basis": "Nikon's specification page for the lens states compatibility with the Z TELECONVERTER TC-1.4x. NOTE: teleconverters are not rows in lenses.json.",
+    "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_100-400mmf45-56_vr_s/"
+  },
+  {
+    "from_slug": "nikkor-z-100-400mm-f4-5-5-6-vr-s",
+    "to_slug": "nikon-z-teleconverter-tc-2x",
+    "type": "supports_extender",
+    "basis": "Nikon's specification page for the lens states compatibility with the Z TELECONVERTER TC-2.0x.",
+    "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_100-400mmf45-56_vr_s/"
+  },
+  {
+    "from_slug": "nikkor-z-180-600mm-f5-6-6-3-vr",
+    "to_slug": "nikon-z-teleconverter-tc-14x",
+    "type": "supports_extender",
+    "basis": "Nikon's specification page states teleconverter compatibility for this lens, with limitations noted on the page itself.",
+    "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_180-600mmf56-63_vr/"
+  },
+  {
+    "from_slug": "af-s-nikkor-70-200mm-f2-8e-fl-ed-vr",
+    "to_slug": "nikon-af-s-teleconverter-tc-14e-iii",
+    "type": "supports_extender",
+    "basis": "Nikon's specification page lists compatible teleconverters explicitly: TC-14E / TC-14E II / TC-14E III / TC-17E II / TC-20E / TC-20E II / TC-20E III.",
+    "source_url": "https://imaging.nikon.com/imaging/lineup/lens/f-mount/zoom/telephotozoom/af-s_70-200mmf_28e_fl_ed_vr/"
+  },
+  {
+    "from_slug": "af-s-nikkor-70-200mm-f2-8e-fl-ed-vr",
+    "to_slug": "nikon-af-s-teleconverter-tc-20e-iii",
+    "type": "supports_extender",
+    "basis": "Nikon's specification page lists TC-20E III among the compatible teleconverters for this lens.",
+    "source_url": "https://imaging.nikon.com/imaging/lineup/lens/f-mount/zoom/telephotozoom/af-s_70-200mmf_28e_fl_ed_vr/"
+  },
+  {
+    "from_slug": "af-s-nikkor-200-500mm-f5-6e-ed-vr",
+    "to_slug": "nikon-af-s-teleconverter-tc-14e-iii",
+    "type": "supports_extender",
+    "basis": "Nikon's specification page lists AF-I/AF-S TC-14E, TC-14E II, TC-14E III, TC-17E II, TC-20E, TC-20E II and TC-20E III as compatible.",
+    "source_url": "https://imaging.nikon.com/imaging/lineup/lens/f-mount/zoom/telephotozoom/af-s_200-500mmf_56e_ed_vr/"
+  },
+  {
+    "from_slug": "sony-fe-70-200mm-f2-8-gm-oss-ii",
+    "to_slug": "sony-sel14tc",
+    "type": "supports_extender",
+    "basis": "Sony's specification table names SEL14TC (1.4x) and SEL20TC (2.0x) as compatible teleconverters. NOTE: teleconverters are not rows in lenses.json.",
+    "source_url": "https://www.sony.jp/ichigan/products/SEL70200GM2/spec.html"
+  },
+  {
+    "from_slug": "sony-fe-70-200mm-f2-8-gm-oss-ii",
+    "to_slug": "sony-sel20tc",
+    "type": "supports_extender",
+    "basis": "Sony's specification table names SEL20TC (2.0x) as a compatible teleconverter.",
+    "source_url": "https://www.sony.jp/ichigan/products/SEL70200GM2/spec.html"
+  },
+  {
+    "from_slug": "sony-fe-100-400mm-f4-5-5-6-gm-oss",
+    "to_slug": "sony-sel14tc",
+    "type": "supports_extender",
+    "basis": "Sony's specification table names SEL14TC (1.4x) and SEL20TC (2.0x) as compatible teleconverters.",
+    "source_url": "https://www.sony.jp/ichigan/products/SEL100400GM/spec.html"
+  },
+  {
+    "from_slug": "sony-fe-100-400mm-f4-5-5-6-gm-oss",
+    "to_slug": "sony-sel20tc",
+    "type": "supports_extender",
+    "basis": "Sony's specification table names SEL20TC (2.0x) as a compatible teleconverter.",
+    "source_url": "https://www.sony.jp/ichigan/products/SEL100400GM/spec.html"
+  },
+  {
+    "from_slug": "sony-fe-200-600mm-f5-6-6-3-g-oss",
+    "to_slug": "sony-sel14tc",
+    "type": "supports_extender",
+    "basis": "Sony's specification table names SEL14TC (1.4x) and SEL20TC (2.0x) as compatible teleconverters.",
+    "source_url": "https://www.sony.jp/ichigan/products/SEL200600G/spec.html"
+  },
+  {
+    "from_slug": "sony-fe-200-600mm-f5-6-6-3-g-oss",
+    "to_slug": "sony-sel20tc",
+    "type": "supports_extender",
+    "basis": "Sony's specification table names SEL20TC (2.0x) as a compatible teleconverter.",
+    "source_url": "https://www.sony.jp/ichigan/products/SEL200600G/spec.html"
+  },
+  {
+    "from_slug": "nikkor-z-24-70mm-f2-8-s",
+    "to_slug": "nikkor-z-70-200mm-f2-8-vr-s",
+    "type": "same_family",
+    "basis": "Nikon lists both under the heading 'S-Line Zoom Lenses' in its own Z-mount lens index. The edge records Nikon's published grouping, nothing more.",
+    "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/"
+  },
+  {
+    "from_slug": "nikkor-z-14-24mm-f2-8-s",
+    "to_slug": "nikkor-z-24-70mm-f2-8-s",
+    "type": "same_family",
+    "basis": "Nikon lists both under the heading 'S-Line Zoom Lenses' in its own Z-mount lens index.",
+    "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/"
+  },
+  {
+    "from_slug": "nikkor-z-35mm-f1-8-s",
+    "to_slug": "nikkor-z-50mm-f1-8-s",
+    "type": "same_family",
+    "basis": "Nikon lists both under the heading 'S-Line Prime Lenses' in its own Z-mount lens index, and both share the f/1.8 S optical family naming Nikon uses.",
+    "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/"
+  },
+  {
+    "from_slug": "nikkor-z-50mm-f1-8-s",
+    "to_slug": "nikkor-z-85mm-f1-8-s",
+    "type": "same_family",
+    "basis": "Nikon lists both under the heading 'S-Line Prime Lenses' in its own Z-mount lens index.",
+    "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/"
+  },
+  {
+    "from_slug": "nikkor-z-20mm-f1-8-s",
+    "to_slug": "nikkor-z-35mm-f1-8-s",
+    "type": "same_family",
+    "basis": "Nikon lists both under the heading 'S-Line Prime Lenses' in its own Z-mount lens index.",
+    "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/"
+  },
+  {
+    "from_slug": "nikkor-z-dx-16-50mm-f3-5-6-3-vr",
+    "to_slug": "nikkor-z-dx-50-250mm-f4-5-6-3-vr",
+    "type": "same_family",
+    "basis": "Both are Nikon Z DX zooms listed together in Nikon's Z-mount index 'Other Zoom Lenses' section, and both state DX as the Format row of their specification table — Nikon's two-lens DX kit pairing.",
+    "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/"
+  },
+  {
+    "from_slug": "nikkor-z-mc-50mm-f2-8",
+    "to_slug": "nikkor-z-mc-105mm-f2-8-vr-s",
+    "type": "same_family",
+    "basis": "Both carry Nikon's MC macro designation on the Z mount and both state a 1x maximum reproduction ratio in Nikon's own specification table.",
+    "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_mc50mmf28/"
+  },
+  {
+    "from_slug": "sony-fe-24-70mm-f2-8-gm-ii",
+    "to_slug": "sony-fe-16-35mm-f2-8-gm-ii",
+    "type": "same_family",
+    "basis": "Both are Sony G Master constant-f/2.8 full-frame zooms of the current 'II' generation, sharing an 82 mm filter thread and 11 aperture blades per Sony's own specification tables.",
+    "source_url": "https://www.sony.jp/ichigan/products/SEL1635GM2/spec.html"
+  },
+  {
+    "from_slug": "sony-fe-40mm-f2-5-g",
+    "to_slug": "sony-fe-20mm-f1-8-g",
+    "type": "same_family",
+    "basis": "Both carry Sony's G badge in the product name; recorded as Sony's own grade grouping, not as a claim about optical similarity.",
+    "source_url": "https://www.sony.jp/ichigan/products/SEL40F25G/spec.html"
+  },
+  {
+    "from_slug": "sony-e-16-55mm-f2-8-g",
+    "to_slug": "sony-e-70-350mm-f4-5-6-3-g-oss",
+    "type": "same_family",
+    "basis": "Both are APS-C E-mount G lenses; Sony's specification tables for both give a 35mm-equivalent focal length row (24-82.5 mm and 105-525 mm respectively), the manufacturer's marker of APS-C coverage. They are Sony's paired APS-C G zoom set.",
+    "source_url": "https://www.sony.jp/ichigan/products/SEL70350G/spec.html"
+  },
+  {
+    "from_slug": "sony-sonnar-t-fe-55mm-f1-8-za",
+    "to_slug": "sony-vario-tessar-t-fe-24-70mm-f4-za-oss",
+    "type": "same_family",
+    "basis": "Both are Sony-made FE lenses carrying licensed Zeiss optical names and the T* designation with a ZA suffix, and neither carries a Sony G or G Master badge.",
+    "source_url": "https://www.sony.jp/ichigan/products/SEL55F18Z/spec.html"
+  },
+  {
+    "from_slug": "nikkor-z-24-70mm-f4-s",
+    "to_slug": "nikkor-z-24-120mm-f4-s",
+    "type": "alternative_to",
+    "basis": "Catalogue-level, not manufacturer-stated: same mount, same S-Line grade in Nikon's own index, same constant f/4 maximum aperture, and overlapping standard-zoom range with the same 24 mm wide end. A buyer choosing one is choosing against the other. No Nikon page compares them.",
+    "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/"
+  },
+  {
+    "from_slug": "nikkor-z-28-75mm-f2-8",
+    "to_slug": "nikkor-z-24-70mm-f2-8-s",
+    "type": "alternative_to",
+    "basis": "Catalogue-level, not manufacturer-stated: both are Nikon Z constant-f/2.8 standard zooms of near-identical range, one inside the S-Line grouping and one outside it in Nikon's index. Recorded as a purchase alternative, not as a successor relationship in either direction.",
+    "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/"
+  },
+  {
+    "from_slug": "sony-fe-70-200mm-f4-g-oss",
+    "to_slug": "sony-fe-70-200mm-f2-8-gm-oss-ii",
+    "type": "alternative_to",
+    "basis": "Catalogue-level, not manufacturer-stated: identical 70-200 mm range on the same mount, differing in maximum aperture and in Sony's grade badge (G versus G Master). Recorded as a purchase alternative only.",
+    "source_url": "https://www.sony.jp/ichigan/products/SEL70200G/spec.html"
+  },
+  {
+    "from_slug": "sony-fe-50mm-f1-8",
+    "to_slug": "sony-fe-50mm-f1-2-gm",
+    "type": "alternative_to",
+    "basis": "Catalogue-level, not manufacturer-stated: same focal length on the same mount at opposite ends of Sony's range, F1.8 unbadged against F1.2 G Master. Recorded as a purchase alternative only.",
+    "source_url": "https://www.sony.jp/ichigan/products/SEL50F18F/spec.html"
+  },
+  {
+    "from_slug": "nikkor-z-24-70mm-f2-8-s",
+    "to_slug": "sony-fe-24-70mm-f2-8-gm-ii",
+    "type": "competes_with",
+    "basis": "Cross-brand, catalogue-level: each maker's flagship constant-f/2.8 standard zoom for its own full-frame mirrorless mount, identical 24-70 mm range and 82 mm filter thread per both manufacturers' own specification tables. Neither maker names the other; this edge is a shopping comparison, not a manufacturer claim.",
+    "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_24-70mmf28s/"
+  },
+  {
+    "from_slug": "nikkor-z-70-200mm-f2-8-vr-s",
+    "to_slug": "sony-fe-70-200mm-f2-8-gm-oss-ii",
+    "type": "competes_with",
+    "basis": "Cross-brand, catalogue-level: each maker's top constant-f/2.8 telephoto zoom for its full-frame mirrorless mount, identical 70-200 mm range and 77 mm filter thread per both specification tables. Not a manufacturer statement.",
+    "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_70-200mmf28_vr_s/"
+  },
+  {
+    "from_slug": "nikkor-z-100-400mm-f4-5-5-6-vr-s",
+    "to_slug": "sony-fe-100-400mm-f4-5-5-6-gm-oss",
+    "type": "competes_with",
+    "basis": "Cross-brand, catalogue-level: identical 100-400 mm f/4.5-5.6 super-telephoto zooms, each the top-grade version on its maker's full-frame mirrorless mount, both with a tripod collar and both teleconverter-compatible per their own spec pages.",
+    "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_100-400mmf45-56_vr_s/"
+  },
+  {
+    "from_slug": "nikkor-z-180-600mm-f5-6-6-3-vr",
+    "to_slug": "sony-fe-200-600mm-f5-6-6-3-g-oss",
+    "type": "competes_with",
+    "basis": "Cross-brand, catalogue-level: both are the maker's affordable long wildlife zoom on its full-frame mirrorless mount, both stated internal-zoom, both with a 95 mm filter thread and a tripod collar per their own spec pages. Not a manufacturer statement.",
+    "source_url": "https://www.sony.jp/ichigan/products/SEL200600G/feature_1.html"
+  },
+  {
+    "from_slug": "nikkor-z-dx-16-50mm-f3-5-6-3-vr",
+    "to_slug": "sony-e-16-55mm-f2-8-g",
+    "type": "competes_with",
+    "basis": "Cross-brand, catalogue-level and deliberately weak: both are APS-C mirrorless standard zooms, but the Nikon is a collapsible f/3.5-6.3 kit lens at 135 g and the Sony a constant-f/2.8 G lens at 494 g. Recorded only because they occupy the same slot in each maker's APS-C range; they are not equivalents.",
+    "source_url": "https://www.sony.jp/ichigan/products/SEL1655G/spec.html"
+  }
+]

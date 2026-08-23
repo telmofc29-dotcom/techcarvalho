@@ -1,0 +1,121 @@
+[
+  {
+    "slug": "fdm-fff",
+    "name": "FDM / FFF (fused deposition modelling)",
+    "kind": "other",
+    "summary": "Every filament printer in this dataset is described by its maker as FDM or FFF: Bambu Lab labels the H2D's printing technology 'Fused Deposition Modeling', while Creality's parameter tables list 'Printing Technology: FFF' for the Ender-3 V3 SE, Ender-3 V3 and Ender-3 V3 KE. The process melts a spool of thermoplastic filament — 1.75 mm on every machine here that states a diameter — through a heated nozzle and deposits it layer by layer onto a heated bed. Because the material is a thermoplastic rather than a photopolymer, the meaningful specs are nozzle and bed temperature ceilings (260 °C / 100 °C on the Ender-3 V3 SE up to 350 °C / 120 °C on the H2D) and whether the machine can hold a warm chamber.",
+    "source_urls": ["https://bambulab.com/en/h2d/tech-specs", "https://www.creality.com/support/creality-ender-3-v3-se", "https://www.creality.com/support/creality-ender-3-v3-ke"]
+  },
+  {
+    "slug": "resin-msla",
+    "name": "Resin printing (MSLA / LCD-based SLA)",
+    "kind": "other",
+    "summary": "Anycubic describes the Photon Mono's process as 'LCD-based SLA' with a 405 nm light source and '405nm UV Resin' as the material. A monochrome LCD masks a UV panel so a whole layer is cured at once, which is why resin machines quote an exposure screen rather than a nozzle: the Elegoo Mars 4 pairs a 7-inch 8520x4320 LCD with 18 µm XY resolution, and the Anycubic Photon Mono 2 a 6.6-inch 4096x2560 panel. Detail is set by the LCD's pixel pitch, not by motion accuracy, and vertical speed is quoted in millimetres per hour (Anycubic states '≤50mm/hr' for the Photon Mono 2) because layer time is exposure time and barely depends on how much area is being cured. Elegoo notes the Mars 4's COB light source 'uniformly exposes the beam of 405nm wavelength across the entire LCD', which is the practical limit on edge-to-edge accuracy.",
+    "source_urls": ["https://store.anycubic.com/products/photon-mono-resin-3d-printer", "https://store.anycubic.com/products/photon-mono-2-3d-printer", "https://www.elegoo.com/products/elegoo-mars-4-msla-resin-3d-printer-with-9k-mono-lcd"]
+  },
+  {
+    "slug": "corexy",
+    "name": "CoreXY",
+    "kind": "printer_kinematics",
+    "summary": "CoreXY drives the toolhead in X and Y from two belt loops and two stationary motors, so the moving mass is only the toolhead itself. Bambu Lab attributes the X1E's headline acceleration directly to that: 'the superior carbon-fiber rods in the CoreXY motion structure enable the X1E to achieve a toolhead acceleration of 20,000 mm/s² by reducing the weight of moving parts.' Bambu also lists 'CoreXY' and 'Welded Chassis' together on the X1 page, since the frame has to resist the forces that a light toolhead can now generate. In this dataset the CoreXY machines (Bambu X1/P1/H2D, Creality K1 family and K2, Elegoo Centauri Carbon) are also the enclosed ones — a fixed bed inside a box is easier to enclose than a bed that swings back and forth.",
+    "source_urls": ["https://bambulab.com/en/x1e", "https://bambulab.com/en/x1", "https://bambulab.com/en/p1", "https://www.elegoo.com/products/centauri-carbon"]
+  },
+  {
+    "slug": "bedslinger-cartesian",
+    "name": "Bedslinger (Cartesian i3-style)",
+    "kind": "printer_kinematics",
+    "summary": "The cheaper layout moves the bed on the Y axis and the gantry on X and Z. Creality names it explicitly in its parameter tables: 'Motion System: i3 Gantry' for the Ender-3 V3 SE and Ender-3 V3 KE, versus 'CoreXZ Gantry' for the Ender-3 V3. Anycubic's Kobra 2 Neo spec sheet shows the same architecture from the parts list — 'Z-axis: Threaded rod x 1', 'Y-axis: Rail x 1' — while the Kobra 2 Pro upgrades to 'Double Threaded Rod' and 'Double Metal Spindle'. The constraint is that the whole print plus bed is being accelerated on one axis, which is why these machines quote lower ceilings (Creality claims ≤2500 mm/s² for the Ender-3 V3 SE against 20000 mm/s² for the CoreXZ Ender-3 V3).",
+    "source_urls": ["https://www.creality.com/support/creality-ender-3-v3-se", "https://www.creality.com/support/creality-ender-3-v3", "https://store.anycubic.com/products/kobra-2-neo", "https://store.anycubic.com/products/kobra-2-pro"]
+  },
+  {
+    "slug": "direct-drive-vs-bowden",
+    "name": "Direct drive vs Bowden extrusion",
+    "kind": "printer_feature",
+    "summary": "A direct-drive extruder sits on the toolhead with the motor coupled straight to the drive gears; a Bowden setup pushes filament down a long PTFE tube from a frame-mounted motor. Bambu Lab states the benefit plainly for the P1 series: 'With the design that the motor is directly connected to the extruder, P1 series has better control on the extrusion and retraction of flexible filaments. Precise and consistent extrusion for smooth and no-blur prints.' Creality lists 'Extruder: Direct' across the Ender-3 V3 SE, V3 and V3 KE, and Elegoo specifies a 'dual-gear direct drive extruder with a 5.2:1 reduction ratio' on the Neptune 4 Pro. The cost is mass on the toolhead, which is exactly what CoreXY designs work to minimise.",
+    "source_urls": ["https://bambulab.com/en/p1", "https://www.creality.com/support/creality-ender-3-v3-se", "https://www.elegoo.com/products/elegoo-neptune-4-pro-fdm-3d-printer"]
+  },
+  {
+    "slug": "input-shaping",
+    "name": "Input shaping / resonance compensation",
+    "kind": "printer_feature",
+    "summary": "Input shaping measures the frame's resonant frequencies and pre-compensates the motion commands so those frequencies are not excited. Creality describes it on the Ender-3 V3 KE as 'Input shaping: Mitigates the printer's vibrations for minimal ringing or ghosting.' Anycubic calls the same thing vibration compensation: 'One-click vibration compensation, by detecting the resonance frequency of the X/Y axis, smart adjustments are made to motion control, effectively eliminating resonance vertical lines and bracket lines.' Bambu Lab pairs it with pressure advance on the P1 series — 'Cutting-edge control algorithm with the help of vibration compensation and pressure advance' — and Elegoo ships it as part of Klipper on the Neptune 4. It is the enabling feature behind every high-acceleration claim in this dataset; without it those accelerations produce visible ringing.",
+    "source_urls": ["https://www.creality.com/products/creality-ender-3-v3-ke", "https://store.anycubic.com/products/kobra-2-pro", "https://uk.store.bambulab.com/products/p1s", "https://www.elegoo.com/products/elegoo-neptune-4-fdm-3d-printer"]
+  },
+  {
+    "slug": "automatic-bed-levelling",
+    "name": "Automatic bed levelling",
+    "kind": "printer_feature",
+    "summary": "Automatic bed levelling probes the build surface and compensates for tilt and warp in software so the first layer lands at a consistent height. Implementations differ a lot: Bambu Lab's X1 uses two independent systems — 'Bambu Lab X1 utilizes two sets of independent sensors and an algorithm to measure the height of the nozzle relative to the bed. The lidar and analog force sensors crosscheck for an extra layer of redundancy in bed leveling.' Elegoo's Neptune 4 uses '121 (11x11) points auto bed leveling' plus hand-twist knobs for auxiliary levelling, and Anycubic's LeviQ 2.0 on the Kobra 2 Neo and 2 Pro probes 25 points. Resin printers do not have this at all: both the Elegoo Mars 4 Ultra and the Anycubic Photon Mono 2 use 4-point manual levelling, done once.",
+    "source_urls": ["https://bambulab.com/en/x1", "https://www.elegoo.com/products/elegoo-neptune-4-fdm-3d-printer", "https://store.anycubic.com/products/kobra-2-neo", "https://store.anycubic.com/products/photon-mono-2-3d-printer", "https://www.elegoo.com/products/elegoo-mars-4-ultra-msla-resin-3d-printer-with-9k-mono-lcd"]
+  },
+  {
+    "slug": "heated-chamber",
+    "name": "Heated chamber",
+    "kind": "printer_feature",
+    "summary": "An enclosure traps waste heat; a heated chamber actively regulates it. Bambu Lab draws that line itself in the X1E comparison table, which records 'Active Chamber Heating: Yes / Maximum Chamber Control Temperature: 60℃' for the X1E against 'Active Chamber Heating: No' for the X1-Carbon. The stated purpose is material-specific: 'Accurately controlled chamber temperature (up to 60°C or 140°F) improves print quality, especially for filaments prone to warping such as ABS and PC.' The H2D raises the ceiling to 65 °C and pairs it with a 350 °C nozzle and a G3 pre-filter, H12 HEPA and coconut-shell activated carbon stack — the filtration exists because the same enclosure that holds heat also holds fumes.",
+    "source_urls": ["https://bambulab.com/en/x1e", "https://bambulab.com/en/h2d/tech-specs"]
+  },
+  {
+    "slug": "multi-material-systems",
+    "name": "Multi-material / multi-colour systems",
+    "kind": "printer_feature",
+    "summary": "These are external filament changers that feed several spools into a single hotend, purging between swaps. Bambu Lab's AMS holds four spools and can be chained — 'X1E can parallel connect 4 Bambu AMS systems to print with up to 16 spools of filaments' — and identifies spools by RFID. The compatibility list is the important part and it is narrower than the printer's own: Bambu lists 'TPE, generic TPU, PVA (damp), BVOH (damp), Bambu PET-CF/TPU 95A, and other filament that contains carbon fiber or glass fiber' as not supported by AMS or AMS 2 Pro, so an abrasive or very flexible filament that the printer can handle still has to be loaded directly. The AMS 2 Pro adds active drying up to 65 °C with humidity monitoring; the AMS HT adds a bypass outlet specifically so carbon- and glass-filled filaments can reach the toolhead without going through the feed path. Creality's equivalent on the K2 is the CFS.",
+    "source_urls": ["https://bambulab.com/en/compare/ams", "https://bambulab.com/en/x1e", "https://www.creality.com/support/k2-series-3d-printer"]
+  },
+  {
+    "slug": "hardened-nozzle",
+    "name": "Hardened nozzles",
+    "kind": "printer_feature",
+    "summary": "Brass nozzles conduct heat well but are soft, and filled filaments grind them out. Bambu Lab specifies a 'Hardened Steel Nozzle, 50 HRC' on the X1-Carbon and describes carbon fibre filament as 'Super rigid but abrasive'; the H2D uses hardened steel for both the nozzle and the extruder gears. Creality's parameter tables track the same split exactly: 'Nozzle Material: brass' on the Ender-3 V3 SE, whose supported list is only PLA, TPU95A and PETG, versus 'Nozzle Material: hardened steel' on the Ender-3 V3, K1, K1C and K2, all of which add PLA-CF, PETG-CF or PA-CF. A hardened nozzle is therefore the marker for whether a machine is rated for filled filaments at all, not a performance upgrade.",
+    "source_urls": ["https://bambulab.com/en/x1", "https://bambulab.com/en/h2d/tech-specs", "https://www.creality.com/support/creality-ender-3-v3-se", "https://www.creality.com/support/creality-ender-3-v3", "https://www.creality.com/support/k1c-carbon-3d-printer"]
+  },
+  {
+    "slug": "pla",
+    "name": "PLA (polylactic acid)",
+    "kind": "material",
+    "summary": "PLA is the default filament and the only one every FDM machine in this dataset supports, including the 260 °C brass-nozzle Ender-3 V3 SE and the 80 °C-bed A1 mini. Bambu Lab frames it as the easy end of the range — 'Breaking free from low temperature and easy print PLA and PETG, the X1 unlocks more demanding material by utilizing advanced parts and sophisticated thermal control' — and lists PLA as 'Ideal' on the open-frame A1 and A1 mini, which have no enclosure to hold heat. It needs no enclosure, tolerates a low bed temperature, and does not warp appreciably, which is why an open bedslinger with a 100 °C bed is a complete PLA printer. Its weaknesses are heat resistance and toughness, not printability.",
+    "source_urls": ["https://bambulab.com/en/x1", "https://bambulab.com/en/a1/tech-specs", "https://bambulab.com/en/a1-mini/tech-specs", "https://www.creality.com/support/creality-ender-3-v3-se"]
+  },
+  {
+    "slug": "petg",
+    "name": "PETG",
+    "kind": "material",
+    "summary": "PETG sits one step up from PLA in toughness and heat resistance while remaining an open-frame material: Bambu Lab lists 'PLA, PETG, TPU, PVA: Ideal' on both the A1 and the A1 mini, and Creality includes PETG in the supported list of the 260 °C Ender-3 V3 SE alongside PLA and TPU95A. Bambu groups it with PLA as the low-temperature, easy-print end of the spectrum on the X1 page. Because it prints hotter than PLA and stays soft longer, it is the material where part-cooling and retraction tuning start to matter, and Bambu's AMS supports it dried but flags damp PVA and BVOH — the same moisture sensitivity applies in kind to PETG.",
+    "source_urls": ["https://bambulab.com/en/a1/tech-specs", "https://bambulab.com/en/x1", "https://www.creality.com/support/creality-ender-3-v3-se", "https://bambulab.com/en/compare/ams"]
+  },
+  {
+    "slug": "abs",
+    "name": "ABS",
+    "kind": "material",
+    "summary": "ABS is the first material where the machine's architecture, not the nozzle temperature, is the limit. Bambu Lab rates ABS 'Not Recommended' on the open-frame A1 and A1 mini but 'Ideal' on the enclosed P1S — the same 300 °C hotend and 100 °C bed, differing only by the enclosure. The mechanism is warping: Bambu states that controlled chamber temperature 'improves print quality, especially for filaments prone to warping such as ABS and PC.' There is also a ventilation dimension; Bambu fits the P1S with an activated carbon filter 'to provide a solution for printing filaments such as ABS that are prone to emitting odors and harmful gases during the printing process', and the H2D adds a G3 pre-filter and H12 HEPA stage on top of that. ABS is not abrasive, so a brass nozzle is fine — it is heat and enclosure that gate it.",
+    "source_urls": ["https://bambulab.com/en/a1/tech-specs", "https://uk.store.bambulab.com/products/p1s", "https://bambulab.com/en/x1e", "https://bambulab.com/en/p1", "https://bambulab.com/en/h2d/tech-specs"]
+  },
+  {
+    "slug": "asa",
+    "name": "ASA",
+    "kind": "material",
+    "summary": "ASA behaves like ABS thermally and is gated the same way: Bambu Lab lists 'ABS, ASA' together as 'Ideal' on the enclosed P1S but only 'Capable' on the open-frame P1P, and 'Not Recommended' on the A1 and A1 mini. Creality's split is identical — ASA appears in the supported list of the enclosed K1C and of the 300 °C Ender-3 V3 KE, but not on the 260 °C Ender-3 V3 SE. The reason to choose it over ABS is outdoor durability rather than printability; nothing in the manufacturer specs distinguishes its handling requirements from ABS's, and no maker in this dataset states a print or bed temperature range for it separately.",
+    "source_urls": ["https://uk.store.bambulab.com/products/p1s", "https://bambulab.com/en/a1/tech-specs", "https://www.creality.com/support/k1c-carbon-3d-printer", "https://www.creality.com/support/creality-ender-3-v3-ke"]
+  },
+  {
+    "slug": "tpu",
+    "name": "TPU (flexible)",
+    "kind": "material",
+    "summary": "TPU is limited by the filament path, not by temperature — it is soft enough to buckle if pushed down a long tube. Bambu Lab makes the connection explicit for the P1 series: 'With the design that the motor is directly connected to the extruder, P1 series has better control on the extrusion and retraction of flexible filaments.' Every FDM machine here that lists TPU also has a direct-drive extruder. Multi-material feeding is the sharp edge: Bambu's AMS compatibility list names 'TPE, generic TPU' as not supported, admitting only Bambu's own 'TPU for AMS', and the AMS HT provides a bypass outlet precisely so the harder cases can reach the toolhead outside the feed path. Creality qualifies the grade it supports — TPU95A on the Ender-3 V3 SE, KE, K1 and K1C, TPU90A (softer) on the Ender-3 V3.",
+    "source_urls": ["https://bambulab.com/en/p1", "https://bambulab.com/en/compare/ams", "https://www.creality.com/support/creality-ender-3-v3-se", "https://www.creality.com/support/creality-ender-3-v3"]
+  },
+  {
+    "slug": "pa-nylon",
+    "name": "PA / nylon",
+    "kind": "material",
+    "summary": "Nylon needs both a high nozzle temperature and a controlled chamber, which puts it at the top of every manufacturer's capability ladder. Bambu Lab rates 'PA, PC: Ideal' on the X1-Carbon's spec table but 'Not Recommended' on the A1 and A1 mini, and groups PC with ABS as a filament 'prone to warping' that a heated chamber helps. The H2D lists PA among its supported types with a 350 °C nozzle, a 120 °C bed and a 65 °C actively heated chamber. Elegoo's Neptune 4 claims 'high-temperature filaments such as nylon' on the strength of its 300 °C hotend alone, with no enclosure — a reminder that a nozzle rating and a nylon-capable machine are not the same claim. Nylon is also strongly hygroscopic, which is what the drying function in Bambu's AMS 2 Pro (up to 65 °C) addresses.",
+    "source_urls": ["https://bambulab.com/en/x1", "https://bambulab.com/en/a1/tech-specs", "https://bambulab.com/en/h2d/tech-specs", "https://www.elegoo.com/products/elegoo-neptune-4-fdm-3d-printer", "https://bambulab.com/en/compare/ams"]
+  },
+  {
+    "slug": "carbon-fibre-filled",
+    "name": "Carbon-fibre and glass-fibre filled filaments",
+    "kind": "material",
+    "summary": "Chopped fibre is added to a base polymer (PLA-CF, PETG-CF, PA-CF, PPS-CF) for stiffness, and the trade is abrasion. Bambu Lab's X1 page calls carbon fibre filament 'Super rigid but abrasive' and pairs it with a 50 HRC hardened steel nozzle; the X1-Carbon rates 'Carbon / Glass Fiber Reinforced Polymer: Ideal' where the plain X1 rates it 'Not Recommended', and the A1 and A1 mini rate it 'Not Recommended' outright. Bambu also warns that the P1S 'is not recommended to directly print fiber-reinforced filaments such as glass fiber or carbon fiber, before an extruder and hotend upgrade is done' — the enclosure is not the issue, the wear path is. Creality's hardened-steel machines (Ender-3 V3, K1, K1C, K2) are exactly the ones listing PLA-CF, PETG-CF or PA-CF. Feed systems are a separate gate: Bambu excludes 'other filament that contains carbon fiber or glass fiber' from the standard AMS.",
+    "source_urls": ["https://bambulab.com/en/x1", "https://bambulab.com/en/p1", "https://bambulab.com/en/a1/tech-specs", "https://www.creality.com/support/creality-ender-3-v3", "https://bambulab.com/en/compare/ams"]
+  }
+]

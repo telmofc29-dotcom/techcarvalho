@@ -1,0 +1,345 @@
+[
+  {
+    "from_slug": "ef70-200mm-f2-8l-is-iii-usm",
+    "to_slug": "ef70-200mm-f2-8l-is-ii-usm",
+    "type": "successor_of",
+    "basis": "Canon Camera Museum: “The EF70–200 f/2.8L IS III USM telephoto zoom lens is a renewed version of the approximately eight-year-old EF70–200 f/2.8L IS II USM (released in March 2010).” Canon names the predecessor explicitly.",
+    "source_url": "https://global.canon/en/c-museum/product/ef469.html"
+  },
+  {
+    "from_slug": "ef24-70mm-f2-8l-ii-usm",
+    "to_slug": "ef24-70mm-f2-8l-usm",
+    "type": "successor_of",
+    "basis": "Canon Camera Museum: “The Canon EF24-70mm f/2.8L II USM, developed as successor to the popular EF24-70mm f/2.8L USM large-diameter, standard-zoom lens (released in September 2002)…” Canon uses the word “successor” and names the predecessor.",
+    "source_url": "https://global.canon/en/c-museum/product/ef424.html"
+  },
+  {
+    "from_slug": "ef16-35mm-f2-8l-iii-usm",
+    "to_slug": "ef16-35mm-f2-8l-ii-usm",
+    "type": "successor_of",
+    "basis": "Canon Camera Museum: “The EF16-35mm f/2.8L III USM ultra-wide-angle zoom lens is a renewed version of the ten-year-old EF16-35mm f/2.8L II USM (released in March 2007).” Canon names the predecessor explicitly.",
+    "source_url": "https://global.canon/en/c-museum/product/ef458.html"
+  },
+  {
+    "from_slug": "ef24-105mm-f4l-is-ii-usm",
+    "to_slug": "ef24-105mm-f4l-is-usm",
+    "type": "successor_of",
+    "basis": "Canon Camera Museum: “The EF24-105mm f/4L IS II USM standard-zoom lens is a renewed version of the eleven-year-old EF24-105mm f/4L IS USM (released in October 2005) and will be bundled as a kit lens with the EOS 5D Mark IV.” Canon names the predecessor explicitly.",
+    "source_url": "https://global.canon/en/c-museum/product/ef457.html"
+  },
+  {
+    "from_slug": "ef70-300mm-f4-5-6-is-ii-usm",
+    "to_slug": "ef70-300mm-f4-5-6-is-usm",
+    "type": "successor_of",
+    "basis": "Canon Camera Museum: the EF70-300mm f/4-5.6 IS II USM page says it “makes possible even higher image quality than its predecessor” and compares its stabilisation with “the 3.5 shutter-speed stops offered by its predecessor”. Canon does not name the predecessor in that sentence; identified here as the EF70-300mm f/4-5.6 IS USM because Canon’s own product name marks this lens as the II generation of an otherwise identically named lens, and the museum lists no other EF70-300mm f/4-5.6 IS.",
+    "source_url": "https://global.canon/en/c-museum/product/ef459.html"
+  },
+  {
+    "from_slug": "ef100-400mm-f4-5-5-6l-is-ii-usm",
+    "to_slug": "ef100-400mm-f4-5-5-6l-is-usm",
+    "type": "successor_of",
+    "basis": "Canon Camera Museum: the EF100-400mm f/4.5-5.6L IS II USM page contrasts its “approximately 4 shutter-speed stops” with “the 1.5 shutter-speed stops offered by its predecessor” and refers to “the previous model”. Canon does not name the predecessor in that sentence; identified here as the EF100-400mm f/4.5-5.6L IS USM because Canon’s own product name marks this lens as the II generation of an otherwise identically named lens.",
+    "source_url": "https://global.canon/en/c-museum/product/ef437.html"
+  },
+  {
+    "from_slug": "ef-s18-135mm-f3-5-5-6-is-usm",
+    "to_slug": "ef-s18-135mm-f3-5-5-6-is-stm",
+    "type": "successor_of",
+    "basis": "Canon Camera Museum: the EF-S18-135mm f/3.5-5.6 IS USM page cites “an increase in the driving speed of the focusing lens compared with the earlier model” and says it is “Adopting the same acclaimed optical system as its predecessor”, which “incorporates a UD (ultra-low dispersion) lens and an aspherical lens”. Canon does not name it; identified here as the EF-S18-135mm f/3.5-5.6 IS STM, the only other EF-S18-135mm f/3.5-5.6 IS in the museum and the one whose optical construction Canon says was carried over.",
+    "source_url": "https://global.canon/en/c-museum/product/ef454.html"
+  },
+  {
+    "from_slug": "rf24-105mm-f2-8-l-is-usm-z",
+    "to_slug": "rf24-70mm-f2-8-l-is-usm",
+    "type": "alternative_to",
+    "basis": "Canon Camera Museum: “the lens achieves high image quality on par with the renowned RF24-70 mm F2.8 L IS USM (released in September 2019).” Canon compares the two directly but never calls the Z a successor, and both remain in the museum’s RF lineup.",
+    "source_url": "https://global.canon/en/c-museum/product/rf531.html"
+  },
+  {
+    "from_slug": "rf70-200mm-f2-8-l-is-usm-z",
+    "to_slug": "rf70-200mm-f2-8-l-is-usm",
+    "type": "alternative_to",
+    "basis": "Canon Camera Museum: the Z’s optical design “helps to reduce aberrations to ensure high quality equal to or greater than the RF70-200mm F2.8 L IS USM (released in November 2019).” Canon compares the two directly but uses no succession language.",
+    "source_url": "https://global.canon/en/c-museum/product/rf544.html"
+  },
+  {
+    "from_slug": "rf100-500mm-f4-5-7-1-l-is-usm",
+    "to_slug": "ef100-400mm-f4-5-5-6l-is-ii-usm",
+    "type": "modern_equivalent",
+    "basis": "Canon Camera Museum: “the new lens realizes a focal length range 100mm greater than the EF100-400mm F4.5-5.6L IS II USM (released in December 2014) to a range of 100mm at the wide end to 500mm at the telephoto end.” Canon itself uses the EF lens as the reference point for the RF one.",
+    "source_url": "https://global.canon/en/c-museum/product/rf497.html"
+  },
+  {
+    "from_slug": "rf70-200mm-f2-8-l-is-usm-z",
+    "to_slug": "extender-rf2x",
+    "type": "supports_extender",
+    "basis": "Canon Camera Museum: “the separately sold extender works across the entire zoom range and extends the focal length up to 400 mm for super telephoto shooting”, footnoted “When equipped with the Extender RF2x (released in July 2020).”",
+    "source_url": "https://global.canon/en/c-museum/product/rf544.html"
+  },
+  {
+    "from_slug": "rf200-800mm-f6-3-9-is-usm",
+    "to_slug": "extender-rf2x",
+    "type": "supports_extender",
+    "basis": "Canon Camera Museum: “The separately available extender works across the entire zoom range and extends the telephoto range to a focal length of 1600 mm”, footnoted “When combined with the extender RF2x (released in July 2020).”",
+    "source_url": "https://global.canon/en/c-museum/product/rf530.html"
+  },
+  {
+    "from_slug": "rf20mm-f1-4-l-vcm",
+    "to_slug": "rf24mm-f1-4-l-vcm",
+    "type": "same_family",
+    "basis": "Canon’s RF L VCM prime line: all four carry “L VCM” in Canon’s own product name, and the museum pages describe a shared voice-coil-motor focus design (the RF24mm/RF50mm pages describe “electronic floating focus control, which combines a VCM (voice coil motor)… and a Nano USM (ultrasonic motor)”; the RF20mm page describes “a rear focusing system that accommodates a VCM (voice coil motor)”).",
+    "source_url": "https://global.canon/en/c-museum/product/rf546.html"
+  },
+  {
+    "from_slug": "rf20mm-f1-4-l-vcm",
+    "to_slug": "rf35mm-f1-4-l-vcm",
+    "type": "same_family",
+    "basis": "Canon’s RF L VCM prime line: all four carry “L VCM” in Canon’s own product name, and the museum pages describe a shared voice-coil-motor focus design (the RF24mm/RF50mm pages describe “electronic floating focus control, which combines a VCM (voice coil motor)… and a Nano USM (ultrasonic motor)”; the RF20mm page describes “a rear focusing system that accommodates a VCM (voice coil motor)”).",
+    "source_url": "https://global.canon/en/c-museum/product/rf546.html"
+  },
+  {
+    "from_slug": "rf20mm-f1-4-l-vcm",
+    "to_slug": "rf50mm-f1-4-l-vcm",
+    "type": "same_family",
+    "basis": "Canon’s RF L VCM prime line: all four carry “L VCM” in Canon’s own product name, and the museum pages describe a shared voice-coil-motor focus design (the RF24mm/RF50mm pages describe “electronic floating focus control, which combines a VCM (voice coil motor)… and a Nano USM (ultrasonic motor)”; the RF20mm page describes “a rear focusing system that accommodates a VCM (voice coil motor)”).",
+    "source_url": "https://global.canon/en/c-museum/product/rf546.html"
+  },
+  {
+    "from_slug": "rf24mm-f1-4-l-vcm",
+    "to_slug": "rf35mm-f1-4-l-vcm",
+    "type": "same_family",
+    "basis": "Canon’s RF L VCM prime line: all four carry “L VCM” in Canon’s own product name, and the museum pages describe a shared voice-coil-motor focus design (the RF24mm/RF50mm pages describe “electronic floating focus control, which combines a VCM (voice coil motor)… and a Nano USM (ultrasonic motor)”; the RF20mm page describes “a rear focusing system that accommodates a VCM (voice coil motor)”).",
+    "source_url": "https://global.canon/en/c-museum/product/rf546.html"
+  },
+  {
+    "from_slug": "rf24mm-f1-4-l-vcm",
+    "to_slug": "rf50mm-f1-4-l-vcm",
+    "type": "same_family",
+    "basis": "Canon’s RF L VCM prime line: all four carry “L VCM” in Canon’s own product name, and the museum pages describe a shared voice-coil-motor focus design (the RF24mm/RF50mm pages describe “electronic floating focus control, which combines a VCM (voice coil motor)… and a Nano USM (ultrasonic motor)”; the RF20mm page describes “a rear focusing system that accommodates a VCM (voice coil motor)”).",
+    "source_url": "https://global.canon/en/c-museum/product/rf546.html"
+  },
+  {
+    "from_slug": "rf35mm-f1-4-l-vcm",
+    "to_slug": "rf50mm-f1-4-l-vcm",
+    "type": "same_family",
+    "basis": "Canon’s RF L VCM prime line: all four carry “L VCM” in Canon’s own product name, and the museum pages describe a shared voice-coil-motor focus design (the RF24mm/RF50mm pages describe “electronic floating focus control, which combines a VCM (voice coil motor)… and a Nano USM (ultrasonic motor)”; the RF20mm page describes “a rear focusing system that accommodates a VCM (voice coil motor)”).",
+    "source_url": "https://global.canon/en/c-museum/product/rf546.html"
+  },
+  {
+    "from_slug": "extender-rf1-4x",
+    "to_slug": "extender-rf2x",
+    "type": "same_family",
+    "basis": "Both are filed under the Canon Camera Museum category “Extender Lens” in the RF Lenses series, both Marketed July 2020, and Canon’s pages give them the same dust- and moisture-resistant construction wording.",
+    "source_url": "https://global.canon/en/c-museum/product/rf494.html"
+  },
+  {
+    "from_slug": "extender-ef1-4x-iii",
+    "to_slug": "extender-ef2x-iii",
+    "type": "same_family",
+    "basis": "Both are filed under the Canon Camera Museum category “Extender Lens” in the EF Lenses series and both are Marketed December 2010.",
+    "source_url": "https://global.canon/en/c-museum/product/ef408.html"
+  },
+  {
+    "from_slug": "ef50mm-f1-8-ii",
+    "to_slug": "rf-mount",
+    "type": "requires_adapter",
+    "basis": "Canon EOS R System launch release: “through the use of a dedicated adapter, the rich lineup of existing EF and EF-S lenses can be used, allowing users to make use of lenses already in their possession”, and the release lists four adapters (Mount Adapter EF-EOS R, Control Ring Mount Adapter EF-EOS R, and two Drop-In Filter Mount Adapters) with the note “These adapters enable the use of EF and EF-S lenses.”",
+    "source_url": "https://global.canon/en/news/2018/20180905.html"
+  },
+  {
+    "from_slug": "ef50mm-f1-8-stm",
+    "to_slug": "rf-mount",
+    "type": "requires_adapter",
+    "basis": "Canon EOS R System launch release: “through the use of a dedicated adapter, the rich lineup of existing EF and EF-S lenses can be used, allowing users to make use of lenses already in their possession”, and the release lists four adapters (Mount Adapter EF-EOS R, Control Ring Mount Adapter EF-EOS R, and two Drop-In Filter Mount Adapters) with the note “These adapters enable the use of EF and EF-S lenses.”",
+    "source_url": "https://global.canon/en/news/2018/20180905.html"
+  },
+  {
+    "from_slug": "ef24-70mm-f2-8l-ii-usm",
+    "to_slug": "rf-mount",
+    "type": "requires_adapter",
+    "basis": "Canon EOS R System launch release: “through the use of a dedicated adapter, the rich lineup of existing EF and EF-S lenses can be used, allowing users to make use of lenses already in their possession”, and the release lists four adapters (Mount Adapter EF-EOS R, Control Ring Mount Adapter EF-EOS R, and two Drop-In Filter Mount Adapters) with the note “These adapters enable the use of EF and EF-S lenses.”",
+    "source_url": "https://global.canon/en/news/2018/20180905.html"
+  },
+  {
+    "from_slug": "ef70-200mm-f2-8l-is-ii-usm",
+    "to_slug": "rf-mount",
+    "type": "requires_adapter",
+    "basis": "Canon EOS R System launch release: “through the use of a dedicated adapter, the rich lineup of existing EF and EF-S lenses can be used, allowing users to make use of lenses already in their possession”, and the release lists four adapters (Mount Adapter EF-EOS R, Control Ring Mount Adapter EF-EOS R, and two Drop-In Filter Mount Adapters) with the note “These adapters enable the use of EF and EF-S lenses.”",
+    "source_url": "https://global.canon/en/news/2018/20180905.html"
+  },
+  {
+    "from_slug": "ef70-200mm-f2-8l-is-iii-usm",
+    "to_slug": "rf-mount",
+    "type": "requires_adapter",
+    "basis": "Canon EOS R System launch release: “through the use of a dedicated adapter, the rich lineup of existing EF and EF-S lenses can be used, allowing users to make use of lenses already in their possession”, and the release lists four adapters (Mount Adapter EF-EOS R, Control Ring Mount Adapter EF-EOS R, and two Drop-In Filter Mount Adapters) with the note “These adapters enable the use of EF and EF-S lenses.”",
+    "source_url": "https://global.canon/en/news/2018/20180905.html"
+  },
+  {
+    "from_slug": "ef100-400mm-f4-5-5-6l-is-ii-usm",
+    "to_slug": "rf-mount",
+    "type": "requires_adapter",
+    "basis": "Canon EOS R System launch release: “through the use of a dedicated adapter, the rich lineup of existing EF and EF-S lenses can be used, allowing users to make use of lenses already in their possession”, and the release lists four adapters (Mount Adapter EF-EOS R, Control Ring Mount Adapter EF-EOS R, and two Drop-In Filter Mount Adapters) with the note “These adapters enable the use of EF and EF-S lenses.”",
+    "source_url": "https://global.canon/en/news/2018/20180905.html"
+  },
+  {
+    "from_slug": "ef16-35mm-f2-8l-iii-usm",
+    "to_slug": "rf-mount",
+    "type": "requires_adapter",
+    "basis": "Canon EOS R System launch release: “through the use of a dedicated adapter, the rich lineup of existing EF and EF-S lenses can be used, allowing users to make use of lenses already in their possession”, and the release lists four adapters (Mount Adapter EF-EOS R, Control Ring Mount Adapter EF-EOS R, and two Drop-In Filter Mount Adapters) with the note “These adapters enable the use of EF and EF-S lenses.”",
+    "source_url": "https://global.canon/en/news/2018/20180905.html"
+  },
+  {
+    "from_slug": "ef24-105mm-f4l-is-ii-usm",
+    "to_slug": "rf-mount",
+    "type": "requires_adapter",
+    "basis": "Canon EOS R System launch release: “through the use of a dedicated adapter, the rich lineup of existing EF and EF-S lenses can be used, allowing users to make use of lenses already in their possession”, and the release lists four adapters (Mount Adapter EF-EOS R, Control Ring Mount Adapter EF-EOS R, and two Drop-In Filter Mount Adapters) with the note “These adapters enable the use of EF and EF-S lenses.”",
+    "source_url": "https://global.canon/en/news/2018/20180905.html"
+  },
+  {
+    "from_slug": "ef100mm-f2-8l-macro-is-usm",
+    "to_slug": "rf-mount",
+    "type": "requires_adapter",
+    "basis": "Canon EOS R System launch release: “through the use of a dedicated adapter, the rich lineup of existing EF and EF-S lenses can be used, allowing users to make use of lenses already in their possession”, and the release lists four adapters (Mount Adapter EF-EOS R, Control Ring Mount Adapter EF-EOS R, and two Drop-In Filter Mount Adapters) with the note “These adapters enable the use of EF and EF-S lenses.”",
+    "source_url": "https://global.canon/en/news/2018/20180905.html"
+  },
+  {
+    "from_slug": "ef70-300mm-f4-5-6-is-ii-usm",
+    "to_slug": "rf-mount",
+    "type": "requires_adapter",
+    "basis": "Canon EOS R System launch release: “through the use of a dedicated adapter, the rich lineup of existing EF and EF-S lenses can be used, allowing users to make use of lenses already in their possession”, and the release lists four adapters (Mount Adapter EF-EOS R, Control Ring Mount Adapter EF-EOS R, and two Drop-In Filter Mount Adapters) with the note “These adapters enable the use of EF and EF-S lenses.”",
+    "source_url": "https://global.canon/en/news/2018/20180905.html"
+  },
+  {
+    "from_slug": "ef85mm-f1-8-usm",
+    "to_slug": "rf-mount",
+    "type": "requires_adapter",
+    "basis": "Canon EOS R System launch release: “through the use of a dedicated adapter, the rich lineup of existing EF and EF-S lenses can be used, allowing users to make use of lenses already in their possession”, and the release lists four adapters (Mount Adapter EF-EOS R, Control Ring Mount Adapter EF-EOS R, and two Drop-In Filter Mount Adapters) with the note “These adapters enable the use of EF and EF-S lenses.”",
+    "source_url": "https://global.canon/en/news/2018/20180905.html"
+  },
+  {
+    "from_slug": "ef40mm-f2-8-stm",
+    "to_slug": "rf-mount",
+    "type": "requires_adapter",
+    "basis": "Canon EOS R System launch release: “through the use of a dedicated adapter, the rich lineup of existing EF and EF-S lenses can be used, allowing users to make use of lenses already in their possession”, and the release lists four adapters (Mount Adapter EF-EOS R, Control Ring Mount Adapter EF-EOS R, and two Drop-In Filter Mount Adapters) with the note “These adapters enable the use of EF and EF-S lenses.”",
+    "source_url": "https://global.canon/en/news/2018/20180905.html"
+  },
+  {
+    "from_slug": "ts-e24mm-f3-5l-ii",
+    "to_slug": "rf-mount",
+    "type": "requires_adapter",
+    "basis": "Canon EOS R System launch release: “through the use of a dedicated adapter, the rich lineup of existing EF and EF-S lenses can be used, allowing users to make use of lenses already in their possession”, and the release lists four adapters (Mount Adapter EF-EOS R, Control Ring Mount Adapter EF-EOS R, and two Drop-In Filter Mount Adapters) with the note “These adapters enable the use of EF and EF-S lenses.”",
+    "source_url": "https://global.canon/en/news/2018/20180905.html"
+  },
+  {
+    "from_slug": "ts-e17mm-f4l",
+    "to_slug": "rf-mount",
+    "type": "requires_adapter",
+    "basis": "Canon EOS R System launch release: “through the use of a dedicated adapter, the rich lineup of existing EF and EF-S lenses can be used, allowing users to make use of lenses already in their possession”, and the release lists four adapters (Mount Adapter EF-EOS R, Control Ring Mount Adapter EF-EOS R, and two Drop-In Filter Mount Adapters) with the note “These adapters enable the use of EF and EF-S lenses.”",
+    "source_url": "https://global.canon/en/news/2018/20180905.html"
+  },
+  {
+    "from_slug": "ts-e90mm-f2-8l-macro",
+    "to_slug": "rf-mount",
+    "type": "requires_adapter",
+    "basis": "Canon EOS R System launch release: “through the use of a dedicated adapter, the rich lineup of existing EF and EF-S lenses can be used, allowing users to make use of lenses already in their possession”, and the release lists four adapters (Mount Adapter EF-EOS R, Control Ring Mount Adapter EF-EOS R, and two Drop-In Filter Mount Adapters) with the note “These adapters enable the use of EF and EF-S lenses.”",
+    "source_url": "https://global.canon/en/news/2018/20180905.html"
+  },
+  {
+    "from_slug": "mp-e65mm-f2-8-1-5x-macro-photo",
+    "to_slug": "rf-mount",
+    "type": "requires_adapter",
+    "basis": "Canon EOS R System launch release: “through the use of a dedicated adapter, the rich lineup of existing EF and EF-S lenses can be used, allowing users to make use of lenses already in their possession”, and the release lists four adapters (Mount Adapter EF-EOS R, Control Ring Mount Adapter EF-EOS R, and two Drop-In Filter Mount Adapters) with the note “These adapters enable the use of EF and EF-S lenses.”",
+    "source_url": "https://global.canon/en/news/2018/20180905.html"
+  },
+  {
+    "from_slug": "extender-ef1-4x-iii",
+    "to_slug": "rf-mount",
+    "type": "requires_adapter",
+    "basis": "Canon EOS R System launch release: “through the use of a dedicated adapter, the rich lineup of existing EF and EF-S lenses can be used, allowing users to make use of lenses already in their possession”, and the release lists four adapters (Mount Adapter EF-EOS R, Control Ring Mount Adapter EF-EOS R, and two Drop-In Filter Mount Adapters) with the note “These adapters enable the use of EF and EF-S lenses.”",
+    "source_url": "https://global.canon/en/news/2018/20180905.html"
+  },
+  {
+    "from_slug": "extender-ef2x-iii",
+    "to_slug": "rf-mount",
+    "type": "requires_adapter",
+    "basis": "Canon EOS R System launch release: “through the use of a dedicated adapter, the rich lineup of existing EF and EF-S lenses can be used, allowing users to make use of lenses already in their possession”, and the release lists four adapters (Mount Adapter EF-EOS R, Control Ring Mount Adapter EF-EOS R, and two Drop-In Filter Mount Adapters) with the note “These adapters enable the use of EF and EF-S lenses.”",
+    "source_url": "https://global.canon/en/news/2018/20180905.html"
+  },
+  {
+    "from_slug": "ef-s10-18mm-f4-5-5-6-is-stm",
+    "to_slug": "rf-mount",
+    "type": "requires_adapter",
+    "basis": "Canon EOS R System launch release: “through the use of a dedicated adapter, the rich lineup of existing EF and EF-S lenses can be used, allowing users to make use of lenses already in their possession”, and the release lists four adapters (Mount Adapter EF-EOS R, Control Ring Mount Adapter EF-EOS R, and two Drop-In Filter Mount Adapters) with the note “These adapters enable the use of EF and EF-S lenses.”",
+    "source_url": "https://global.canon/en/news/2018/20180905.html"
+  },
+  {
+    "from_slug": "ef-s18-135mm-f3-5-5-6-is-usm",
+    "to_slug": "rf-mount",
+    "type": "requires_adapter",
+    "basis": "Canon EOS R System launch release: “through the use of a dedicated adapter, the rich lineup of existing EF and EF-S lenses can be used, allowing users to make use of lenses already in their possession”, and the release lists four adapters (Mount Adapter EF-EOS R, Control Ring Mount Adapter EF-EOS R, and two Drop-In Filter Mount Adapters) with the note “These adapters enable the use of EF and EF-S lenses.”",
+    "source_url": "https://global.canon/en/news/2018/20180905.html"
+  },
+  {
+    "from_slug": "ef-s17-55mm-f2-8-is-usm",
+    "to_slug": "rf-mount",
+    "type": "requires_adapter",
+    "basis": "Canon EOS R System launch release: “through the use of a dedicated adapter, the rich lineup of existing EF and EF-S lenses can be used, allowing users to make use of lenses already in their possession”, and the release lists four adapters (Mount Adapter EF-EOS R, Control Ring Mount Adapter EF-EOS R, and two Drop-In Filter Mount Adapters) with the note “These adapters enable the use of EF and EF-S lenses.”",
+    "source_url": "https://global.canon/en/news/2018/20180905.html"
+  },
+  {
+    "from_slug": "ef-s55-250mm-f4-5-6-is-stm",
+    "to_slug": "rf-mount",
+    "type": "requires_adapter",
+    "basis": "Canon EOS R System launch release: “through the use of a dedicated adapter, the rich lineup of existing EF and EF-S lenses can be used, allowing users to make use of lenses already in their possession”, and the release lists four adapters (Mount Adapter EF-EOS R, Control Ring Mount Adapter EF-EOS R, and two Drop-In Filter Mount Adapters) with the note “These adapters enable the use of EF and EF-S lenses.”",
+    "source_url": "https://global.canon/en/news/2018/20180905.html"
+  },
+  {
+    "from_slug": "ef-s24mm-f2-8-stm",
+    "to_slug": "rf-mount",
+    "type": "requires_adapter",
+    "basis": "Canon EOS R System launch release: “through the use of a dedicated adapter, the rich lineup of existing EF and EF-S lenses can be used, allowing users to make use of lenses already in their possession”, and the release lists four adapters (Mount Adapter EF-EOS R, Control Ring Mount Adapter EF-EOS R, and two Drop-In Filter Mount Adapters) with the note “These adapters enable the use of EF and EF-S lenses.”",
+    "source_url": "https://global.canon/en/news/2018/20180905.html"
+  },
+  {
+    "from_slug": "ef24-70mm-f2-8l-usm",
+    "to_slug": "rf-mount",
+    "type": "requires_adapter",
+    "basis": "Canon EOS R System launch release: “through the use of a dedicated adapter, the rich lineup of existing EF and EF-S lenses can be used, allowing users to make use of lenses already in their possession”, and the release lists four adapters (Mount Adapter EF-EOS R, Control Ring Mount Adapter EF-EOS R, and two Drop-In Filter Mount Adapters) with the note “These adapters enable the use of EF and EF-S lenses.”",
+    "source_url": "https://global.canon/en/news/2018/20180905.html"
+  },
+  {
+    "from_slug": "ef16-35mm-f2-8l-ii-usm",
+    "to_slug": "rf-mount",
+    "type": "requires_adapter",
+    "basis": "Canon EOS R System launch release: “through the use of a dedicated adapter, the rich lineup of existing EF and EF-S lenses can be used, allowing users to make use of lenses already in their possession”, and the release lists four adapters (Mount Adapter EF-EOS R, Control Ring Mount Adapter EF-EOS R, and two Drop-In Filter Mount Adapters) with the note “These adapters enable the use of EF and EF-S lenses.”",
+    "source_url": "https://global.canon/en/news/2018/20180905.html"
+  },
+  {
+    "from_slug": "ef24-105mm-f4l-is-usm",
+    "to_slug": "rf-mount",
+    "type": "requires_adapter",
+    "basis": "Canon EOS R System launch release: “through the use of a dedicated adapter, the rich lineup of existing EF and EF-S lenses can be used, allowing users to make use of lenses already in their possession”, and the release lists four adapters (Mount Adapter EF-EOS R, Control Ring Mount Adapter EF-EOS R, and two Drop-In Filter Mount Adapters) with the note “These adapters enable the use of EF and EF-S lenses.”",
+    "source_url": "https://global.canon/en/news/2018/20180905.html"
+  },
+  {
+    "from_slug": "ef70-300mm-f4-5-6-is-usm",
+    "to_slug": "rf-mount",
+    "type": "requires_adapter",
+    "basis": "Canon EOS R System launch release: “through the use of a dedicated adapter, the rich lineup of existing EF and EF-S lenses can be used, allowing users to make use of lenses already in their possession”, and the release lists four adapters (Mount Adapter EF-EOS R, Control Ring Mount Adapter EF-EOS R, and two Drop-In Filter Mount Adapters) with the note “These adapters enable the use of EF and EF-S lenses.”",
+    "source_url": "https://global.canon/en/news/2018/20180905.html"
+  },
+  {
+    "from_slug": "ef100-400mm-f4-5-5-6l-is-usm",
+    "to_slug": "rf-mount",
+    "type": "requires_adapter",
+    "basis": "Canon EOS R System launch release: “through the use of a dedicated adapter, the rich lineup of existing EF and EF-S lenses can be used, allowing users to make use of lenses already in their possession”, and the release lists four adapters (Mount Adapter EF-EOS R, Control Ring Mount Adapter EF-EOS R, and two Drop-In Filter Mount Adapters) with the note “These adapters enable the use of EF and EF-S lenses.”",
+    "source_url": "https://global.canon/en/news/2018/20180905.html"
+  },
+  {
+    "from_slug": "ef-s18-135mm-f3-5-5-6-is-stm",
+    "to_slug": "rf-mount",
+    "type": "requires_adapter",
+    "basis": "Canon EOS R System launch release: “through the use of a dedicated adapter, the rich lineup of existing EF and EF-S lenses can be used, allowing users to make use of lenses already in their possession”, and the release lists four adapters (Mount Adapter EF-EOS R, Control Ring Mount Adapter EF-EOS R, and two Drop-In Filter Mount Adapters) with the note “These adapters enable the use of EF and EF-S lenses.”",
+    "source_url": "https://global.canon/en/news/2018/20180905.html"
+  }
+]

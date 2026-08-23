@@ -2046,7 +2046,7 @@
     "aperture_min": 22,
     "stabilisation": null,
     "stabilisation_stops_claim": null,
-    "focus_motor": null,
+    "focus_motor": "XD Linear",
     "premium_line": true,
     "premium_line_name": "G Master",
     "macro": false,
@@ -2059,7 +2059,7 @@
     "weight_g": 695,
     "diameter_mm": 87.8,
     "length_mm": 119.9,
-    "weather_sealed": null,
+    "weather_sealed": true,
     "control_ring": null,
     "tripod_collar": false,
     "focus_limiter": null,
@@ -2070,13 +2070,21 @@
     "discontinued": null,
     "status": "current",
     "source_urls": [
-      "https://www.sony.jp/ichigan/products/SEL2470GM2/spec.html"
+      "https://www.sony.jp/ichigan/products/SEL2470GM2/spec.html",
+      "https://www.sony.jp/ichigan/products/SEL2470GM2/feature_1.html"
     ],
     "retrieved_at": "2026-08-23",
-    "manufacturer_claims": [],
+    "manufacturer_claims": [
+      {
+        "claim": "Focus is driven by four XD linear motors (XDリニアモーター); Sony states this gives approximately double the AF speed of the previous model (SEL2470GM).",
+        "source_url": "https://www.sony.jp/ichigan/products/SEL2470GM2/feature_1.html"
+      },
+      {
+        "claim": "防塵防滴に配慮した設計 — \"design with consideration for dust and moisture resistance\"",
+        "source_url": "https://www.sony.jp/ichigan/products/SEL2470GM2/feature_1.html"
+      }
+    ],
     "unsourced_fields": [
-      "focus_motor",
-      "weather_sealed",
       "control_ring",
       "focus_limiter",
       "internal_zoom",
@@ -2413,7 +2421,7 @@
     "aperture_min": 32,
     "stabilisation": "OSS",
     "stabilisation_stops_claim": null,
-    "focus_motor": null,
+    "focus_motor": "SSM",
     "premium_line": true,
     "premium_line_name": "G",
     "macro": false,
@@ -2426,35 +2434,45 @@
     "weight_g": 2115,
     "diameter_mm": 111.5,
     "length_mm": 318,
-    "weather_sealed": null,
+    "weather_sealed": true,
     "control_ring": null,
     "tripod_collar": true,
     "focus_limiter": null,
-    "internal_zoom": null,
+    "internal_zoom": true,
     "internal_focus": null,
     "teleconverter_compatible": true,
     "announced": null,
     "discontinued": null,
     "status": "current",
     "source_urls": [
-      "https://www.sony.jp/ichigan/products/SEL200600G/spec.html"
+      "https://www.sony.jp/ichigan/products/SEL200600G/spec.html",
+      "https://www.sony.jp/ichigan/products/SEL200600G/feature_1.html"
     ],
     "retrieved_at": "2026-08-23",
     "manufacturer_claims": [
       {
         "claim": "Compatible with teleconverters SEL14TC (1.4x) and SEL20TC (2.0x)",
         "source_url": "https://www.sony.jp/ichigan/products/SEL200600G/spec.html"
+      },
+      {
+        "claim": "ダイレクトドライブSSM (DDSSM) drives focus; Sony describes it as enabling high-speed focus drive with smooth focusing.",
+        "source_url": "https://www.sony.jp/ichigan/products/SEL200600G/feature_1.html"
+      },
+      {
+        "claim": "防塵防滴に配慮した設計 — dust- and moisture-resistant design; Sony explicitly states this does not guarantee complete protection against dust and water.",
+        "source_url": "https://www.sony.jp/ichigan/products/SEL200600G/feature_1.html"
+      },
+      {
+        "claim": "インナーズーム (internal zoom) — the barrel length does not change while zooming.",
+        "source_url": "https://www.sony.jp/ichigan/products/SEL200600G/feature_1.html"
       }
     ],
     "unsourced_fields": [
       "elements",
       "groups",
       "aperture_blades",
-      "focus_motor",
-      "weather_sealed",
       "control_ring",
       "focus_limiter",
-      "internal_zoom",
       "internal_focus",
       "announced",
       "stabilisation_stops_claim"
