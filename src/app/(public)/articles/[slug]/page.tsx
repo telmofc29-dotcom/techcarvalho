@@ -20,6 +20,8 @@ import { Badge } from "@/components/shared/ui";
 import { parseBodyBlocks, excerptFromBody } from "@/lib/content/body-format";
 import { estimateReadingTime } from "@/lib/content/reading-time";
 import { articleDisplayDate, articleDeck } from "@/lib/content/article-header";
+import { getArticleComparison } from "@/lib/public/article-comparison";
+import { ComparisonTableView } from "@/components/public/comparison-table";
 import { PageViewTracker } from "@/components/analytics/page-view-tracker";
 import { ScrollDepthTracker } from "@/components/analytics/scroll-depth-tracker";
 import { InternalLinkTracker } from "@/components/analytics/internal-link-tracker";
@@ -96,6 +98,14 @@ export default async function ArticlePage({
     title: content.title,
   });
   const gallery = await getPublishedGallery("content", content.id);
+
+  // Structured comparison data, where real specifications exist for two or more
+  // of the products this piece covers. Every comparison on this site is
+  // currently a 1600x900 PNG rendered into a ~342px slot on a phone — a raster
+  // chart cannot reflow, cannot be read aloud, cannot be selected, and carries
+  // its information in pixels no crawler can parse. Returns null whenever a
+  // table would be misleading rather than rendering an empty one.
+  const comparison = await getArticleComparison(products);
 
   const jsonLd = articleJsonLd({
     title: content.title,
@@ -331,6 +341,15 @@ export default async function ArticlePage({
             <Badge key={t.slug}>{t.name}</Badge>
           ))}
         </div>
+      )}
+
+      {comparison && (
+        <ComparisonTableView
+          table={comparison}
+          caption={`Recorded specifications for ${comparison.products
+            .map((p) => p.name)
+            .join(" and ")}.`}
+        />
       )}
 
       {/* THE SOURCES THEMSELVES, or nothing.
