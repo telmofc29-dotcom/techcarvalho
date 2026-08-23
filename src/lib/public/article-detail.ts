@@ -11,6 +11,7 @@ import {
   type RelationshipEdge,
 } from "./content-cluster";
 import { logQueryError } from "@/lib/log/query-error";
+import { ROOT_LOCALE, type Locale } from "@/lib/i18n/locales";
 import type { ContentRelationshipType } from "@/lib/types/database";
 
 export type ArticleRef = {
@@ -42,6 +43,9 @@ export type ArticleDetail = {
     body: string | null;
     published_at: string | null;
     updated_at: string;
+    /** Bumped by trigger ONLY on title/body change. 1 = never edited. */
+    translatable_revision: number | null;
+    translation_group_id: string | null;
     category_id: string | null;
   };
   // The article's taxonomy category, when it has one. Used for the visible
@@ -92,17 +96,30 @@ export type ArticleDetail = {
 const MAX_COMPARISON_SIBLINGS = 4;
 
 // Cached per-request — see product-detail.ts for why.
-export const getArticleDetail = cache(async (slug: string): Promise<ArticleDetail | null> => {
+export const getArticleDetail = cache(
+  async (slug: string, locale: Locale = ROOT_LOCALE): Promise<ArticleDetail | null> => {
   const supabase = await createClient();
 
+  // The locale filter is NOT optional politeness — it is load-bearing.
+  //
+  // 20260824_translation_model.sql dropped the global unique constraint on
+  // `slug` and replaced it with a unique index on (locale, slug), precisely so
+  // that "the Portuguese version of an article may legitimately keep the same
+  // slug". Without this filter, the first time a translation is published under
+  // its source's slug this query matches two rows, .maybeSingle() fails with
+  // PGRST116, `content` comes back null — and the ENGLISH article 404s.
+  //
+  // Nothing would have surfaced that until it happened in production, because
+  // there are currently zero translations and the query looks correct.
   const { data: content, error: contentError } = await supabase
     .from("content_items")
-    .select("id, title, slug, type, body, published_at, updated_at, status, category_id")
+    .select("id, title, slug, type, body, published_at, updated_at, status, category_id, translatable_revision, translation_group_id")
     .eq("slug", slug)
+    .eq("locale", locale)
     .eq("status", "published")
     .lte("published_at", new Date().toISOString())
     .maybeSingle();
-  logQueryError(`getArticleDetail(${slug}) content`, contentError);
+  logQueryError(`getArticleDetail(${locale}:${slug}) content`, contentError);
 
   if (!content) return null;
 

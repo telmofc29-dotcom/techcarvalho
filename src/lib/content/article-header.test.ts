@@ -26,9 +26,43 @@ test("a row touched the same day is NOT a revision", () => {
 test("a genuine later revision says Updated and shows the NEWER date", () => {
   // This is the case the page got backwards: updated_at reached the JSON-LD, so
   // a crawler saw the revision while the reader was shown the original date.
-  const d = articleDisplayDate(PUBLISHED, "2026-09-15T09:00:00.000Z");
+  // It now also needs evidence the PROSE changed — translatable_revision > 1.
+  const d = articleDisplayDate(PUBLISHED, "2026-09-15T09:00:00.000Z", { proseRevisions: 2 });
   assert.equal(d?.revised, true);
   assert.match(d!.label, /15 September 2026/);
+});
+
+test("A BULK ROW TOUCH IS NOT A REVISION, however large the gap", () => {
+  // The real incident: on 2026-08-23 one write touched all 81 rows within the
+  // same minute, and every article on the site began announcing "Updated 23
+  // August 2026" and emitting it as dateModified. Nothing had been revised.
+  // The 24-hour threshold passed; what was missing was any evidence at all.
+  const d = articleDisplayDate(PUBLISHED, "2026-08-23T08:18:00.000Z", { proseRevisions: 1 });
+  assert.equal(d?.revised, false, "no prose change and no review means no revision claim");
+  assert.match(d!.label, /21 August 2026/, "falls back to the publication date");
+});
+
+test("evidence alone is not enough either — the gap must also be plausible", () => {
+  // A prose edit minutes after publishing is finishing the piece, not revising
+  // it, and the header renders a date so it would print the same day twice.
+  const d = articleDisplayDate(PUBLISHED, "2026-08-21T10:30:00.000Z", { proseRevisions: 5 });
+  assert.equal(d?.revised, false);
+});
+
+test("a recorded freshness review counts as evidence of revision", () => {
+  const d = articleDisplayDate(PUBLISHED, "2026-09-15T09:00:00.000Z", {
+    proseRevisions: 1,
+    lastReviewedAt: "2026-09-15T09:00:00.000Z",
+  });
+  assert.equal(d?.revised, true);
+});
+
+test("absent evidence defaults to NOT revised", () => {
+  // Unmeasured must never read as a finding. Called with no evidence argument
+  // at all, the answer is the publication date.
+  const d = articleDisplayDate(PUBLISHED, "2026-09-15T09:00:00.000Z");
+  assert.equal(d?.revised, false);
+  assert.match(d!.label, /21 August 2026/);
 });
 
 test("no dates at all yields null rather than a fabricated one", () => {

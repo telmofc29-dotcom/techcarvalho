@@ -54,8 +54,14 @@ import { CtaLink } from "@/components/analytics/cta-link";
 // explicitly, not share the string every other page falls back to.
 export const metadata: Metadata = buildMetadata({
   title: `${SITE_NAME} — ${SITE_TAGLINE}`,
+  // "real sourcing and freshness records" was removed rather than reworded.
+  // freshness_log holds 0 rows and evidence_records holds 0 rows, so both
+  // halves of that phrase described machinery that exists in the schema and has
+  // never been used — a claim about editorial process that the database
+  // contradicts. What is left is only what can be checked: the catalogue is
+  // real and structured, and the articles cite their sources.
   description:
-    "Reviews, buying guides, and comparisons for cameras, drones, computing, networking, and gaming — built on a structured product catalogue with real sourcing and freshness records.",
+    "Buying guides, comparisons, and explainers for cameras, drones, computing, networking, and gaming — built on a structured product catalogue, with the sources for each piece listed on the page.",
   path: "/",
 });
 

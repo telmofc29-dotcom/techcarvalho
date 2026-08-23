@@ -1,3 +1,4 @@
+import { formatSpecValue } from "./spec-value.ts";
 // Structured comparison data, built from real product specifications.
 //
 // WHY THIS EXISTS
@@ -75,12 +76,13 @@ export const MIN_PRODUCTS_WITH_VALUE = 2;
 /** The most rows to render. A comparison is a summary, not a data dump. */
 export const MAX_ROWS = 24;
 
+// Delegates to the shared formatter so the comparison table and the product
+// page can never disagree about what a spec value says. The local version used
+// String(), which rendered the 98 double-encoded rows in this catalogue as raw
+// JSON, and appended the unit unconditionally so a value already carrying one
+// got it twice.
 function formatValue(value: SpecValue, unit: string | null): string | null {
-  if (value === null || value === undefined) return null;
-  if (typeof value === "boolean") return value ? "Yes" : "No";
-  const text = String(value).trim();
-  if (text === "") return null;
-  return unit ? `${text} ${unit}` : text;
+  return formatSpecValue(value, unit);
 }
 
 /**

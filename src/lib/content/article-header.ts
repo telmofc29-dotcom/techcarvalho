@@ -40,9 +40,45 @@ export type DisplayDate = {
  * looked stale to the person and current to the machine, which is precisely
  * backwards.
  */
+/**
+ * Evidence that the PROSE actually changed.
+ *
+ * WHY A TIME THRESHOLD WAS NOT ENOUGH
+ * -----------------------------------
+ * REVISION_THRESHOLD_MS assumed `updated_at` moving a long way from
+ * `published_at` meant a revision. It does not. On 2026-08-23 a single bulk
+ * write touched all 81 rows within the same minute, two days after most of them
+ * were published, and every article on the site began announcing
+ * "Updated 23 August 2026" — and emitting that date as `dateModified` in its
+ * structured data. Nothing had been revised. Eighty-one pages were making a
+ * maintenance claim that was false, to readers and to crawlers alike.
+ *
+ * The lesson is that `updated_at` is a ROW-TOUCH timestamp. Nothing in this
+ * system writes it to mean "an editor revised this", so it cannot be read as
+ * that no matter how large the gap. A revision claim now needs positive
+ * evidence, and there are two real sources of it:
+ *
+ *   proseRevisions   content_items.translatable_revision, bumped by trigger
+ *                    ONLY when title or body change (verified behaviourally
+ *                    against production: a status flip leaves it alone, a title
+ *                    edit is +1, a body edit is +1). Starts at 1, so > 1 means
+ *                    the words genuinely changed at least once.
+ *   lastReviewedAt   a freshness_log row — a person recorded a review.
+ *
+ * With neither, the honest label is the publication date. Absence of evidence
+ * is not evidence of revision.
+ */
+export type RevisionEvidence = {
+  /** content_items.translatable_revision. 1 means never edited since creation. */
+  proseRevisions?: number | null;
+  /** Most recent freshness_log.reviewed_at, if any. */
+  lastReviewedAt?: string | null;
+};
+
 export function articleDisplayDate(
   publishedAt: string | null | undefined,
-  updatedAt: string | null | undefined
+  updatedAt: string | null | undefined,
+  evidence: RevisionEvidence = {}
 ): DisplayDate | null {
   const published = publishedAt ? new Date(publishedAt) : null;
   const updated = updatedAt ? new Date(updatedAt) : null;
@@ -64,7 +100,17 @@ export function articleDisplayDate(
     return { iso: p.toISOString(), label: format(p), revised: false };
   }
 
-  const revised = u.getTime() - p.getTime() >= REVISION_THRESHOLD_MS;
+  // A revision claim needs BOTH a plausible gap AND positive evidence that the
+  // prose changed. Either alone is how 81 pages came to announce an update
+  // nobody made — see RevisionEvidence.
+  const gapIsPlausible = u.getTime() - p.getTime() >= REVISION_THRESHOLD_MS;
+
+  const reviewed = evidence.lastReviewedAt ? new Date(evidence.lastReviewedAt) : null;
+  const reviewedAfterPublication =
+    valid(reviewed) && reviewed.getTime() - p.getTime() >= REVISION_THRESHOLD_MS;
+  const proseChanged = (evidence.proseRevisions ?? 1) > 1;
+
+  const revised = gapIsPlausible && (proseChanged || reviewedAfterPublication);
   const shown = revised ? u : p;
   return { iso: shown.toISOString(), label: format(shown), revised };
 }

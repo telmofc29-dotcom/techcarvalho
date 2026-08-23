@@ -8,6 +8,7 @@ import { getProductDetail } from "@/lib/public/product-detail";
 import { getPublishedGallery, classifiable } from "@/lib/public/hero-image";
 import { mediaFit } from "@/lib/media/presentation";
 import { Breadcrumbs } from "@/components/public/breadcrumbs";
+import { formatSpecValue } from "@/lib/public/spec-value";
 import { ContentCard, CARD_SIZES_ARTICLE_2 } from "@/components/public/cards";
 import { RelatedContentTracker } from "@/components/public/related-content-tracker";
 import { OutboundLink } from "@/components/public/outbound-link";
@@ -190,9 +191,12 @@ export default async function ProductPage({
                     className="border-b border-zinc-100 py-2 text-sm last:border-b-0 sm:flex sm:items-baseline sm:justify-between sm:gap-6"
                   >
                     <dt className="text-xs text-zinc-500 sm:text-sm">{s.name}</dt>
+                    {/* formatSpecValue, not String(). 98 of 582 spec rows are
+                        double-encoded JSON, which String() published to readers
+                        verbatim as `"1/1.3\", 13.5 stops..."` on 22 product
+                        pages. It also applies the unit exactly once. */}
                     <dd className="mt-0.5 font-medium text-zinc-900 break-words sm:mt-0 sm:text-right">
-                      {typeof s.value === "boolean" ? (s.value ? "Yes" : "No") : String(s.value)}
-                      {s.unit ? ` ${s.unit}` : ""}
+                      {formatSpecValue(s.value, s.unit)}
                     </dd>
                   </div>
                 ))}

@@ -1,0 +1,103 @@
+-- Normalise 98 double-encoded product_specs values.
+--
+-- WHAT IS WRONG
+-- -------------
+-- product_specs.value is jsonb. 98 of 582 rows, across 22 products, hold a JSON
+-- string whose CONTENTS are themselves JSON — the value was serialised twice on
+-- the way in. Stored:
+--
+--     "\"A19 Pro\""
+--     "\"6.3\\\"\""
+--     "\"1/1.3\\\", 13.5 stops dynamic range\""
+--
+-- rather than:
+--
+--     "A19 Pro"
+--     "6.3\""
+--     "1/1.3\", 13.5 stops dynamic range"
+--
+-- The visible effect was raw JSON in the specification table on 22 live product
+-- pages: readers saw the quotation marks and backslashes.
+--
+-- THE DISPLAY SIDE IS ALREADY FIXED, SEPARATELY
+-- ---------------------------------------------
+-- src/lib/public/spec-value.ts now unwraps these at render time, so the pages
+-- are correct as soon as that ships and do NOT depend on this migration. Both
+-- fixes are wanted: the renderer is the guarantee that a future bad write shows
+-- up as a slightly odd value instead of publishing JSON, and this migration is
+-- what makes the stored data actually mean what it says. Search, export, the
+-- comparison builder and any future consumer all read the column directly.
+--
+-- SAFETY
+-- ------
+-- Only rows where the jsonb is a STRING whose text parses as a JSON string are
+-- touched. A value like '"256"' would parse to a NUMBER, not a string, and is
+-- therefore left alone — retyping it would change its meaning. Everything else
+-- (numbers, booleans, ordinary strings, objects) is untouched by construction.
+--
+-- Run the SELECT first and read the before/after. Do not run the UPDATE until
+-- the preview looks right.
+
+-- ---------------------------------------------------------------------------
+-- 1. PREVIEW — run this alone, first. Changes nothing.
+-- ---------------------------------------------------------------------------
+--
+--   select ps.id,
+--          p.name as product,
+--          sd.name as spec,
+--          ps.value                                   as before,
+--          to_jsonb(ps.value #>> '{}')                as after
+--     from public.product_specs ps
+--     join public.products p on p.id = ps.product_id
+--     join public.spec_definitions sd on sd.id = ps.spec_definition_id
+--    where jsonb_typeof(ps.value) = 'string'
+--      and left(ltrim(ps.value #>> '{}'), 1) = '"'
+--      and right(rtrim(ps.value #>> '{}'), 1) = '"'
+--    order by p.name, sd.name;
+--
+--   -- expect: 98 rows, and every `after` visibly one layer less encoded.
+
+-- ---------------------------------------------------------------------------
+-- 2. THE FIX
+-- ---------------------------------------------------------------------------
+-- `#>> '{}'` extracts a jsonb string as TEXT without its JSON quoting. Applying
+-- it to a double-encoded value yields the inner JSON text; casting that back
+-- with ::jsonb re-parses it into the properly-encoded string.
+--
+-- The WHERE clause is the same predicate as the preview, so the update touches
+-- exactly the rows the preview showed. It is idempotent: after it runs, the
+-- extracted text no longer begins with a quote, so a second run matches nothing.
+
+-- begin;
+--
+--   update public.product_specs ps
+--      set value = (ps.value #>> '{}')::jsonb
+--    where jsonb_typeof(ps.value) = 'string'
+--      and left(ltrim(ps.value #>> '{}'), 1) = '"'
+--      and right(rtrim(ps.value #>> '{}'), 1) = '"'
+--      -- Belt and braces: only proceed where the inner text is itself valid
+--      -- JSON *and* parses to a string. A malformed inner value would raise
+--      -- here rather than corrupting the row.
+--      and jsonb_typeof((ps.value #>> '{}')::jsonb) = 'string';
+--
+--   -- expect: UPDATE 98
+--
+-- -- 3. VERIFY BEFORE COMMITTING. The success message is not evidence.
+--
+--   select count(*) as still_double_encoded
+--     from public.product_specs ps
+--    where jsonb_typeof(ps.value) = 'string'
+--      and left(ltrim(ps.value #>> '{}'), 1) = '"'
+--      and right(rtrim(ps.value #>> '{}'), 1) = '"';
+--   -- expect: 0
+--
+--   select count(*) as total from public.product_specs;
+--   -- expect: 582 — the same as before. This is a rewrite, not a delete.
+--
+--   select jsonb_typeof(value) as kind, count(*)
+--     from public.product_specs group by 1 order by 2 desc;
+--   -- expect: string 325+98=423, number 69, boolean 6, and NO 'object'/'array'
+--   --         appearing that was not there before.
+--
+-- commit;
+-- -- (rollback; if any of the three checks disagrees)

@@ -58,7 +58,15 @@ export async function generateMetadata({
     noindex: detail.seo?.noindex ?? false,
     openGraphType: "article",
     publishedTime: detail.content.published_at,
-    modifiedTime: detail.content.updated_at,
+    // Same rule as the JSON-LD and the visible header: an og:modified_time is a
+    // claim that somebody revised this, and updated_at is only a row-touch.
+    modifiedTime:
+      articleDisplayDate(detail.content.published_at, detail.content.updated_at, {
+        proseRevisions: detail.content.translatable_revision,
+        lastReviewedAt: detail.freshness[0]?.reviewed_at ?? null,
+      })?.revised
+        ? detail.content.updated_at
+        : undefined,
     section: detail.category?.name,
   });
 }
@@ -94,7 +102,12 @@ export default async function ArticlePage({
   // of these is computed rather than authored, and src/lib/content/reading-time.ts
   // for what the estimate counts.
   const readingTime = estimateReadingTime(content.body);
-  const displayDate = articleDisplayDate(content.published_at, content.updated_at);
+  // The revision evidence, not just the timestamps — see RevisionEvidence in
+  // lib/content/article-header.ts for the bulk-write incident this prevents.
+  const displayDate = articleDisplayDate(content.published_at, content.updated_at, {
+    proseRevisions: content.translatable_revision,
+    lastReviewedAt: lastVerified,
+  });
   const deck = articleDeck({
     metaDescription: seo?.meta_description ?? null,
     body: content.body,
@@ -141,7 +154,13 @@ export default async function ArticlePage({
     title: content.title,
     slug: content.slug,
     publishedAt: content.published_at,
-    updatedAt: content.updated_at,
+    // The SAME judgement the reader sees, deliberately. Emitting
+    // content.updated_at here while the page showed the publication date is how
+    // a crawler and a reader ended up being told different things — and after
+    // the 2026-08-23 bulk write it meant 81 pages claimed a dateModified of
+    // that day with nothing revised. When displayDate says there was no
+    // revision, there is no dateModified to give.
+    updatedAt: displayDate?.revised ? content.updated_at : null,
     contentType: content.type,
     description: seo?.meta_description ?? excerptFromBody(content.body),
     image: heroImage,
