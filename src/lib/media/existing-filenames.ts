@@ -66,3 +66,59 @@ export function existingFileNames(
   }
   return out;
 }
+
+export type ExistingFileNamesResult = {
+  /** Filenames already in the library. Empty when the lookup failed. */
+  names: string[];
+  /** Human-readable reason the lookup failed, or null when it succeeded. */
+  failure: string | null;
+};
+
+type FetchRows = () => Promise<{
+  data: readonly { storage_path?: unknown }[] | null;
+  error: { message: string } | null;
+}>;
+
+/**
+ * Turn "fetch the filenames" into a result that CANNOT throw.
+ *
+ * WHY THIS IS SEPARATE FROM THE PAGE
+ * ----------------------------------
+ * The page's job is to render the upload form. This list only powers a
+ * non-blocking "you may have uploaded this already" warning, and before this
+ * existed, any failure while obtaining it took the whole route down with React
+ * error #441 — a masked screen with no form, on the only route for adding
+ * media.
+ *
+ * Two distinct failure modes have to be handled, and only one of them was:
+ *
+ *   1. The query RETURNS an error. Previously checked.
+ *   2. Something THROWS — the client constructor, a rejected promise, a
+ *      malformed session cookie, a missing environment variable. Previously
+ *      unhandled, and a throw during Server Component render is exactly what
+ *      produces a #441.
+ *
+ * Both collapse to `{ names: [], failure }` so the caller can render the reason
+ * above a working form. Nothing is swallowed: every failure is logged and
+ * returned.
+ *
+ * Dependencies are injected rather than imported so this is testable under
+ * `node --test` without a Supabase client, a request context, or `server-only`.
+ */
+export async function resolveExistingFileNames(
+  fetchRows: FetchRows,
+  log: (context: string, error: { message: string }) => void
+): Promise<ExistingFileNamesResult> {
+  try {
+    const { data, error } = await fetchRows();
+    if (error) {
+      log("NewMediaPage existing filenames", error);
+      return { names: [], failure: error.message };
+    }
+    return { names: existingFileNames(data), failure: null };
+  } catch (thrown) {
+    const message = thrown instanceof Error ? thrown.message : String(thrown);
+    log("NewMediaPage existing filenames (threw)", { message });
+    return { names: [], failure: message };
+  }
+}

@@ -1,6 +1,7 @@
 import { requireAdmin } from "@/lib/dal";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { signOut } from "../actions";
+import { formatBuildInfo } from "@/lib/build-info";
 
 export default async function AdminDashboardLayout({
   children,
@@ -37,6 +38,14 @@ export default async function AdminDashboardLayout({
           {children}
         </main>
       </div>
+      {/* Which build is serving this page. Non-secret, admin-only, and the
+          answer to "are we even looking at the same deployment?" — a question
+          that cost a great deal of time when a reported failure could not be
+          reproduced and there was no way to tell whether the two sessions were
+          talking to the same code. */}
+      <footer className="border-t border-neutral-200 bg-white px-6 py-2 text-[11px] text-neutral-400">
+        <span className="font-mono select-all">{formatBuildInfo()}</span>
+      </footer>
     </div>
   );
 }

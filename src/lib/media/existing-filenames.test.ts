@@ -65,3 +65,102 @@ test("a row that is itself null does not throw", () => {
   assert.doesNotThrow(() => existingFileNames([null as unknown as { storage_path: string }]));
   assert.deepEqual(existingFileNames([null as unknown as { storage_path: string }]), []);
 });
+
+// ---------------------------------------------------------------------------
+// resolveExistingFileNames — the #441 resilience guarantee
+// ---------------------------------------------------------------------------
+//
+// /admin/media/new was reported crashing in production with "Minified React
+// error #441", which is React masking a Server Component throw. The route's
+// only optional dependency is this filename lookup, and a throw anywhere inside
+// it — not just a returned `error`, which was already handled — reaches React
+// and takes the upload form off the page entirely.
+//
+// These assert the contract the page depends on: whatever happens in that
+// lookup, it resolves, it never throws, the failure is reported rather than
+// swallowed, and `names` is always a usable array so the client component's
+// `existingFileNames.map(...)` cannot fault either.
+
+import { resolveExistingFileNames } from "./existing-filenames.ts";
+
+const noopLog = () => {};
+
+test("resolveExistingFileNames returns names on success", async () => {
+  const result = await resolveExistingFileNames(
+    async () => ({ data: [{ storage_path: "image/123e4567-e89b-12d3-a456-426614174000-photo.png" }], error: null }),
+    noopLog
+  );
+  assert.deepEqual(result, { names: ["photo.png"], failure: null });
+});
+
+test("A RETURNED QUERY ERROR degrades instead of throwing", async () => {
+  const result = await resolveExistingFileNames(
+    async () => ({ data: null, error: { message: "permission denied for table media_assets" } }),
+    noopLog
+  );
+  assert.deepEqual(result.names, []);
+  assert.equal(result.failure, "permission denied for table media_assets");
+});
+
+test("A THROWN ERROR degrades instead of producing React #441", async () => {
+  // This is the case that was unhandled. createClient() reads cookies and
+  // builds a Supabase client; it raises rather than returning { error }.
+  const result = await resolveExistingFileNames(async () => {
+    throw new Error("Invalid session cookie");
+  }, noopLog);
+  assert.deepEqual(result.names, []);
+  assert.equal(result.failure, "Invalid session cookie");
+});
+
+test("a rejected promise degrades", async () => {
+  const result = await resolveExistingFileNames(() => Promise.reject(new Error("fetch failed")), noopLog);
+  assert.deepEqual(result.names, []);
+  assert.equal(result.failure, "fetch failed");
+});
+
+test("a non-Error throw still yields a string reason", async () => {
+  const result = await resolveExistingFileNames(async () => {
+    throw "supabase exploded";
+  }, noopLog);
+  assert.deepEqual(result.names, []);
+  assert.equal(result.failure, "supabase exploded");
+});
+
+test("EVERY failure is logged, never silently swallowed", async () => {
+  const logged: string[] = [];
+  await resolveExistingFileNames(
+    async () => ({ data: null, error: { message: "boom" } }),
+    (context) => logged.push(context)
+  );
+  await resolveExistingFileNames(async () => {
+    throw new Error("bang");
+  }, (context) => logged.push(context));
+  assert.equal(logged.length, 2, "both the returned-error and thrown paths must log");
+  assert.match(logged[1], /threw/, "the thrown path is distinguishable in the logs");
+});
+
+test("names is ALWAYS an array, so the client component can map over it", async () => {
+  for (const fetchRows of [
+    async () => ({ data: null, error: null }),
+    async () => ({ data: null, error: { message: "x" } }),
+    async () => {
+      throw new Error("y");
+    },
+  ] as const) {
+    const result = await resolveExistingFileNames(fetchRows, noopLog);
+    assert.ok(Array.isArray(result.names));
+    assert.doesNotThrow(() => result.names.map((n) => n.toLowerCase()));
+  }
+});
+
+test("a malformed row inside a SUCCESSFUL response cannot throw", async () => {
+  const result = await resolveExistingFileNames(
+    async () => ({
+      data: [{ storage_path: null }, { storage_path: 42 }, {}, { storage_path: "image/ok.png" }] as never,
+      error: null,
+    }),
+    noopLog
+  );
+  assert.equal(result.failure, null);
+  assert.deepEqual(result.names, ["ok.png"]);
+});

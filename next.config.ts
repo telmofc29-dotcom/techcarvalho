@@ -2,6 +2,18 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+
+  // Inline the deployed commit so the BROWSER can report which build served it.
+  //
+  // Vercel exposes VERCEL_GIT_COMMIT_SHA to the build, but not to client code —
+  // only NEXT_PUBLIC_* variables are inlined into the bundle. Without this, the
+  // admin error screen can show a digest but not the build that produced it,
+  // and "which commit is actually serving my request?" stays unanswerable from
+  // the browser. Non-secret: a public commit SHA, shortened for display.
+  env: {
+    NEXT_PUBLIC_BUILD_COMMIT: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? "local",
+  },
+
   images: {
     remotePatterns: [
       {
