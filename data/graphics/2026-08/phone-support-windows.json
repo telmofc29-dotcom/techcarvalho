@@ -1,0 +1,28 @@
+{
+  "kind": "spec_diagram",
+  "slug": "phone-support-windows",
+  "title": "Published smartphone software-support windows",
+  "subtitle": "Schematic. Each value is the manufacturer's own published wording, qualifiers included",
+  "theme": "smartphones",
+  "subject": "phone support windows",
+  "bodyShape": "rounded",
+  "bodyLabel": "SUPPORT",
+  "callouts": [
+    { "label": "Pixel 8 and later", "value": "7 years", "note": "Google, updates" },
+    { "label": "Pixel 6, 7 and Fold", "value": "5 years", "note": "Google, OS and security" },
+    { "label": "Pixel 5a and earlier", "value": "No longer updated", "note": "Google" },
+    { "label": "Samsung Galaxy", "value": "Up to 7 years", "note": "a ceiling, not a floor" },
+    { "label": "Samsung cadence", "value": "Monthly to biannual", "note": "varies by model" },
+    { "label": "Apple iPhone", "value": null, "note": "no published figure found" },
+    { "label": "Clock starts from", "value": "First availability", "note": "not your purchase date" }
+  ],
+  "provenance": {
+    "sourceLabel": "Google Pixel update support page and Samsung Mobile Security update-scope page",
+    "sourceUrl": "https://support.google.com/pixelphone/answer/4457705",
+    "asOf": "2026-08-22"
+  },
+  "attach": {
+    "contentSlug": "phone-software-support-how-long-will-it-get-updates",
+    "role": "hero"
+  }
+}

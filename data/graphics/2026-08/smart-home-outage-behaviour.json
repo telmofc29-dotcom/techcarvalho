@@ -1,0 +1,28 @@
+{
+  "kind": "comparison",
+  "slug": "smart-home-outage-behaviour",
+  "title": "What still works when the internet goes down",
+  "subtitle": "Local Wi-Fi still up, connection to the internet down. Tech Carvalho analysis, not a vendor claim",
+  "theme": "smart-home-robots",
+  "left": { "name": "Local control path", "sublabel": "Command stays inside the house" },
+  "right": { "name": "Cloud control path", "sublabel": "Command routes via the vendor" },
+  "rows": [
+    { "label": "App control at home", "left": "Works", "right": "Fails", "favours": "left" },
+    { "label": "Physical switch or button", "left": "Works", "right": "Works" },
+    { "label": "Automations on a local hub", "left": "Works", "right": "Fails", "favours": "left" },
+    { "label": "Voice assistant command", "left": "Depends on the assistant", "right": "Fails" },
+    { "label": "Control from outside home", "left": "Fails", "right": "Fails" },
+    { "label": "Adding a new device", "left": "Usually needs internet", "right": "Fails" },
+    { "label": "Firmware updates", "left": "Fails", "right": "Fails" },
+    { "label": "Vendor shuts servers down", "left": "Keeps working", "right": "Device is dead", "favours": "left" }
+  ],
+  "provenance": {
+    "sourceLabel": "Tech Carvalho analysis of the two control architectures; Matter and Thread capabilities per CSA and Thread Group",
+    "sourceUrl": "https://csa-iot.org/all-solutions/matter/",
+    "asOf": "2026-08-22"
+  },
+  "attach": {
+    "contentSlug": "smart-home-local-vs-cloud-control",
+    "role": "hero"
+  }
+}
