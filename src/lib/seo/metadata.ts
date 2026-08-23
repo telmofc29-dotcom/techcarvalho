@@ -1,5 +1,10 @@
 import type { Metadata } from "next";
 import { SITE_NAME, SITE_TAGLINE, SITE_URL, absoluteUrl } from "./site.ts";
+// Relative with an explicit .ts extension, matching ./site.ts above. `npm test`
+// runs node --test with native TS stripping, which does not resolve the "@/"
+// alias — an alias import here silently breaks every test file that loads
+// this module, which is exactly what it did.
+import { hreflangMap, type Locale } from "../i18n/locales.ts";
 
 // For a genuine 404 on a dynamic entity (/products/[slug] etc. with no
 // matching row). Two things this exists to control:
@@ -38,6 +43,7 @@ export type PageImage = { url: string; alt?: string | null } | null;
 
 export function buildMetadata({
   title,
+  availableLocales,
   description,
   path,
   noindex = false,
@@ -50,6 +56,16 @@ export function buildMetadata({
   section,
 }: {
   title: string;
+  /**
+   * Which locales this exact route genuinely exists in.
+   *
+   * Omitted entirely -> no hreflang is emitted. That is the correct default
+   * while only English exists: a cluster naming a translation that is not there
+   * is worse than none, because Google ignores non-reciprocal clusters
+   * wholesale and a reader following the link gets a 404. Fabricating an
+   * alternate is the multilingual version of fabricating a source.
+   */
+  availableLocales?: readonly Locale[];
   description?: string;
   path: string;
   noindex?: boolean;
@@ -92,7 +108,21 @@ export function buildMetadata({
     // which is exactly what a title that already carries the suffix wants.
     title: { absolute: fullTitle },
     description: desc,
-    alternates: { canonical },
+    alternates: {
+      canonical,
+      // Emitted only when the caller can name the locales this route really
+      // exists in. Absent by default — see availableLocales above.
+      ...(availableLocales && availableLocales.length > 0
+        ? {
+            languages: Object.fromEntries(
+              Object.entries(hreflangMap(path, availableLocales)).map(([tag, p]) => [
+                tag,
+                absoluteUrl(p),
+              ])
+            ),
+          }
+        : {}),
+    },
     robots: { index: !noindex, follow },
     openGraph: {
       title: fullTitle,
