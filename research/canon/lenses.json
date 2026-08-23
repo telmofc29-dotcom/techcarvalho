@@ -6,6 +6,7 @@
     "coverage": "full-frame",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:standard-zoom-lens",
       "l-series",
       "standard-zoom",
       "zoom"
@@ -69,6 +70,7 @@
     "coverage": "full-frame",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:telephoto-zoom-lens",
       "l-series",
       "telephoto-zoom",
       "zoom"
@@ -127,6 +129,7 @@
     "coverage": "full-frame",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:telephoto-zoom-lens",
       "l-series",
       "telephoto-zoom",
       "zoom"
@@ -193,6 +196,7 @@
     "coverage": "full-frame",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:wide-zoom-lens",
       "l-series",
       "wide-zoom",
       "zoom"
@@ -256,6 +260,7 @@
     "coverage": "full-frame",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:wide-zoom-lens",
       "l-series",
       "wide-zoom",
       "zoom"
@@ -324,6 +329,7 @@
     "coverage": "full-frame",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:standard-zoom-lens",
       "l-series",
       "standard-zoom",
       "zoom"
@@ -387,6 +393,7 @@
     "coverage": "full-frame",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:standard-zoom-lens",
       "l-series",
       "standard-zoom",
       "zoom"
@@ -455,6 +462,7 @@
     "coverage": "full-frame",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:telephoto-zoom-lens",
       "l-series",
       "telephoto-zoom",
       "zoom"
@@ -522,6 +530,7 @@
     "coverage": "full-frame",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:super-telephoto-zoom-lens",
       "l-series",
       "telephoto-zoom",
       "zoom"
@@ -590,6 +599,7 @@
     "coverage": "full-frame",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:wide-zoom-lens",
       "l-series",
       "wide-zoom",
       "zoom"
@@ -660,6 +670,7 @@
     "coverage": "full-frame",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:standard-zoom-lens",
       "l-series",
       "standard-zoom",
       "zoom"
@@ -719,6 +730,7 @@
     "coverage": "full-frame",
     "lens_type": "prime",
     "categories": [
+      "canon-museum:medium-telephoto-lens",
       "l-series",
       "prime",
       "standard-prime"
@@ -778,6 +790,7 @@
     "coverage": "full-frame",
     "lens_type": "prime",
     "categories": [
+      "canon-museum:medium-telephoto-lens",
       "l-series",
       "prime",
       "telephoto-prime"
@@ -836,6 +849,7 @@
     "coverage": "full-frame",
     "lens_type": "prime",
     "categories": [
+      "canon-museum:medium-telephoto-lens",
       "l-series",
       "prime",
       "telephoto-prime"
@@ -894,6 +908,7 @@
     "coverage": "full-frame",
     "lens_type": "prime",
     "categories": [
+      "canon-museum:medium-telephoto-lens",
       "l-series",
       "macro",
       "prime",
@@ -958,6 +973,7 @@
     "coverage": "full-frame",
     "lens_type": "prime",
     "categories": [
+      "canon-museum:medium-telephoto-lens",
       "l-series",
       "prime",
       "telephoto-prime"
@@ -1021,6 +1037,7 @@
     "coverage": "full-frame",
     "lens_type": "prime",
     "categories": [
+      "canon-museum:wide-angle-lens",
       "l-series",
       "prime",
       "standard-prime"
@@ -1079,6 +1096,7 @@
     "coverage": "full-frame",
     "lens_type": "prime",
     "categories": [
+      "canon-museum:wide-angle-lens",
       "l-series",
       "prime",
       "wide-prime"
@@ -1137,6 +1155,7 @@
     "coverage": "full-frame",
     "lens_type": "prime",
     "categories": [
+      "canon-museum:medium-telephoto-lens",
       "l-series",
       "prime",
       "standard-prime"
@@ -1195,6 +1214,7 @@
     "coverage": "full-frame",
     "lens_type": "prime",
     "categories": [
+      "canon-museum:wide-angle-lens",
       "l-series",
       "prime",
       "wide-prime"
@@ -1253,6 +1273,7 @@
     "coverage": "full-frame",
     "lens_type": "prime",
     "categories": [
+      "canon-museum:medium-telephoto-lens",
       "prime",
       "standard-prime"
     ],
@@ -1309,6 +1330,7 @@
     "coverage": "full-frame",
     "lens_type": "prime",
     "categories": [
+      "canon-museum:ultra-wide-lens",
       "prime",
       "wide-prime"
     ],
@@ -1366,6 +1388,7 @@
     "coverage": "full-frame",
     "lens_type": "prime",
     "categories": [
+      "canon-museum:medium-telephoto-lens",
       "macro",
       "prime",
       "telephoto-prime"
@@ -1433,6 +1456,7 @@
     "coverage": "full-frame",
     "lens_type": "prime",
     "categories": [
+      "canon-museum:wide-angle-lens",
       "macro",
       "prime",
       "standard-prime"
@@ -1496,6 +1520,7 @@
     "coverage": "full-frame",
     "lens_type": "prime",
     "categories": [
+      "canon-museum:ultra-wide-lens",
       "macro",
       "prime",
       "wide-prime"
@@ -1559,6 +1584,7 @@
     "coverage": "full-frame",
     "lens_type": "prime",
     "categories": [
+      "canon-museum:wide-angle-lens",
       "prime",
       "standard-prime"
     ],
@@ -1616,6 +1642,7 @@
     "coverage": "full-frame",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:standard-zoom-lens",
       "standard-zoom",
       "zoom"
     ],
@@ -1678,6 +1705,7 @@
     "coverage": "full-frame",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:telephoto-zoom-lens",
       "telephoto-zoom",
       "zoom"
     ],
@@ -1744,6 +1772,7 @@
     "coverage": "full-frame",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:standard-zoom-lens",
       "standard-zoom",
       "zoom"
     ],
@@ -1806,6 +1835,7 @@
     "coverage": "full-frame",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:standard-zoom-lens",
       "standard-zoom",
       "zoom"
     ],
@@ -1868,6 +1898,7 @@
     "coverage": "full-frame",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:wide-zoom-lens",
       "wide-zoom",
       "zoom"
     ],
@@ -1930,6 +1961,7 @@
     "coverage": "full-frame",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:standard-zoom-lens",
       "standard-zoom",
       "zoom"
     ],
@@ -1987,6 +2019,7 @@
     "coverage": "full-frame",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:wide-zoom-lens",
       "wide-zoom",
       "zoom"
     ],
@@ -2053,6 +2086,7 @@
     "coverage": "full-frame",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:super-telephoto-zoom-lens",
       "telephoto-zoom",
       "zoom"
     ],
@@ -2122,6 +2156,7 @@
     "coverage": "full-frame",
     "lens_type": "prime",
     "categories": [
+      "canon-museum:super-telephoto-lens",
       "prime",
       "telephoto-prime"
     ],
@@ -2179,6 +2214,7 @@
     "coverage": "full-frame",
     "lens_type": "prime",
     "categories": [
+      "canon-museum:super-telephoto-lens",
       "prime",
       "telephoto-prime"
     ],
@@ -2236,6 +2272,7 @@
     "coverage": "full-frame",
     "lens_type": null,
     "categories": [
+      "canon-museum:extender-lens",
       "teleconverter"
     ],
     "focal_min_mm": null,
@@ -2305,6 +2342,7 @@
     "coverage": "full-frame",
     "lens_type": null,
     "categories": [
+      "canon-museum:extender-lens",
       "teleconverter"
     ],
     "focal_min_mm": null,
@@ -2374,6 +2412,7 @@
     "coverage": "aps-c",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:rf-s-lens",
       "standard-zoom",
       "zoom"
     ],
@@ -2436,6 +2475,7 @@
     "coverage": "aps-c",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:rf-s-lens",
       "standard-zoom",
       "zoom"
     ],
@@ -2498,6 +2538,7 @@
     "coverage": "aps-c",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:rf-s-lens",
       "standard-zoom",
       "zoom"
     ],
@@ -2560,6 +2601,7 @@
     "coverage": "aps-c",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:rf-s-lens",
       "wide-zoom",
       "zoom"
     ],
@@ -2617,6 +2659,7 @@
     "coverage": "full-frame",
     "lens_type": "prime",
     "categories": [
+      "canon-museum:medium-telephoto-lens",
       "prime",
       "standard-prime"
     ],
@@ -2674,6 +2717,7 @@
     "coverage": "full-frame",
     "lens_type": "prime",
     "categories": [
+      "canon-museum:medium-telephoto-lens",
       "prime",
       "standard-prime"
     ],
@@ -2731,6 +2775,7 @@
     "coverage": "full-frame",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:standard-zoom-lens",
       "l-series",
       "standard-zoom",
       "zoom"
@@ -2797,6 +2842,7 @@
     "coverage": "full-frame",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:telephoto-zoom-lens",
       "l-series",
       "telephoto-zoom",
       "zoom"
@@ -2860,6 +2906,7 @@
     "coverage": "full-frame",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:telephoto-zoom-lens",
       "l-series",
       "telephoto-zoom",
       "zoom"
@@ -2919,6 +2966,7 @@
     "coverage": "full-frame",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:telephoto-zoom-lens",
       "l-series",
       "telephoto-zoom",
       "zoom"
@@ -2982,6 +3030,7 @@
     "coverage": "full-frame",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:wide-zoom-lens",
       "l-series",
       "wide-zoom",
       "zoom"
@@ -3041,6 +3090,7 @@
     "coverage": "full-frame",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:standard-zoom-lens",
       "l-series",
       "standard-zoom",
       "zoom"
@@ -3100,6 +3150,7 @@
     "coverage": "full-frame",
     "lens_type": "prime",
     "categories": [
+      "canon-museum:macro-close-up-lens",
       "l-series",
       "macro",
       "prime",
@@ -3110,7 +3161,7 @@
     "aperture_max": 2.8,
     "aperture_max_tele": null,
     "aperture_min": 32,
-    "stabilisation": "IS",
+    "stabilisation": "Hybrid IS",
     "stabilisation_stops_claim": null,
     "focus_motor": null,
     "l_series": true,
@@ -3125,7 +3176,7 @@
     "weight_g": 625,
     "diameter_mm": 77.7,
     "length_mm": 123,
-    "weather_sealed": null,
+    "weather_sealed": true,
     "control_ring": null,
     "tripod_collar": null,
     "focus_limiter": null,
@@ -3139,7 +3190,12 @@
       "https://global.canon/en/c-museum/product/ef405.html"
     ],
     "retrieved_at": "2026-08-23T00:00:00Z",
-    "manufacturer_claims": [],
+    "manufacturer_claims": [
+      {
+        "claim": "The Canon EF100mm f/2.8L Macro IS USM lens is the first medium-telephoto macro lens to incorporate Hybrid IS, a new Image Stabilizer technology that optimally compensates for both angle camera shake and shift camera shake. In addition to a dust- and moisture-proof structure for shooting even under severe conditions…",
+        "source_url": "https://global.canon/en/c-museum/product/ef405.html"
+      }
+    ],
     "unsourced_fields": [
       "control_ring",
       "discontinued",
@@ -3149,8 +3205,7 @@
       "internal_focus",
       "internal_zoom",
       "stabilisation_stops_claim",
-      "tripod_collar",
-      "weather_sealed"
+      "tripod_collar"
     ]
   },
   {
@@ -3160,6 +3215,7 @@
     "coverage": "full-frame",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:telephoto-zoom-lens",
       "telephoto-zoom",
       "zoom"
     ],
@@ -3222,6 +3278,7 @@
     "coverage": "full-frame",
     "lens_type": "prime",
     "categories": [
+      "canon-museum:medium-telephoto-lens",
       "prime",
       "telephoto-prime"
     ],
@@ -3280,6 +3337,7 @@
     "coverage": "full-frame",
     "lens_type": "prime",
     "categories": [
+      "canon-museum:medium-telephoto-lens",
       "prime",
       "standard-prime"
     ],
@@ -3339,6 +3397,7 @@
     "coverage": "full-frame",
     "lens_type": "prime",
     "categories": [
+      "canon-museum:tilt-shift-lens",
       "l-series",
       "prime",
       "tilt-shift",
@@ -3398,6 +3457,7 @@
     "coverage": "full-frame",
     "lens_type": "prime",
     "categories": [
+      "canon-museum:tilt-shift-lens",
       "l-series",
       "prime",
       "tilt-shift",
@@ -3458,6 +3518,7 @@
     "coverage": "full-frame",
     "lens_type": "prime",
     "categories": [
+      "canon-museum:tilt-shift-lens",
       "l-series",
       "macro",
       "prime",
@@ -3518,6 +3579,7 @@
     "coverage": "full-frame",
     "lens_type": "prime",
     "categories": [
+      "canon-museum:macro-close-up-lens",
       "macro",
       "prime",
       "standard-prime"
@@ -3580,6 +3642,7 @@
     "coverage": "full-frame",
     "lens_type": null,
     "categories": [
+      "canon-museum:extender-lens",
       "teleconverter"
     ],
     "focal_min_mm": null,
@@ -3644,6 +3707,7 @@
     "coverage": "full-frame",
     "lens_type": null,
     "categories": [
+      "canon-museum:extender-lens",
       "teleconverter"
     ],
     "focal_min_mm": null,
@@ -3708,6 +3772,7 @@
     "coverage": "aps-c",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:ef-s-lens",
       "wide-zoom",
       "zoom"
     ],
@@ -3765,6 +3830,7 @@
     "coverage": "aps-c",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:ef-s-lens",
       "standard-zoom",
       "zoom"
     ],
@@ -3822,6 +3888,7 @@
     "coverage": "aps-c",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:ef-s-lens",
       "standard-zoom",
       "zoom"
     ],
@@ -3880,6 +3947,7 @@
     "coverage": "aps-c",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:ef-s-lens",
       "standard-zoom",
       "zoom"
     ],
@@ -3937,6 +4005,7 @@
     "coverage": "aps-c",
     "lens_type": "prime",
     "categories": [
+      "canon-museum:ef-s-lens",
       "prime",
       "wide-prime"
     ],
@@ -3994,6 +4063,7 @@
     "coverage": "aps-c",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:ef-m-lens",
       "standard-zoom",
       "zoom"
     ],
@@ -4051,6 +4121,7 @@
     "coverage": "aps-c",
     "lens_type": "prime",
     "categories": [
+      "canon-museum:ef-m-lens",
       "prime",
       "wide-prime"
     ],
@@ -4108,6 +4179,7 @@
     "coverage": "aps-c",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:ef-m-lens",
       "wide-zoom",
       "zoom"
     ],
@@ -4222,6 +4294,7 @@
     "coverage": "aps-c",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:ef-m-lens",
       "standard-zoom",
       "zoom"
     ],
@@ -4279,6 +4352,7 @@
     "coverage": "aps-c",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:ef-m-lens",
       "standard-zoom",
       "zoom"
     ],
@@ -4336,6 +4410,7 @@
     "coverage": "aps-c",
     "lens_type": "prime",
     "categories": [
+      "canon-museum:ef-m-lens",
       "prime",
       "standard-prime"
     ],
@@ -4393,6 +4468,7 @@
     "coverage": "full-frame",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:standard-zoom-lens",
       "l-series",
       "standard-zoom",
       "zoom"
@@ -4452,6 +4528,7 @@
     "coverage": "full-frame",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:wide-zoom-lens",
       "l-series",
       "wide-zoom",
       "zoom"
@@ -4511,6 +4588,7 @@
     "coverage": "full-frame",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:standard-zoom-lens",
       "l-series",
       "standard-zoom",
       "zoom"
@@ -4570,6 +4648,7 @@
     "coverage": "full-frame",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:telephoto-zoom-lens",
       "telephoto-zoom",
       "zoom"
     ],
@@ -4628,6 +4707,7 @@
     "coverage": "full-frame",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:telephoto-zoom-lens",
       "l-series",
       "telephoto-zoom",
       "zoom"
@@ -4689,6 +4769,7 @@
     "coverage": "aps-c",
     "lens_type": "zoom",
     "categories": [
+      "canon-museum:ef-s-lens",
       "standard-zoom",
       "zoom"
     ],

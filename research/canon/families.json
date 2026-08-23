@@ -1,0 +1,74 @@
+[
+  {
+    "slug": "rf-l-series",
+    "name": "RF L-series lenses",
+    "manufacturer_slug": "canon",
+    "note": "Full-frame RF lenses carrying Canon's L designation in the product name. Membership taken from Canon's naming, never inferred from price or specification."
+  },
+  {
+    "slug": "rf-l-vcm-primes",
+    "name": "RF L VCM primes",
+    "manufacturer_slug": "canon",
+    "note": "The RF20mm / RF24mm / RF35mm / RF50mm F1.4 L VCM hybrid stills-and-video primes (Marketed 2024-2025). Canon's museum pages describe a shared VCM-based focus design across the group."
+  },
+  {
+    "slug": "rf-non-l",
+    "name": "RF non-L lenses",
+    "manufacturer_slug": "canon",
+    "note": "Full-frame RF lenses without the L designation: the STM primes and the consumer, travel and super-telephoto F11 zooms/primes."
+  },
+  {
+    "slug": "rf-s",
+    "name": "RF-S lenses",
+    "manufacturer_slug": "canon",
+    "note": "APS-C lenses for the RF mount. Canon Camera Museum files them under its own 'RF-S Lens' category inside the RF Lenses series."
+  },
+  {
+    "slug": "rf-extenders",
+    "name": "RF extenders",
+    "manufacturer_slug": "canon",
+    "note": "Extender RF1.4x and Extender RF2x, both Marketed July 2020 per the Canon Camera Museum."
+  },
+  {
+    "slug": "ef-l-series",
+    "name": "EF L-series lenses",
+    "manufacturer_slug": "canon",
+    "note": "Full-frame EF lenses carrying Canon's L designation in the product name."
+  },
+  {
+    "slug": "ef-non-l",
+    "name": "EF non-L lenses",
+    "manufacturer_slug": "canon",
+    "note": "Full-frame EF lenses without the L designation, including the EF50mm f/1.8 line, EF85mm f/1.8 USM and the EF40mm f/2.8 STM pancake."
+  },
+  {
+    "slug": "ef-s",
+    "name": "EF-S lenses",
+    "manufacturer_slug": "canon",
+    "note": "APS-C lenses for the EF mount, introduced alongside the EOS 300D / DIGITAL REBEL. Canon Camera Museum category 'EF-S Lens'."
+  },
+  {
+    "slug": "ef-m",
+    "name": "EF-M lenses",
+    "manufacturer_slug": "canon",
+    "note": "Lenses for the EF-M mirrorless mount (museum dates the mount '2012-'). Canon Camera Museum category 'EF-M Lens'. The newest member listed in the museum is the EF-M32mm f/1.4 STM, Marketed September 2018."
+  },
+  {
+    "slug": "ef-extenders",
+    "name": "EF extenders",
+    "manufacturer_slug": "canon",
+    "note": "Extender EF1.4X III and Extender EF2X III, both Marketed December 2010 per the Canon Camera Museum."
+  },
+  {
+    "slug": "ts-e",
+    "name": "TS-E tilt-shift lenses",
+    "manufacturer_slug": "canon",
+    "note": "Manual-focus tilt-shift EF lenses. Canon Camera Museum category 'TILT-SHIFT Lens'."
+  },
+  {
+    "slug": "mp-e",
+    "name": "MP-E macro photo lenses",
+    "manufacturer_slug": "canon",
+    "note": "Canon's ultra-high-magnification macro designation; one EF member in the museum, the MP-E65mm f/2.8 1-5X Macro Photo."
+  }
+]

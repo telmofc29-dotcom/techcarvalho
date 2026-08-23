@@ -154,6 +154,7 @@ async function main(): Promise<void> {
 
   // ---- validate -----------------------------------------------------------
   const products: ValidatedProduct[] = [];
+  const researchSlugToFinal = new Map<string, string>();
   for (const raw of rawProducts) {
     const r = validateProduct(raw, fields, { manufacturerSlug: DEFAULT_MANUFACTURER });
     if ("rejected" in r) { problems.push(`REJECTED product: ${r.rejected}`); bump("product.rejected"); continue; }
@@ -164,9 +165,15 @@ async function main(): Promise<void> {
     // holds many makers, and /products/rf50mm-f1-8-stm tells a reader nothing.
     // Deterministic and idempotent: a slug already carrying its prefix is left
     // alone, so re-importing does not double it.
+    const researchSlug = r.product.slug;
     if (!r.product.slug.startsWith(`${r.product.manufacturerSlug}-`)) {
       r.product.slug = `${r.product.manufacturerSlug}-${r.product.slug}`;
     }
+    // Remember what the research called it. Relationship files reference the
+    // maker-local slug, and a two-brand directory has no single prefix to guess
+    // with — resolving by DEFAULT_MANUFACTURER worked for research/canon and
+    // would silently fail to resolve every edge in research/nikon-sony.
+    researchSlugToFinal.set(researchSlug, r.product.slug);
     products.push(r.product);
   }
 
@@ -196,6 +203,11 @@ async function main(): Promise<void> {
       const { data, error } = await db.from("manufacturers").insert({ name, slug }).select("id").single();
       if (error) { problems.push(`manufacturer ${slug}: ${error.message}`); continue; }
       mfrBySlug.set(slug, data.id);
+    } else {
+      // A dry run must model the creation, or every product belonging to a
+      // not-yet-created manufacturer reports as "unresolved" and the plan
+      // understates itself — which is exactly as misleading as overstating it.
+      mfrBySlug.set(slug, `dry-run:${slug}`);
     }
     bump("manufacturer.created");
     console.log(`  + manufacturer ${slug} (${name})`);
@@ -237,6 +249,8 @@ async function main(): Promise<void> {
           .insert({ slug, name: String(f.name ?? slug), manufacturer_id: mid }).select("id").single();
         if (e) { problems.push(`family ${slug}: ${e.message}`); continue; }
         famBySlug.set(slug, data.id);
+      } else {
+        famBySlug.set(slug, `dry-run:${slug}`);
       }
       bump("family.created");
     }
@@ -300,7 +314,20 @@ async function main(): Promise<void> {
     }
 
     // sources — every one classified as what it is, not merely how much it weighs
+    //
+    // source_records has NO unique constraint on (product_id, url), so an
+    // insert is not idempotent and relying on a "duplicate" error to catch it
+    // does nothing. The first re-import produced 72 duplicated pairs. Existing
+    // urls are therefore read first and skipped.
+    let existingUrls = new Set<string>();
+    if (p.sourceUrls.length) {
+      const { data: sr, error: srErr } = await db
+        .from("source_records").select("url").eq("product_id", pid);
+      if (srErr) { problems.push(`${p.slug} reading sources: ${srErr.message}`); }
+      else existingUrls = new Set((sr as { url: string }[]).map((r) => r.url));
+    }
     for (const url of p.sourceUrls) {
+      if (existingUrls.has(url)) { bump("source.already_present"); continue; }
       if (APPLY) {
         const rowS: Record<string, unknown> = {
           product_id: pid, url, publisher: p.manufacturerSlug,
@@ -371,14 +398,13 @@ async function main(): Promise<void> {
   for (const raw of rawRels) {
     const r = validateRelationship(raw);
     if ("rejected" in r) { problems.push(`REJECTED relationship: ${r.rejected}`); bump("relationship.rejected"); continue; }
-    // Relationship endpoints reference maker-local slugs, so they need the same
-    // prefixing the products got, or every edge would fail to resolve.
-    const prefix = (sl: string) =>
-      DEFAULT_MANUFACTURER && !sl.startsWith(`${DEFAULT_MANUFACTURER}-`)
-        ? `${DEFAULT_MANUFACTURER}-${sl}`
-        : sl;
-    const from = productBySlug.get(prefix(r.fromSlug)) ?? productBySlug.get(r.fromSlug);
-    const to = productBySlug.get(prefix(r.toSlug)) ?? productBySlug.get(r.toSlug);
+    // Relationship endpoints reference the slug the RESEARCH used. Look it up in
+    // the map built while validating, which knows each record's real
+    // manufacturer — so a directory holding two brands resolves correctly.
+    const resolve = (sl: string) =>
+      productBySlug.get(researchSlugToFinal.get(sl) ?? sl) ?? productBySlug.get(sl);
+    const from = resolve(r.fromSlug);
+    const to = resolve(r.toSlug);
     if (!from || !to) {
       problems.push(`relationship ${r.fromSlug} -> ${r.toSlug}: endpoint not in catalogue`);
       bump("relationship.skipped_unknown_endpoint");

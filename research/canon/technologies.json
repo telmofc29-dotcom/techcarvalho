@@ -1,0 +1,276 @@
+[
+  {
+    "slug": "ef-mount",
+    "name": "EF mount",
+    "kind": "mount",
+    "summary": "Canon introduced the EF mount in 1987; the Canon Camera Museum mount-evolution feature describes it as “The world’s first fully electronic mount that foretold the camera systems of the future” and names the EOS 650 as a compatible camera and the EF50mm f/1.8 as a compatible lens. The museum Lens Hall lists the EF lens series as running from 1987 onward. Canon’s 2018 EOS R System release restates that “Canon’s EOS System made its debut in 1987 and flourished with EF lenses at its core,” and that EF lenses are “the system’s keystone.” Canon does not state a numeric flange-back figure on any page consulted here.",
+    "source_urls": [
+      "https://global.canon/en/c-museum/history/lens-mount.html",
+      "https://global.canon/en/c-museum/lens-series.html",
+      "https://global.canon/en/news/2018/20180905.html"
+    ],
+    "applies_to_mounts": [
+      "EF",
+      "EF-S"
+    ]
+  },
+  {
+    "slug": "ef-s-mount",
+    "name": "EF-S mount",
+    "kind": "mount",
+    "summary": "EF-S lenses are APS-C-format lenses for the EF mount. The museum entry for the first one, the EF-S18-55mm f/3.5-5.6 (Marketed September 2004 per the museum spec table), calls it “a standard zoom lens specifically designed for the EOS DIGITAL REBEL / EOS 300D digital SLR” whose “effective focal length is equivalent to 29-88mm in 35mm film format.” Canon’s 2018 EOS R System release confirms EF-S lenses can be used on EOS R bodies “through the use of a dedicated adapter.” The museum files EF-S lenses inside the EF lens series rather than as a separate series.",
+    "source_urls": [
+      "https://global.canon/en/c-museum/product/ef380.html",
+      "https://global.canon/en/news/2018/20180905.html",
+      "https://global.canon/en/c-museum/lens-series.html"
+    ],
+    "applies_to_mounts": [
+      "EF-S"
+    ]
+  },
+  {
+    "slug": "ef-m-mount",
+    "name": "EF-M mount",
+    "kind": "mount",
+    "summary": "The museum mount-evolution feature dates the EF-M mount “2012-” and describes it as “A mount that supports compact, lightweight mirrorless cameras with high image quality,” naming the EOS M50 as a compatible camera and the EF-M15-45mm f/3.5-6.3 IS STM as a compatible lens. The earliest EF-M lenses in this dataset (EF-M18-55mm f/3.5-5.6 IS STM, EF-M22mm f/2 STM) both carry a museum Marketed date of September 2012, and the newest (EF-M32mm f/1.4 STM) September 2018. Canon has published no discontinuation statement on any page consulted here, so no lens is marked discontinued; see NOTES.md.",
+    "source_urls": [
+      "https://global.canon/en/c-museum/history/lens-mount.html",
+      "https://global.canon/en/c-museum/product/ef422.html",
+      "https://global.canon/en/c-museum/product/ef470.html"
+    ],
+    "applies_to_mounts": [
+      "EF-M"
+    ]
+  },
+  {
+    "slug": "rf-mount",
+    "name": "RF mount",
+    "kind": "mount",
+    "summary": "Canon announced the RF mount with the EOS R System in September 2018; the museum mount feature dates it “2018-” and describes it as “A mount enabling greater freedom in lens design, expanding optical possibilities.” Canon’s launch release says the EOS R System “employs the newly developed RF Mount”, “With a large mount diameter and short back focus that allows for increased freedom when designing lenses and featuring a new mount transmission system”. Canon defines back focus in its own footnote as “A short distance between the optical axis from the vertex of the rear lens element to the imaging plane when focused to infinity.” Existing EF and EF-S lenses can be used on RF bodies via a dedicated Mount Adapter EF-EOS R.",
+    "source_urls": [
+      "https://global.canon/en/c-museum/history/lens-mount.html",
+      "https://global.canon/en/news/2018/20180905.html",
+      "https://global.canon/en/c-museum/product/rf485.html"
+    ],
+    "applies_to_mounts": [
+      "RF",
+      "RF-S"
+    ]
+  },
+  {
+    "slug": "rf-s-mount",
+    "name": "RF-S lenses",
+    "kind": "mount",
+    "summary": "RF-S is Canon’s APS-C designation within the RF mount; RF-S lenses appear in the museum’s RF Lenses series and are filed under the museum category “RF-S Lens”. The two earliest in this dataset, the RF-S18-45mm F4.5-6.3 IS STM and RF-S18-150mm F3.5-6.3 IS STM, both carry a museum Marketed date of June 2022. RF-S lenses use the same physical RF mount as full-frame RF lenses.",
+    "source_urls": [
+      "https://global.canon/en/c-museum/product/rf514.html",
+      "https://global.canon/en/c-museum/product/rf515.html",
+      "https://global.canon/en/c-museum/lens-series.html"
+    ],
+    "applies_to_mounts": [
+      "RF-S",
+      "RF"
+    ]
+  },
+  {
+    "slug": "flange-focal-distance",
+    "name": "Flange focal distance (EF vs RF)",
+    "kind": "other",
+    "summary": "NOT SOURCED — no figure is asserted. Canon pages reachable in this pass describe the RF mount only qualitatively, as “a large mount diameter and short back focus”, and footnote back focus as “A short distance between the optical axis from the vertex of the rear lens element to the imaging plane when focused to infinity”. None states a numeric flange-back or mount-diameter value for either EF or RF. Canon’s regional sites (canon.co.uk, usa.canon.com, canon-europe.com, snapshot.canon-asia.com), the usual home of those figures, returned HTTP 403 to every request from this environment, including via WebFetch. The numeric values are therefore deliberately left unrecorded rather than filled from memory or a third party.",
+    "source_urls": [
+      "https://global.canon/en/news/2018/20180905.html",
+      "https://global.canon/en/c-museum/history/lens-mount.html"
+    ],
+    "applies_to_mounts": [
+      "EF",
+      "EF-S",
+      "EF-M",
+      "RF",
+      "RF-S"
+    ]
+  },
+  {
+    "slug": "ring-usm",
+    "name": "Ring-type USM (Ultrasonic Motor)",
+    "kind": "focus_motor",
+    "summary": "Canon’s museum page for the EF24-70mm f/2.8L II USM states the lens “includes such features as a ring-type USM (Ultra-Sonic Motor) and high-speed CPU, as well as an optimized AF algorithm for fast auto-focusing performance.” Canon’s Nano USM description elsewhere dates the first use of an ultrasonic motor as a camera-lens motor in Canon interchangeable lenses to 1987. No page reached in this pass gives Canon’s full technical description of the ring-type USM design itself, so ring-type USM is attributed to only one lens in lenses.json.",
+    "source_urls": [
+      "https://global.canon/en/c-museum/product/ef424.html",
+      "https://global.canon/en/c-museum/product/ef454.html"
+    ],
+    "applies_to_mounts": [
+      "EF",
+      "EF-S",
+      "RF"
+    ]
+  },
+  {
+    "slug": "micro-usm",
+    "name": "Micro USM (Micromotor USM)",
+    "kind": "focus_motor",
+    "summary": "NOT SOURCED — no summary is asserted. Micro USM is listed here because it belongs to Canon’s USM family and was in scope, but no Canon page reached in this pass describes it, and no lens in lenses.json carries a Canon-sourced Micro USM attribution. See NOTES.md.",
+    "source_urls": [],
+    "applies_to_mounts": [
+      "EF",
+      "EF-S"
+    ]
+  },
+  {
+    "slug": "nano-usm",
+    "name": "Nano USM",
+    "kind": "focus_motor",
+    "summary": "Canon’s museum page for the EF-S18-135mm f/3.5-5.6 IS USM says “The Nano USM is the latest advancement in ultra-sonic motor technology, which Canon first applied as a camera lens motor in the Company’s interchangeable lenses in 1987,” and that thanks to Nano USM the lens “achieves a greatly increased focus lens driving speed while shooting still images and, like its predecessor, realizes exceptionally quiet and smooth AF operation when recording video.” Canon also credits “Canon’s proprietary Nano Ultra-Sonic Motor (USM)” on the RF24-70mm F2.8 L IS USM for making “comfortable shooting of stills and video” possible.",
+    "source_urls": [
+      "https://global.canon/en/c-museum/product/ef454.html",
+      "https://global.canon/en/c-museum/product/rf485.html"
+    ],
+    "applies_to_mounts": [
+      "EF",
+      "EF-S",
+      "RF"
+    ]
+  },
+  {
+    "slug": "stm",
+    "name": "STM (Stepping Motor)",
+    "kind": "focus_motor",
+    "summary": "Canon’s museum pages for the RF600mm F11 IS STM and RF800mm F11 IS STM describe “a lead-screw type stepper motor (STM) that enables fast and accurate AF when shooting still images and smooth AF when shooting video”. STM appears in the product name of every lens that uses it, so the focus_motor value for STM lenses in lenses.json comes from Canon’s own product naming rather than inference.",
+    "source_urls": [
+      "https://global.canon/en/c-museum/product/rf492.html",
+      "https://global.canon/en/c-museum/product/rf493.html"
+    ],
+    "applies_to_mounts": [
+      "EF",
+      "EF-S",
+      "EF-M",
+      "RF",
+      "RF-S"
+    ]
+  },
+  {
+    "slug": "vcm",
+    "name": "VCM (Voice Coil Motor)",
+    "kind": "focus_motor",
+    "summary": "Canon’s museum pages for the RF L VCM primes describe “the electronic floating focus control, which combines a VCM (voice coil motor) suitable for driving heavy large-aperture lenses and a Nano USM (ultrasonic motor)”, and for the RF20mm F1.4 L VCM “a rear focusing system that accommodates a VCM (voice coil motor), which is suitable for driving the hefty focus lens unit”. Canon links the VCM focus design to quiet, smooth focus adjustment for video with Dual Pixel CMOS AF, and on the RF20mm to reduced “focus breathing”. VCM appears in Canon’s product names for these lenses.",
+    "source_urls": [
+      "https://global.canon/en/c-museum/product/rf546.html",
+      "https://global.canon/en/c-museum/product/rf548.html",
+      "https://global.canon/en/c-museum/product/rf545.html"
+    ],
+    "applies_to_mounts": [
+      "RF"
+    ]
+  },
+  {
+    "slug": "image-stabilizer",
+    "name": "IS (Image Stabilizer)",
+    "kind": "stabilisation",
+    "summary": "IS appears in the product name of every Canon lens carrying optical image stabilization, which is how the stabilisation field in lenses.json is set. Canon quantifies IS performance in shutter-speed stops and always footnotes the test conditions: the RF24-70mm F2.8 L IS USM claim of “image stabilization equivalent to approximately five shutter speed stops” is footnoted “When used with the EOS R at a focal length of 70 mm. Based on CIPA standards.” Because those numbers are body- and focal-length-specific marketing statements, they are recorded per lens in manufacturer_claims with Canon’s exact wording and never in a spec field.",
+    "source_urls": [
+      "https://global.canon/en/c-museum/product/rf485.html",
+      "https://global.canon/en/c-museum/product/rf528.html"
+    ],
+    "applies_to_mounts": [
+      "EF",
+      "EF-S",
+      "EF-M",
+      "RF",
+      "RF-S"
+    ]
+  },
+  {
+    "slug": "hybrid-is",
+    "name": "Hybrid IS",
+    "kind": "stabilisation",
+    "summary": "Canon’s museum page for the EF100mm f/2.8L Macro IS USM states the lens “is the first medium-telephoto macro lens to incorporate Hybrid IS, a new Image Stabilizer technology that optimally compensates for both angle camera shake and shift camera shake.” Shift shake dominates at macro working distances, which is why Canon introduced it on a 1:1 macro lens. It is the only Hybrid IS lens in this dataset.",
+    "source_urls": [
+      "https://global.canon/en/c-museum/product/ef405.html"
+    ],
+    "applies_to_mounts": [
+      "EF"
+    ]
+  },
+  {
+    "slug": "l-series",
+    "name": "L series",
+    "kind": "lens_line",
+    "summary": "L is Canon’s premium interchangeable-lens designation, carried in the product name itself. Canon ties the badge to build reliability as well as optics: of the RF10-20mm F4 L IS STM the museum says its “mount, control ring and focus ring have been made dust- and drip-resistant, granting superb reliability that only an L lens can provide”, footnoted “Complete dust and water droplet prevention is not guaranteed.” The l_series flag in lenses.json is taken from Canon’s naming, not inferred from price or specification.",
+    "source_urls": [
+      "https://global.canon/en/c-museum/product/rf528.html",
+      "https://global.canon/en/c-museum/lens-series.html"
+    ],
+    "applies_to_mounts": [
+      "EF",
+      "RF"
+    ]
+  },
+  {
+    "slug": "do-optics",
+    "name": "DO (Diffractive Optics)",
+    "kind": "optical_design",
+    "summary": "Canon’s museum page for the EF70-300mm f/4.5-5.6 DO IS USM says it “follows the EF400mm f/4 DO IS USM released in 2001 as the second model in Canon’s EF lens lineup to incorporate a DO (Diffractive Optical element) lens.” That lens is “Equipped with a three-layer DO lens specially designed for use in zoom-lens optics” and “possesses an exceeding ability to correct chromatic and spherical aberrations and render high-quality images” while achieving large reductions in size. No lens in this dataset carries DO optics, so do_optics is false throughout.",
+    "source_urls": [
+      "https://global.canon/en/c-museum/product/ef378.html"
+    ],
+    "applies_to_mounts": [
+      "EF"
+    ]
+  },
+  {
+    "slug": "ts-e",
+    "name": "TS-E (Tilt-Shift)",
+    "kind": "lens_line",
+    "summary": "TS-E is Canon’s manual-focus tilt-shift line for the EF mount; the Canon Camera Museum files these lenses under its own “TILT-SHIFT Lens” category. The line includes L-designated wide-angle designs (TS-E17mm f/4L and TS-E24mm f/3.5L II, both Marketed June 2009 per the museum) and later L macro tilt-shifts (TS-E90mm f/2.8L MACRO, Marketed December 2017). The museum RF Lenses series contains no tilt-shift lens as of this pass.",
+    "source_urls": [
+      "https://global.canon/en/c-museum/product/ef401.html",
+      "https://global.canon/en/c-museum/product/ef402.html",
+      "https://global.canon/en/c-museum/product/ef464.html"
+    ],
+    "applies_to_mounts": [
+      "EF"
+    ]
+  },
+  {
+    "slug": "mp-e",
+    "name": "MP-E (Macro Photo)",
+    "kind": "lens_line",
+    "summary": "MP-E is Canon’s ultra-high-magnification macro designation. The museum lists a single EF-mount member, the MP-E65mm f/2.8 1-5X Macro Photo (Marketed September 1999), under its “MACRO / CLOSE-UP Lens” category, and records its maximum magnification as 5.0x. Canon notes its “wide manual focusing ring and detachable tripod mount assure good operability, and macro flash photography is possible with the optional Macro Ring Lite ML-3.”",
+    "source_urls": [
+      "https://global.canon/en/c-museum/product/ef353.html"
+    ],
+    "applies_to_mounts": [
+      "EF"
+    ]
+  },
+  {
+    "slug": "extenders",
+    "name": "Extenders (teleconverters)",
+    "kind": "other",
+    "summary": "Canon sells 1.4x and 2x extenders for both mounts: Extender EF1.4X III and EF2X III (both Marketed December 2010) and Extender RF1.4x and RF2x (both July 2020). Canon states the aperture cost explicitly — “The f-number of the attached lens at fully open aperture is increased by one stop when using the Extender RF1.4x.” Both RF extenders have “dust- and moisture-resistant construction around the lens mount and controls” plus “a durable impact-resistant design in order to accommodate larger lenses”, footnoted that dust and water entry cannot be completely prevented. Extenders fit only lenses Canon designates as compatible; that per-lens compatibility list was not sourceable here, so extender_compatible is null except where a lens page itself names the extender.",
+    "source_urls": [
+      "https://global.canon/en/c-museum/product/rf494.html",
+      "https://global.canon/en/c-museum/product/rf495.html",
+      "https://global.canon/en/c-museum/product/ef408.html",
+      "https://global.canon/en/c-museum/product/ef409.html"
+    ],
+    "applies_to_mounts": [
+      "EF",
+      "RF"
+    ]
+  },
+  {
+    "slug": "control-ring",
+    "name": "Control ring",
+    "kind": "other",
+    "summary": "The control ring is an RF-mount feature: a ring the user assigns to a camera setting, either as a third dedicated ring or combined with the focus ring on smaller lenses. Canon describes it on the RF85mm F1.2 L USM as “a control ring that can be customized to adjust such settings as exposure compensation and aperture value” whose effect can be judged live “while confirming images through the electronic viewfinder”, and on the RF50mm F1.8 STM as “a focus/control ring that can adjust the focal point and also be customized to adjust such settings as shutter speed and aperture value.” Canon also ships a Control Ring Mount Adapter EF-EOS R that adds the same ring to adapted EF lenses.",
+    "source_urls": [
+      "https://global.canon/en/c-museum/product/rf482.html",
+      "https://global.canon/en/c-museum/product/rf498.html",
+      "https://global.canon/en/news/2018/20180905.html"
+    ],
+    "applies_to_mounts": [
+      "RF",
+      "RF-S"
+    ]
+  }
+]
