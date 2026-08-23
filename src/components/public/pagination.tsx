@@ -1,5 +1,19 @@
 import Link from "next/link";
+import { paginationWindow } from "@/lib/public/pagination";
 
+// Server-rendered pagination. No client component, no fetching, no state: the
+// page numbers are real <a href> values that a crawler follows and a reader can
+// copy, which is the whole reason paginated hub content stays discoverable.
+//
+// Previous/Next alone made page N cost N-1 hops from page 1. Numbered links
+// (windowed, with the first and last page always present — see
+// paginationWindow) keep every page within two hops, which is what stops the
+// tail of a long hub from being effectively orphaned.
+//
+// Layout: `flex-wrap` throughout, so a pager with several numbers wraps onto a
+// second line at 320px instead of pushing the document wider than the
+// viewport. Nothing here loads late or resizes after paint, so it contributes
+// no layout shift.
 export function PublicPagination({
   page,
   pageCount,
@@ -23,27 +37,63 @@ export function PublicPagination({
     return qs ? `${basePath}?${qs}` : basePath;
   };
 
+  const stepClass = "rounded-full border border-border-subtle px-4 py-2 hover:border-accent/40";
+  const numberClass =
+    "inline-flex min-w-10 justify-center rounded-full border border-border-subtle px-3 py-2 hover:border-accent/40";
+
   return (
-    <nav aria-label="Pagination" className="flex items-center justify-between mt-10 text-sm">
+    <nav
+      aria-label="Pagination"
+      className="mt-10 flex flex-wrap items-center justify-between gap-x-4 gap-y-3 text-sm"
+    >
       <span className="text-zinc-500">
         Page {page} of {pageCount}
       </span>
-      <div className="flex items-center gap-2">
-        {page > 1 ? (
-          <Link href={hrefFor(page - 1)} className="rounded-full border border-border-subtle px-4 py-2 hover:border-accent/40">
-            Previous
-          </Link>
-        ) : (
-          <span className="rounded-full border border-border-subtle px-4 py-2 text-zinc-300">Previous</span>
+      <ul className="flex flex-wrap items-center gap-2">
+        <li>
+          {page > 1 ? (
+            <Link href={hrefFor(page - 1)} rel="prev" className={stepClass}>
+              Previous
+            </Link>
+          ) : (
+            // Kept as a non-link rather than removed so the control does not
+            // move position between page 1 and page 2.
+            <span className={`${stepClass} text-zinc-300`} aria-hidden="true">
+              Previous
+            </span>
+          )}
+        </li>
+        {paginationWindow(page, pageCount).map((slot, index) =>
+          slot === "gap" ? (
+            <li key={`gap-${index}`} aria-hidden="true" className="px-1 text-zinc-400">
+              …
+            </li>
+          ) : slot === page ? (
+            <li key={slot}>
+              <span aria-current="page" className={`${numberClass} border-zinc-900 bg-zinc-900 text-white`}>
+                {slot}
+              </span>
+            </li>
+          ) : (
+            <li key={slot}>
+              <Link href={hrefFor(slot)} aria-label={`Page ${slot}`} className={numberClass}>
+                {slot}
+              </Link>
+            </li>
+          )
         )}
-        {page < pageCount ? (
-          <Link href={hrefFor(page + 1)} className="rounded-full border border-border-subtle px-4 py-2 hover:border-accent/40">
-            Next
-          </Link>
-        ) : (
-          <span className="rounded-full border border-border-subtle px-4 py-2 text-zinc-300">Next</span>
-        )}
-      </div>
+        <li>
+          {page < pageCount ? (
+            <Link href={hrefFor(page + 1)} rel="next" className={stepClass}>
+              Next
+            </Link>
+          ) : (
+            <span className={`${stepClass} text-zinc-300`} aria-hidden="true">
+              Next
+            </span>
+          )}
+        </li>
+      </ul>
     </nav>
   );
 }

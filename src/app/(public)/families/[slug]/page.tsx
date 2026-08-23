@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { buildMetadata } from "@/lib/seo/metadata";
+import { buildMetadata, canonicalPathWithParams } from "@/lib/seo/metadata";
 import { collectionPageJsonLd, safeJsonLdString } from "@/lib/seo/jsonld";
 import { getFamilyDetail } from "@/lib/public/family-detail";
+import { parsePageParam } from "@/lib/public/pagination";
 import { isFamilyHubIndexable, hubHasContent } from "@/lib/public/hub-eligibility";
 import { Breadcrumbs } from "@/components/public/breadcrumbs";
 import { mediaFit } from "@/lib/media/presentation";
 import { classifiable } from "@/lib/public/hero-image";
 import { ContentCard, ProductCard, SectionHeading } from "@/components/public/cards";
+import { PublicPagination } from "@/components/public/pagination";
 import { EmptyState } from "@/components/shared/ui";
 import { PageViewTracker } from "@/components/analytics/page-view-tracker";
 import { InternalLinkTracker } from "@/components/analytics/internal-link-tracker";
@@ -18,34 +20,52 @@ import { InternalLinkTracker } from "@/components/analytics/internal-link-tracke
 // is queried published-only, so an unpublished body is never linked and the
 // page never states how many members are being withheld.
 
+type FamilySearchParams = { page?: string | string[] };
+
+// Counts describe the whole line, never the page being rendered — a reader (or
+// a crawler) reading "5 published bodies" on page 2 of a paginated hub would be
+// reading a number about something else.
 function describeFamily(detail: NonNullable<Awaited<ReturnType<typeof getFamilyDetail>>>): string | undefined {
   const { family } = detail;
   if (family.description) return family.description;
   const parts: string[] = [];
-  if (detail.products.length > 0) {
-    parts.push(`${detail.products.length} published ${detail.products.length === 1 ? "body" : "bodies"}`);
+  if (detail.productTotal > 0) {
+    parts.push(`${detail.productTotal} published ${detail.productTotal === 1 ? "body" : "bodies"}`);
   }
-  if (detail.articles.length > 0) {
-    parts.push(`${detail.articles.length} ${detail.articles.length === 1 ? "article" : "articles"}`);
+  if (detail.articleTotal > 0) {
+    parts.push(`${detail.articleTotal} ${detail.articleTotal === 1 ? "article" : "articles"}`);
   }
   if (parts.length === 0) return undefined;
   return `Tech Carvalho's coverage of the ${family.name} line — ${parts.join(" and ")}, with specifications and comparisons.`;
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<FamilySearchParams>;
+}): Promise<Metadata> {
   const { slug } = await params;
-  const detail = await getFamilyDetail(slug);
+  const detail = await getFamilyDetail(slug, parsePageParam((await searchParams).page));
   if (!detail) notFound();
 
-  const material = { productCount: detail.products.length, articleCount: detail.articles.length };
+  const material = { productCount: detail.productTotal, articleCount: detail.articleTotal };
+  const baseTitle = hubHasContent(material) ? `${detail.family.name} series compared` : detail.family.name;
 
   return buildMetadata({
     // "Canon EOS 5D" alone is a query this site has no business competing for
     // against Canon itself. What the page offers is the comparison across the
-    // line, and the title says that.
-    title: hubHasContent(material) ? `${detail.family.name} series compared` : detail.family.name,
+    // line, and the title says that — with the page number when there is one,
+    // so paginated pages are not competing identical <title>s.
+    title: detail.page > 1 ? `${baseTitle} — page ${detail.page}` : baseTitle,
     description: describeFamily(detail),
-    path: `/families/${slug}`,
+    // Self-referencing and normalized against a one-param allow-list: tracking
+    // junk is dropped and page=1 collapses to the bare hub path, so
+    // /families/x?page=1 is not a second URL competing with /families/x. The
+    // page number here is the CLAMPED one, so ?page=99 canonicalises to the
+    // last page that exists rather than to itself.
+    path: canonicalPathWithParams(`/families/${slug}`, { page: detail.page }, ["page"]),
     // product_families is world-readable with no publish gating, so this route
     // renders the moment an admin creates a family row — long before anything
     // under it is published. Seven family rows exist and four of them currently
@@ -58,18 +78,27 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   });
 }
 
-export default async function FamilyPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function FamilyPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<FamilySearchParams>;
+}) {
   const { slug } = await params;
-  const detail = await getFamilyDetail(slug);
+  const detail = await getFamilyDetail(slug, parsePageParam((await searchParams).page));
   if (!detail) notFound();
 
-  const { family, category, manufacturers, products, articles } = detail;
-  const material = { productCount: products.length, articleCount: articles.length };
+  const { family, category, manufacturers, products, articles, page, pageCount, productTotal, articleTotal } = detail;
+  const material = { productCount: productTotal, articleCount: articleTotal };
 
+  // Only what this page renders, in render order — a paginated page must not
+  // describe a collection it does not actually link to.
   const collectionItems = [
     ...products.map((p) => ({ name: p.name, path: `/products/${p.slug}` })),
     ...articles.map((a) => ({ name: a.title, path: `/articles/${a.slug}` })),
   ];
+  const pagePath = canonicalPathWithParams(`/families/${slug}`, { page }, ["page"]);
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-12">
@@ -90,9 +119,9 @@ export default async function FamilyPage({ params }: { params: Promise<{ slug: s
           dangerouslySetInnerHTML={{
             __html: safeJsonLdString(
               collectionPageJsonLd({
-                name: `${family.name} series`,
+                name: pageCount > 1 ? `${family.name} series — page ${page}` : `${family.name} series`,
                 description: family.description,
-                path: `/families/${slug}`,
+                path: pagePath,
                 items: collectionItems,
                 listName: `${family.name} coverage`,
               })
@@ -127,6 +156,17 @@ export default async function FamilyPage({ params }: { params: Promise<{ slug: s
               </Link>
             </span>
           ))}
+        </p>
+      )}
+
+      {/* Says how much the LINE holds and where in it this page sits — the
+          counts are totals, not this page's slice. */}
+      {hubHasContent(material) && (
+        <p className="mt-4 text-sm text-zinc-500">
+          {productTotal > 0 && `${productTotal} published ${productTotal === 1 ? "body" : "bodies"}`}
+          {productTotal > 0 && articleTotal > 0 && " · "}
+          {articleTotal > 0 && `${articleTotal} ${articleTotal === 1 ? "article" : "articles"}`}
+          {pageCount > 1 && ` · page ${page} of ${pageCount}`}
         </p>
       )}
 
@@ -199,6 +239,10 @@ export default async function FamilyPage({ params }: { params: Promise<{ slug: s
           )}
         </div>
       )}
+
+      {/* Server-rendered <a href> page links — the later pages of a long line
+          are crawlable and linkable, not hidden behind client JS. */}
+      <PublicPagination page={page} pageCount={pageCount} basePath={`/families/${slug}`} />
 
       {category && (
         <div className="mt-12">

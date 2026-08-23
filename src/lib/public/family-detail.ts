@@ -3,6 +3,7 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { attachHeroImages, type HeroImage } from "./hero-image";
 import { attachExcerpts } from "./excerpt";
+import { HUB_SECTION_PAGE_SIZE, pageSlice, resolveHubPage } from "./pagination";
 import { logQueryError } from "@/lib/log/query-error";
 
 // ---------------------------------------------------------------------------
@@ -63,13 +64,30 @@ export type FamilyDetail = {
   family: { id: string; name: string; slug: string; description: string | null };
   category: { id: string; name: string; slug: string } | null;
   manufacturers: { id: string; name: string; slug: string }[];
+  /** The requested page's slice, not the whole line — see the pagination note below. */
   products: FamilyProduct[];
   articles: FamilyArticle[];
+  /** Published totals for the WHOLE line. What the indexability gate and the description are about. */
+  productTotal: number;
+  articleTotal: number;
+  /** The page actually rendered (the requested page, clamped into range) and how many there are. */
+  page: number;
+  pageCount: number;
   /** Newest real timestamp among the rows this hub lists, for `lastmod`. Null when it lists nothing. */
   lastModified: string | null;
 };
 
-export const getFamilyDetail = cache(async (slug: string): Promise<FamilyDetail | null> => {
+// PAGINATION. Both card sections advance together on one `?page=` param, and
+// the page is resolved from the totals of both — see resolveHubPage. Rows are
+// listed in full (cheap text columns, and the only way to know both totals
+// before committing to a page) and only the slice this page renders is
+// enriched with excerpts and hero images, which is where the round trips and
+// the image bytes actually are.
+//
+// `page` is CLAMPED, and the route canonicalises the clamped value: /families/
+// x?page=99 renders and declares the real last page instead of minting an
+// empty, self-canonicalising URL for a page that does not exist.
+export const getFamilyDetail = cache(async (slug: string, requestedPage = 1): Promise<FamilyDetail | null> => {
   const supabase = await createClient();
 
   // product_families is world-readable reference data (no publish gating) —
@@ -131,21 +149,30 @@ export const getFamilyDetail = cache(async (slug: string): Promise<FamilyDetail 
       : { data: [], error: null };
   logQueryError(`getFamilyDetail(${slug}) articles`, articlesError);
 
+  const articles = articleRows ?? [];
+  const { page, pageCount } = resolveHubPage([products.length, articles.length], requestedPage, HUB_SECTION_PAGE_SIZE);
+
   const [productsWithImages, articlesWithExcerpts] = await Promise.all([
-    attachHeroImages(supabase, products, "product"),
-    attachExcerpts(supabase, articleRows ?? []),
+    attachHeroImages(supabase, pageSlice(products, page, HUB_SECTION_PAGE_SIZE), "product"),
+    attachExcerpts(supabase, pageSlice(articles, page, HUB_SECTION_PAGE_SIZE)),
   ]);
   const articlesWithImages = await attachHeroImages(supabase, articlesWithExcerpts, "content");
 
-  // Only ever a timestamp that really exists on a row this page lists. A
-  // synthetic `now()` would tell crawlers every family changed on every crawl.
-  const timestamps = [...products.map((p) => p.updated_at), ...(articleRows ?? []).map((a) => a.updated_at)];
+  // Only ever a timestamp that really exists on a row this hub lists, and drawn
+  // from every published row rather than only this page's — the hub's lastmod
+  // is a statement about the hub, not about a slice of it. A synthetic `now()`
+  // would tell crawlers every family changed on every crawl.
+  const timestamps = [...products.map((p) => p.updated_at), ...articles.map((a) => a.updated_at)];
   const lastModified = timestamps.length > 0 ? timestamps.reduce((a, b) => (a > b ? a : b)) : null;
 
   return {
     family: { id: family.id, name: family.name, slug: family.slug, description: family.description },
     category: category ?? null,
     manufacturers: manufacturerRows ?? [],
+    productTotal: products.length,
+    articleTotal: articles.length,
+    page,
+    pageCount,
     products: productsWithImages.map((p) => ({
       id: p.id,
       name: p.name,

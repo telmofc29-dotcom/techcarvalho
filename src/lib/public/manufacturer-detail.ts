@@ -3,6 +3,7 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { attachHeroImages, type HeroImage } from "./hero-image";
 import { attachExcerpts } from "./excerpt";
+import { HUB_SECTION_PAGE_SIZE, pageSlice, resolveHubPage } from "./pagination";
 import { mediaPublicUrl } from "@/lib/media/public-url";
 import { logQueryError } from "@/lib/log/query-error";
 
@@ -19,6 +20,7 @@ export type ManufacturerArticle = {
 export type ManufacturerDetail = {
   manufacturer: { id: string; name: string; slug: string; website: string | null; description: string | null };
   logo: HeroImage | null;
+  /** The requested page's slice of the brand's published products, not all of them. */
   products: {
     id: string;
     name: string;
@@ -28,9 +30,20 @@ export type ManufacturerDetail = {
     family_id: string | null;
     heroImage: HeroImage | null;
   }[];
+  /**
+   * Every product line this brand has a published product in — derived from ALL
+   * of them, not from the current page. The chips are navigation for the whole
+   * hub and would otherwise shrink as a reader paged through it.
+   */
   families: { id: string; name: string; slug: string }[];
-  /** Published articles tagged with this brand. See getBrandArticles for the sourcing rule. */
+  /** The requested page's slice of published articles tagged with this brand. See getBrandArticleRows. */
   articles: ManufacturerArticle[];
+  /** Published totals for the WHOLE brand. What the indexability gate, the description and the header count are about. */
+  productTotal: number;
+  articleTotal: number;
+  /** The page actually rendered (the requested page, clamped into range) and how many there are. */
+  page: number;
+  pageCount: number;
   /** Newest real timestamp among the rows this hub lists. Null when it lists nothing. */
   lastModified: string | null;
 };
@@ -42,7 +55,19 @@ export type ManufacturerDetail = {
 // derived from the distinct families actually used by this manufacturer's
 // published products — real data, not a fabricated relationship.
 // Cached per-request — see product-detail.ts for why.
-export const getManufacturerDetail = cache(async (slug: string): Promise<ManufacturerDetail | null> => {
+//
+// PAGINATION. /manufacturers/canon rendered 33 cards and 15,138px of page on
+// every visit, and grew with the catalogue. Both card sections now advance
+// together on one `?page=` param, resolved from both totals (resolveHubPage).
+// Rows are listed in full — cheap text columns, and the only way to know both
+// totals, the family chips and the real `lastModified` before committing to a
+// page — while the expensive enrichment (excerpts, hero images, and one image
+// download per rendered card) happens only for the slice being rendered.
+//
+// `page` is CLAMPED, and the route canonicalises the clamped value, so
+// ?page=99 renders and declares the last page that exists rather than minting
+// an empty self-canonicalising URL.
+export const getManufacturerDetail = cache(async (slug: string, requestedPage = 1): Promise<ManufacturerDetail | null> => {
   const supabase = await createClient();
 
   const { data: manufacturer, error: manufacturerError } = await supabase
@@ -73,11 +98,36 @@ export const getManufacturerDetail = cache(async (slug: string): Promise<Manufac
       : { data: [], error: null };
   logQueryError(`getManufacturerDetail(${slug}) families`, familiesError);
 
-  const productsWithImages = await attachHeroImages(supabase, products ?? [], "product");
+  // PAGINATION. Both sections share one `?page=` param, resolved from whichever
+  // section is longer, and `page` is CLAMPED so an out-of-range request renders
+  // the last real page rather than an empty one.
+  //
+  // The slice happens BEFORE the expensive enrichment: hero images and excerpts
+  // are attached only to the rows this page actually shows, so a brand with 300
+  // products costs the same as one with 30.
+  const allProducts = products ?? [];
+  const { page, pageCount } = resolveHubPage(
+    [allProducts.length, articles.length],
+    requestedPage,
+    HUB_SECTION_PAGE_SIZE
+  );
 
-  const timestamps = [...(products ?? []).map((p) => p.updated_at), ...articles.map((a) => a.updated_at)];
+  const productsWithImages = await attachHeroImages(
+    supabase,
+    pageSlice(allProducts, page, HUB_SECTION_PAGE_SIZE),
+    "product"
+  );
+  const pagedArticles = pageSlice(articles, page, HUB_SECTION_PAGE_SIZE);
+
+  // Drawn from EVERY published row, not just this page's. The hub's lastmod is
+  // a statement about the hub, not about a slice of it.
+  const timestamps = [...allProducts.map((p) => p.updated_at), ...articles.map((a) => a.updated_at)];
 
   return {
+    productTotal: allProducts.length,
+    articleTotal: articles.length,
+    page,
+    pageCount,
     manufacturer: {
       id: manufacturer.id,
       name: manufacturer.name,
@@ -98,7 +148,7 @@ export const getManufacturerDetail = cache(async (slug: string): Promise<Manufac
       heroImage: p.heroImage,
     })),
     families: families ?? [],
-    articles: articles.map((a) => ({
+    articles: pagedArticles.map((a) => ({
       id: a.id,
       title: a.title,
       slug: a.slug,

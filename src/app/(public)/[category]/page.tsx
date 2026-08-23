@@ -1,18 +1,20 @@
 import type { Metadata } from "next";
+import { cache } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { buildMetadata } from "@/lib/seo/metadata";
+import { buildMetadata, canonicalPathWithParams } from "@/lib/seo/metadata";
 import { findPlannedCategory } from "@/lib/public/categories";
 import {
   getCategoryBySlug,
   getCategorySeo,
   getCategoryPublishedCounts,
-  getPublishedContentForCategory,
-  getPublishedProductsForCategory,
   getSubcategories,
   getManufacturersForCategory,
 } from "@/lib/public/queries";
+import { getCategoryContentRows, enrichContentCards } from "@/lib/public/content-list";
+import { getCategoryProductRows, enrichProductCards } from "@/lib/public/product-list";
+import { HUB_SECTION_PAGE_SIZE, pageSlice, parsePageParam, resolveHubPage } from "@/lib/public/pagination";
 import { itemListJsonLd, safeJsonLdString } from "@/lib/seo/jsonld";
 import { getTrendingContent } from "@/lib/public/trending";
 import { getCategoryHeroImage, categoryGradient } from "@/lib/public/category-hero";
@@ -20,35 +22,99 @@ import { Breadcrumbs } from "@/components/public/breadcrumbs";
 import { mediaFit } from "@/lib/media/presentation";
 import { classifiable } from "@/lib/public/hero-image";
 import { ContentCard, ProductCard, SectionHeading } from "@/components/public/cards";
+import { PublicPagination } from "@/components/public/pagination";
 import { TrendingSection } from "@/components/public/trending";
 import { EmptyState } from "@/components/shared/ui";
 import { PageViewTracker } from "@/components/analytics/page-view-tracker";
 import { InternalLinkTracker } from "@/components/analytics/internal-link-tracker";
 
+type CategorySearchParams = { page?: string | string[] };
+
+// One resolved view of a category hub page, shared by generateMetadata and the
+// render via React `cache` so the page number, the totals and the rows are
+// decided once per request. generateMetadata needs the RESOLVED page (not the
+// requested one) because that is what goes in the canonical: a request for
+// ?page=99 on a two-page hub renders page 2 and must say so, rather than
+// declaring a URL that holds nothing.
+//
+// The two card sections share a single `?page=` param. Two independent page
+// params would square the crawlable URL space of every hub — /computing?
+// articles=2&products=3 and its 30-odd siblings, all near-duplicates — for no
+// reader benefit.
+const getCategoryHubPage = cache(async (slug: string, categoryId: string, requestedPage: number) => {
+  const [trending, contentRows, productRows] = await Promise.all([
+    getTrendingContent({ categorySlug: slug, supportingCount: 3 }),
+    getCategoryContentRows(categoryId),
+    getCategoryProductRows(categoryId),
+  ]);
+
+  // Anything in the trending rail is removed from the paginated article list
+  // BEFORE the page count is worked out, not after slicing. Filtering a slice
+  // would leave short pages, and — worse — an article promoted into trending
+  // that happened to fall in page 2's slice would vanish from page 2 while the
+  // rail that replaces it only exists on page 1.
+  const trendingIds = new Set(
+    [trending.lead?.id, ...trending.supporting.map((s) => s.id)].filter(Boolean) as string[]
+  );
+  const articleRows = contentRows.filter((c) => !trendingIds.has(c.id));
+
+  const { page, pageCount } = resolveHubPage(
+    [articleRows.length, productRows.length],
+    requestedPage,
+    HUB_SECTION_PAGE_SIZE
+  );
+
+  const [content, products] = await Promise.all([
+    enrichContentCards(pageSlice(articleRows, page, HUB_SECTION_PAGE_SIZE)),
+    enrichProductCards(pageSlice(productRows, page, HUB_SECTION_PAGE_SIZE)),
+  ]);
+
+  return {
+    trending,
+    content,
+    products,
+    page,
+    pageCount,
+    // Totals describe the whole hub, not this page: the header count line and
+    // the indexability gate are both statements about the category, and the
+    // article total includes the pieces shown in the trending rail.
+    articleTotal: contentRows.length,
+    productTotal: productRows.length,
+  };
+});
+
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ category: string }>;
+  searchParams: Promise<CategorySearchParams>;
 }): Promise<Metadata> {
   const { category: slug } = await params;
+  const requestedPage = parsePageParam((await searchParams).page);
   const planned = findPlannedCategory(slug);
   const dbCategory = await getCategoryBySlug(slug);
 
   if (!planned && !dbCategory) notFound();
 
   const label = dbCategory?.name ?? planned?.label ?? slug;
-  const [seo, counts, bannerImage] = dbCategory
+  const [seo, counts, bannerImage, hub] = dbCategory
     ? await Promise.all([
         getCategorySeo(dbCategory.id),
         getCategoryPublishedCounts(dbCategory.id),
         getCategoryHeroImage(slug, label),
+        getCategoryHubPage(slug, dbCategory.id, requestedPage),
       ])
-    : [null, { productCount: 0, contentCount: 0 }, null];
+    : [null, { productCount: 0, contentCount: 0 }, null, null];
 
   const hasPublishedContent = counts.productCount > 0 || counts.contentCount > 0;
+  const page = hub?.page ?? 1;
+  const title = seo?.meta_title ?? label;
 
   return buildMetadata({
-    title: seo?.meta_title ?? label,
+    // The page number belongs in the title, so a paginated hub is not several
+    // identical <title>s competing with each other.
+    title: page > 1 ? `${title} — page ${page}` : title,
     description:
       seo?.meta_description ??
       // The planned blurb is a one-line nav label ("Cameras, lenses, and the
@@ -57,7 +123,11 @@ export async function generateMetadata({
       (hasPublishedContent
         ? `${planned?.blurb ?? dbCategory?.description ?? `${label} on Tech Carvalho`} Reviews, guides, comparisons, and product specifications.`
         : planned?.blurb ?? dbCategory?.description ?? undefined),
-    path: `/${slug}`,
+    // Self-referencing and normalized against an allow-list of exactly one
+    // param. Tracking junk (utm_*, fbclid) is dropped, and page=1 collapses to
+    // the bare hub path — so /cameras-photography?page=1 and
+    // /cameras-photography are one URL, not two competing ones.
+    path: canonicalPathWithParams(`/${slug}`, { page }, ["page"]),
     canonicalUrl: seo?.canonical_url,
     // A subject area with nothing published renders the "Coming soon" empty
     // state. Ten of those — one per PLANNED_CATEGORIES entry, all structurally
@@ -77,10 +147,13 @@ export async function generateMetadata({
 
 export default async function CategoryPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ category: string }>;
+  searchParams: Promise<CategorySearchParams>;
 }) {
   const { category: slug } = await params;
+  const requestedPage = parsePageParam((await searchParams).page);
   const planned = findPlannedCategory(slug);
   const dbCategory = await getCategoryBySlug(slug);
 
@@ -88,43 +161,48 @@ export default async function CategoryPage({
 
   const label = dbCategory?.name ?? planned?.label ?? slug;
 
-  const [products, content, subcategories, manufacturers, trending, bannerImage] = dbCategory
+  const [hub, subcategories, manufacturers, bannerImage] = dbCategory
     ? await Promise.all([
-        getPublishedProductsForCategory(dbCategory.id),
-        getPublishedContentForCategory(dbCategory.id),
+        getCategoryHubPage(slug, dbCategory.id, requestedPage),
         getSubcategories(dbCategory.id),
         getManufacturersForCategory(dbCategory.id),
-        getTrendingContent({ categorySlug: slug, supportingCount: 3 }),
         getCategoryHeroImage(slug, label),
       ])
-    : [
-        [],
-        [],
-        [],
-        [],
-        { lead: null, supporting: [], isRecencyFallback: true } as Awaited<ReturnType<typeof getTrendingContent>>,
-        null,
-      ];
+    : [null, [], [], null];
 
-  const hasContent = products.length > 0 || content.length > 0 || subcategories.length > 0;
+  // A PLANNED_CATEGORIES slug with no taxonomy_categories row yet has no hub to
+  // page through — it renders the "Coming soon" empty state below.
+  const trending = hub?.trending ?? { lead: null, supporting: [], isRecencyFallback: true };
+  const content = hub?.content ?? [];
+  const products = hub?.products ?? [];
+  const page = hub?.page ?? 1;
+  const pageCount = hub?.pageCount ?? 1;
+  const articleTotal = hub?.articleTotal ?? 0;
+  const productTotal = hub?.productTotal ?? 0;
 
-  // Split the article list by intent so the page reads as a publication rather
-  // than one long undifferentiated grid. Anything shown in the trending block
-  // is excluded so the same piece doesn't appear twice on one screen.
-  const trendingIds = new Set(
-    [trending.lead?.id, ...trending.supporting.map((s) => s.id)].filter(Boolean) as string[]
-  );
-  const remaining = content.filter((c) => !trendingIds.has(c.id));
-  const guidesAndComparisons = remaining.filter((c) => c.type === "guide" || c.type === "comparison");
-  const otherArticles = remaining.filter((c) => c.type !== "guide" && c.type !== "comparison");
+  const hasContent = productTotal > 0 || articleTotal > 0 || subcategories.length > 0;
+
+  // The trending rail is the hub's editorial lead, so it belongs on the hub's
+  // first page and nowhere else. Its pieces are already excluded from every
+  // page of the article list (see getCategoryHubPage), so they are shown once
+  // across the whole paginated set rather than repeated on each page.
+  const showRails = page === 1;
+
+  // Split this page's articles by intent so the hub reads as a publication
+  // rather than one long undifferentiated grid. The underlying list is ordered
+  // guides-first, so these two buckets stay contiguous across pages instead of
+  // fragmenting.
+  const guidesAndComparisons = content.filter((c) => c.type === "guide" || c.type === "comparison");
+  const otherArticles = content.filter((c) => c.type !== "guide" && c.type !== "comparison");
 
   return (
     <div>
       <PageViewTracker entityType="category" categorySlug={slug} />
       {/* One ItemList for the hub's editorial coverage, one for its catalogue.
-          Both list only what this page actually renders, and neither is
-          emitted on an empty "Coming soon" hub — that page is noindex, and
-          markup describing a list of nothing is worse than no markup. */}
+          Both list only what THIS page actually renders — a paginated page
+          must not claim the whole hub's contents — and neither is emitted on
+          an empty "Coming soon" hub, which is noindex and where markup
+          describing a list of nothing is worse than no markup. */}
       {content.length > 0 && (
         <script
           type="application/ld+json"
@@ -132,7 +210,7 @@ export default async function CategoryPage({
             __html: safeJsonLdString(
               itemListJsonLd(
                 content.map((item) => ({ name: item.title, path: `/articles/${item.slug}` })),
-                { name: `${label} articles` }
+                { name: pageCount > 1 ? `${label} articles — page ${page}` : `${label} articles` }
               )
             ),
           }}
@@ -145,7 +223,7 @@ export default async function CategoryPage({
             __html: safeJsonLdString(
               itemListJsonLd(
                 products.map((p) => ({ name: p.name, path: `/products/${p.slug}` })),
-                { name: `${label} products` }
+                { name: pageCount > 1 ? `${label} products — page ${page}` : `${label} products` }
               )
             ),
           }}
@@ -193,9 +271,13 @@ export default async function CategoryPage({
             <p className="mt-4 max-w-xl text-lg text-zinc-700">{planned?.blurb ?? dbCategory?.description}</p>
           )}
           {hasContent && (
+            // Counts describe the whole category, not this page, so a reader
+            // landing on page 2 still sees how much there is — with the page
+            // position said plainly next to it.
             <p className="mt-5 text-sm font-medium text-zinc-600">
-              {content.length} article{content.length === 1 ? "" : "s"}
-              {products.length > 0 && ` · ${products.length} product${products.length === 1 ? "" : "s"}`}
+              {articleTotal} article{articleTotal === 1 ? "" : "s"}
+              {productTotal > 0 && ` · ${productTotal} product${productTotal === 1 ? "" : "s"}`}
+              {pageCount > 1 && ` · page ${page} of ${pageCount}`}
             </p>
           )}
         </div>
@@ -209,7 +291,7 @@ export default async function CategoryPage({
           />
         ) : (
           <div className="flex flex-col gap-14">
-            {trending.lead && (
+            {showRails && trending.lead && (
               <TrendingSection
                 lead={trending.lead}
                 supporting={trending.supporting}
@@ -229,6 +311,9 @@ export default async function CategoryPage({
               />
             )}
 
+            {/* Subcategory and manufacturer chips are navigation, not cards:
+                a few hundred bytes of text that cost nothing to keep on every
+                page, and that a reader on page 2 needs just as much. */}
             {subcategories.length > 0 && (
               <section>
                 <SectionHeading>Subcategories</SectionHeading>
@@ -341,6 +426,11 @@ export default async function CategoryPage({
             )}
           </div>
         )}
+
+        {/* Real <a href> page links, server-rendered: nothing on this hub is
+            reachable only by running JavaScript. Outside the section stack so
+            it reads as the end of the list rather than as another section. */}
+        {hasContent && <PublicPagination page={page} pageCount={pageCount} basePath={`/${slug}`} />}
       </div>
     </div>
   );
