@@ -11,6 +11,7 @@ export type PlannedCategory = {
 
 export const PLANNED_CATEGORIES: PlannedCategory[] = [
   { slug: "cameras-photography", label: "Cameras & Photography", blurb: "Cameras, lenses, and the gear behind them." },
+  { slug: "camera-lenses", label: "Camera Lenses", blurb: "Lenses across every mount, and what actually changes between them." },
   { slug: "astrophotography", label: "Astrophotography", blurb: "Imaging the night sky, from mounts to stacking." },
   { slug: "drones-fpv", label: "Drones & FPV", blurb: "Aerial platforms, FPV builds, and flight gear." },
   { slug: "action-cameras", label: "Action Cameras", blurb: "Rugged cameras built for motion and the outdoors." },
@@ -20,6 +21,7 @@ export const PLANNED_CATEGORIES: PlannedCategory[] = [
   { slug: "smartphones", label: "Smartphones", blurb: "Phones, from flagships to the upgrade question." },
   { slug: "ai-hardware", label: "AI & AI Hardware", blurb: "AI features, on-device AI, and the hardware behind them." },
   { slug: "smart-home-robots", label: "Smart Home & Robots", blurb: "Robot vacuums, smart displays, and connected home gear." },
+  { slug: "3d-printing", label: "3D Printing", blurb: "Printers, materials, and what the specifications actually mean." },
 ];
 
 export function findPlannedCategory(slug: string): PlannedCategory | undefined {

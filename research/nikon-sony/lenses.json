@@ -1,0 +1,2031 @@
+[
+  {
+    "name": "NIKKOR Z 24-70mm f/2.8 S",
+    "slug": "nikkor-z-24-70mm-f2-8-s",
+    "manufacturer_slug": "nikon",
+    "mount": "Z",
+    "coverage": "full-frame",
+    "lens_type": "zoom",
+    "categories": [
+      "standard-zoom",
+      "professional"
+    ],
+    "focal_min_mm": 24,
+    "focal_max_mm": 70,
+    "aperture_max": 2.8,
+    "aperture_max_tele": 2.8,
+    "aperture_min": 22,
+    "stabilisation": null,
+    "stabilisation_stops_claim": null,
+    "focus_motor": null,
+    "premium_line": true,
+    "premium_line_name": "S-Line",
+    "macro": false,
+    "elements": 17,
+    "groups": 15,
+    "aperture_blades": 9,
+    "min_focus_m": 0.38,
+    "max_magnification": 0.22,
+    "filter_diameter_mm": 82,
+    "weight_g": 805,
+    "diameter_mm": 89,
+    "length_mm": 126,
+    "weather_sealed": true,
+    "control_ring": null,
+    "tripod_collar": false,
+    "focus_limiter": null,
+    "internal_zoom": null,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_24-70mmf28s/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "Lens construction: 17 elements in 15 groups (including 2 ED glass and 4 aspherical lens elements)",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_24-70mmf28s/"
+      }
+    ],
+    "unsourced_fields": [
+      "focus_motor",
+      "control_ring",
+      "focus_limiter",
+      "internal_zoom",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced",
+      "stabilisation_stops_claim"
+    ]
+  },
+  {
+    "name": "NIKKOR Z 70-200mm f/2.8 VR S",
+    "slug": "nikkor-z-70-200mm-f2-8-vr-s",
+    "manufacturer_slug": "nikon",
+    "mount": "Z",
+    "coverage": "full-frame",
+    "lens_type": "zoom",
+    "categories": [
+      "telephoto-zoom",
+      "professional"
+    ],
+    "focal_min_mm": 70,
+    "focal_max_mm": 200,
+    "aperture_max": 2.8,
+    "aperture_max_tele": 2.8,
+    "aperture_min": 22,
+    "stabilisation": "VR",
+    "stabilisation_stops_claim": 5.5,
+    "focus_motor": null,
+    "premium_line": true,
+    "premium_line_name": "S-Line",
+    "macro": false,
+    "elements": 21,
+    "groups": 18,
+    "aperture_blades": 9,
+    "min_focus_m": 0.5,
+    "max_magnification": 0.2,
+    "filter_diameter_mm": 77,
+    "weight_g": 1360,
+    "diameter_mm": 89,
+    "length_mm": 220,
+    "weather_sealed": true,
+    "control_ring": true,
+    "tripod_collar": true,
+    "focus_limiter": null,
+    "internal_zoom": null,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_70-200mmf28_vr_s/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "Built-in Vibration Reduction (VR) function provides a superior compensation effect equivalent to shooting at a shutter speed 5.5 stops faster",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_70-200mmf28_vr_s/"
+      },
+      {
+        "claim": "Superb dust- and drip-resistant capability",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_70-200mmf28_vr_s/"
+      }
+    ],
+    "unsourced_fields": [
+      "focus_motor",
+      "focus_limiter",
+      "internal_zoom",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced"
+    ]
+  },
+  {
+    "name": "NIKKOR Z 14-24mm f/2.8 S",
+    "slug": "nikkor-z-14-24mm-f2-8-s",
+    "manufacturer_slug": "nikon",
+    "mount": "Z",
+    "coverage": "full-frame",
+    "lens_type": "zoom",
+    "categories": [
+      "wide-zoom",
+      "ultra-wide",
+      "professional"
+    ],
+    "focal_min_mm": 14,
+    "focal_max_mm": 24,
+    "aperture_max": 2.8,
+    "aperture_max_tele": 2.8,
+    "aperture_min": 22,
+    "stabilisation": null,
+    "stabilisation_stops_claim": null,
+    "focus_motor": null,
+    "premium_line": true,
+    "premium_line_name": "S-Line",
+    "macro": false,
+    "elements": 16,
+    "groups": 11,
+    "aperture_blades": 9,
+    "min_focus_m": 0.28,
+    "max_magnification": 0.13,
+    "filter_diameter_mm": 112,
+    "weight_g": 650,
+    "diameter_mm": 88.5,
+    "length_mm": 124.5,
+    "weather_sealed": true,
+    "control_ring": true,
+    "tripod_collar": false,
+    "focus_limiter": null,
+    "internal_zoom": null,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_14-24mmf28s/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "The ultimate optical performance exhibiting exceptional sharpness is realized with the world's shortest and lightest lens.",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_14-24mmf28s/"
+      },
+      {
+        "claim": "Perfect dust- and drip-resistance is not guaranteed under all conditions",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_14-24mmf28s/"
+      }
+    ],
+    "unsourced_fields": [
+      "focus_motor",
+      "focus_limiter",
+      "internal_zoom",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced"
+    ]
+  },
+  {
+    "name": "NIKKOR Z 50mm f/1.8 S",
+    "slug": "nikkor-z-50mm-f1-8-s",
+    "manufacturer_slug": "nikon",
+    "mount": "Z",
+    "coverage": "full-frame",
+    "lens_type": "prime",
+    "categories": [
+      "standard-prime"
+    ],
+    "focal_min_mm": 50,
+    "focal_max_mm": 50,
+    "aperture_max": 1.8,
+    "aperture_max_tele": null,
+    "aperture_min": 16,
+    "stabilisation": null,
+    "stabilisation_stops_claim": null,
+    "focus_motor": null,
+    "premium_line": true,
+    "premium_line_name": "S-Line",
+    "macro": false,
+    "elements": 12,
+    "groups": 9,
+    "aperture_blades": 9,
+    "min_focus_m": 0.4,
+    "max_magnification": 0.15,
+    "filter_diameter_mm": 62,
+    "weight_g": 415,
+    "diameter_mm": 76,
+    "length_mm": 86.5,
+    "weather_sealed": true,
+    "control_ring": true,
+    "tripod_collar": false,
+    "focus_limiter": null,
+    "internal_zoom": null,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_50mmf18s/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "Outstanding rendering performance is attained through resolving power that provides sharp reproduction of details",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_50mmf18s/"
+      },
+      {
+        "claim": "Great movie recording performance is realized by intensive consideration even of details such as focus breathing compensation",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_50mmf18s/"
+      }
+    ],
+    "unsourced_fields": [
+      "focus_motor",
+      "focus_limiter",
+      "internal_zoom",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced"
+    ]
+  },
+  {
+    "name": "NIKKOR Z 85mm f/1.8 S",
+    "slug": "nikkor-z-85mm-f1-8-s",
+    "manufacturer_slug": "nikon",
+    "mount": "Z",
+    "coverage": "full-frame",
+    "lens_type": "prime",
+    "categories": [
+      "portrait-prime",
+      "short-telephoto"
+    ],
+    "focal_min_mm": 85,
+    "focal_max_mm": 85,
+    "aperture_max": 1.8,
+    "aperture_max_tele": null,
+    "aperture_min": 16,
+    "stabilisation": null,
+    "stabilisation_stops_claim": null,
+    "focus_motor": null,
+    "premium_line": true,
+    "premium_line_name": "S-Line",
+    "macro": false,
+    "elements": 12,
+    "groups": 8,
+    "aperture_blades": 9,
+    "min_focus_m": 0.8,
+    "max_magnification": 0.12,
+    "filter_diameter_mm": 67,
+    "weight_g": 470,
+    "diameter_mm": 75,
+    "length_mm": 99,
+    "weather_sealed": true,
+    "control_ring": true,
+    "tripod_collar": false,
+    "focus_limiter": null,
+    "internal_zoom": null,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_85mmf18s/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "Outstanding optical performance that can create exquisite bokeh characteristics is achieved.",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_85mmf18s/"
+      },
+      {
+        "claim": "Lens body was designed while carefully considering dust- and drip-resistant performance",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_85mmf18s/"
+      }
+    ],
+    "unsourced_fields": [
+      "focus_motor",
+      "focus_limiter",
+      "internal_zoom",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced"
+    ]
+  },
+  {
+    "name": "NIKKOR Z 35mm f/1.8 S",
+    "slug": "nikkor-z-35mm-f1-8-s",
+    "manufacturer_slug": "nikon",
+    "mount": "Z",
+    "coverage": "full-frame",
+    "lens_type": "prime",
+    "categories": [
+      "wide-prime"
+    ],
+    "focal_min_mm": 35,
+    "focal_max_mm": 35,
+    "aperture_max": 1.8,
+    "aperture_max_tele": null,
+    "aperture_min": 16,
+    "stabilisation": null,
+    "stabilisation_stops_claim": null,
+    "focus_motor": null,
+    "premium_line": true,
+    "premium_line_name": "S-Line",
+    "macro": false,
+    "elements": 11,
+    "groups": 9,
+    "aperture_blades": 9,
+    "min_focus_m": 0.25,
+    "max_magnification": 0.19,
+    "filter_diameter_mm": 62,
+    "weight_g": 370,
+    "diameter_mm": 73,
+    "length_mm": 86,
+    "weather_sealed": true,
+    "control_ring": true,
+    "tripod_collar": false,
+    "focus_limiter": null,
+    "internal_zoom": null,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_35mmf18s/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "resolving power compatible with high-megapixel digital cameras, superb point-image reproduction of point light sources, soft and natural bokeh characteristics",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_35mmf18s/"
+      },
+      {
+        "claim": "Nano Crystal Coat that effectively reduces ghost and flare",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_35mmf18s/"
+      }
+    ],
+    "unsourced_fields": [
+      "focus_motor",
+      "focus_limiter",
+      "internal_zoom",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced"
+    ]
+  },
+  {
+    "name": "NIKKOR Z 100-400mm f/4.5-5.6 VR S",
+    "slug": "nikkor-z-100-400mm-f4-5-5-6-vr-s",
+    "manufacturer_slug": "nikon",
+    "mount": "Z",
+    "coverage": "full-frame",
+    "lens_type": "zoom",
+    "categories": [
+      "super-telephoto-zoom",
+      "wildlife",
+      "professional"
+    ],
+    "focal_min_mm": 100,
+    "focal_max_mm": 400,
+    "aperture_max": 4.5,
+    "aperture_max_tele": 5.6,
+    "aperture_min": 32,
+    "stabilisation": "VR",
+    "stabilisation_stops_claim": 5.5,
+    "focus_motor": null,
+    "premium_line": true,
+    "premium_line_name": "S-Line",
+    "macro": false,
+    "elements": 25,
+    "groups": 20,
+    "aperture_blades": 9,
+    "min_focus_m": 0.75,
+    "max_magnification": 0.38,
+    "filter_diameter_mm": 77,
+    "weight_g": 1355,
+    "diameter_mm": 98,
+    "length_mm": 222,
+    "weather_sealed": true,
+    "control_ring": null,
+    "tripod_collar": true,
+    "focus_limiter": null,
+    "internal_zoom": null,
+    "internal_focus": null,
+    "teleconverter_compatible": true,
+    "announced": "2021-10-28",
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_100-400mmf45-56_vr_s/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "The first super-telephoto zoom lens in the NIKKOR Z lineup covering a wide focal-length range from 100 to 400 mm",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_100-400mmf45-56_vr_s/"
+      },
+      {
+        "claim": "The shortest minimum focus distance of 0.75 m/2.46 ft (at the maximum wide-angle position) in its class",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_100-400mmf45-56_vr_s/"
+      }
+    ],
+    "unsourced_fields": [
+      "focus_motor",
+      "control_ring",
+      "focus_limiter",
+      "internal_zoom",
+      "internal_focus"
+    ]
+  },
+  {
+    "name": "NIKKOR Z 24-120mm f/4 S",
+    "slug": "nikkor-z-24-120mm-f4-s",
+    "manufacturer_slug": "nikon",
+    "mount": "Z",
+    "coverage": "full-frame",
+    "lens_type": "zoom",
+    "categories": [
+      "standard-zoom",
+      "travel-zoom"
+    ],
+    "focal_min_mm": 24,
+    "focal_max_mm": 120,
+    "aperture_max": 4,
+    "aperture_max_tele": 4,
+    "aperture_min": 22,
+    "stabilisation": null,
+    "stabilisation_stops_claim": null,
+    "focus_motor": null,
+    "premium_line": true,
+    "premium_line_name": "S-Line",
+    "macro": false,
+    "elements": 16,
+    "groups": 13,
+    "aperture_blades": 9,
+    "min_focus_m": 0.35,
+    "max_magnification": 0.39,
+    "filter_diameter_mm": 77,
+    "weight_g": 630,
+    "diameter_mm": 84,
+    "length_mm": 118,
+    "weather_sealed": true,
+    "control_ring": null,
+    "tripod_collar": false,
+    "focus_limiter": null,
+    "internal_zoom": null,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": "2021-10-28",
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_24-120mmf4s/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "While covering a 120-mm focal length, longer than that of competitors' products, the lens body achieves the lightest weight of approx. 630 g.",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_24-120mmf4s/"
+      },
+      {
+        "claim": "Thorough dust- and drip-resistance is not guaranteed in all situations or under all conditions",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_24-120mmf4s/"
+      }
+    ],
+    "unsourced_fields": [
+      "focus_motor",
+      "control_ring",
+      "focus_limiter",
+      "internal_zoom",
+      "internal_focus",
+      "teleconverter_compatible"
+    ]
+  },
+  {
+    "name": "NIKKOR Z 24-70mm f/4 S",
+    "slug": "nikkor-z-24-70mm-f4-s",
+    "manufacturer_slug": "nikon",
+    "mount": "Z",
+    "coverage": "full-frame",
+    "lens_type": "zoom",
+    "categories": [
+      "standard-zoom",
+      "kit-lens"
+    ],
+    "focal_min_mm": 24,
+    "focal_max_mm": 70,
+    "aperture_max": 4,
+    "aperture_max_tele": 4,
+    "aperture_min": 22,
+    "stabilisation": null,
+    "stabilisation_stops_claim": null,
+    "focus_motor": null,
+    "premium_line": true,
+    "premium_line_name": "S-Line",
+    "macro": false,
+    "elements": 14,
+    "groups": 11,
+    "aperture_blades": 7,
+    "min_focus_m": 0.3,
+    "max_magnification": 0.3,
+    "filter_diameter_mm": 72,
+    "weight_g": 500,
+    "diameter_mm": 77.5,
+    "length_mm": 88.5,
+    "weather_sealed": true,
+    "control_ring": true,
+    "tripod_collar": false,
+    "focus_limiter": null,
+    "internal_zoom": null,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_24-70mmf4s/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "Sharp resolution is retained even in the peripheral areas of the frame throughout the entire zoom range",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_24-70mmf4s/"
+      },
+      {
+        "claim": "designed carefully considering dust- and drip-resistant performance",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_24-70mmf4s/"
+      }
+    ],
+    "unsourced_fields": [
+      "focus_motor",
+      "focus_limiter",
+      "internal_zoom",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced"
+    ]
+  },
+  {
+    "name": "NIKKOR Z 20mm f/1.8 S",
+    "slug": "nikkor-z-20mm-f1-8-s",
+    "manufacturer_slug": "nikon",
+    "mount": "Z",
+    "coverage": "full-frame",
+    "lens_type": "prime",
+    "categories": [
+      "wide-prime",
+      "ultra-wide",
+      "landscape",
+      "astro"
+    ],
+    "focal_min_mm": 20,
+    "focal_max_mm": 20,
+    "aperture_max": 1.8,
+    "aperture_max_tele": null,
+    "aperture_min": 16,
+    "stabilisation": null,
+    "stabilisation_stops_claim": null,
+    "focus_motor": null,
+    "premium_line": true,
+    "premium_line_name": "S-Line",
+    "macro": false,
+    "elements": 14,
+    "groups": 11,
+    "aperture_blades": 9,
+    "min_focus_m": 0.2,
+    "max_magnification": 0.19,
+    "filter_diameter_mm": 77,
+    "weight_g": 505,
+    "diameter_mm": 84.5,
+    "length_mm": 108.5,
+    "weather_sealed": true,
+    "control_ring": true,
+    "tripod_collar": false,
+    "focus_limiter": null,
+    "internal_zoom": null,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_20mmf18s/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "capture high-resolution images stably across the entire frame even at the maximum aperture",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_20mmf18s/"
+      }
+    ],
+    "unsourced_fields": [
+      "focus_motor",
+      "focus_limiter",
+      "internal_zoom",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced"
+    ]
+  },
+  {
+    "name": "NIKKOR Z 50mm f/1.2 S",
+    "slug": "nikkor-z-50mm-f1-2-s",
+    "manufacturer_slug": "nikon",
+    "mount": "Z",
+    "coverage": "full-frame",
+    "lens_type": "prime",
+    "categories": [
+      "standard-prime",
+      "professional",
+      "fast-aperture"
+    ],
+    "focal_min_mm": 50,
+    "focal_max_mm": 50,
+    "aperture_max": 1.2,
+    "aperture_max_tele": null,
+    "aperture_min": 16,
+    "stabilisation": null,
+    "stabilisation_stops_claim": null,
+    "focus_motor": null,
+    "premium_line": true,
+    "premium_line_name": "S-Line",
+    "macro": false,
+    "elements": 17,
+    "groups": 15,
+    "aperture_blades": 9,
+    "min_focus_m": 0.45,
+    "max_magnification": 0.15,
+    "filter_diameter_mm": 82,
+    "weight_g": 1090,
+    "diameter_mm": 89.5,
+    "length_mm": 150,
+    "weather_sealed": true,
+    "control_ring": true,
+    "tripod_collar": false,
+    "focus_limiter": null,
+    "internal_zoom": null,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_50mmf12s/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "The fast maximum aperture of f/1.2 delivers striking resolving power and smooth, beautiful bokeh with an extremely shallow depth of field",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_50mmf12s/"
+      },
+      {
+        "claim": "superior dust- and drip-resistant performance",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_50mmf12s/"
+      }
+    ],
+    "unsourced_fields": [
+      "focus_motor",
+      "focus_limiter",
+      "internal_zoom",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced"
+    ]
+  },
+  {
+    "name": "NIKKOR Z MC 105mm f/2.8 VR S",
+    "slug": "nikkor-z-mc-105mm-f2-8-vr-s",
+    "manufacturer_slug": "nikon",
+    "mount": "Z",
+    "coverage": "full-frame",
+    "lens_type": "prime",
+    "categories": [
+      "macro",
+      "short-telephoto",
+      "professional"
+    ],
+    "focal_min_mm": 105,
+    "focal_max_mm": 105,
+    "aperture_max": 2.8,
+    "aperture_max_tele": null,
+    "aperture_min": 32,
+    "stabilisation": "VR",
+    "stabilisation_stops_claim": 4.5,
+    "focus_motor": null,
+    "premium_line": true,
+    "premium_line_name": "S-Line",
+    "macro": true,
+    "elements": 16,
+    "groups": 11,
+    "aperture_blades": 9,
+    "min_focus_m": 0.29,
+    "max_magnification": 1,
+    "filter_diameter_mm": 62,
+    "weight_g": 630,
+    "diameter_mm": 85,
+    "length_mm": 140,
+    "weather_sealed": true,
+    "control_ring": true,
+    "tripod_collar": false,
+    "focus_limiter": true,
+    "internal_zoom": null,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_mc105mmf28_vr_s/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "Adoption of the large-diameter Z mount has enabled a dramatic increase in optical performance compared to the existing F-mount model.",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_mc105mmf28_vr_s/"
+      },
+      {
+        "claim": "Balances high resolution from close to far focus distances and beautiful bokeh achieved with thorough suppression of color bleed and fringing.",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_mc105mmf28_vr_s/"
+      }
+    ],
+    "unsourced_fields": [
+      "focus_motor",
+      "internal_zoom",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced"
+    ]
+  },
+  {
+    "name": "NIKKOR Z 40mm f/2",
+    "slug": "nikkor-z-40mm-f2",
+    "manufacturer_slug": "nikon",
+    "mount": "Z",
+    "coverage": "full-frame",
+    "lens_type": "prime",
+    "categories": [
+      "standard-prime",
+      "compact",
+      "everyday"
+    ],
+    "focal_min_mm": 40,
+    "focal_max_mm": 40,
+    "aperture_max": 2,
+    "aperture_max_tele": null,
+    "aperture_min": 16,
+    "stabilisation": null,
+    "stabilisation_stops_claim": null,
+    "focus_motor": null,
+    "premium_line": false,
+    "premium_line_name": null,
+    "macro": false,
+    "elements": 6,
+    "groups": 4,
+    "aperture_blades": 9,
+    "min_focus_m": 0.29,
+    "max_magnification": 0.17,
+    "filter_diameter_mm": 52,
+    "weight_g": 170,
+    "diameter_mm": 70,
+    "length_mm": 45.5,
+    "weather_sealed": true,
+    "control_ring": true,
+    "tripod_collar": false,
+    "focus_limiter": null,
+    "internal_zoom": null,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_40mmf2/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "Outstanding rendering performance concentrated in the light and compact body is achieved thanks to the advantages of the Z mount system.",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_40mmf2/"
+      },
+      {
+        "claim": "Thorough dust- and drip-resistance is not guaranteed in all situations or under all conditions",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_40mmf2/"
+      }
+    ],
+    "unsourced_fields": [
+      "focus_motor",
+      "focus_limiter",
+      "internal_zoom",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced"
+    ]
+  },
+  {
+    "name": "NIKKOR Z 28mm f/2.8",
+    "slug": "nikkor-z-28mm-f2-8",
+    "manufacturer_slug": "nikon",
+    "mount": "Z",
+    "coverage": "full-frame",
+    "lens_type": "prime",
+    "categories": [
+      "wide-prime",
+      "compact",
+      "everyday"
+    ],
+    "focal_min_mm": 28,
+    "focal_max_mm": 28,
+    "aperture_max": 2.8,
+    "aperture_max_tele": null,
+    "aperture_min": 16,
+    "stabilisation": null,
+    "stabilisation_stops_claim": null,
+    "focus_motor": null,
+    "premium_line": false,
+    "premium_line_name": null,
+    "macro": false,
+    "elements": 9,
+    "groups": 8,
+    "aperture_blades": 7,
+    "min_focus_m": 0.19,
+    "max_magnification": 0.2,
+    "filter_diameter_mm": 52,
+    "weight_g": 155,
+    "diameter_mm": 70,
+    "length_mm": 43,
+    "weather_sealed": true,
+    "control_ring": true,
+    "tripod_collar": false,
+    "focus_limiter": null,
+    "internal_zoom": null,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_28mmf28/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "Only approx. 43 mm/1.7 in. in length and approx. 155 g/5.5 oz. in weight",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_28mmf28/"
+      },
+      {
+        "claim": "Thorough dust- and drip-resistance is not guaranteed in all situations or under all conditions",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_28mmf28/"
+      }
+    ],
+    "unsourced_fields": [
+      "focus_motor",
+      "focus_limiter",
+      "internal_zoom",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced"
+    ]
+  },
+  {
+    "name": "NIKKOR Z 24-200mm f/4-6.3 VR",
+    "slug": "nikkor-z-24-200mm-f4-6-3-vr",
+    "manufacturer_slug": "nikon",
+    "mount": "Z",
+    "coverage": "full-frame",
+    "lens_type": "zoom",
+    "categories": [
+      "superzoom",
+      "travel-zoom"
+    ],
+    "focal_min_mm": 24,
+    "focal_max_mm": 200,
+    "aperture_max": 4,
+    "aperture_max_tele": 6.3,
+    "aperture_min": 22,
+    "stabilisation": "VR",
+    "stabilisation_stops_claim": 5,
+    "focus_motor": null,
+    "premium_line": false,
+    "premium_line_name": null,
+    "macro": false,
+    "elements": 19,
+    "groups": 15,
+    "aperture_blades": 7,
+    "min_focus_m": 0.5,
+    "max_magnification": 0.28,
+    "filter_diameter_mm": 67,
+    "weight_g": 570,
+    "diameter_mm": 76.5,
+    "length_mm": 114,
+    "weather_sealed": true,
+    "control_ring": true,
+    "tripod_collar": false,
+    "focus_limiter": null,
+    "internal_zoom": false,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_24-200mmf4-63_vr/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "Compact design and a weight of only 570 g are realized without sacrificing optical performance",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_24-200mmf4-63_vr/"
+      },
+      {
+        "claim": "Carefully designed body considering dust- and drip-resistant performance",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_24-200mmf4-63_vr/"
+      }
+    ],
+    "unsourced_fields": [
+      "focus_motor",
+      "focus_limiter",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced"
+    ]
+  },
+  {
+    "name": "NIKKOR Z 26mm f/2.8",
+    "slug": "nikkor-z-26mm-f2-8",
+    "manufacturer_slug": "nikon",
+    "mount": "Z",
+    "coverage": "full-frame",
+    "lens_type": "prime",
+    "categories": [
+      "wide-prime",
+      "pancake",
+      "compact"
+    ],
+    "focal_min_mm": 26,
+    "focal_max_mm": 26,
+    "aperture_max": 2.8,
+    "aperture_max_tele": null,
+    "aperture_min": 16,
+    "stabilisation": null,
+    "stabilisation_stops_claim": null,
+    "focus_motor": null,
+    "premium_line": false,
+    "premium_line_name": null,
+    "macro": false,
+    "elements": 8,
+    "groups": 6,
+    "aperture_blades": 7,
+    "min_focus_m": 0.2,
+    "max_magnification": 0.19,
+    "filter_diameter_mm": 52,
+    "weight_g": 125,
+    "diameter_mm": 70,
+    "length_mm": 23.5,
+    "weather_sealed": true,
+    "control_ring": null,
+    "tripod_collar": false,
+    "focus_limiter": null,
+    "internal_zoom": null,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_26mmf28/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "The slimmest and lightest body that is ideal for those who constantly look for inspirations and carry their mirrorless camera with them every day.",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_26mmf28/"
+      },
+      {
+        "claim": "Thorough dust- and drip-resistance is not guaranteed in all situations or under all conditions",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_26mmf28/"
+      }
+    ],
+    "unsourced_fields": [
+      "focus_motor",
+      "control_ring",
+      "focus_limiter",
+      "internal_zoom",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced"
+    ]
+  },
+  {
+    "name": "NIKKOR Z 50mm f/1.4",
+    "slug": "nikkor-z-50mm-f1-4",
+    "manufacturer_slug": "nikon",
+    "mount": "Z",
+    "coverage": "full-frame",
+    "lens_type": "prime",
+    "categories": [
+      "standard-prime",
+      "fast-aperture"
+    ],
+    "focal_min_mm": 50,
+    "focal_max_mm": 50,
+    "aperture_max": 1.4,
+    "aperture_max_tele": null,
+    "aperture_min": 16,
+    "stabilisation": null,
+    "stabilisation_stops_claim": null,
+    "focus_motor": null,
+    "premium_line": false,
+    "premium_line_name": null,
+    "macro": false,
+    "elements": 10,
+    "groups": 7,
+    "aperture_blades": 9,
+    "min_focus_m": 0.37,
+    "max_magnification": 0.17,
+    "filter_diameter_mm": 62,
+    "weight_g": 420,
+    "diameter_mm": 74.5,
+    "length_mm": 86.5,
+    "weather_sealed": null,
+    "control_ring": null,
+    "tripod_collar": false,
+    "focus_limiter": null,
+    "internal_zoom": null,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_50mmf14/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "A fast maximum aperture of f/1.4 ensures large and soft bokeh expressions to make subjects stand out.",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_50mmf14/"
+      },
+      {
+        "claim": "A minimum focus distance of 0.37 m enables users to get close to subjects and capture fine details.",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_50mmf14/"
+      }
+    ],
+    "unsourced_fields": [
+      "focus_motor",
+      "weather_sealed",
+      "control_ring",
+      "focus_limiter",
+      "internal_zoom",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced"
+    ]
+  },
+  {
+    "name": "NIKKOR Z DX 16-50mm f/3.5-6.3 VR",
+    "slug": "nikkor-z-dx-16-50mm-f3-5-6-3-vr",
+    "manufacturer_slug": "nikon",
+    "mount": "Z",
+    "coverage": "aps-c",
+    "lens_type": "zoom",
+    "categories": [
+      "standard-zoom",
+      "kit-lens",
+      "compact"
+    ],
+    "focal_min_mm": 16,
+    "focal_max_mm": 50,
+    "aperture_max": 3.5,
+    "aperture_max_tele": 6.3,
+    "aperture_min": 22,
+    "stabilisation": "VR",
+    "stabilisation_stops_claim": 4.5,
+    "focus_motor": null,
+    "premium_line": false,
+    "premium_line_name": null,
+    "macro": false,
+    "elements": 9,
+    "groups": 7,
+    "aperture_blades": 7,
+    "min_focus_m": 0.2,
+    "max_magnification": 0.2,
+    "filter_diameter_mm": 46,
+    "weight_g": 135,
+    "diameter_mm": 70,
+    "length_mm": 32,
+    "weather_sealed": null,
+    "control_ring": true,
+    "tripod_collar": false,
+    "focus_limiter": null,
+    "internal_zoom": false,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_dx_16-50mmf35-63_vr/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "Thin lens design is achieved without sacrificing optical performance, which results in a weight of approx. 135 g.",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_dx_16-50mmf35-63_vr/"
+      },
+      {
+        "claim": "With superb VR effect equivalent to a shutter speed 4.5 stops faster, even for scenes such as night landscapes and low-light indoor situations, image blur caused by camera shake is effectively compensated.",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_dx_16-50mmf35-63_vr/"
+      }
+    ],
+    "unsourced_fields": [
+      "focus_motor",
+      "weather_sealed",
+      "focus_limiter",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced"
+    ]
+  },
+  {
+    "name": "NIKKOR Z DX 50-250mm f/4.5-6.3 VR",
+    "slug": "nikkor-z-dx-50-250mm-f4-5-6-3-vr",
+    "manufacturer_slug": "nikon",
+    "mount": "Z",
+    "coverage": "aps-c",
+    "lens_type": "zoom",
+    "categories": [
+      "telephoto-zoom",
+      "kit-lens"
+    ],
+    "focal_min_mm": 50,
+    "focal_max_mm": 250,
+    "aperture_max": 4.5,
+    "aperture_max_tele": 6.3,
+    "aperture_min": 22,
+    "stabilisation": "VR",
+    "stabilisation_stops_claim": 5,
+    "focus_motor": "STM",
+    "premium_line": false,
+    "premium_line_name": null,
+    "macro": false,
+    "elements": 16,
+    "groups": 12,
+    "aperture_blades": 7,
+    "min_focus_m": 0.5,
+    "max_magnification": 0.23,
+    "filter_diameter_mm": 62,
+    "weight_g": 405,
+    "diameter_mm": 74,
+    "length_mm": 110,
+    "weather_sealed": null,
+    "control_ring": true,
+    "tripod_collar": false,
+    "focus_limiter": null,
+    "internal_zoom": false,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_dx_50-250mmf45-63_vr/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "With a superior VR effect equivalent to a shutter speed 5.0 stops faster, the maximum in the history of NIKKOR interchangeable lenses",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_dx_50-250mmf45-63_vr/"
+      }
+    ],
+    "unsourced_fields": [
+      "weather_sealed",
+      "focus_limiter",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced"
+    ]
+  },
+  {
+    "name": "NIKKOR Z DX 24mm f/1.7",
+    "slug": "nikkor-z-dx-24mm-f1-7",
+    "manufacturer_slug": "nikon",
+    "mount": "Z",
+    "coverage": "aps-c",
+    "lens_type": "prime",
+    "categories": [
+      "standard-prime",
+      "compact",
+      "vlogging"
+    ],
+    "focal_min_mm": 24,
+    "focal_max_mm": 24,
+    "aperture_max": 1.7,
+    "aperture_max_tele": null,
+    "aperture_min": 11,
+    "stabilisation": null,
+    "stabilisation_stops_claim": null,
+    "focus_motor": "STM",
+    "premium_line": false,
+    "premium_line_name": null,
+    "macro": false,
+    "elements": 9,
+    "groups": 8,
+    "aperture_blades": 7,
+    "min_focus_m": 0.18,
+    "max_magnification": 0.19,
+    "filter_diameter_mm": 46,
+    "weight_g": 135,
+    "diameter_mm": 70,
+    "length_mm": 40,
+    "weather_sealed": null,
+    "control_ring": null,
+    "tripod_collar": false,
+    "focus_limiter": null,
+    "internal_zoom": null,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_dx_24mmf17/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "The maximum aperture of f/1.7 enhances creative expressions with large bokeh, as well as expanding opportunities in low-light scenes",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_dx_24mmf17/"
+      },
+      {
+        "claim": "A compact and lightweight design at approx. 40 mm in length and approx. 135 g in weight",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_dx_24mmf17/"
+      }
+    ],
+    "unsourced_fields": [
+      "weather_sealed",
+      "control_ring",
+      "focus_limiter",
+      "internal_focus",
+      "announced"
+    ]
+  },
+  {
+    "name": "NIKKOR Z DX 12-28mm f/3.5-5.6 PZ VR",
+    "slug": "nikkor-z-dx-12-28mm-f3-5-5-6-pz-vr",
+    "manufacturer_slug": "nikon",
+    "mount": "Z",
+    "coverage": "aps-c",
+    "lens_type": "zoom",
+    "categories": [
+      "wide-zoom",
+      "ultra-wide",
+      "vlogging",
+      "power-zoom"
+    ],
+    "focal_min_mm": 12,
+    "focal_max_mm": 28,
+    "aperture_max": 3.5,
+    "aperture_max_tele": 5.6,
+    "aperture_min": 16,
+    "stabilisation": "VR",
+    "stabilisation_stops_claim": 4.5,
+    "focus_motor": null,
+    "premium_line": false,
+    "premium_line_name": null,
+    "macro": false,
+    "elements": 12,
+    "groups": 11,
+    "aperture_blades": 7,
+    "min_focus_m": 0.19,
+    "max_magnification": 0.21,
+    "filter_diameter_mm": 67,
+    "weight_g": 205,
+    "diameter_mm": 72,
+    "length_mm": 63.5,
+    "weather_sealed": true,
+    "control_ring": true,
+    "tripod_collar": false,
+    "focus_limiter": null,
+    "internal_zoom": null,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_dx_12-28mmf35-56_pz_vr/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "The adoption of a power zoom, a first for NIKKOR Z lenses, realizes smooth, comfortable zooming via its quietness",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_dx_12-28mmf35-56_pz_vr/"
+      },
+      {
+        "claim": "Thorough dust- and drip-resistance is not guaranteed in all situations or under all conditions",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_dx_12-28mmf35-56_pz_vr/"
+      }
+    ],
+    "unsourced_fields": [
+      "focus_motor",
+      "focus_limiter",
+      "internal_zoom",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced"
+    ]
+  },
+  {
+    "name": "NIKKOR Z 28-75mm f/2.8",
+    "slug": "nikkor-z-28-75mm-f2-8",
+    "manufacturer_slug": "nikon",
+    "mount": "Z",
+    "coverage": "full-frame",
+    "lens_type": "zoom",
+    "categories": [
+      "standard-zoom",
+      "fast-aperture"
+    ],
+    "focal_min_mm": 28,
+    "focal_max_mm": 75,
+    "aperture_max": 2.8,
+    "aperture_max_tele": 2.8,
+    "aperture_min": 22,
+    "stabilisation": null,
+    "stabilisation_stops_claim": null,
+    "focus_motor": "STM",
+    "premium_line": false,
+    "premium_line_name": null,
+    "macro": false,
+    "elements": 15,
+    "groups": 12,
+    "aperture_blades": 9,
+    "min_focus_m": 0.19,
+    "max_magnification": 0.34,
+    "filter_diameter_mm": 67,
+    "weight_g": 565,
+    "diameter_mm": 75,
+    "length_mm": 120.5,
+    "weather_sealed": true,
+    "control_ring": true,
+    "tripod_collar": false,
+    "focus_limiter": null,
+    "internal_zoom": null,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_28-75mmf28/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "A wide range of expressions is made possible by the f/2.8 fixed aperture.",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_28-75mmf28/"
+      },
+      {
+        "claim": "The compact, lightweight body with a total length at 120.5 mm and weight of approx. 565 g provides great portability.",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_28-75mmf28/"
+      }
+    ],
+    "unsourced_fields": [
+      "focus_limiter",
+      "internal_zoom",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced"
+    ]
+  },
+  {
+    "name": "NIKKOR Z 180-600mm f/5.6-6.3 VR",
+    "slug": "nikkor-z-180-600mm-f5-6-6-3-vr",
+    "manufacturer_slug": "nikon",
+    "mount": "Z",
+    "coverage": "full-frame",
+    "lens_type": "zoom",
+    "categories": [
+      "super-telephoto-zoom",
+      "wildlife",
+      "sports"
+    ],
+    "focal_min_mm": 180,
+    "focal_max_mm": 600,
+    "aperture_max": 5.6,
+    "aperture_max_tele": 6.3,
+    "aperture_min": 32,
+    "stabilisation": "VR",
+    "stabilisation_stops_claim": 5.5,
+    "focus_motor": null,
+    "premium_line": false,
+    "premium_line_name": null,
+    "macro": false,
+    "elements": 25,
+    "groups": 17,
+    "aperture_blades": 9,
+    "min_focus_m": 1.3,
+    "max_magnification": 0.25,
+    "filter_diameter_mm": 95,
+    "weight_g": 1955,
+    "diameter_mm": 110,
+    "length_mm": 315.5,
+    "weather_sealed": null,
+    "control_ring": null,
+    "tripod_collar": true,
+    "focus_limiter": null,
+    "internal_zoom": true,
+    "internal_focus": null,
+    "teleconverter_compatible": true,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_180-600mmf56-63_vr/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "Wide focal-length coverage expands your shooting range.",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_180-600mmf56-63_vr/"
+      },
+      {
+        "claim": "Excellent agility with a weight of approx. 1,995 g/4 lb 5 oz, VR with an effect of 5.5 stops and fast, quiet AF.",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_180-600mmf56-63_vr/"
+      }
+    ],
+    "unsourced_fields": [
+      "focus_motor",
+      "weather_sealed",
+      "control_ring",
+      "focus_limiter",
+      "internal_focus",
+      "announced"
+    ]
+  },
+  {
+    "name": "AF-S NIKKOR 50mm f/1.8G",
+    "slug": "af-s-nikkor-50mm-f1-8g",
+    "manufacturer_slug": "nikon",
+    "mount": "F",
+    "coverage": "full-frame",
+    "lens_type": "prime",
+    "categories": [
+      "standard-prime",
+      "budget"
+    ],
+    "focal_min_mm": 50,
+    "focal_max_mm": 50,
+    "aperture_max": 1.8,
+    "aperture_max_tele": null,
+    "aperture_min": 16,
+    "stabilisation": null,
+    "stabilisation_stops_claim": null,
+    "focus_motor": "AF-S",
+    "premium_line": false,
+    "premium_line_name": null,
+    "macro": false,
+    "elements": 7,
+    "groups": 6,
+    "aperture_blades": 7,
+    "min_focus_m": 0.45,
+    "max_magnification": 0.15,
+    "filter_diameter_mm": 58,
+    "weight_g": 185,
+    "diameter_mm": 72,
+    "length_mm": 52.5,
+    "weather_sealed": null,
+    "control_ring": false,
+    "tripod_collar": false,
+    "focus_limiter": null,
+    "internal_zoom": null,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://imaging.nikon.com/imaging/lineup/lens/f-mount/singlefocal/normal/af-s_50mmf_18g/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "Silent Wave Motor (SWM) realizes quiet AF operation",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/f-mount/singlefocal/normal/af-s_50mmf_18g/"
+      }
+    ],
+    "unsourced_fields": [
+      "weather_sealed",
+      "focus_limiter",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced"
+    ]
+  },
+  {
+    "name": "AF-S NIKKOR 70-200mm f/2.8E FL ED VR",
+    "slug": "af-s-nikkor-70-200mm-f2-8e-fl-ed-vr",
+    "manufacturer_slug": "nikon",
+    "mount": "F",
+    "coverage": "full-frame",
+    "lens_type": "zoom",
+    "categories": [
+      "telephoto-zoom",
+      "professional",
+      "sports"
+    ],
+    "focal_min_mm": 70,
+    "focal_max_mm": 200,
+    "aperture_max": 2.8,
+    "aperture_max_tele": 2.8,
+    "aperture_min": 22,
+    "stabilisation": "VR",
+    "stabilisation_stops_claim": 4,
+    "focus_motor": "AF-S",
+    "premium_line": false,
+    "premium_line_name": null,
+    "macro": false,
+    "elements": 22,
+    "groups": 18,
+    "aperture_blades": 9,
+    "min_focus_m": 1.1,
+    "max_magnification": 0.21,
+    "filter_diameter_mm": 77,
+    "weight_g": 1430,
+    "diameter_mm": 88.5,
+    "length_mm": 202.5,
+    "weather_sealed": true,
+    "control_ring": false,
+    "tripod_collar": null,
+    "focus_limiter": null,
+    "internal_zoom": null,
+    "internal_focus": null,
+    "teleconverter_compatible": true,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://imaging.nikon.com/imaging/lineup/lens/f-mount/zoom/telephotozoom/af-s_70-200mmf_28e_fl_ed_vr/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "Movable parts and other sections are sealed to enhance anti-dust and drip-resistant capabilities",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/f-mount/zoom/telephotozoom/af-s_70-200mmf_28e_fl_ed_vr/"
+      },
+      {
+        "claim": "The employment of one fluorite and one HRI lens elements as well as magnesium-alloy parts makes the lens lighter than the former model",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/f-mount/zoom/telephotozoom/af-s_70-200mmf_28e_fl_ed_vr/"
+      }
+    ],
+    "unsourced_fields": [
+      "tripod_collar",
+      "focus_limiter",
+      "internal_zoom",
+      "internal_focus",
+      "announced"
+    ]
+  },
+  {
+    "name": "AF-S NIKKOR 24-70mm f/2.8E ED VR",
+    "slug": "af-s-nikkor-24-70mm-f2-8e-ed-vr",
+    "manufacturer_slug": "nikon",
+    "mount": "F",
+    "coverage": "full-frame",
+    "lens_type": "zoom",
+    "categories": [
+      "standard-zoom",
+      "professional"
+    ],
+    "focal_min_mm": 24,
+    "focal_max_mm": 70,
+    "aperture_max": 2.8,
+    "aperture_max_tele": 2.8,
+    "aperture_min": 22,
+    "stabilisation": "VR",
+    "stabilisation_stops_claim": 4,
+    "focus_motor": "AF-S",
+    "premium_line": false,
+    "premium_line_name": null,
+    "macro": false,
+    "elements": 20,
+    "groups": 16,
+    "aperture_blades": 9,
+    "min_focus_m": 0.38,
+    "max_magnification": 0.28,
+    "filter_diameter_mm": 82,
+    "weight_g": 1070,
+    "diameter_mm": 88,
+    "length_mm": 154.5,
+    "weather_sealed": null,
+    "control_ring": false,
+    "tripod_collar": false,
+    "focus_limiter": null,
+    "internal_zoom": null,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://imaging.nikon.com/imaging/lineup/lens/f-mount/zoom/normalzoom/af-s_24-70mmf_28e_ed_vr/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "2.9x normal zoom with 24-70 mm focal-length range and f/2.8 maximum aperture that delivers improved resolution and natural blurring.",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/f-mount/zoom/normalzoom/af-s_24-70mmf_28e_ed_vr/"
+      },
+      {
+        "claim": "Highly durable body withstands the severest shooting environments of professionals.",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/f-mount/zoom/normalzoom/af-s_24-70mmf_28e_ed_vr/"
+      }
+    ],
+    "unsourced_fields": [
+      "weather_sealed",
+      "focus_limiter",
+      "internal_zoom",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced"
+    ]
+  },
+  {
+    "name": "AF-S DX NIKKOR 35mm f/1.8G",
+    "slug": "af-s-dx-nikkor-35mm-f1-8g",
+    "manufacturer_slug": "nikon",
+    "mount": "F",
+    "coverage": "aps-c",
+    "lens_type": "prime",
+    "categories": [
+      "standard-prime",
+      "budget"
+    ],
+    "focal_min_mm": 35,
+    "focal_max_mm": 35,
+    "aperture_max": 1.8,
+    "aperture_max_tele": null,
+    "aperture_min": 22,
+    "stabilisation": null,
+    "stabilisation_stops_claim": null,
+    "focus_motor": "AF-S",
+    "premium_line": false,
+    "premium_line_name": null,
+    "macro": false,
+    "elements": 8,
+    "groups": 6,
+    "aperture_blades": 7,
+    "min_focus_m": 0.3,
+    "max_magnification": 0.16,
+    "filter_diameter_mm": 52,
+    "weight_g": 200,
+    "diameter_mm": 70,
+    "length_mm": 52.5,
+    "weather_sealed": null,
+    "control_ring": false,
+    "tripod_collar": false,
+    "focus_limiter": null,
+    "internal_zoom": null,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://imaging.nikon.com/imaging/lineup/lens/f-mount/singlefocal/normal/af-s_dx_35mmf_18g/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "Compact, well-balanced design when attached to small SLRs",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/f-mount/singlefocal/normal/af-s_dx_35mmf_18g/"
+      },
+      {
+        "claim": "Natural blur effect thanks to seven-blade rounded diaphragm",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/f-mount/singlefocal/normal/af-s_dx_35mmf_18g/"
+      }
+    ],
+    "unsourced_fields": [
+      "weather_sealed",
+      "focus_limiter",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced"
+    ]
+  },
+  {
+    "name": "AF-S NIKKOR 200-500mm f/5.6E ED VR",
+    "slug": "af-s-nikkor-200-500mm-f5-6e-ed-vr",
+    "manufacturer_slug": "nikon",
+    "mount": "F",
+    "coverage": "full-frame",
+    "lens_type": "zoom",
+    "categories": [
+      "super-telephoto-zoom",
+      "wildlife"
+    ],
+    "focal_min_mm": 200,
+    "focal_max_mm": 500,
+    "aperture_max": 5.6,
+    "aperture_max_tele": 5.6,
+    "aperture_min": 32,
+    "stabilisation": "VR",
+    "stabilisation_stops_claim": 4.5,
+    "focus_motor": "AF-S",
+    "premium_line": false,
+    "premium_line_name": null,
+    "macro": false,
+    "elements": 19,
+    "groups": 12,
+    "aperture_blades": 9,
+    "min_focus_m": 2.2,
+    "max_magnification": 0.22,
+    "filter_diameter_mm": 95,
+    "weight_g": 2090,
+    "diameter_mm": 108,
+    "length_mm": 267.5,
+    "weather_sealed": null,
+    "control_ring": false,
+    "tripod_collar": true,
+    "focus_limiter": null,
+    "internal_zoom": null,
+    "internal_focus": null,
+    "teleconverter_compatible": true,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://imaging.nikon.com/imaging/lineup/lens/f-mount/zoom/telephotozoom/af-s_200-500mmf_56e_ed_vr/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "FX-format compatible, 2.5x super-telephoto 200-500 mm zoom lens with a fixed maximum aperture of f/5.6.",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/f-mount/zoom/telephotozoom/af-s_200-500mmf_56e_ed_vr/"
+      }
+    ],
+    "unsourced_fields": [
+      "weather_sealed",
+      "focus_limiter",
+      "internal_zoom",
+      "internal_focus",
+      "announced"
+    ]
+  },
+  {
+    "name": "AF-S Micro NIKKOR 60mm f/2.8G ED",
+    "slug": "af-s-micro-nikkor-60mm-f2-8g-ed",
+    "manufacturer_slug": "nikon",
+    "mount": "F",
+    "coverage": "full-frame",
+    "lens_type": "prime",
+    "categories": [
+      "macro",
+      "standard-prime"
+    ],
+    "focal_min_mm": 60,
+    "focal_max_mm": 60,
+    "aperture_max": 2.8,
+    "aperture_max_tele": null,
+    "aperture_min": 32,
+    "stabilisation": null,
+    "stabilisation_stops_claim": null,
+    "focus_motor": "AF-S",
+    "premium_line": false,
+    "premium_line_name": null,
+    "macro": true,
+    "elements": 12,
+    "groups": 9,
+    "aperture_blades": 9,
+    "min_focus_m": 0.185,
+    "max_magnification": 1,
+    "filter_diameter_mm": 62,
+    "weight_g": 425,
+    "diameter_mm": 73,
+    "length_mm": 89,
+    "weather_sealed": null,
+    "control_ring": false,
+    "tripod_collar": false,
+    "focus_limiter": null,
+    "internal_zoom": null,
+    "internal_focus": true,
+    "teleconverter_compatible": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://imaging.nikon.com/imaging/lineup/lens/f-mount/specialpurpose/micro/af-s_micro60mmf_28g/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "Internal Focusing (IF) design allows faster, smoother autofocusing and eliminates changes in lens barrel length.",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/f-mount/specialpurpose/micro/af-s_micro60mmf_28g/"
+      }
+    ],
+    "unsourced_fields": [
+      "weather_sealed",
+      "focus_limiter",
+      "teleconverter_compatible",
+      "announced"
+    ]
+  },
+  {
+    "name": "NIKKOR Z 17-28mm f/2.8",
+    "slug": "nikkor-z-17-28mm-f2-8",
+    "manufacturer_slug": "nikon",
+    "mount": "Z",
+    "coverage": "full-frame",
+    "lens_type": "zoom",
+    "categories": [
+      "wide-zoom",
+      "ultra-wide",
+      "fast-aperture"
+    ],
+    "focal_min_mm": 17,
+    "focal_max_mm": 28,
+    "aperture_max": 2.8,
+    "aperture_max_tele": 2.8,
+    "aperture_min": 22,
+    "stabilisation": null,
+    "stabilisation_stops_claim": null,
+    "focus_motor": "STM",
+    "premium_line": false,
+    "premium_line_name": null,
+    "macro": false,
+    "elements": 13,
+    "groups": 11,
+    "aperture_blades": 9,
+    "min_focus_m": 0.19,
+    "max_magnification": 0.19,
+    "filter_diameter_mm": 67,
+    "weight_g": 450,
+    "diameter_mm": 75,
+    "length_mm": 101,
+    "weather_sealed": true,
+    "control_ring": null,
+    "tripod_collar": false,
+    "focus_limiter": null,
+    "internal_zoom": null,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_17-28mmf28/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "The minimum focus distance is 0.19 m, which is the shortest among full-frame/FX-format NIKKOR Z wide-angle zoom lenses.",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_17-28mmf28/"
+      },
+      {
+        "claim": "Thorough dust- and drip-resistance is not guaranteed in all situations or under all conditions",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_17-28mmf28/"
+      }
+    ],
+    "unsourced_fields": [
+      "control_ring",
+      "focus_limiter",
+      "internal_zoom",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced"
+    ]
+  },
+  {
+    "name": "NIKKOR Z 28-400mm f/4-8 VR",
+    "slug": "nikkor-z-28-400mm-f4-8-vr",
+    "manufacturer_slug": "nikon",
+    "mount": "Z",
+    "coverage": "full-frame",
+    "lens_type": "zoom",
+    "categories": [
+      "superzoom",
+      "travel-zoom"
+    ],
+    "focal_min_mm": 28,
+    "focal_max_mm": 400,
+    "aperture_max": 4,
+    "aperture_max_tele": 8,
+    "aperture_min": 22,
+    "stabilisation": "VR",
+    "stabilisation_stops_claim": 5,
+    "focus_motor": "STM",
+    "premium_line": false,
+    "premium_line_name": null,
+    "macro": false,
+    "elements": 21,
+    "groups": 15,
+    "aperture_blades": 9,
+    "min_focus_m": 0.2,
+    "max_magnification": 0.35,
+    "filter_diameter_mm": 77,
+    "weight_g": 725,
+    "diameter_mm": 84.5,
+    "length_mm": 141.5,
+    "weather_sealed": null,
+    "control_ring": null,
+    "tripod_collar": false,
+    "focus_limiter": null,
+    "internal_zoom": false,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_28-400mmf4-8_vr/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "First-in-its-class, approx. 14.2x zoom lens covering super-telephoto 400 mm",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_28-400mmf4-8_vr/"
+      },
+      {
+        "claim": "VR: 5.0 stops (CIPA standards, Normal mode, maximum telephoto)",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_28-400mmf4-8_vr/"
+      }
+    ],
+    "unsourced_fields": [
+      "weather_sealed",
+      "control_ring",
+      "focus_limiter",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced"
+    ]
+  },
+  {
+    "name": "NIKKOR Z MC 50mm f/2.8",
+    "slug": "nikkor-z-mc-50mm-f2-8",
+    "manufacturer_slug": "nikon",
+    "mount": "Z",
+    "coverage": "full-frame",
+    "lens_type": "prime",
+    "categories": [
+      "macro",
+      "standard-prime"
+    ],
+    "focal_min_mm": 50,
+    "focal_max_mm": 50,
+    "aperture_max": 2.8,
+    "aperture_max_tele": null,
+    "aperture_min": 22,
+    "stabilisation": null,
+    "stabilisation_stops_claim": null,
+    "focus_motor": "STM",
+    "premium_line": false,
+    "premium_line_name": null,
+    "macro": true,
+    "elements": 10,
+    "groups": 7,
+    "aperture_blades": 9,
+    "min_focus_m": 0.16,
+    "max_magnification": 1,
+    "filter_diameter_mm": 46,
+    "weight_g": 260,
+    "diameter_mm": 74.5,
+    "length_mm": 66,
+    "weather_sealed": true,
+    "control_ring": true,
+    "tripod_collar": false,
+    "focus_limiter": null,
+    "internal_zoom": null,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_mc50mmf28/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "Suited for a wide variety of scenes, utilizing the minimum focus distance of 0.16 m, maximum reproduction ratio of 1:1, and standard focal length",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_mc50mmf28/"
+      },
+      {
+        "claim": "Designed with consideration of dust- and drip-resistant performance",
+        "source_url": "https://imaging.nikon.com/imaging/lineup/lens/z-mount/z_mc50mmf28/"
+      }
+    ],
+    "unsourced_fields": [
+      "focus_limiter",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced"
+    ]
+  }
+]

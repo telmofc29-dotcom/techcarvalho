@@ -33,6 +33,12 @@ const RELATIONSHIP_LABELS: Record<RelationshipType, string> = {
   accessory_for: "Accessory for",
   compatible_with: "Compatible with",
   requires: "Requires",
+  same_family: "Same family",
+  modern_equivalent: "Modern equivalent",
+  mount_successor: "Earlier mount version",
+  requires_adapter: "Requires an adapter for",
+  supports_extender: "Supports extender",
+  competes_with: "Competes with",
 };
 
 const AFFILIATE_STATUS_LABELS: Record<AffiliateStatus, string> = {
@@ -47,6 +53,12 @@ const REVERSE_RELATIONSHIP_LABELS: Record<RelationshipType, string> = {
   accessory_for: "Has accessory",
   compatible_with: "Compatible with",
   requires: "Required by",
+  same_family: "Same family",
+  modern_equivalent: "Earlier equivalent",
+  mount_successor: "Newer mount version",
+  requires_adapter: "Adapts to",
+  supports_extender: "Extender for",
+  competes_with: "Competes with",
 };
 
 export default async function EditProductPage({

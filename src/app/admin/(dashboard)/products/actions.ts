@@ -18,13 +18,30 @@ import type { FormState } from "@/components/admin/reference-form";
 
 const VALID_STATUSES: ProductStatus[] = ["active", "discontinued", "rumored"];
 const LAUNCH_PRICING_CURRENCIES: LaunchPricingCurrency[] = ["USD", "GBP", "EUR"];
-const VALID_RELATIONSHIP_TYPES: RelationshipType[] = [
-  "successor_of",
-  "alternative_to",
-  "accessory_for",
-  "compatible_with",
-  "requires",
-];
+// Derived from a Record keyed by the union, NOT written as an array.
+//
+// The array form silently narrowed: `RelationshipType[]` accepts a list of five
+// when the union has eleven, so widening the union in database.ts left this
+// validator rejecting six perfectly valid types with no compile error and no
+// runtime error — just an admin form that quietly refuses to save. That is the
+// same guard-list narrowing this project has shipped before.
+//
+// A Record<RelationshipType, true> cannot be short: omitting a member is a
+// compile error, so adding a relationship type forces a decision here.
+const RELATIONSHIP_TYPE_KEYS: Record<RelationshipType, true> = {
+  successor_of: true,
+  alternative_to: true,
+  accessory_for: true,
+  compatible_with: true,
+  requires: true,
+  same_family: true,
+  modern_equivalent: true,
+  mount_successor: true,
+  requires_adapter: true,
+  supports_extender: true,
+  competes_with: true,
+};
+const VALID_RELATIONSHIP_TYPES = Object.keys(RELATIONSHIP_TYPE_KEYS) as RelationshipType[];
 const VALID_AFFILIATE_STATUSES: AffiliateStatus[] = ["affiliate", "non_affiliate", "pending"];
 
 function readProductPayload(formData: FormData): ValidationResult<Insert<"products">> {

@@ -69,6 +69,16 @@ const FORWARD_LABELS: Record<RelationshipType, string> = {
   accessory_for: "Accessory for",
   compatible_with: "Compatible with",
   requires: "Requires",
+  // Added with 20260827_knowledge_graph.sql. The pair must stay coherent:
+  // relationships are stored one-directional and the reverse is inferred, so
+  // every label here needs a REVERSE_LABELS counterpart that reads correctly
+  // from the other product's page. Symmetric kinds use the same word twice.
+  same_family: "Same family",
+  modern_equivalent: "Modern equivalent",
+  mount_successor: "Earlier mount version",
+  requires_adapter: "Requires an adapter for",
+  supports_extender: "Supports extender",
+  competes_with: "Competes with",
 };
 
 const REVERSE_LABELS: Record<RelationshipType, string> = {
@@ -77,6 +87,12 @@ const REVERSE_LABELS: Record<RelationshipType, string> = {
   accessory_for: "Accessories",
   compatible_with: "Compatible with",
   requires: "Required by",
+  same_family: "Same family",
+  modern_equivalent: "Earlier equivalent",
+  mount_successor: "Newer mount version",
+  requires_adapter: "Adapts to",
+  supports_extender: "Extender for",
+  competes_with: "Competes with",
 };
 
 // Cached per-request: generateMetadata() and the page component both need

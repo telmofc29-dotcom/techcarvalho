@@ -4,11 +4,91 @@
 
 export type MediaType = "image" | "video";
 export type ProductStatus = "active" | "discontinued" | "rumored";
+// Widened by supabase/migrations_pending/20260827_knowledge_graph.sql. The
+// original five are unchanged; six were added for the catalogue expansion.
+//
+// `predecessor` is deliberately absent: relationships are stored ONE
+// DIRECTIONAL and the reverse is inferred at query time, so `successor_of`
+// already expresses both directions. A predecessor value would let the same
+// fact be stored twice and disagree with itself.
 export type RelationshipType =
   | "successor_of"
   | "alternative_to"
   | "accessory_for"
   | "compatible_with"
+  | "requires"
+  | "same_family"
+  | "modern_equivalent"
+  | "mount_successor"
+  | "requires_adapter"
+  | "supports_extender"
+  | "competes_with";
+
+/**
+ * How real a product is. Separate from ProductStatus, which is a catalogue
+ * lifecycle field. 'unknown' means NOBODY HAS ASSESSED IT — never "does not
+ * exist". For future-tech entries the gap between `announced` and
+ * `commercially_available` is frequently the entire story.
+ */
+export type ProductMaturity =
+  | "announced"
+  | "demonstrated"
+  | "prototype"
+  | "pilot"
+  | "production"
+  | "commercially_available"
+  | "discontinued"
+  | "unknown";
+
+/**
+ * What KIND of source a record is. Orthogonal to ReliabilityTier, which is how
+ * much weight it carries. A manufacturer spec page and an independent lab test
+ * can both be 'primary' and are not the same claim.
+ */
+export type SourceClass =
+  | "manufacturer_official"
+  | "standards_body"
+  | "primary_documentation"
+  | "independent_publication"
+  | "independent_test"
+  | "retailer"
+  | "community"
+  | "unclassified";
+
+/** Broad shape of a reusable explainable concept. */
+export type TechnologyKind =
+  | "mount"
+  | "focus_motor"
+  | "stabilisation"
+  | "lens_line"
+  | "optical_design"
+  | "sensor"
+  | "connectivity"
+  | "printer_kinematics"
+  | "printer_feature"
+  | "material"
+  | "compute"
+  | "autonomy"
+  | "standard"
+  | "other";
+
+/**
+ * What kind of assertion a product_claims row is. A manufacturer claim is not
+ * evidence: it has no tester, no conditions and no measurement.
+ */
+export type ProductClaimKind =
+  | "manufacturer_performance"
+  | "manufacturer_compatibility"
+  | "manufacturer_marketing"
+  | "third_party_measured";
+
+export type DatePrecision = "day" | "month" | "year" | "unknown";
+
+export type TechnologyRelationshipType =
+  | "kind_of"
+  | "succeeds"
+  | "related_to"
+  | "competes_with"
   | "requires";
 export type SpecDataType = "text" | "number" | "boolean" | "enum";
 // Added by supabase/migrations/20260825_product_owner_access.sql. Deliberately
@@ -541,6 +621,10 @@ export interface Database {
           owner_access: ProductOwnerAccess;
           owner_access_note: string | null;
           owner_access_set_at: string | null;
+          // Added by supabase/migrations_pending/20260827_knowledge_graph.sql.
+          maturity: ProductMaturity;
+          /** 'month' means release_date's day is a storage artefact — do not display it. */
+          release_date_precision: DatePrecision;
           created_at: string;
           updated_at: string;
         };
@@ -559,6 +643,8 @@ export interface Database {
           owner_access?: ProductOwnerAccess;
           owner_access_note?: string | null;
           owner_access_set_at?: string | null;
+          maturity?: ProductMaturity;
+          release_date_precision?: DatePrecision;
           created_at?: string;
           updated_at?: string;
         };
@@ -571,6 +657,9 @@ export interface Database {
           product_id: string;
           related_product_id: string;
           relationship_type: RelationshipType;
+          /** Why this edge is asserted. A successor is never inferred from specs alone. */
+          basis: string | null;
+          source_url: string | null;
           created_at: string;
         };
         Insert: {
@@ -578,6 +667,8 @@ export interface Database {
           product_id: string;
           related_product_id: string;
           relationship_type: RelationshipType;
+          basis?: string | null;
+          source_url?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["product_relationships"]["Insert"]>;
@@ -925,6 +1016,8 @@ export interface Database {
           publisher: string | null;
           retrieved_at: string;
           reliability_tier: ReliabilityTier;
+          /** Added by 20260827_knowledge_graph.sql. NOT a reliability measure. */
+          source_class: SourceClass;
           created_at: string;
         };
         Insert: {
@@ -936,6 +1029,7 @@ export interface Database {
           publisher?: string | null;
           retrieved_at?: string;
           reliability_tier?: ReliabilityTier;
+          source_class?: SourceClass;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["source_records"]["Insert"]>;
