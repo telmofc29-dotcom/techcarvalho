@@ -19,6 +19,43 @@ import { useConsent, type ConsentCategory, type ConsentState } from "@/lib/conse
 // post-mount effect confirms a prior choice was stored — a brief flash for
 // returning visitors is the accepted trade-off of doing this without a
 // cookie-based SSR read.
+//
+// SIZE IS A UX REQUIREMENT HERE, NOT A COSMETIC ONE. This is fixed to the
+// bottom of a 568px-tall viewport on the smallest phones still in use; at
+// 320px wide the previous layout occupied 317px (56%) of it, which left
+// 186px of readable page under the 65px sticky header — a first-time
+// visitor on /articles saw no content at all. The rules that keep that from
+// coming back:
+//   - one short paragraph, three buttons on ONE row at every width;
+//   - the three buttons are the same size and share one grid track, so
+//     Reject is never made smaller, greyer or harder to hit than Accept
+//     (a dark pattern, and unlawful under GDPR/EDPB guidance);
+//   - the visible short labels are prefixes of their aria-labels, which
+//     satisfies WCAG 2.5.3 Label in Name while fitting a 320px row;
+//   - `min-h-11` (44px) on every button — the policy links stay inline in
+//     the sentence (WCAG 2.5.8's inline exception) with vertical padding
+//     that grows the hit box without changing the line box.
+// The consent VALUES and when they are written are untouched: every button
+// still calls the same acceptAll/rejectAll/setConsent from
+// consent-context.tsx and nothing here reads or writes storage itself.
+
+const BUTTON_BASE =
+  "inline-flex min-h-11 items-center justify-center rounded-full px-2 text-center text-sm leading-tight sm:px-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900";
+// CHOICE buttons — reject and accept. Deliberately the SAME class, so the
+// two opposing answers are identical in size, weight, colour and contrast.
+// Do not give accept a filled treatment "for hierarchy": under EDPB/CNIL
+// guidance the rejection path must be as easy and as prominent as the
+// acceptance path, and a filled-vs-outlined pair is the exact pattern
+// regulators cite when they find otherwise.
+const BUTTON_CHOICE = `${BUTTON_BASE} border-2 border-zinc-900 bg-white font-semibold text-zinc-900 hover:bg-zinc-100`;
+// The route to the per-category panel — a different kind of action, not a
+// third answer, so it is allowed (and helpful) to read as secondary.
+const BUTTON_SECONDARY = `${BUTTON_BASE} border border-zinc-300 font-medium text-zinc-600 hover:bg-zinc-50`;
+// Inline policy links: vertical padding on an inline element expands the
+// hit rectangle without affecting the line box, so the sentence keeps its
+// leading while the tap target stops being 18px tall.
+const INLINE_LINK = "-my-1 rounded py-1 underline hover:text-zinc-900";
+
 export function ConsentBanner() {
   const { consent, hasChosen, acceptAll, rejectAll, isPreferencesOpen, openPreferences, closePreferences } =
     useConsent();
@@ -43,47 +80,45 @@ export function ConsentBanner() {
       role="dialog"
       aria-modal="false"
       aria-labelledby="consent-banner-heading"
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-zinc-200 bg-white px-6 py-5 shadow-[0_-4px_16px_rgba(0,0,0,0.08)]"
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-zinc-200 bg-white px-4 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] sm:px-6 sm:py-4"
     >
-      <div className="mx-auto flex max-w-5xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
         <div className="max-w-2xl">
           <h2 id="consent-banner-heading" className="font-display text-sm font-semibold text-zinc-900">
             Your privacy choices
           </h2>
-          <p className="mt-1 text-sm text-zinc-500">
-            We use essential cookies to run this site. With your consent we&apos;d also like to use analytics to
-            understand how the site is used. Read our{" "}
-            <Link href="/cookies" className="underline hover:text-zinc-900">
+          {/* One sentence, not three. It still names what is used without
+              consent (essential), what is not (analytics), and links both
+              policies — the legally load-bearing parts — in the space the
+              old three-line version spent restating them. */}
+          <p className="mt-0.5 text-sm leading-snug text-zinc-500">
+            Essential cookies keep this site running. Analytics cookies are used only if you accept.{" "}
+            <Link href="/cookies" className={INLINE_LINK}>
               Cookie Policy
-            </Link>{" "}
-            or{" "}
-            <Link href="/privacy" className="underline hover:text-zinc-900">
+            </Link>
+            {" · "}
+            <Link href="/privacy" className={INLINE_LINK}>
               Privacy Policy
             </Link>
-            .
           </p>
         </div>
-        <div className="flex shrink-0 flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={rejectAll}
-            className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
-          >
-            Reject non-essential
+        {/* Equal thirds: identical width, height and weight for reject and
+            accept, with manage between them. Never collapse this to a
+            "prominent Accept, small Reject" arrangement. */}
+        <div className="grid shrink-0 grid-cols-3 gap-2 sm:flex sm:gap-3">
+          <button type="button" onClick={rejectAll} aria-label="Reject non-essential cookies" className={BUTTON_CHOICE}>
+            Reject
           </button>
           <button
             type="button"
             onClick={openPreferences}
-            className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
+            aria-label="Manage cookie preferences"
+            className={BUTTON_SECONDARY}
           >
-            Manage preferences
+            Manage
           </button>
-          <button
-            type="button"
-            onClick={acceptAll}
-            className="rounded-full bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
-          >
-            Accept all
+          <button type="button" onClick={acceptAll} aria-label="Accept all cookies" className={BUTTON_CHOICE}>
+            Accept
           </button>
         </div>
       </div>
@@ -120,16 +155,16 @@ function PreferencesPanel({ consent, onClose }: { consent: ConsentState; onClose
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 px-4 pb-4 sm:items-center sm:pb-0">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 px-3 pb-3 sm:items-center sm:px-4 sm:pb-0">
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={headingId}
         tabIndex={-1}
-        className="flex max-h-[85vh] w-full max-w-lg flex-col gap-5 overflow-y-auto rounded-2xl bg-white p-6 shadow-xl focus:outline-none"
+        className="flex max-h-[85vh] w-full max-w-lg flex-col gap-4 overflow-y-auto rounded-2xl bg-white p-4 shadow-xl focus:outline-none sm:gap-5 sm:p-6"
       >
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start justify-between gap-3">
           <h2 id={headingId} className="font-display text-base font-semibold text-zinc-900">
             Manage your privacy preferences
           </h2>
@@ -137,7 +172,9 @@ function PreferencesPanel({ consent, onClose }: { consent: ConsentState; onClose
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="shrink-0 rounded-full p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
+            // -m-2 pulls the 44px hit area back out of the layout so the
+            // close control gains touch size without gaining visual weight.
+            className="-m-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
           >
             <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" aria-hidden="true">
               <path d="M5 5l10 10M15 5L5 15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -147,13 +184,13 @@ function PreferencesPanel({ consent, onClose }: { consent: ConsentState; onClose
 
         <p className="text-sm text-zinc-500">
           Read our{" "}
-          <Link href="/cookies" className="underline hover:text-zinc-900">
+          <Link href="/cookies" className={INLINE_LINK}>
             Cookie Policy
           </Link>{" "}
           for exactly what each category involves.
         </p>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1">
           <CategoryRow
             title="Essential"
             description="Required for the site and admin sign-in to function. Always on."
@@ -174,27 +211,17 @@ function PreferencesPanel({ consent, onClose }: { consent: ConsentState; onClose
           />
         </div>
 
-        <div className="flex flex-col gap-2 border-t border-zinc-100 pt-4 sm:flex-row sm:justify-end">
-          <button
-            type="button"
-            onClick={rejectAll}
-            className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
-          >
-            Reject non-essential
+        {/* Same equal-prominence rule as the banner: reject, save and accept
+            are one grid of identical buttons. */}
+        <div className="grid grid-cols-3 gap-2 border-t border-zinc-100 pt-4 sm:flex sm:justify-end sm:gap-3">
+          <button type="button" onClick={rejectAll} aria-label="Reject non-essential cookies" className={BUTTON_CHOICE}>
+            Reject
           </button>
-          <button
-            type="button"
-            onClick={() => setConsent(draft)}
-            className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
-          >
-            Save preferences
+          <button type="button" onClick={() => setConsent(draft)} aria-label="Save preferences" className={BUTTON_CHOICE}>
+            Save
           </button>
-          <button
-            type="button"
-            onClick={acceptAll}
-            className="rounded-full bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
-          >
-            Accept all
+          <button type="button" onClick={acceptAll} aria-label="Accept all cookies" className={BUTTON_CHOICE}>
+            Accept
           </button>
         </div>
       </div>
@@ -216,7 +243,9 @@ function CategoryRow({
   onChange?: (value: boolean) => void;
 }) {
   return (
-    <label className={`flex items-start gap-3 ${disabled ? "" : "cursor-pointer"}`}>
+    // The <label> wraps the checkbox, so the whole row — not the 16px box —
+    // is the target; py-2 gives it a comfortably-over-44px height.
+    <label className={`-mx-2 flex items-start gap-3 rounded-lg px-2 py-2 ${disabled ? "" : "cursor-pointer hover:bg-zinc-50"}`}>
       <input
         type="checkbox"
         checked={checked}

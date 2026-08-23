@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { logQueryError } from "@/lib/log/query-error";
-import { attachHeroImages } from "./hero-image";
+import { attachHeroImages, type HeroImage } from "./hero-image";
 
 const PAGE_SIZE = 24;
 
@@ -93,3 +93,47 @@ export async function getProductFilterOptions() {
 }
 
 export { PAGE_SIZE as PRODUCT_LIST_PAGE_SIZE };
+
+// ---------------------------------------------------------------------------
+// Hub product lists, split into "which rows" and "enrich the ones this page
+// shows" — the same shape as getCategoryContentRows/enrichContentCards in
+// content-list.ts, and for the same reason.
+//
+// A hub carries two card sections and paginates them with ONE `?page=` param,
+// so it has to know both sections' totals before it can settle on a page
+// number. `.range()` cannot answer that without committing to a page first, so
+// the (cheap, text-only) rows are listed in full and sliced in memory; the
+// expensive enrichment — hero images, and one image download per rendered card
+// — happens only for the slice. /manufacturers/canon fetched, enriched and
+// rendered all 22 of its product cards on every visit before this.
+// ---------------------------------------------------------------------------
+
+export type HubProductRow = {
+  id: string;
+  name: string;
+  slug: string;
+  summary: string | null;
+  status: string;
+};
+
+/** Every published product in a category, in the hub's render order (by name). Unenriched. */
+export async function getCategoryProductRows(categoryId: string): Promise<HubProductRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select("id, name, slug, summary, status")
+    .eq("category_id", categoryId)
+    .eq("is_published", true)
+    .order("name");
+  logQueryError(`getCategoryProductRows(${categoryId})`, error);
+  return data ?? [];
+}
+
+/** Attaches hero images to the product rows a page actually renders. */
+export async function enrichProductCards<T extends { id: string }>(
+  rows: T[]
+): Promise<(T & { heroImage: HeroImage | null })[]> {
+  if (rows.length === 0) return [];
+  const supabase = await createClient();
+  return attachHeroImages(supabase, rows, "product");
+}

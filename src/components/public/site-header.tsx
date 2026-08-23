@@ -22,14 +22,26 @@ function SearchForm({ className = "" }: { className?: string }) {
         name="q"
         placeholder="Search reviews, guides, products..."
         aria-label="Search Tech Carvalho"
-        className="w-full rounded-full border border-border-subtle bg-zinc-50 px-4 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-accent/50 focus:outline-none focus:ring-2 focus:ring-accent/30"
+        // min-h-11: the input was 38px tall, under the 44px touch minimum.
+        // The extra 6px is padding, not type size — the field reads the same,
+        // it is just no longer a miss on a thumb.
+        className="min-h-11 w-full rounded-full border border-border-subtle bg-zinc-50 px-4 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-accent/50 focus:outline-none focus:ring-2 focus:ring-accent/30"
       />
     </form>
   );
 }
 
+// `inline-flex min-h-11` rather than a bigger font: these links were 20px
+// tall hit boxes on a 13-14px label. The label is unchanged; the box around
+// it now clears 44px. The subject rail below drops its own vertical padding
+// to compensate, so the bar itself barely moves.
+// The dropdown is the only nav on a phone, so its rows are full-width 44px
+// targets. `flex` (not `block`) so min-h-11 centres the label instead of
+// leaving it top-aligned in a taller box.
+const MOBILE_NAV_LINK = "flex min-h-11 items-center rounded-md px-2 hover:bg-zinc-50 hover:text-accent";
+
 const NAV_LINK =
-  "rounded px-0.5 py-1 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-white";
+  "inline-flex min-h-11 items-center rounded px-1.5 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-white";
 
 export function SiteHeader() {
   return (
@@ -39,7 +51,9 @@ export function SiteHeader() {
           <Link
             href="/"
             id="nav-home"
-            className="flex shrink-0 items-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+            // py-2.5 turns a 24px-tall hit box into 44px inside a 64px row,
+            // without changing where the wordmark sits or how big it looks.
+            className="flex shrink-0 items-center rounded py-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
             aria-label={`${SITE_NAME} home`}
           >
             <Image
@@ -89,7 +103,9 @@ export function SiteHeader() {
               its dropdown — showing this one too in that range meant two
               visible search inputs at once. */}
           <details className="mobile-nav lg:hidden">
-            <summary className="flex cursor-pointer items-center justify-center rounded-md p-2 text-zinc-700 hover:bg-zinc-100">
+            {/* -mr-2 keeps the 44x44 hit area from pushing the row's right
+                edge in: the icon stays where it was, the target grew. */}
+            <summary className="-mr-2 flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-md text-zinc-700 hover:bg-zinc-100">
               <span className="sr-only">Menu</span>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -98,33 +114,29 @@ export function SiteHeader() {
             <div className="absolute inset-x-0 top-16 max-h-[calc(100vh-4rem)] overflow-y-auto border-b border-border-subtle bg-white px-6 py-4 shadow-lg">
               <SearchForm className="mb-4" />
               <NavClickTracker>
-                <ul className="flex flex-col gap-1 text-sm font-medium text-zinc-700">
+                {/* gap-0 with min-h-11 rows: the pitch between two adjacent
+                    destinations is exactly the target height, so there is no
+                    dead band to mis-tap into and the menu is no taller than
+                    44px-per-row requires. */}
+                <ul className="flex flex-col text-sm font-medium text-zinc-700">
                   {PLANNED_CATEGORIES.map((category) => (
                     <li key={category.slug}>
                       <Link
                         href={`/${category.slug}`}
                         id={`nav-mobile-${category.slug}`}
-                        className="block rounded-md px-2 py-2 hover:bg-zinc-50 hover:text-accent"
+                        className={MOBILE_NAV_LINK}
                       >
                         {category.label}
                       </Link>
                     </li>
                   ))}
                   <li className="mt-2 border-t border-border-subtle pt-2">
-                    <Link
-                      href="/articles"
-                      id="nav-mobile-articles"
-                      className="block rounded-md px-2 py-2 hover:bg-zinc-50 hover:text-accent"
-                    >
+                    <Link href="/articles" id="nav-mobile-articles" className={MOBILE_NAV_LINK}>
                       All articles
                     </Link>
                   </li>
                   <li>
-                    <Link
-                      href="/products"
-                      id="nav-mobile-products"
-                      className="block rounded-md px-2 py-2 hover:bg-zinc-50 hover:text-accent"
-                    >
+                    <Link href="/products" id="nav-mobile-products" className={MOBILE_NAV_LINK}>
                       All products
                     </Link>
                   </li>
@@ -138,7 +150,10 @@ export function SiteHeader() {
       <nav aria-label="Subject areas" className="hidden border-t border-border-subtle/70 lg:block">
         <div className="mx-auto max-w-6xl px-6">
           <NavClickTracker>
-            <ul className="flex items-center gap-6 overflow-x-auto py-2.5 text-[13px] font-medium text-zinc-600">
+            {/* No py here: NAV_LINK's own min-h-11 sets the rail height, so
+                the touch target fills the bar instead of sitting in the
+                middle of it. Net height change is ~4px. */}
+            <ul className="flex items-center gap-6 overflow-x-auto text-[13px] font-medium text-zinc-600">
               {PLANNED_CATEGORIES.map((category) => (
                 <li key={category.slug} className="shrink-0">
                   <Link href={`/${category.slug}`} id={`nav-${category.slug}`} className={NAV_LINK}>

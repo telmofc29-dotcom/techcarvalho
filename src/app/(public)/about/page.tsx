@@ -11,7 +11,7 @@ export default function AboutPage() {
     <div className="mx-auto max-w-2xl px-6 py-16">
       <Breadcrumbs items={[{ name: "Home", path: "/" }, { name: "About", path: "/about" }]} />
       <h1 className="font-display text-2xl font-bold text-zinc-900 mb-6">About {SITE_NAME}</h1>
-      <div className="prose text-sm text-zinc-700 flex flex-col gap-4">
+      <div className="prose text-base leading-relaxed text-zinc-700 flex flex-col gap-4">
         <p>
           {SITE_NAME} — {SITE_TAGLINE} — is a technology publication and product database covering cameras and
           photography, astrophotography, drones and FPV, action cameras, computing, networking, and gaming, with

@@ -11,6 +11,14 @@ const BROWSE_LINKS = [
   { href: "/search", label: "Search" },
 ];
 
+// Footer link lists were the worst touch surface on the site: 18px-tall
+// links at a 26px pitch, 322 instances across the public pages. The fix is
+// hit area, not type size — the label stays 14px; `min-h-11` makes the box
+// around it 44px and the lists drop their `gap` so the pitch equals the
+// target height with no dead band between two neighbouring policies.
+const FOOTER_LINK = "flex min-h-11 items-center hover:text-accent";
+const FOOTER_LIST = "flex flex-col text-sm text-zinc-600";
+
 const LEGAL_LINKS = [
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
@@ -24,8 +32,11 @@ const LEGAL_LINKS = [
 export function SiteFooter() {
   return (
     <footer className="border-t border-border-subtle bg-zinc-50 mt-20">
-      <div className="mx-auto max-w-6xl px-6 py-12">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-10 mb-10">
+      {/* Padding trimmed where the 44px rows added their own: the taller
+          targets cost real height, so the space around them gives some back
+          rather than compounding it. */}
+      <div className="mx-auto max-w-6xl px-6 py-10 sm:py-12">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-6 sm:gap-10 mb-8 sm:mb-10">
           <div className="col-span-2 sm:col-span-1">
             <Image
               src="/brand/logo-full-trimmed.png"
@@ -43,17 +54,17 @@ export function SiteFooter() {
             </p>
             <Link
               href="/editorial-policy"
-              className="mt-3 inline-block text-sm font-semibold text-accent hover:underline"
+              className="mt-1 inline-flex min-h-11 items-center text-sm font-semibold text-accent hover:underline"
             >
               How we work
             </Link>
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-3">Browse</p>
-            <ul className="flex flex-col gap-1.5 text-sm text-zinc-600">
+            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1">Browse</p>
+            <ul className={FOOTER_LIST}>
               {BROWSE_LINKS.map((link) => (
                 <li key={link.href}>
-                  <Link href={link.href} className="hover:text-accent">
+                  <Link href={link.href} className={FOOTER_LINK}>
                     {link.label}
                   </Link>
                 </li>
@@ -61,11 +72,11 @@ export function SiteFooter() {
             </ul>
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-3">Subject areas</p>
-            <ul className="flex flex-col gap-1.5 text-sm text-zinc-600">
+            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1">Subject areas</p>
+            <ul className={FOOTER_LIST}>
               {PLANNED_CATEGORIES.map((c) => (
                 <li key={c.slug}>
-                  <Link href={`/${c.slug}`} className="hover:text-accent">
+                  <Link href={`/${c.slug}`} className={FOOTER_LINK}>
                     {c.label}
                   </Link>
                 </li>
@@ -73,11 +84,11 @@ export function SiteFooter() {
             </ul>
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-3">About &amp; Policies</p>
-            <ul className="flex flex-col gap-1.5 text-sm text-zinc-600">
+            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1">About &amp; Policies</p>
+            <ul className={FOOTER_LIST}>
               {LEGAL_LINKS.map((link) => (
                 <li key={link.href}>
-                  <Link href={link.href} id={`footer-${link.href.slice(1)}`} className="hover:text-accent">
+                  <Link href={link.href} id={`footer-${link.href.slice(1)}`} className={FOOTER_LINK}>
                     {link.label}
                   </Link>
                 </li>

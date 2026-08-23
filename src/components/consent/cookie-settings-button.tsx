@@ -14,7 +14,10 @@ export function CookieSettingsButton() {
     <button
       type="button"
       onClick={openPreferences}
-      className="text-sm text-zinc-600 hover:text-accent text-left"
+      // Matches FOOTER_LINK in site-footer.tsx — this button sits as the
+      // last item of that list and has to be the same 44px target as the
+      // policy links above it, not a 20px outlier.
+      className="flex min-h-11 items-center text-left text-sm text-zinc-600 hover:text-accent"
     >
       Cookie settings
     </button>

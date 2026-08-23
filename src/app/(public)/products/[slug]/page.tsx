@@ -172,11 +172,25 @@ export default async function ProductPage({
               <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-zinc-500 mb-4">
                 Specifications
               </h2>
-              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 rounded-xl border border-border-subtle bg-white p-5">
+              {/* Term above definition on a phone, term beside definition on
+                  a wide column.
+                  `flex justify-between` alone was wrong at narrow widths: the
+                  row's content box is 230px at a 320px viewport, so a long
+                  term and a long value each wrapped to two or three lines and
+                  then butted straight into each other with a measured 0px
+                  between them — 6 of the first 14 rows on the Canon EOS R5.
+                  Stacking below `sm` gives every value its own line, which is
+                  also the honest reading order for a description list; from
+                  `sm` up the two-column row returns, now with a real `gap-6`
+                  so the collision cannot come back at any width. */}
+              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 rounded-xl border border-border-subtle bg-white px-4 py-1 sm:p-5">
                 {specs.map((s) => (
-                  <div key={s.name} className="flex justify-between border-b border-zinc-100 pb-2 text-sm">
-                    <dt className="text-zinc-500">{s.name}</dt>
-                    <dd className="font-medium text-zinc-900">
+                  <div
+                    key={s.name}
+                    className="border-b border-zinc-100 py-2 text-sm last:border-b-0 sm:flex sm:items-baseline sm:justify-between sm:gap-6"
+                  >
+                    <dt className="text-xs text-zinc-500 sm:text-sm">{s.name}</dt>
+                    <dd className="mt-0.5 font-medium text-zinc-900 break-words sm:mt-0 sm:text-right">
                       {typeof s.value === "boolean" ? (s.value ? "Yes" : "No") : String(s.value)}
                       {s.unit ? ` ${s.unit}` : ""}
                     </dd>
