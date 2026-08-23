@@ -84,6 +84,10 @@ type RawJobRun = {
   unverified_writes?: number | null;
   blind_writes?: number | null;
   verified_writes?: number | null;
+  // Added by 20260823b. Optional because a run written before that migration
+  // carries neither; `null` means UNMEASURED, never "fine".
+  stage_outcome?: string | null;
+  outcome_ambiguity?: string | null;
 };
 
 function messageOf(error: unknown): string {
@@ -131,6 +135,8 @@ export async function loadTelemetry(supabase: Client, hours = 336): Promise<Tele
       unverifiedWrites: r.unverified_writes ?? null,
       blindWrites: r.blind_writes ?? null,
       verifiedWrites: r.verified_writes ?? null,
+      stageOutcome: r.stage_outcome ?? null,
+      outcomeAmbiguity: r.outcome_ambiguity ?? null,
     }));
   }
 

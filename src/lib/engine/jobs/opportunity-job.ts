@@ -73,7 +73,15 @@ export async function runOpportunityScoring(supabase: Client): Promise<StageResu
       eligible: 0,
       reason: "no_opportunity_inputs",
     });
-    await recordJobRun(supabase, JOB, outcome.status, counters, outcome.detail, outcome.error ?? undefined);
+    await recordJobRun(supabase, JOB, outcome.status, counters, outcome.detail,
+      outcome.error ?? undefined,
+      undefined,
+      // The stage classifies ITSELF. Without this the two columns added by
+      // 20260823b are written NULL on every run, and a NULL there means
+      // UNMEASURED — so the engine would have gained an observability surface
+      // that observes nothing.
+      { stageOutcome: outcome.verdict.outcome, ambiguity: outcome.verdict.ambiguity }
+    );
     return { status: outcome.status, ...counters, detail: outcome.detail };
   }
 

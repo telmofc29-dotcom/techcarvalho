@@ -19,6 +19,11 @@ const URL_ = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const ANON = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
 const NIL = "00000000-0000-0000-0000-0000000000ff";
 const PROBE_JOB = "engine_changelog_probe";
+// Unique per run. A leftover row from an earlier run previously made the insert
+// answer 'deduped', which read as the INSERT failing when what had actually
+// failed was the CLEANUP (there was no DELETE policy). A probe that cannot be
+// re-run independently reports the wrong defect.
+const SEQ = 9000 + (Date.now() % 1000);
 
 type Check = { name: string; passed: boolean; expected: string; actual: string; note?: string };
 const checks: Check[] = [];
@@ -106,7 +111,7 @@ async function main(): Promise<void> {
     const { data, error } = await db.rpc("engine_record_change", {
       p_run_id: probeRunId,
       p_job_name: PROBE_JOB,
-      p_sequence: 9001,
+      p_sequence: SEQ,
       p_table_name: "content_items",
       p_row_id: NIL,
       p_operation: "update",
@@ -127,7 +132,7 @@ async function main(): Promise<void> {
     const { data, error } = await db.rpc("engine_record_change", {
       p_run_id: probeRunId,
       p_job_name: PROBE_JOB,
-      p_sequence: 9002,
+      p_sequence: SEQ + 1,
       p_table_name: "content_items",
       p_row_id: NIL,
       p_operation: "insert",
@@ -149,7 +154,7 @@ async function main(): Promise<void> {
     const again = await db.rpc("engine_record_change", {
       p_run_id: probeRunId,
       p_job_name: PROBE_JOB,
-      p_sequence: 9002,
+      p_sequence: SEQ + 1,
       p_table_name: "content_items",
       p_row_id: NIL,
       p_operation: "insert",
@@ -283,19 +288,58 @@ async function main(): Promise<void> {
     const { data, error } = await db.rpc("engine_recent_job_runs", { p_hours: 720, p_limit: 1 });
     const row = Array.isArray(data) ? (data[0] as Record<string, unknown> | undefined) : undefined;
     const exposed = !!row && "stage_outcome" in row;
-    checks.push({
-      name: "KNOWN GAP: engine_recent_job_runs does NOT yet expose stage_outcome",
-      passed: true,
-      expected: "not exposed — the migration leaves this an explicit TODO",
-      actual: error ? `ERROR ${error.message}` : exposed ? "EXPOSED (gap closed)" : "not exposed",
-      note: exposed
-        ? "The gap appears closed. Verify why and update the record."
-        : "Confirms the documented gap: the columns exist but no reader can see them, so nothing downstream can use them yet.",
+    record(
+      "engine_recent_job_runs EXPOSES stage_outcome and outcome_ambiguity",
+      "both columns in the row",
+      error ? `ERROR ${error.message}` : row ? Object.keys(row).filter((k) => k.includes("outcome")) : "no rows",
+      !error && exposed,
+      "Closed by 20260823b. Columns that no reader can see are not observability — they are two more places for a value to be silently absent."
+    );
+  }
+
+  // Written AND consumed, not merely present.
+  {
+    const { data, error } = await db.rpc("engine_record_job_run", {
+      p_job_name: PROBE_JOB,
+      p_status: "failed",
+      p_items_examined: 0, p_items_created: 0, p_items_deduped: 0, p_items_failed: 0,
+      p_detail: {}, p_error: "probe",
+      p_verified_writes: null, p_silent_no_ops: null, p_unverified_writes: null, p_blind_writes: null,
+      p_stage_outcome: "UNCLASSIFIED", p_outcome_ambiguity: "emptiness_unproven",
     });
+    record(
+      "a stage outcome can actually be WRITTEN through the 14-argument signature",
+      "'recorded'",
+      error ? `ERROR ${error.code ?? ""} ${error.message}` : data,
+      !error && data === "recorded"
+    );
+
+    const read = await db.rpc("engine_recent_job_runs", { p_hours: 1, p_limit: 50 });
+    const mine = (Array.isArray(read.data) ? read.data : []).filter(
+      (r) => (r as Record<string, unknown>).job_name === PROBE_JOB
+    ) as Record<string, unknown>[];
+    record(
+      "...and READ back through the reader the guard uses",
+      "stage_outcome=UNCLASSIFIED, ambiguity=emptiness_unproven",
+      mine[0] ? { stage_outcome: mine[0].stage_outcome, outcome_ambiguity: mine[0].outcome_ambiguity } : "not found",
+      mine.length > 0 &&
+        mine[0].stage_outcome === "UNCLASSIFIED" &&
+        mine[0].outcome_ambiguity === "emptiness_unproven"
+    );
+
+    await db.from("engine_job_runs").delete().eq("job_name", PROBE_JOB);
+    const { data: left } = await db.from("engine_job_runs").select("id").eq("job_name", PROBE_JOB);
+    record(
+      "probe job-run rows cleaned up",
+      "0 leftover",
+      { leftover: (left as unknown[] | null)?.length ?? "?" },
+      ((left as unknown[] | null)?.length ?? 1) === 0
+    );
   }
 
   // -- cleanup ---------------------------------------------------------------
-  if (recordedId) {
+  {
+    void recordedId;
     await db.from("engine_change_log").delete().eq("job_name", PROBE_JOB);
     const { data: leftover } = await db
       .from("engine_change_log")

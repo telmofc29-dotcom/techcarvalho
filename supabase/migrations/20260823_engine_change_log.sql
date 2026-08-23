@@ -1,3 +1,8 @@
+-- STATUS 2026-08-23: APPLIED IN PRODUCTION AND VERIFIED BEHAVIOURALLY.
+-- 17/17 checks: npx tsx scripts/verify-changelog-queueprobe.ts
+-- The SQL editor's message was not treated as evidence -- this file's first
+-- two companions applied cleanly and still carried three defects that only
+-- fire when the functions are CALLED.
 -- ============================================================================
 -- Durable change log, so a real engine run can actually be rolled back
 -- NOT YET APPLIED. Drafted 2026-08-22.

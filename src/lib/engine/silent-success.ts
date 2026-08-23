@@ -80,7 +80,10 @@ export type SilentSuccessKind =
   | "unprovable_by_construction"
   /** Silent-success telemetry itself is missing, so the class cannot be
    *  detected. Reported rather than assumed clean. */
-  | "detection_unavailable";
+  | "detection_unavailable"
+  /** The stage classified its own pass as UNCLASSIFIED — it could not say what
+   *  it did. Always an incident: see stage-outcome.ts. */
+  | "stage_unclassified";
 
 export type SilentSuccessSeverity = "warning" | "critical";
 
@@ -278,6 +281,13 @@ export type SilentSuccessRun = JobRunRecord & {
   unverifiedWrites?: number | null;
   blindWrites?: number | null;
   verifiedWrites?: number | null;
+  /**
+   * The stage's own classification of what it did, from
+   * src/lib/engine/stage-outcome.ts. `null` means the run predates the column
+   * or the stage does not classify itself — UNMEASURED, never "fine".
+   */
+  stageOutcome?: string | null;
+  outcomeAmbiguity?: string | null;
 };
 
 export type SilentSuccessReport = {
@@ -526,6 +536,36 @@ export function detectSilentSuccess(
           failed: latest.itemsFailed,
           created: latest.itemsCreated,
           status: latest.status,
+        },
+      });
+    }
+
+    // --- 2b. The stage could not say what it did ----------------------------
+    // CONSUMES engine_job_runs.stage_outcome, written by every job through
+    // concludeEmptyQueue. UNCLASSIFIED is not a class of outcome — it is the
+    // classifier declining to invent one, which stage-outcome.ts defines as
+    // always an incident. Without this the two columns added by 20260823b would
+    // be written and then read by nothing, which is the "implemented but not
+    // wired" shape this project keeps finding.
+    if (latest.stageOutcome === "UNCLASSIFIED") {
+      signals.push({
+        kind: "stage_unclassified",
+        severity: "critical",
+        job,
+        why:
+          `${job} classified its own last pass as UNCLASSIFIED` +
+          (latest.outcomeAmbiguity ? ` (${latest.outcomeAmbiguity})` : "") +
+          `. That is not a kind of outcome — it is the stage saying it could not ` +
+          `establish what happened, which most often means it could not prove its ` +
+          `input queue was genuinely empty rather than unreadable.`,
+        action:
+          "Read the run's detail payload for the ambiguity code, then call the stage's input RPC " +
+          "by hand as anon and compare what it returns against engine_queue_probe for the same queue.",
+        observed: {
+          stageOutcome: latest.stageOutcome,
+          ambiguity: latest.outcomeAmbiguity ?? null,
+          status: latest.status,
+          examined: latest.itemsExamined,
         },
       });
     }

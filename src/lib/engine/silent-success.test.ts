@@ -32,6 +32,8 @@ function run(p: Partial<SilentSuccessRun> & { jobName: string; hoursAgo: number 
     silentNoOps: p.silentNoOps ?? null,
     unverifiedWrites: p.unverifiedWrites ?? null,
     blindWrites: p.blindWrites ?? null,
+    stageOutcome: p.stageOutcome ?? null,
+    outcomeAmbiguity: p.outcomeAmbiguity ?? null,
     verifiedWrites: p.verifiedWrites ?? null,
   };
 }
@@ -505,5 +507,60 @@ test("a consumer that does NOT wait on a human is still reported as starved", ()
   assert.ok(
     report.signals.some((s) => s.kind === "downstream_starved"),
     "a machine-to-machine handoff that stopped moving is still an incident"
+  );
+});
+
+// ---------------------------------------------------------------------------
+// stage_outcome: written by every job, and CONSUMED here
+// ---------------------------------------------------------------------------
+
+test("a stage that classified its own pass UNCLASSIFIED raises a critical signal", () => {
+  // UNCLASSIFIED is not a kind of outcome — it is the classifier declining to
+  // invent one, which stage-outcome.ts defines as always an incident. Most
+  // often it means the stage could not prove its input queue was genuinely
+  // empty rather than unreadable.
+  const report = detectSilentSuccess(
+    [
+      run({
+        jobName: "engine_briefs",
+        hoursAgo: 1,
+        status: "failed",
+        stageOutcome: "UNCLASSIFIED",
+        outcomeAmbiguity: "emptiness_unproven",
+      }),
+    ],
+    ok
+  );
+  const signal = report.signals.find((s) => s.kind === "stage_unclassified");
+  assert.ok(signal, JSON.stringify(report.signals.map((s) => s.kind)));
+  assert.equal(signal.severity, "critical");
+  assert.match(signal.why, /emptiness_unproven/);
+  assert.equal(report.clean, false);
+});
+
+test("a stage that classified itself NOTHING_TO_DO raises nothing", () => {
+  // The earned-empty case. A corroborated empty queue is health, and the whole
+  // point of the classification is that this row differs from the one above.
+  const report = detectSilentSuccess(
+    [run({ jobName: "engine_briefs", hoursAgo: 1, status: "success", stageOutcome: "NOTHING_TO_DO" })],
+    ok
+  );
+  assert.equal(
+    report.signals.some((s) => s.kind === "stage_unclassified"),
+    false
+  );
+});
+
+test("a run with NO stage_outcome is not treated as classified", () => {
+  // null means UNMEASURED — the run predates the column, or the stage does not
+  // classify itself. It must raise neither an incident nor an all-clear.
+  const report = detectSilentSuccess(
+    [run({ jobName: "engine_briefs", hoursAgo: 1, status: "success", stageOutcome: null })],
+    ok
+  );
+  assert.equal(
+    report.signals.some((s) => s.kind === "stage_unclassified"),
+    false,
+    "unmeasured is not an incident"
   );
 });

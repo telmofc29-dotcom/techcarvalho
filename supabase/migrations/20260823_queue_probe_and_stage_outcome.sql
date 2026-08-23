@@ -1,4 +1,9 @@
--- DRAFTED, NOT APPLIED. Lives in migrations_pending/ deliberately (CLAUDE.md:
+-- STATUS 2026-08-23: APPLIED IN PRODUCTION AND VERIFIED BEHAVIOURALLY.
+-- 17/17 checks: npx tsx scripts/verify-changelog-queueprobe.ts
+-- The SQL editor's message was not treated as evidence -- this file's first
+-- two companions applied cleanly and still carried three defects that only
+-- fire when the functions are CALLED.
+-- (Originally drafted into migrations_pending/.)
 -- "move it into migrations/ only once it's actually been run in production").
 -- Nothing in src/ requires it — every code path added in this change works
 -- without it and reports honestly about what it therefore cannot establish.
