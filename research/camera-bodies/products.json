@@ -1006,7 +1006,6 @@
     "unsourced_fields": [
       "announced",
       "card_slots",
-      "ibis_stops_claim",
       "iso_expanded_max",
       "processor",
       "weather_sealed"
@@ -1068,7 +1067,6 @@
     "unsourced_fields": [
       "announced",
       "card_slots",
-      "ibis_stops_claim",
       "iso_expanded_max",
       "processor",
       "weather_sealed"
@@ -1130,7 +1128,6 @@
     "unsourced_fields": [
       "announced",
       "card_slots",
-      "ibis_stops_claim",
       "iso_expanded_max",
       "processor",
       "weather_sealed"
@@ -1190,7 +1187,6 @@
     "unsourced_fields": [
       "announced",
       "card_slots",
-      "ibis_stops_claim",
       "iso_expanded_max",
       "processor",
       "weather_sealed"
@@ -1250,7 +1246,6 @@
     "unsourced_fields": [
       "announced",
       "card_slots",
-      "ibis_stops_claim",
       "iso_expanded_min",
       "processor",
       "weather_sealed"
@@ -1313,7 +1308,6 @@
     "unsourced_fields": [
       "announced",
       "card_slots",
-      "ibis_stops_claim",
       "iso_expanded_max",
       "processor",
       "weather_sealed"
@@ -1373,7 +1367,6 @@
     "unsourced_fields": [
       "announced",
       "card_slots",
-      "ibis_stops_claim",
       "iso_expanded_min",
       "processor",
       "weather_sealed"
@@ -1433,7 +1426,6 @@
     "unsourced_fields": [
       "announced",
       "card_slots",
-      "ibis_stops_claim",
       "iso_expanded_min",
       "processor",
       "viewfinder_resolution",
@@ -1549,7 +1541,6 @@
     "unsourced_fields": [
       "announced",
       "card_slots",
-      "ibis_stops_claim",
       "processor",
       "video_max_fps",
       "video_max_resolution",
@@ -1606,7 +1597,6 @@
       "announced",
       "card_slots",
       "card_types",
-      "ibis_stops_claim",
       "processor",
       "video_max_fps",
       "video_max_resolution",
@@ -1663,7 +1653,6 @@
       "announced",
       "card_slots",
       "card_types",
-      "ibis_stops_claim",
       "processor",
       "video_max_fps",
       "video_max_resolution",
@@ -1724,7 +1713,6 @@
     "unsourced_fields": [
       "announced",
       "card_slots",
-      "ibis_stops_claim",
       "processor",
       "video_max_fps",
       "video_max_resolution",
@@ -1781,7 +1769,6 @@
       "announced",
       "card_slots",
       "card_types",
-      "ibis_stops_claim",
       "processor",
       "video_max_fps",
       "video_max_resolution",
@@ -1842,7 +1829,6 @@
     "unsourced_fields": [
       "announced",
       "card_slots",
-      "ibis_stops_claim",
       "processor",
       "video_max_fps",
       "video_max_resolution",
@@ -1899,7 +1885,6 @@
       "announced",
       "card_slots",
       "card_types",
-      "ibis_stops_claim",
       "processor",
       "video_max_fps",
       "video_max_resolution",
@@ -1960,7 +1945,6 @@
     "unsourced_fields": [
       "announced",
       "card_slots",
-      "ibis_stops_claim",
       "processor",
       "video_max_fps",
       "video_max_resolution",
@@ -2017,7 +2001,6 @@
       "announced",
       "card_slots",
       "card_types",
-      "ibis_stops_claim",
       "processor",
       "video_max_fps",
       "video_max_resolution",
@@ -2195,7 +2178,6 @@
       "af_points",
       "announced",
       "card_slots",
-      "ibis_stops_claim",
       "weather_sealed"
     ]
   },
@@ -2253,7 +2235,6 @@
       "af_points",
       "announced",
       "card_slots",
-      "ibis_stops_claim",
       "weather_sealed"
     ]
   },
@@ -2312,7 +2293,6 @@
       "af_points",
       "announced",
       "card_slots",
-      "ibis_stops_claim",
       "weather_sealed"
     ]
   },
@@ -2370,7 +2350,6 @@
       "af_points",
       "announced",
       "card_slots",
-      "ibis_stops_claim",
       "weather_sealed"
     ]
   },
@@ -2428,7 +2407,6 @@
       "af_points",
       "announced",
       "card_slots",
-      "ibis_stops_claim",
       "mount",
       "weather_sealed"
     ]

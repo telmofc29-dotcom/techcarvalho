@@ -104,6 +104,39 @@ export const PRINTER_SPEC_FIELDS: SpecField[] = [
   { key: "firmware", name: "Firmware", slug: "firmware", dataType: "text", unit: null },
 ];
 
+/**
+ * Camera BODY specification fields.
+ *
+ * Absent by design: burst rate and IBIS stops. Both are conditional on lens, AF
+ * mode and buffer state, so a maker's figure is a claim under conditions nobody
+ * states — they route to product_claims like every other performance assertion.
+ */
+export const CAMERA_BODY_SPEC_FIELDS: SpecField[] = [
+  { key: "mount", name: "Lens mount", slug: "lens-mount", dataType: "text", unit: null },
+  { key: "sensor_format", name: "Sensor format", slug: "sensor-format", dataType: "text", unit: null },
+  { key: "sensor_type", name: "Sensor type", slug: "sensor-type", dataType: "text", unit: null },
+  { key: "effective_megapixels", name: "Effective megapixels", slug: "effective-megapixels", dataType: "number", unit: "MP" },
+  { key: "processor", name: "Processor", slug: "processor", dataType: "text", unit: null },
+  { key: "image_stabilisation", name: "In-body stabilisation", slug: "ibis", dataType: "text", unit: null },
+  { key: "iso_min", name: "ISO (min)", slug: "iso-min", dataType: "number", unit: null },
+  { key: "iso_max", name: "ISO (max)", slug: "iso-max", dataType: "number", unit: null },
+  { key: "af_system", name: "Autofocus system", slug: "autofocus-system", dataType: "text", unit: null },
+  { key: "af_points", name: "Autofocus points", slug: "autofocus-points", dataType: "number", unit: null },
+  { key: "video_max_resolution", name: "Maximum video resolution", slug: "video-max-resolution", dataType: "text", unit: null },
+  { key: "video_max_fps", name: "Maximum video frame rate", slug: "video-max-fps", dataType: "number", unit: "fps" },
+  { key: "viewfinder_type", name: "Viewfinder", slug: "viewfinder-type", dataType: "text", unit: null },
+  { key: "viewfinder_resolution", name: "Viewfinder resolution", slug: "viewfinder-resolution", dataType: "text", unit: null },
+  { key: "screen_type", name: "Screen", slug: "screen-type", dataType: "text", unit: null },
+  { key: "screen_size_in", name: "Screen size", slug: "screen-size", dataType: "number", unit: "in" },
+  { key: "card_slots", name: "Card slots", slug: "card-slots", dataType: "number", unit: null },
+  { key: "battery", name: "Battery", slug: "battery", dataType: "text", unit: null },
+  { key: "weight_g", name: "Weight", slug: "body-weight", dataType: "number", unit: "g" },
+  { key: "width_mm", name: "Width", slug: "body-width", dataType: "number", unit: "mm" },
+  { key: "height_mm", name: "Height", slug: "body-height", dataType: "number", unit: "mm" },
+  { key: "depth_mm", name: "Depth", slug: "body-depth", dataType: "number", unit: "mm" },
+  { key: "weather_sealed", name: "Weather sealing", slug: "weather-sealed", dataType: "boolean", unit: null },
+];
+
 export type ResearchProduct = Record<string, unknown> & {
   name?: unknown;
   slug?: unknown;

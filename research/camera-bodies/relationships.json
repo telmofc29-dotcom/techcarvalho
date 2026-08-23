@@ -1,0 +1,667 @@
+[
+  {
+    "from_slug": "canon-eos-r5",
+    "to_slug": "canon-rf-mount",
+    "type": "compatible_with",
+    "basis": "Canon states \"Lens mount: Canon RF mount\" and lists compatible lenses as the Canon RF lens group in this body's own specification table.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr894.html"
+  },
+  {
+    "from_slug": "canon-eos-r5-mark-ii",
+    "to_slug": "canon-rf-mount",
+    "type": "compatible_with",
+    "basis": "Canon states \"Lens mount: Canon RF mount\" and lists compatible lenses as the Canon RF lens group in this body's own specification table.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr910.html"
+  },
+  {
+    "from_slug": "canon-eos-r6",
+    "to_slug": "canon-rf-mount",
+    "type": "compatible_with",
+    "basis": "Canon states \"Lens mount: Canon RF mount\" and lists compatible lenses as the Canon RF lens group in this body's own specification table.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr895.html"
+  },
+  {
+    "from_slug": "canon-eos-r6-mark-ii",
+    "to_slug": "canon-rf-mount",
+    "type": "compatible_with",
+    "basis": "Canon states \"Lens mount: Canon RF mount\" and lists compatible lenses as the Canon RF lens group in this body's own specification table.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr905.html"
+  },
+  {
+    "from_slug": "canon-eos-r3",
+    "to_slug": "canon-rf-mount",
+    "type": "compatible_with",
+    "basis": "Canon states \"Lens mount: Canon RF mount\" and lists compatible lenses as the Canon RF lens group in this body's own specification table.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr899.html"
+  },
+  {
+    "from_slug": "canon-eos-r1",
+    "to_slug": "canon-rf-mount",
+    "type": "compatible_with",
+    "basis": "Canon states \"Lens mount: Canon RF mount\" and lists compatible lenses as the Canon RF lens group in this body's own specification table.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr913.html"
+  },
+  {
+    "from_slug": "canon-eos-r7",
+    "to_slug": "canon-rf-mount",
+    "type": "compatible_with",
+    "basis": "Canon states \"Lens mount: Canon RF mount\" and lists compatible lenses as the Canon RF lens group in this body's own specification table.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr901.html"
+  },
+  {
+    "from_slug": "canon-eos-r8",
+    "to_slug": "canon-rf-mount",
+    "type": "compatible_with",
+    "basis": "Canon states \"Lens mount: Canon RF mount\" and lists compatible lenses as the Canon RF lens group in this body's own specification table.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr907.html"
+  },
+  {
+    "from_slug": "canon-eos-r10",
+    "to_slug": "canon-rf-mount",
+    "type": "compatible_with",
+    "basis": "Canon states \"Lens mount: Canon RF mount\" and lists compatible lenses as the Canon RF lens group in this body's own specification table.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr902.html"
+  },
+  {
+    "from_slug": "canon-eos-r50",
+    "to_slug": "canon-rf-mount",
+    "type": "compatible_with",
+    "basis": "Canon states \"Lens mount: Canon RF mount\" and lists compatible lenses as the Canon RF lens group in this body's own specification table.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr906.html"
+  },
+  {
+    "from_slug": "canon-eos-r100",
+    "to_slug": "canon-rf-mount",
+    "type": "compatible_with",
+    "basis": "Canon states \"Lens mount: Canon RF mount\" and lists compatible lenses as the Canon RF lens group in this body's own specification table.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr908.html"
+  },
+  {
+    "from_slug": "canon-eos-rp",
+    "to_slug": "canon-rf-mount",
+    "type": "compatible_with",
+    "basis": "Canon states \"Lens mount: Canon RF mount\" and lists compatible lenses as the Canon RF lens group in this body's own specification table.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr880.html"
+  },
+  {
+    "from_slug": "canon-eos-r",
+    "to_slug": "canon-rf-mount",
+    "type": "compatible_with",
+    "basis": "Canon states \"Lens mount: Canon RF mount\" and lists compatible lenses as the Canon RF lens group in this body's own specification table.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr877.html"
+  },
+  {
+    "from_slug": "canon-eos-6d-mark-ii",
+    "to_slug": "canon-ef-mount",
+    "type": "compatible_with",
+    "basis": "Canon states \"Lens mount: Canon EF mount\" in this body's own specification table, excluding EF-S and EF-M lenses.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr866.html"
+  },
+  {
+    "from_slug": "canon-eos-90d",
+    "to_slug": "canon-ef-mount",
+    "type": "compatible_with",
+    "basis": "Canon states \"Lens mount: Canon EF mount\" in this body's own specification table and lists EF-S lenses as compatible.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr887.html"
+  },
+  {
+    "from_slug": "canon-eos-250d",
+    "to_slug": "canon-ef-mount",
+    "type": "compatible_with",
+    "basis": "Canon states \"Lens mount: Canon EF mount\" in this body's own specification table and lists EF-S lenses as compatible.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr883.html"
+  },
+  {
+    "from_slug": "canon-eos-2000d",
+    "to_slug": "canon-ef-mount",
+    "type": "compatible_with",
+    "basis": "Canon states \"Lens mount: Canon EF mount\" in this body's own specification table and lists EF-S lenses as compatible.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr873.html"
+  },
+  {
+    "from_slug": "nikon-z9",
+    "to_slug": "nikon-z-mount",
+    "type": "compatible_with",
+    "basis": "Nikon states \"Lens mount: Nikon Z mount\" in this body's own specification table.",
+    "source_url": "https://onlinemanual.nikonimglib.com/z9/en/specifications_348.html"
+  },
+  {
+    "from_slug": "nikon-z8",
+    "to_slug": "nikon-z-mount",
+    "type": "compatible_with",
+    "basis": "Nikon states \"Lens mount: Nikon Z mount\" in this body's own specification table.",
+    "source_url": "https://onlinemanual.nikonimglib.com/z8/en/specifications_384.html"
+  },
+  {
+    "from_slug": "nikon-z6iii",
+    "to_slug": "nikon-z-mount",
+    "type": "compatible_with",
+    "basis": "Nikon states \"Lens mount: Nikon Z mount\" in this body's own specification table.",
+    "source_url": "https://onlinemanual.nikonimglib.com/z6III/en/specifications_396.html"
+  },
+  {
+    "from_slug": "nikon-z5ii",
+    "to_slug": "nikon-z-mount",
+    "type": "compatible_with",
+    "basis": "Nikon states \"Lens mount: Nikon Z mount\" in this body's own specification table.",
+    "source_url": "https://onlinemanual.nikonimglib.com/z5II/en/specifications_379.html"
+  },
+  {
+    "from_slug": "nikon-z50ii",
+    "to_slug": "nikon-z-mount",
+    "type": "compatible_with",
+    "basis": "Nikon states \"Lens mount: Nikon Z mount\" in this body's own specification table.",
+    "source_url": "https://onlinemanual.nikonimglib.com/z50II/en/15-08.html"
+  },
+  {
+    "from_slug": "nikon-zf",
+    "to_slug": "nikon-z-mount",
+    "type": "compatible_with",
+    "basis": "Nikon states \"Lens mount: Nikon Z mount\" in this body's own specification table.",
+    "source_url": "https://onlinemanual.nikonimglib.com/zf/en/specifications_354.html"
+  },
+  {
+    "from_slug": "nikon-zfc",
+    "to_slug": "nikon-z-mount",
+    "type": "compatible_with",
+    "basis": "Nikon states \"Lens mount: Nikon Z mount\" in this body's own specification table.",
+    "source_url": "https://onlinemanual.nikonimglib.com/zfc/en/15-08.html"
+  },
+  {
+    "from_slug": "nikon-z30",
+    "to_slug": "nikon-z-mount",
+    "type": "compatible_with",
+    "basis": "Nikon states \"Lens mount: Nikon Z mount\" in this body's own specification table.",
+    "source_url": "https://onlinemanual.nikonimglib.com/z30/en/15-08.html"
+  },
+  {
+    "from_slug": "nikon-d780",
+    "to_slug": "nikon-f-mount",
+    "type": "compatible_with",
+    "basis": "Nikon states \"Lens mount: Nikon F mount (with AF coupling and AF contacts)\" in this body's own specification table.",
+    "source_url": "https://onlinemanual.nikonimglib.com/d780/en/16_technical_notes_08.html"
+  },
+  {
+    "from_slug": "sony-alpha-1",
+    "to_slug": "sony-e-mount",
+    "type": "compatible_with",
+    "basis": "Sony states \"レンズマウント: Eマウント\" (lens mount: E mount) in this body's own specification table.",
+    "source_url": "https://www.sony.jp/ichigan/products/ILCE-1/spec.html"
+  },
+  {
+    "from_slug": "sony-alpha-1-ii",
+    "to_slug": "sony-e-mount",
+    "type": "compatible_with",
+    "basis": "Sony states \"レンズマウント: Eマウント\" (lens mount: E mount) in this body's own specification table.",
+    "source_url": "https://www.sony.jp/ichigan/products/ILCE-1M2/spec.html"
+  },
+  {
+    "from_slug": "sony-alpha-9-iii",
+    "to_slug": "sony-e-mount",
+    "type": "compatible_with",
+    "basis": "Sony states \"レンズマウント: Eマウント\" (lens mount: E mount) in this body's own specification table.",
+    "source_url": "https://www.sony.jp/ichigan/products/ILCE-9M3/spec.html"
+  },
+  {
+    "from_slug": "sony-alpha-7-iv",
+    "to_slug": "sony-e-mount",
+    "type": "compatible_with",
+    "basis": "Sony states \"レンズマウント: Eマウント\" (lens mount: E mount) in this body's own specification table.",
+    "source_url": "https://www.sony.jp/ichigan/products/ILCE-7M4/spec.html"
+  },
+  {
+    "from_slug": "sony-alpha-7-v",
+    "to_slug": "sony-e-mount",
+    "type": "compatible_with",
+    "basis": "Sony states \"レンズマウント: Eマウント\" (lens mount: E mount) in this body's own specification table.",
+    "source_url": "https://www.sony.jp/ichigan/products/ILCE-7M5/spec.html"
+  },
+  {
+    "from_slug": "sony-alpha-7r-v",
+    "to_slug": "sony-e-mount",
+    "type": "compatible_with",
+    "basis": "Sony states \"レンズマウント: Eマウント\" (lens mount: E mount) in this body's own specification table.",
+    "source_url": "https://www.sony.jp/ichigan/products/ILCE-7RM5/spec.html"
+  },
+  {
+    "from_slug": "sony-alpha-7c-ii",
+    "to_slug": "sony-e-mount",
+    "type": "compatible_with",
+    "basis": "Sony states \"レンズマウント: Eマウント\" (lens mount: E mount) in this body's own specification table.",
+    "source_url": "https://www.sony.jp/ichigan/products/ILCE-7CM2/spec.html"
+  },
+  {
+    "from_slug": "sony-alpha-7s-iii",
+    "to_slug": "sony-e-mount",
+    "type": "compatible_with",
+    "basis": "Sony states \"レンズマウント: Eマウント\" (lens mount: E mount) in this body's own specification table.",
+    "source_url": "https://www.sony.jp/ichigan/products/ILCE-7SM3/spec.html"
+  },
+  {
+    "from_slug": "sony-alpha-6700",
+    "to_slug": "sony-e-mount",
+    "type": "compatible_with",
+    "basis": "Sony states \"レンズマウント: Eマウント\" (lens mount: E mount) in this body's own specification table.",
+    "source_url": "https://www.sony.jp/ichigan/products/ILCE-6700/spec.html"
+  },
+  {
+    "from_slug": "sony-alpha-6400",
+    "to_slug": "sony-e-mount",
+    "type": "compatible_with",
+    "basis": "Sony states \"レンズマウント: Eマウント\" (lens mount: E mount) in this body's own specification table.",
+    "source_url": "https://www.sony.jp/ichigan/products/ILCE-6400/spec.html"
+  },
+  {
+    "from_slug": "sony-zv-e10-ii",
+    "to_slug": "sony-e-mount",
+    "type": "compatible_with",
+    "basis": "Sony states \"レンズマウント: Eマウント\" (lens mount: E mount) in this body's own specification table.",
+    "source_url": "https://www.sony.jp/ichigan/products/ZV-E10M2/spec.html"
+  },
+  {
+    "from_slug": "fujifilm-x-t5",
+    "to_slug": "fujifilm-x-mount",
+    "type": "compatible_with",
+    "basis": "Fujifilm lists this body in its X-series interchangeable-lens camera range with an APS-C X-Trans sensor.",
+    "source_url": "http://www.fujifilm-x.com/global/products/cameras/x-t5/specifications/"
+  },
+  {
+    "from_slug": "fujifilm-x-h2",
+    "to_slug": "fujifilm-x-mount",
+    "type": "compatible_with",
+    "basis": "Fujifilm lists this body in its X-series interchangeable-lens camera range with an APS-C X-Trans sensor.",
+    "source_url": "http://www.fujifilm-x.com/global/products/cameras/x-h2/specifications/"
+  },
+  {
+    "from_slug": "fujifilm-x-h2s",
+    "to_slug": "fujifilm-x-mount",
+    "type": "compatible_with",
+    "basis": "Fujifilm lists this body in its X-series interchangeable-lens camera range with an APS-C X-Trans sensor.",
+    "source_url": "http://www.fujifilm-x.com/global/products/cameras/x-h2s/specifications/"
+  },
+  {
+    "from_slug": "fujifilm-x-s20",
+    "to_slug": "fujifilm-x-mount",
+    "type": "compatible_with",
+    "basis": "Fujifilm lists this body in its X-series interchangeable-lens camera range with an APS-C X-Trans sensor.",
+    "source_url": "http://www.fujifilm-x.com/global/products/cameras/x-s20/specifications/"
+  },
+  {
+    "from_slug": "canon-eos-90d",
+    "to_slug": "canon-ef-mount",
+    "type": "compatible_with",
+    "basis": "Canon states \"Lens mount: Canon EF mount\" and lists compatible lenses as \"Canon EF lenses (including EF-S lenses)\", noting an effective angle of view of approx. 1.6x the indicated focal length.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr887.html"
+  },
+  {
+    "from_slug": "canon-eos-250d",
+    "to_slug": "canon-ef-mount",
+    "type": "compatible_with",
+    "basis": "Canon states \"Lens mount: Canon EF mount\" and lists compatible lenses as \"Canon EF lenses (including EF-S lenses)\", noting an effective angle of view of approx. 1.6x the indicated focal length.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr883.html"
+  },
+  {
+    "from_slug": "canon-eos-2000d",
+    "to_slug": "canon-ef-mount",
+    "type": "compatible_with",
+    "basis": "Canon states \"Lens mount: Canon EF mount\" and lists compatible lenses as \"Canon EF lenses (including EF-S lenses)\", noting an effective angle of view of approx. 1.6x the indicated focal length.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr873.html"
+  },
+  {
+    "from_slug": "canon-eos-r5",
+    "to_slug": "canon-ef-mount",
+    "type": "requires_adapter",
+    "basis": "Canon's own specification table for this body states that Canon EF or EF-S lenses can be used \"using Mount Adapter EF-EOS R\", and explicitly excludes EF-M lenses. Full-frame RF bodies add that an EF-S lens gives an angle of view of approx. 1.6 times the indicated focal length.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr894.html"
+  },
+  {
+    "from_slug": "canon-eos-r5-mark-ii",
+    "to_slug": "canon-ef-mount",
+    "type": "requires_adapter",
+    "basis": "Canon's own specification table for this body states that Canon EF or EF-S lenses can be used \"using Mount Adapter EF-EOS R\", and explicitly excludes EF-M lenses. Full-frame RF bodies add that an EF-S lens gives an angle of view of approx. 1.6 times the indicated focal length.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr910.html"
+  },
+  {
+    "from_slug": "canon-eos-r6",
+    "to_slug": "canon-ef-mount",
+    "type": "requires_adapter",
+    "basis": "Canon's own specification table for this body states that Canon EF or EF-S lenses can be used \"using Mount Adapter EF-EOS R\", and explicitly excludes EF-M lenses. Full-frame RF bodies add that an EF-S lens gives an angle of view of approx. 1.6 times the indicated focal length.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr895.html"
+  },
+  {
+    "from_slug": "canon-eos-r6-mark-ii",
+    "to_slug": "canon-ef-mount",
+    "type": "requires_adapter",
+    "basis": "Canon's own specification table for this body states that Canon EF or EF-S lenses can be used \"using Mount Adapter EF-EOS R\", and explicitly excludes EF-M lenses. Full-frame RF bodies add that an EF-S lens gives an angle of view of approx. 1.6 times the indicated focal length.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr905.html"
+  },
+  {
+    "from_slug": "canon-eos-r3",
+    "to_slug": "canon-ef-mount",
+    "type": "requires_adapter",
+    "basis": "Canon's own specification table for this body states that Canon EF or EF-S lenses can be used \"using Mount Adapter EF-EOS R\", and explicitly excludes EF-M lenses. Full-frame RF bodies add that an EF-S lens gives an angle of view of approx. 1.6 times the indicated focal length.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr899.html"
+  },
+  {
+    "from_slug": "canon-eos-r1",
+    "to_slug": "canon-ef-mount",
+    "type": "requires_adapter",
+    "basis": "Canon's own specification table for this body states that Canon EF or EF-S lenses can be used \"using Mount Adapter EF-EOS R\", and explicitly excludes EF-M lenses. Full-frame RF bodies add that an EF-S lens gives an angle of view of approx. 1.6 times the indicated focal length.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr913.html"
+  },
+  {
+    "from_slug": "canon-eos-r7",
+    "to_slug": "canon-ef-mount",
+    "type": "requires_adapter",
+    "basis": "Canon's own specification table for this body states that Canon EF or EF-S lenses can be used \"using Mount Adapter EF-EOS R\", and explicitly excludes EF-M lenses. Full-frame RF bodies add that an EF-S lens gives an angle of view of approx. 1.6 times the indicated focal length.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr901.html"
+  },
+  {
+    "from_slug": "canon-eos-r8",
+    "to_slug": "canon-ef-mount",
+    "type": "requires_adapter",
+    "basis": "Canon's own specification table for this body states that Canon EF or EF-S lenses can be used \"using Mount Adapter EF-EOS R\", and explicitly excludes EF-M lenses. Full-frame RF bodies add that an EF-S lens gives an angle of view of approx. 1.6 times the indicated focal length.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr907.html"
+  },
+  {
+    "from_slug": "canon-eos-r10",
+    "to_slug": "canon-ef-mount",
+    "type": "requires_adapter",
+    "basis": "Canon's own specification table for this body states that Canon EF or EF-S lenses can be used \"using Mount Adapter EF-EOS R\", and explicitly excludes EF-M lenses. Full-frame RF bodies add that an EF-S lens gives an angle of view of approx. 1.6 times the indicated focal length.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr902.html"
+  },
+  {
+    "from_slug": "canon-eos-r50",
+    "to_slug": "canon-ef-mount",
+    "type": "requires_adapter",
+    "basis": "Canon's own specification table for this body states that Canon EF or EF-S lenses can be used \"using Mount Adapter EF-EOS R\", and explicitly excludes EF-M lenses. Full-frame RF bodies add that an EF-S lens gives an angle of view of approx. 1.6 times the indicated focal length.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr906.html"
+  },
+  {
+    "from_slug": "canon-eos-r100",
+    "to_slug": "canon-ef-mount",
+    "type": "requires_adapter",
+    "basis": "Canon's own specification table for this body states that Canon EF or EF-S lenses can be used \"using Mount Adapter EF-EOS R\", and explicitly excludes EF-M lenses. Full-frame RF bodies add that an EF-S lens gives an angle of view of approx. 1.6 times the indicated focal length.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr908.html"
+  },
+  {
+    "from_slug": "canon-eos-rp",
+    "to_slug": "canon-ef-mount",
+    "type": "requires_adapter",
+    "basis": "Canon's own specification table for this body states that Canon EF or EF-S lenses can be used \"using Mount Adapter EF-EOS R\", and explicitly excludes EF-M lenses. Full-frame RF bodies add that an EF-S lens gives an angle of view of approx. 1.6 times the indicated focal length.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr880.html"
+  },
+  {
+    "from_slug": "canon-eos-r",
+    "to_slug": "canon-ef-mount",
+    "type": "requires_adapter",
+    "basis": "Canon's own specification table for this body states that Canon EF or EF-S lenses can be used \"using Mount Adapter EF-EOS R\", and explicitly excludes EF-M lenses. Full-frame RF bodies add that an EF-S lens gives an angle of view of approx. 1.6 times the indicated focal length.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr877.html"
+  },
+  {
+    "from_slug": "canon-eos-r5-mark-ii",
+    "to_slug": "canon-eos-r5",
+    "type": "successor_of",
+    "basis": "Canon's own model naming places these in one line: \"EOS R5\" (marketed July 2020) and \"EOS R5 Mark II\" (marketed August 2024), both listed under Canon's camera index with those exact names.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr910.html"
+  },
+  {
+    "from_slug": "canon-eos-r6-mark-ii",
+    "to_slug": "canon-eos-r6",
+    "type": "successor_of",
+    "basis": "Canon's own model naming places these in one line: \"EOS R6\" (marketed August 2020) and \"EOS R6 Mark II\" (marketed December 2022).",
+    "source_url": "https://global.canon/en/c-museum/product/dslr905.html"
+  },
+  {
+    "from_slug": "sony-alpha-1-ii",
+    "to_slug": "sony-alpha-1",
+    "type": "successor_of",
+    "basis": "Sony's own model codes place these in one line: ILCE-1 and ILCE-1M2 (M2 = Mark II), both named \"α1\" on Sony's product pages.",
+    "source_url": "https://www.sony.jp/ichigan/products/ILCE-1M2/spec.html"
+  },
+  {
+    "from_slug": "sony-alpha-7-v",
+    "to_slug": "sony-alpha-7-iv",
+    "type": "successor_of",
+    "basis": "Sony's own model codes place these in one line: ILCE-7M4 and ILCE-7M5, the fourth and fifth generations of the α7 body.",
+    "source_url": "https://www.sony.jp/ichigan/products/ILCE-7M5/spec.html"
+  },
+  {
+    "from_slug": "canon-eos-r5",
+    "to_slug": "canon-eos-r5-mark-ii",
+    "type": "same_family",
+    "basis": "Both named \"EOS R5\" in Canon's camera index, same 45 MP full-frame sensor description.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr910.html"
+  },
+  {
+    "from_slug": "canon-eos-r6",
+    "to_slug": "canon-eos-r6-mark-ii",
+    "type": "same_family",
+    "basis": "Both named \"EOS R6\" in Canon's camera index.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr905.html"
+  },
+  {
+    "from_slug": "canon-eos-r3",
+    "to_slug": "canon-eos-r1",
+    "type": "same_family",
+    "basis": "Canon's integrated-grip professional RF bodies; both described in Canon's specification tables with a full-frame back-illuminated stacked CMOS sensor and a body over 1 kg with battery and card.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr913.html"
+  },
+  {
+    "from_slug": "canon-eos-r10",
+    "to_slug": "canon-eos-r50",
+    "type": "same_family",
+    "basis": "Both RF-mount APS-C bodies with Canon's stated approx. 22.3 x 14.9 mm sensor at 24.2 effective megapixels.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr906.html"
+  },
+  {
+    "from_slug": "canon-eos-r50",
+    "to_slug": "canon-eos-r100",
+    "type": "same_family",
+    "basis": "Same stated body dimensions (approx. 116.3 x 85.5 x 68.8 mm) and same single UHS-I SD slot in Canon's specification tables.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr908.html"
+  },
+  {
+    "from_slug": "nikon-z9",
+    "to_slug": "nikon-z8",
+    "type": "same_family",
+    "basis": "Nikon states the same sensor (35.9 x 23.9 mm CMOS, 45.7 effective megapixels), the same 493 focus points and the same 8K UHD 30p maximum video mode for both.",
+    "source_url": "https://onlinemanual.nikonimglib.com/z8/en/specifications_384.html"
+  },
+  {
+    "from_slug": "nikon-zf",
+    "to_slug": "nikon-zfc",
+    "type": "same_family",
+    "basis": "Nikon's heritage-styled Z bodies; grouped by design line only — the Zf is FX (35.9 x 23.9 mm) and the Zfc is DX (23.5 x 15.7 mm), so this is not a generational relationship.",
+    "source_url": "https://onlinemanual.nikonimglib.com/zf/en/specifications_354.html"
+  },
+  {
+    "from_slug": "nikon-z50ii",
+    "to_slug": "nikon-z30",
+    "type": "same_family",
+    "basis": "Nikon states the same DX sensor (23.5 x 15.7 mm CMOS, 20.9 effective megapixels) and the same EN-EL25a battery for both.",
+    "source_url": "https://onlinemanual.nikonimglib.com/z50II/en/15-08.html"
+  },
+  {
+    "from_slug": "sony-alpha-1",
+    "to_slug": "sony-alpha-1-ii",
+    "type": "same_family",
+    "basis": "Sony model codes ILCE-1 and ILCE-1M2; identical sensor description (35mm full-frame 35.9 x 24.0 mm Exmor RS CMOS) and 50.1 effective megapixels.",
+    "source_url": "https://www.sony.jp/ichigan/products/ILCE-1M2/spec.html"
+  },
+  {
+    "from_slug": "sony-alpha-7-iv",
+    "to_slug": "sony-alpha-7-v",
+    "type": "same_family",
+    "basis": "Sony model codes ILCE-7M4 and ILCE-7M5; both 33 effective megapixels on a 35.9 x 23.9 mm full-frame sensor.",
+    "source_url": "https://www.sony.jp/ichigan/products/ILCE-7M5/spec.html"
+  },
+  {
+    "from_slug": "sony-alpha-6700",
+    "to_slug": "sony-zv-e10-ii",
+    "type": "same_family",
+    "basis": "Sony states the same sensor for both: APS-C (23.3 x 15.5 mm) Exmor R CMOS, max. approx. 26 million effective pixels for stills and 19.9 million for video.",
+    "source_url": "https://www.sony.jp/ichigan/products/ZV-E10M2/spec.html"
+  },
+  {
+    "from_slug": "fujifilm-x-h2",
+    "to_slug": "fujifilm-x-h2s",
+    "type": "same_family",
+    "basis": "Fujifilm states identical body dimensions (136.3 x 92.9 x 84.6 mm), identical weight (660 g with battery and card) and the same NP-W235 battery and CFexpress Type B + SD UHS-II card pairing; they differ only in sensor.",
+    "source_url": "http://www.fujifilm-x.com/global/products/cameras/x-h2s/specifications/"
+  },
+  {
+    "from_slug": "fujifilm-x-t5",
+    "to_slug": "fujifilm-x-h2",
+    "type": "same_family",
+    "basis": "Fujifilm states the same sensor and processor for both: 23.5mm x 15.7mm (APS-C) X-Trans CMOS 5 HR, 40.2 million effective pixels, X-Processor 5.",
+    "source_url": "http://www.fujifilm-x.com/global/products/cameras/x-h2/specifications/"
+  },
+  {
+    "from_slug": "fujifilm-x-t5",
+    "to_slug": "fujifilm-x100vi",
+    "type": "same_family",
+    "basis": "Fujifilm states the same sensor and processor for both: 23.5mm x 15.7mm (APS-C) X-Trans CMOS 5 HR, 40.2 million effective pixels, X-Processor 5 — the X100VI packages it behind a fixed 23mm F2.0 lens.",
+    "source_url": "http://www.fujifilm-x.com/global/products/cameras/x100vi/specifications/"
+  },
+  {
+    "from_slug": "canon-eos-90d",
+    "to_slug": "canon-eos-r7",
+    "type": "modern_equivalent",
+    "basis": "Same maker, same sensor format and the same stated effective pixel count: Canon gives both as APS-C at approx. 32.5 effective megapixels (90D approx. 22.3 x 14.8 mm; R7 approx. 22.3 x 14.8 mm). The 90D is the EF-S DSLR, the R7 the RF-mount mirrorless body at that resolution.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr901.html"
+  },
+  {
+    "from_slug": "canon-eos-6d-mark-ii",
+    "to_slug": "canon-eos-r8",
+    "type": "modern_equivalent",
+    "basis": "Same maker, same sensor format (full-frame), same segment — Canon's smaller full-frame body without in-body stabilisation, in the EF and RF generations respectively.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr907.html"
+  },
+  {
+    "from_slug": "canon-eos-250d",
+    "to_slug": "canon-eos-r50",
+    "type": "modern_equivalent",
+    "basis": "Same maker, same APS-C format, same entry segment: Canon gives both as approx. 22.3 x 14.9 mm at 24.1-24.2 effective megapixels, the 250D as an EF-S DSLR and the R50 as its RF-mount counterpart.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr906.html"
+  },
+  {
+    "from_slug": "nikon-d780",
+    "to_slug": "nikon-z6iii",
+    "type": "modern_equivalent",
+    "basis": "Same maker, same sensor format and effective pixel count: Nikon states 35.9 x 23.9 mm CMOS at 24.5 effective megapixels for both, the D780 on the F mount and the Z6III on the Z mount.",
+    "source_url": "https://onlinemanual.nikonimglib.com/z6III/en/specifications_396.html"
+  },
+  {
+    "from_slug": "sony-alpha-7-iv",
+    "to_slug": "sony-alpha-7c-ii",
+    "type": "alternative_to",
+    "basis": "Sony states the same sensor description and the same 33 effective megapixels for both (35.9 x 23.9 mm Exmor R CMOS); the 7C II is the smaller package at 514 g against 658 g, with a 0.39-type 2,359,296-dot viewfinder against the 7 IV's 0.5-type 3,686,400-dot unit.",
+    "source_url": "https://www.sony.jp/ichigan/products/ILCE-7CM2/spec.html"
+  },
+  {
+    "from_slug": "sony-alpha-7s-iii",
+    "to_slug": "sony-alpha-7-iv",
+    "type": "alternative_to",
+    "basis": "Both Sony full-frame E-mount bodies of the same generation; Sony states 12.1 effective megapixels and an ISO 80-102400 range for the 7S III against 33 effective megapixels and ISO 100-51200 for the 7 IV — the same format traded for sensitivity against resolution.",
+    "source_url": "https://www.sony.jp/ichigan/products/ILCE-7SM3/spec.html"
+  },
+  {
+    "from_slug": "canon-eos-r5",
+    "to_slug": "canon-eos-r6",
+    "type": "alternative_to",
+    "basis": "Canon states the same RF mount and the same full-frame format for both, at approx. 45.0 effective megapixels (R5) against approx. 20.1 (R6), with the R5 taking CFexpress plus SD and the R6 two SD slots.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr895.html"
+  },
+  {
+    "from_slug": "nikon-z8",
+    "to_slug": "nikon-z9",
+    "type": "alternative_to",
+    "basis": "Nikon states the same sensor, focus-point count and maximum video mode for both; the Z9 is the integrated-grip EN-EL18d body at 1340 g and 149 x 149.5 x 90.5 mm, the Z8 the EN-EL15c body at 910 g and 144 x 118.5 x 83 mm.",
+    "source_url": "https://onlinemanual.nikonimglib.com/z8/en/specifications_384.html"
+  },
+  {
+    "from_slug": "fujifilm-x-h2",
+    "to_slug": "fujifilm-x-t5",
+    "type": "alternative_to",
+    "basis": "Fujifilm states the same sensor and processor for both (X-Trans CMOS 5 HR, 40.2 MP, X-Processor 5); the X-H2 adds a CFexpress Type B slot and an 8K video mode and weighs 660 g against the X-T5's 557 g.",
+    "source_url": "http://www.fujifilm-x.com/global/products/cameras/x-h2/specifications/"
+  },
+  {
+    "from_slug": "canon-eos-r5",
+    "to_slug": "nikon-z8",
+    "type": "competes_with",
+    "basis": "Same sensor format and closely matching stated resolution: Canon gives approx. 45.0 effective megapixels on a 36.0 x 24.0 mm sensor, Nikon 45.7 million on 35.9 x 23.9 mm. Both are full-frame mirrorless bodies with a CFexpress card slot. No succession or equivalence beyond format and resolution is implied.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr894.html"
+  },
+  {
+    "from_slug": "canon-eos-r5-mark-ii",
+    "to_slug": "sony-alpha-1-ii",
+    "type": "competes_with",
+    "basis": "Same sensor format and segment: both are the maker's stacked-sensor full-frame flagship without an integrated grip — Canon states a \"full-frame back-illuminated stacked CMOS sensor\" and Sony an \"Exmor RS CMOS\" 35.9 x 24.0 mm sensor.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr910.html"
+  },
+  {
+    "from_slug": "canon-eos-r1",
+    "to_slug": "nikon-z9",
+    "type": "competes_with",
+    "basis": "Same sensor format and same body class: both are full-frame integrated-grip professional bodies, Canon at 157.6 x 149.5 x 87.3 mm and 1115 g, Nikon at 149 x 149.5 x 90.5 mm and 1340 g.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr913.html"
+  },
+  {
+    "from_slug": "canon-eos-r3",
+    "to_slug": "sony-alpha-9-iii",
+    "type": "competes_with",
+    "basis": "Same sensor format and closely matching stated resolution: Canon approx. 24.1 effective megapixels on a full-frame stacked sensor, Sony approx. 24.6 million on a 35.6 x 23.8 mm Exmor RS sensor.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr899.html"
+  },
+  {
+    "from_slug": "canon-eos-r6-mark-ii",
+    "to_slug": "nikon-z6iii",
+    "type": "competes_with",
+    "basis": "Same sensor format and matching stated resolution: Canon approx. 24.2 effective megapixels on 36.0 x 24.0 mm, Nikon 24.5 million on 35.9 x 23.9 mm; both are the maker's mid-range full-frame mirrorless body with in-body stabilisation.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr905.html"
+  },
+  {
+    "from_slug": "nikon-z5ii",
+    "to_slug": "sony-alpha-7-iv",
+    "type": "competes_with",
+    "basis": "Same sensor format: Nikon 24.5 million effective pixels on 35.9 x 23.9 mm, Sony 33 million on 35.9 x 23.9 mm; both are the maker's full-frame all-rounder with in-body stabilisation and SD-only storage on the Nikon side.",
+    "source_url": "https://onlinemanual.nikonimglib.com/z5II/en/specifications_379.html"
+  },
+  {
+    "from_slug": "canon-eos-r7",
+    "to_slug": "fujifilm-x-h2s",
+    "type": "competes_with",
+    "basis": "Same sensor format (APS-C) and same segment — the maker's fastest APS-C body — though the sensors differ in stated size: Canon approx. 22.3 x 14.8 mm at 32.5 MP, Fujifilm 23.5 x 15.6 mm at 26.16 MP. See the APS-C crop-factor technology entry for why those areas are not the same.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr901.html"
+  },
+  {
+    "from_slug": "canon-eos-r10",
+    "to_slug": "sony-alpha-6700",
+    "type": "competes_with",
+    "basis": "Same sensor format (APS-C) and same enthusiast segment; Canon states approx. 22.3 x 14.9 mm at 24.2 MP, Sony 23.3 x 15.5 mm at approx. 26 MP.",
+    "source_url": "https://global.canon/en/c-museum/product/dslr902.html"
+  },
+  {
+    "from_slug": "nikon-z50ii",
+    "to_slug": "canon-eos-r10",
+    "type": "competes_with",
+    "basis": "Same sensor format (APS-C) and same segment; Nikon states 23.5 x 15.7 mm at 20.9 MP, Canon approx. 22.3 x 14.9 mm at 24.2 MP.",
+    "source_url": "https://onlinemanual.nikonimglib.com/z50II/en/15-08.html"
+  },
+  {
+    "from_slug": "sony-zv-e10-ii",
+    "to_slug": "nikon-z30",
+    "type": "competes_with",
+    "basis": "Same sensor format (APS-C) and same segment — both are the maker's viewfinder-less, video-first interchangeable-lens body; Sony's table lists the viewfinder as \"-\" and Nikon's specification lists none.",
+    "source_url": "https://www.sony.jp/ichigan/products/ZV-E10M2/spec.html"
+  },
+  {
+    "from_slug": "fujifilm-x-s20",
+    "to_slug": "sony-alpha-6700",
+    "type": "competes_with",
+    "basis": "Same sensor format (APS-C) and closely matching stated resolution: Fujifilm 26.1 million effective pixels on 23.5 x 15.6 mm, Sony approx. 26 million on 23.3 x 15.5 mm.",
+    "source_url": "http://www.fujifilm-x.com/global/products/cameras/x-s20/specifications/"
+  }
+]

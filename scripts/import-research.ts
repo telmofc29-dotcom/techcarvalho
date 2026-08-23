@@ -38,6 +38,7 @@ import {
   validateRelationship,
   LENS_SPEC_FIELDS,
   PRINTER_SPEC_FIELDS,
+  CAMERA_BODY_SPEC_FIELDS,
   type SpecField,
   type ValidatedProduct,
 } from "../src/lib/catalogue/research-schema.ts";
@@ -90,8 +91,17 @@ async function main(): Promise<void> {
   // A probe that cannot fail is not a probe. This one asks for a column and
   // reads the error code: PGRST205 for a missing table, 42703 for a missing
   // column.
+  // Probes a column the table actually HAS. Selecting "id" everywhere was
+  // wrong for join tables: product_technologies has a composite primary key and
+  // no id column at all, so the probe errored and the capability reported
+  // MISSING — silently discarding all 44 body-to-mount edges while the table
+  // was sitting there working.
+  const PROBE_COLUMN: Record<string, string> = {
+    product_technologies: "product_id",
+    content_technologies: "content_id",
+  };
   async function tableExists(t: string): Promise<boolean> {
-    const { error } = await db.from(t).select("id").limit(1);
+    const { error } = await db.from(t).select(PROBE_COLUMN[t] ?? "id").limit(1);
     return !error;
   }
   async function columnExists(t: string, c: string): Promise<boolean> {
@@ -135,9 +145,36 @@ async function main(): Promise<void> {
     : existsSync(join(dir, "printers.json"))
       ? "printers.json"
       : "products.json";
+  // The vocabulary and category are chosen by what the directory actually
+  // holds. Getting this wrong is not a small mistake: a first pass sent 32
+  // camera bodies through the PRINTER spec vocabulary — nothing matched, so
+  // they landed with ZERO specifications, in the "computing" category, looking
+  // like a successful import.
   const isLenses = productFile === "lenses.json";
-  const fields: SpecField[] = isLenses ? LENS_SPEC_FIELDS : PRINTER_SPEC_FIELDS;
-  const categorySlug = isLenses ? "camera-lenses" : productFile === "printers.json" ? "3d-printing" : "computing";
+  const isPrinters = productFile === "printers.json";
+  const isCameraBodies = dir.includes("camera-bodies");
+  const fields: SpecField[] = isLenses
+    ? LENS_SPEC_FIELDS
+    : isPrinters
+      ? PRINTER_SPEC_FIELDS
+      : isCameraBodies
+        ? CAMERA_BODY_SPEC_FIELDS
+        : PRINTER_SPEC_FIELDS;
+  const categorySlug = isLenses
+    ? "camera-lenses"
+    : isPrinters
+      ? "3d-printing"
+      : isCameraBodies
+        ? "cameras-photography"
+        : "computing";
+  if (!isLenses && !isPrinters && !isCameraBodies) {
+    console.log(
+      `WARNING: ${productFile} in ${dir} matches no known vocabulary. Falling back to
+` +
+      `printer specs and the 'computing' category, which is almost certainly wrong.
+`
+    );
+  }
 
   const rawProducts = readJson<Record<string, unknown>>(join(dir, productFile));
   const rawTech = readJson<Record<string, unknown>>(join(dir, "technologies.json"));
@@ -280,13 +317,22 @@ async function main(): Promise<void> {
       release_date: p.announced,
       status: p.status,
       summary: p.summary,
-      // NEVER true. Publication is an editorial act, not an import side effect.
-      is_published: false,
     };
+    // Publication state is set ONLY when creating. On UPDATE it is left
+    // untouched.
+    //
+    // Setting it unconditionally cost 10 already-published camera bodies their
+    // publication: re-importing to fix their specifications silently
+    // unpublished them, and the plan reported "42 product.updated" as though
+    // nothing else had happened. An importer must never be able to unpublish.
+    //
+    // It is still never set TRUE. Publication is an editorial act, not an
+    // import side effect.
     if (can.maturity) row.maturity = p.maturity;
     if (can.datePrecision) row.release_date_precision = p.announcedPrecision;
 
     const existing = productBySlug.get(p.slug);
+    if (!existing) row.is_published = false;
     if (APPLY) {
       if (existing) {
         const { error } = await db.from("products").update(row).eq("id", existing);
@@ -375,6 +421,17 @@ async function main(): Promise<void> {
 
   // ---- technology concepts -----------------------------------------------
   const techBySlug = new Map<string, string>();
+  // EVERY concept, not only the ones in this dataset. A camera-body dataset
+  // links to mount concepts created by the LENS dataset, and keying only on
+  // this run's technologies.json silently discarded all 44 of those edges.
+  if (can.concepts) {
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await db.from("technology_concepts").select("id,slug").range(from, from + 999);
+      if (error) throw new Error(`reading technology_concepts failed: ${error.message}`);
+      for (const c of data as { id: string; slug: string }[]) techBySlug.set(c.slug, c.id);
+      if ((data as unknown[]).length < 1000) break;
+    }
+  }
   if (rawTech.length) {
     if (!can.concepts) {
       bump("concept.skipped_no_table", rawTech.length);
@@ -434,6 +491,33 @@ async function main(): Promise<void> {
       productBySlug.get(researchSlugToFinal.get(sl) ?? sl) ?? productBySlug.get(sl);
     const from = resolve(r.fromSlug);
     const to = resolve(r.toSlug);
+
+    // A product -> CONCEPT edge is not a product relationship, and discarding
+    // it loses the most useful link in the whole camera-body dataset: 44 edges
+    // pointing each body at its lens mount, which is the hook from a body page
+    // into the 185-lens catalogue. Routed to product_technologies instead.
+    if (from && !to && can.productTech) {
+      // Datasets disagree on concept slugs: the camera-body research writes
+      // "canon-rf-mount" where the lens research wrote "rf-mount". Try the exact
+      // slug, then the same slug without a leading manufacturer prefix. This is
+      // slug normalisation, not fuzzy matching — nothing is matched on
+      // similarity, only on an exact string after a known prefix is removed.
+      const conceptId =
+        techBySlug.get(r.toSlug) ??
+        techBySlug.get(r.toSlug.replace(/^(canon|nikon|sony|sigma|tamron|fujifilm)-/, ""));
+      if (conceptId) {
+        if (APPLY) {
+          const { error } = await db.from("product_technologies").upsert(
+            { product_id: from, technology_id: conceptId, note: `${r.type}: ${r.basis ?? ""}`.slice(0, 400) },
+            { onConflict: "product_id,technology_id" }
+          );
+          if (error) { problems.push(`concept link ${r.fromSlug} -> ${r.toSlug}: ${error.message}`); continue; }
+        }
+        bump("relationship.routed_to_concept");
+        continue;
+      }
+    }
+
     if (!from || !to) {
       problems.push(`relationship ${r.fromSlug} -> ${r.toSlug}: endpoint not in catalogue`);
       bump("relationship.skipped_unknown_endpoint");
