@@ -129,6 +129,34 @@ async function main(): Promise<void> {
     await page.setInputFiles("input[type=file]", filePath);
     await page.waitForTimeout(1000);
     await page.fill("#alt_text", `TC ingestion probe ${STAMP}`).catch(() => {});
+
+    // Upload as tc_graphic SPECIFICALLY. This is the value the server's
+    // allow-list omitted while the form's menu offered it, so every attempt to
+    // upload a TechCarvalho-made graphic died on "Choose a valid source type."
+    // — as did public_domain_or_cc, and between them they are the source of 106
+    // of the 114 assets in the library. Uploading with no source_type (what
+    // this probe did before) never touched that check and so never saw the bug.
+    //
+    // The panel holding it is CONDITIONALLY RENDERED (`advancedOpen && ...`),
+    // not merely hidden with CSS, so #source_type does not exist in the DOM
+    // until the toggle is clicked. Selecting it without opening the panel fails
+    // silently, the field submits nothing, and source_type lands as null — at
+    // which point a "the server accepts tc_graphic" assertion passes while
+    // having tested nothing at all. Open it first, then PROVE the option is
+    // really there before relying on the result.
+    await page.click("button:has-text('Advanced / Rights')").catch(() => {});
+    await page.waitForTimeout(300);
+
+    const sourceTypeExists = await page.locator("#source_type").count();
+    record("the source-type field is reachable once Advanced is opened", sourceTypeExists === 1,
+      { found: sourceTypeExists });
+
+    const pickedSourceType = await page
+      .selectOption("#source_type", "tc_graphic")
+      .then(() => true)
+      .catch(() => false);
+    record("the form offers tc_graphic as a source type", pickedSourceType, { pickedSourceType });
+
     // SCOPED TO MAIN. The admin layout header carries a "Sign out" submit
     // button, and an unscoped button[type=submit] clicks that instead — which
     // signs the session out and redirects to /admin/login, a failure mode
@@ -141,6 +169,20 @@ async function main(): Promise<void> {
     );
     record("submitting does not crash React", !stillCrashed, { crashed: stillCrashed, pageErrors: pageErrors.slice(0, 2) });
 
+    // The exact regression. Before f14a784 this message is what production
+    // returned for tc_graphic, and nothing was uploaded.
+    const rejectedSourceType = await page.evaluate(() =>
+      /Choose a valid source type/i.test(document.querySelector("main")?.textContent || "")
+    );
+    // GUARDED BY pickedSourceType. If the value was never selected, "the server
+    // did not reject it" is true for the trivial reason that it was never
+    // asked — a pass that measures nothing. That is precisely how this check
+    // reported success on the first run while source_type persisted as null.
+    record("the server ACCEPTS tc_graphic (the regression that blocked uploads)",
+      pickedSourceType && !rejectedSourceType,
+      { submitted: pickedSourceType, rejected: rejectedSourceType },
+      "The menu offered it and the validator refused it. Both now derive from one list.");
+
     // ---- 4. exactly one record, and the object exists -----------------------
     const { data: made, error: madeErr } = await db
       .from("media_assets").select("*").ilike("storage_path", `%${FILE_NAME}%`);
@@ -151,6 +193,10 @@ async function main(): Promise<void> {
     if (rows.length === 1) {
       createdId = String(rows[0].id);
       storagePath = String(rows[0].storage_path);
+
+      // Accepted is not the same as stored. Read the value back.
+      record("tc_graphic was PERSISTED, not silently dropped", rows[0].source_type === "tc_graphic",
+        { source_type: rows[0].source_type });
 
       const { data: signed } = await db.storage.from("media-private").createSignedUrl(storagePath, 60);
       let objectOk = false;
@@ -166,12 +212,21 @@ async function main(): Promise<void> {
       record("the editorial role was saved", rows[0].asset_role === "product_photo", { asset_role: rows[0].asset_role });
 
       const classification = classifyMedia(rows[0]);
-      // An asset uploaded with no source_type is HONESTLY unclassified — that
-      // is the right answer, not a defect. What must not happen is an OWNED
-      // photograph landing there, which is what the hidden source_type field
-      // now prevents.
+      // This probe now uploads source_type=tc_graphic with asset_role=
+      // product_photo — a deliberately awkward pairing, because it is the one
+      // that matters. A TechCarvalho-made graphic filed under the product-photo
+      // role must NOT come out the far side looking like a photograph of real
+      // hardware. It classifies on what it IS, not on the slot it was put in.
+      record("a TC-made graphic filed as 'product_photo' is still not a photograph",
+        classification === "generated_editorial" && !isDepictionOfRealProduct(rows[0]),
+        { classification, depictsRealProduct: isDepictionOfRealProduct(rows[0]) },
+        "The role a human picked never overrides what the asset actually is.");
+
+      // And the honest-absence case still holds, checked directly rather than
+      // by leaving the field blank on the upload above.
       record("an asset with no source is honestly 'unclassified', not guessed",
-        classification === "unclassified", { classification });
+        classifyMedia({ ...rows[0], source_type: null }) === "unclassified",
+        { classification: classifyMedia({ ...rows[0], source_type: null }) });
       const asOwned = classifyMedia({ ...rows[0], source_type: "staff_photograph", owned: true, rights_status: "verified" });
       record("ticking OWNED yields owned_original_photo, not unclassified",
         asOwned === "owned_original_photo", { classification: asOwned },
