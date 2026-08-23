@@ -9,6 +9,7 @@ import { classifyMediaTier, tierRank, type MediaTier } from "@/lib/media/hierarc
 // thing in every rail on the page (see src/lib/public/dates.ts for why the
 // clock is read here rather than in a component).
 import { freshnessLabel } from "./dates";
+import { diversifyByMedia, visualKind } from "./visual-variety";
 import { ROOT_LOCALE } from "@/lib/i18n/locales";
 
 // Deterministic "Trending Now" ranking for the public homepage and category
@@ -314,6 +315,40 @@ export const getTrendingContent = cache(
       used.add(item.id);
       supporting.push(item);
     }
+
+    // VISUAL VARIETY, measured from the live homepage before this existed:
+    //   above the fold  4 of 4  images were generated graphics (100%)
+    //   first ten       9 of 10                                 (90%)
+    //   whole page      9 of 44                                 (20%)
+    //
+    // The site is not short of photography. Every photograph was simply below
+    // the fold, because ranking is by recency and centrality and the pieces
+    // that rank highest are the explainers — which legitimately carry diagrams.
+    // So the first thing a reader saw was four diagrams in a row, and the page
+    // read as synthetic despite four fifths of its images being photographs.
+    //
+    // This reorders the supporting rail ONLY. It changes nothing about which
+    // stories are selected, moves nothing more than two places from its ranked
+    // position, and breaks a run of photographs exactly as readily as a run of
+    // graphics — a diagram is frequently the best image a story has, and
+    // demoting graphics as a class would be a different mistake. Pinned items
+    // keep their editorial position because a pin IS the decision.
+    const pinnedIds = new Set(pinnedSupporting.map((p) => p.id));
+    const diversified = diversifyByMedia(
+      supporting.map((item, index) => ({
+        item,
+        rank: index,
+        kind: pinnedIds.has(item.id)
+          ? ("none" as const)
+          : visualKind({
+              hasImage: !!item.heroImage,
+              sourceType: item.heroImage?.sourceType ?? null,
+              assetRole: null,
+            }),
+      }))
+    ).map((w) => w.item);
+    supporting.length = 0;
+    supporting.push(...diversified);
 
     // If nothing has relationships and nothing is pinned, the ordering is
     // recency alone — the UI is told so it can avoid claiming more than that.

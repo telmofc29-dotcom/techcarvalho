@@ -1,0 +1,233 @@
+[
+  {
+    "slug": "l-mount-alliance",
+    "name": "L-Mount Alliance",
+    "kind": "mount",
+    "summary": "The L-Mount Alliance is described by its own site as \"a partnership comprised of founding members Leica Camera, Sigma, and Panasonic, along with numerous additional manufacturers.\" Its stated purpose is \"to provide photographers with one unified lens mount standard across multiple brands.\" The L-Mount itself was \"developed by Leica Camera\". Additional alliance partners named on the page include Leitz, DJI, ASTRODESIGN, Samyang, Blackmagic Design, SIRUI, Viltrox and Freefly Systems.",
+    "source_urls": ["https://l-mount.com/"],
+    "applies_to_mounts": ["L"]
+  },
+  {
+    "slug": "sigma-hsm",
+    "name": "Sigma HSM (Hyper-Sonic Motor)",
+    "kind": "focus_motor",
+    "summary": "HSM is expanded by Sigma as \"Hyper-Sonic Motor\". Sigma's product page for the 105mm F2.8 DG DN MACRO | Art lists \"High-speed autofocus with Hyper-Sonic Motor (HSM)\" among that lens's features. Within this dataset it is the focus drive recorded only for that lens; Sigma's newer DG DN designs sampled here use a stepping motor or HLA instead.",
+    "source_urls": ["https://www.sigma-global.com/en/lenses/a020_105_28/"],
+    "applies_to_mounts": ["L", "E"]
+  },
+  {
+    "slug": "sigma-hla",
+    "name": "Sigma HLA (High-response Linear Actuator)",
+    "kind": "focus_motor",
+    "summary": "Sigma expands HLA as \"High-response Linear Actuator\" and describes it as a linear motor focus drive. The 50mm F1.4 DG DN | Art page lists its focus motor as \"HLA\" linear motor (High-response Linear Actuator), and the 24-70mm F2.8 DG DN II | Art page gives its motor type as \"Linear motor HLA (High-response Linear Actuator)\". Both lenses also list support for DMF and AF+MF focus modes.",
+    "source_urls": [
+      "https://www.sigma-global.com/en/lenses/a023_50_14/",
+      "https://www.sigma-global.com/en/lenses/a024_24_70_28_ii/"
+    ],
+    "applies_to_mounts": ["L", "E"]
+  },
+  {
+    "slug": "sigma-os",
+    "name": "Sigma OS (Optical Stabilizer)",
+    "kind": "stabilisation",
+    "summary": "OS is Sigma's in-lens optical stabilisation, appearing in the product name of stabilised lenses. On the 100-400mm F5-6.3 DG DN OS | Contemporary, Sigma states an effect of \"4 steps\" measured to the CIPA standard at 400mm on full-frame, and offers Mode 1 for general shooting and Mode 2 for panning. On the 150-600mm F5-6.3 DG DN OS | Sports, Sigma states approximately 4 stops, rising with firmware Ver.1.1 or later to 6.5 stops at the wide end and 5.5 stops at the telephoto end, and adds Custom modes C1 and C2.",
+    "source_urls": [
+      "https://www.sigma-global.com/en/lenses/c020_100_400_5_63/",
+      "https://www.sigma-global.com/en/lenses/s021_150_600_5_63/"
+    ],
+    "applies_to_mounts": ["L", "E", "X"]
+  },
+  {
+    "slug": "sigma-dg",
+    "name": "Sigma DG",
+    "kind": "other",
+    "summary": "DG is Sigma's product-name designation for lenses covering the full-frame image circle. Sigma's specification tables for DG lenses list \"Sensor Format: Full-frame [DG]\", pairing the designation directly with the coverage field. Every DG lens recorded in this dataset is listed by Sigma as full-frame.",
+    "source_urls": ["https://www.sigma-global.com/en/lenses/a021_35_14/"],
+    "applies_to_mounts": ["L", "E", "X", "RF"]
+  },
+  {
+    "slug": "sigma-dc",
+    "name": "Sigma DC",
+    "kind": "other",
+    "summary": "DC is Sigma's product-name designation for lenses whose image circle covers APS-C rather than full-frame. Sigma's specification table for the 18-50mm F2.8 DC DN | Contemporary lists \"Sensor Format: APS-C [DC]\". Sigma publishes a different angle of view for each mount version of a DC lens, reflecting the differing APS-C sensor sizes across systems.",
+    "source_urls": ["https://www.sigma-global.com/en/lenses/c021_18_50_28/"],
+    "applies_to_mounts": ["L", "E", "X", "RF"]
+  },
+  {
+    "slug": "sigma-dn",
+    "name": "Sigma DN",
+    "kind": "other",
+    "summary": "DN is the designation Sigma applies to lenses designed for mirrorless camera bodies. Every Sigma lens in this dataset carrying DN in its product name has \"Camera Type: Mirrorless\" in Sigma's own specification table, and all such lenses are offered only in mirrorless mounts (L, Sony E, Fujifilm X, Canon RF). Sigma did not publish an explicit prose definition of the abbreviation on any page retrieved for this research.",
+    "source_urls": [
+      "https://www.sigma-global.com/en/lenses/a021_35_14/",
+      "https://www.sigma-global.com/en/lenses/c021_18_50_28/"
+    ],
+    "applies_to_mounts": ["L", "E", "X", "RF"]
+  },
+  {
+    "slug": "sigma-art",
+    "name": "Sigma Art line",
+    "kind": "lens_line",
+    "summary": "Art is one of Sigma's three named lens lines, appearing after a vertical bar in the product name (for example \"35mm F1.4 DG DN | Art\"). Sigma refers to \"Sigma Art line class optical and AF performance\" on the 105mm F2.8 DG DN MACRO | Art page. Sigma's own definition of the line's positioning was not published on any page retrieved for this research; the lenses recorded here as Art are those Sigma itself labels Art.",
+    "source_urls": [
+      "https://www.sigma-global.com/en/lenses/a020_105_28/",
+      "https://www.sigma-global.com/en/lenses/a021_35_14/"
+    ],
+    "applies_to_mounts": ["L", "E"]
+  },
+  {
+    "slug": "sigma-contemporary",
+    "name": "Sigma Contemporary line",
+    "kind": "lens_line",
+    "summary": "Contemporary is one of Sigma's three named lens lines, appearing after a vertical bar in the product name (for example \"18-50mm F2.8 DC DN | Contemporary\"). The Contemporary lenses recorded in this dataset are consistently marketed on size and weight grounds: Sigma calls the 18-50mm F2.8 DC DN \"Currently the smallest and lightest in its class\" and the 16-28mm F2.8 DG DN \"Uncompromising optical performance within a compact body\". Sigma's own formal definition of the line was not published on any page retrieved for this research.",
+    "source_urls": [
+      "https://www.sigma-global.com/en/lenses/c021_18_50_28/",
+      "https://www.sigma-global.com/en/lenses/c022_16_28_28/"
+    ],
+    "applies_to_mounts": ["L", "E", "X", "RF"]
+  },
+  {
+    "slug": "sigma-sports",
+    "name": "Sigma Sports line",
+    "kind": "lens_line",
+    "summary": "Sports is one of Sigma's three named lens lines, appearing after a vertical bar in the product name (for example \"150-600mm F5-6.3 DG DN OS | Sports\"). The single Sports lens recorded in this dataset carries features aimed at action work that the equivalent Contemporary telephoto lacks: three customisable AFL buttons, a magnesium-alloy tripod socket with 90-degree click stops supplied in the box, a Zoom Torque switch, and Custom OS modes C1 and C2. Sigma's own formal definition of the line was not published on any page retrieved for this research.",
+    "source_urls": ["https://www.sigma-global.com/en/lenses/s021_150_600_5_63/"],
+    "applies_to_mounts": ["L", "E"]
+  },
+  {
+    "slug": "tamron-vxd",
+    "name": "Tamron VXD (Voice-coil eXtreme-torque Drive)",
+    "kind": "focus_motor",
+    "summary": "Tamron expands VXD as \"VXD (Voice-coil eXtreme-torque Drive), a linear motor focus mechanism\" on the 70-180mm F/2.8 Di III VXD page. On that lens Tamron claims \"Excellent AF drive efficiency\" with positioning accuracy \"down to 0.005mm\". VXD is the drive used across the faster Di III zooms in this dataset, including the 28-75mm G2, 35-150mm F/2-2.8 and 150-500mm.",
+    "source_urls": [
+      "https://www.tamron.com/global/consumer/lenses/a056/",
+      "https://www.tamron.com/global/consumer/lenses/a058/"
+    ],
+    "applies_to_mounts": ["E", "Z"]
+  },
+  {
+    "slug": "tamron-rxd",
+    "name": "Tamron RXD",
+    "kind": "focus_motor",
+    "summary": "RXD is the focus drive designation carried in the product names of the two Di III-A lenses in this dataset, the 17-70mm F/2.8 Di III-A VC RXD and the 11-20mm F/2.8 Di III-A RXD. It appears on Tamron's lower-torque and more compact designs, where VXD is reserved for the larger and faster lenses. Tamron's own expansion of the abbreviation was not published on any page retrieved for this research, so it is recorded here as the bare designation.",
+    "source_urls": [
+      "https://www.tamron.com/global/consumer/lenses/b070/spec.html",
+      "https://www.tamron.com/global/consumer/lenses/b060/spec.html"
+    ],
+    "applies_to_mounts": ["E", "Z", "X", "RF"]
+  },
+  {
+    "slug": "tamron-vc",
+    "name": "Tamron VC",
+    "kind": "stabilisation",
+    "summary": "VC is Tamron's in-lens optical stabilisation, carried in the product name of stabilised lenses such as the 150-500mm F/5-6.7 Di III VC VXD and the 17-70mm F/2.8 Di III-A VC RXD. On the 150-500mm, Tamron documents an ON/OFF control and three VC modes: standard, panning, and framing priority. Tamron published no numeric stops-of-stabilisation figure for either VC lens on the pages retrieved for this research, and none is recorded.",
+    "source_urls": [
+      "https://www.tamron.com/global/consumer/lenses/a057/",
+      "https://www.tamron.com/global/consumer/lenses/b070/spec.html"
+    ],
+    "applies_to_mounts": ["E", "Z", "X", "RF"]
+  },
+  {
+    "slug": "tamron-di-iii",
+    "name": "Tamron Di III",
+    "kind": "lens_line",
+    "summary": "Di III is Tamron's designation for its mirrorless lens line, and Tamron groups these lenses under a \"Di III Lineup\" heading on its mount-specific listing pages. Every Di III lens in this dataset has its angle of view quoted by Tamron \"for full-frame mirrorless format\", and all are offered only in mirrorless mounts. Tamron pairs Di III lenses with Moisture-Resistant Construction and a fluorine front-element coating across the models recorded here.",
+    "source_urls": [
+      "https://www.tamron.com/global/consumer/lenses/sony_e/",
+      "https://www.tamron.com/global/consumer/lenses/a058/spec.html"
+    ],
+    "applies_to_mounts": ["E", "Z"]
+  },
+  {
+    "slug": "tamron-di-iii-a",
+    "name": "Tamron Di III-A",
+    "kind": "lens_line",
+    "summary": "Di III-A is Tamron's designation for mirrorless lenses covering APS-C rather than full-frame, and Tamron lists them under a separate \"Di III-A Lineup\" heading from the full-frame Di III lenses. Tamron publishes a different angle of view for the Canon RF version of these lenses than for the Sony E, Nikon Z and Fujifilm X versions, reflecting differing APS-C sensor dimensions. The two Di III-A lenses in this dataset are the 17-70mm F/2.8 VC RXD and the 11-20mm F/2.8 RXD.",
+    "source_urls": [
+      "https://www.tamron.com/global/consumer/lenses/sony_e/",
+      "https://www.tamron.com/global/consumer/lenses/b070/spec.html",
+      "https://www.tamron.com/global/consumer/lenses/b060/spec.html"
+    ],
+    "applies_to_mounts": ["E", "Z", "X", "RF"]
+  },
+  {
+    "slug": "tamron-moisture-resistant-construction",
+    "name": "Tamron Moisture-Resistant Construction",
+    "kind": "other",
+    "summary": "Moisture-Resistant Construction is Tamron's named sealing specification, described on the 35-150mm F/2-2.8 Di III VXD page as using leak-resistant seals. Tamron pairs it with a fluorine coating on the front element that it describes as \"water- and oil-repellant\". It is stated for the full-frame Di III lenses in this dataset; Tamron did not state it on the Di III-A specification pages retrieved, so weather sealing is recorded as null for those lenses rather than assumed.",
+    "source_urls": [
+      "https://www.tamron.com/global/consumer/lenses/a058/",
+      "https://www.tamron.com/global/consumer/lenses/a063/"
+    ],
+    "applies_to_mounts": ["E", "Z"]
+  },
+  {
+    "slug": "viltrox-hypervcm",
+    "name": "Viltrox HyperVCM",
+    "kind": "focus_motor",
+    "summary": "HyperVCM is Viltrox's voice-coil autofocus motor, which Viltrox describes as \"Patented Fast Viltrox HyperVCM Autofocus for Photos and Videos\" on the AF 85mm F1.4 Pro FE. The AF 35mm F1.2 LAB FE page describes it as \"Fast, Accurate HyperVCM Autofocus for Photo and Video\". Viltrox's specification table for the 85mm F1.4 Pro records the focus motor simply as \"VCM\".",
+    "source_urls": [
+      "https://viltrox.com/products/af-85mm-f1-4-fe",
+      "https://viltrox.com/products/af-35mm-f1-2-fe"
+    ],
+    "applies_to_mounts": ["FE", "E", "Z"]
+  },
+  {
+    "slug": "viltrox-stm",
+    "name": "Viltrox STM",
+    "kind": "focus_motor",
+    "summary": "STM is the stepping-motor autofocus drive Viltrox uses on its lighter lenses. The AF 16mm F1.8 specification table records the focus motor as \"STM + Lead Screw\", indicating a stepper driving a lead-screw focus group, and lists the focus mechanism as internal focus. The AF 85mm F2.0 EVO FE is described as having \"Fast, Accurate STM Autofocus for Photo and Video\". Viltrox reserves HyperVCM for its heavier, faster-aperture designs.",
+    "source_urls": [
+      "https://viltrox.com/products/viltrox-af-16mm-f1-8-z",
+      "https://viltrox.com/products/af-85mm-f2-0-fe"
+    ],
+    "applies_to_mounts": ["FE", "E", "Z"]
+  },
+  {
+    "slug": "samyang-linear-stm",
+    "name": "Samyang Linear STM",
+    "kind": "focus_motor",
+    "summary": "Linear STM is the autofocus motor Samyang lists in the specification tables of its current AF lenses, including the AF 35mm F1.4 FE II, AF 85mm F1.4 FE II and AF 135mm F1.8 FE. Samyang describes the resulting performance on the 35mm F1.4 FE II as \"Fast, precise, and quiet AF performance\", and on the 85mm F1.4 FE II as \"Quieter, faster and more accurate\". It replaced the DLSM drive used on the first-generation AF 35mm F1.4 FE.",
+    "source_urls": [
+      "https://www.lksamyang.com/en/product/product-view.php?seq=580",
+      "https://www.lksamyang.com/en/product/product-view.php?seq=588",
+      "https://www.lksamyang.com/en/product/product-view.php?seq=576"
+    ],
+    "applies_to_mounts": ["FE"]
+  },
+  {
+    "slug": "samyang-dlsm",
+    "name": "Samyang DLSM (Dual Linear Sonic Motor)",
+    "kind": "focus_motor",
+    "summary": "DLSM is expanded by Samyang as \"Dual Linear Sonic Motor\" and is listed as the focus motor of the first-generation AF 35mm F1.4 FE. Samyang markets it as the \"World's first DLSM Motor, providing an enhanced autofocus function\" and claims \"Very fast, accurate and quiet auto focus performance\". Samyang's later AF lenses in this dataset use Linear STM instead.",
+    "source_urls": ["https://www.lksamyang.com/en/product/product-view.php?seq=159"],
+    "applies_to_mounts": ["FE"]
+  },
+  {
+    "slug": "tokina-st-m",
+    "name": "Tokina ST-M motor unit",
+    "kind": "focus_motor",
+    "summary": "ST-M is the silent stepping-motor unit Tokina fits to its atx-m mirrorless lenses, listed as \"ST-M motor unit (silent)\" in the specifications for the atx-m 11-18mm F2.8 in both Sony E and Fujifilm X mounts. On the E-mount version Tokina also lists internal focus and a manual focus ring. The E-mount version carries a micro USB port for firmware updates.",
+    "source_urls": [
+      "https://tokinalens.com/product/atx_m_11_18mm_f2_8_e/",
+      "https://tokinalens.com/product/atx_m_11_18mm_f2_8_x/"
+    ],
+    "applies_to_mounts": ["E", "X"]
+  },
+  {
+    "slug": "tokina-atx-m",
+    "name": "Tokina atx-m",
+    "kind": "lens_line",
+    "summary": "atx-m is Tokina's line of autofocus lenses built specifically for mirrorless mounts. Tokina describes the atx-m 11-18mm F2.8 as \"the first super wide angle zoom lens in Tokina's product line-up designed exclusively for mirrorless cameras\" and aims it at \"active hybrid users who shoot stills and video\". Both atx-m lenses in this dataset are APS-C designs using the ST-M motor.",
+    "source_urls": ["https://tokinalens.com/product/atx_m_11_18mm_f2_8_e/"],
+    "applies_to_mounts": ["E", "X"]
+  },
+  {
+    "slug": "tokina-atx-i",
+    "name": "Tokina atx-i",
+    "kind": "lens_line",
+    "summary": "atx-i is Tokina's line for DSLR mounts, offered in Canon EF and Nikon F. Tokina states that \"The letter 'i' stands for 'interactive', implying mutual communication between photographer and the lens\". The atx-i 100mm F2.8 FF MACRO PLUS in this dataset is a full-frame 1:1 macro lens for which Tokina publishes no focus motor type, stabilisation, or weather sealing specification.",
+    "source_urls": ["https://tokinalens.com/product/atx_i_100mm_f2_8_ff_macro/"],
+    "applies_to_mounts": ["EF"]
+  }
+]

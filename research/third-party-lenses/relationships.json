@@ -1,0 +1,205 @@
+[
+  {
+    "from_slug": "samyang-af-35mm-f1-4-fe-ii-fe",
+    "to_slug": "samyang-af-35mm-f1-4-fe-fe",
+    "type": "successor_of",
+    "basis": "Manufacturer product naming, not inferred from matching focal length. Samyang lists both lenses under the same product name with the later one suffixed \"II\" (AF 35mm F1.4 FE vs AF 35mm F1.4 FE II). The optical formula is identical at 11 elements in 9 groups with 9 blades, but the focus motor changed from DLSM to Linear STM and Samyang states weather sealing at 4 spots on the II only.",
+    "source_url": "https://www.lksamyang.com/en/product/product-srch.php?category=A"
+  },
+  {
+    "from_slug": "sigma-24-70mm-f2-8-dg-dn-ii-art-e",
+    "to_slug": "tamron-28-75mm-f2-8-di-iii-vxd-g2-a063-e",
+    "type": "alternative_to",
+    "basis": "Both are full-frame constant-F2.8 standard zooms in Sony E mount, per each manufacturer's own specification table in this dataset. They differ in range (24-70 vs 28-75), weight (735g vs 540g) and filter thread (82mm vs 67mm).",
+    "source_url": "https://www.sigma-global.com/en/lenses/a024_24_70_28_ii/"
+  },
+  {
+    "from_slug": "sigma-24-70mm-f2-8-dg-dn-ii-art-e",
+    "to_slug": "tamron-35-150mm-f2-2-8-di-iii-vxd-a058-e",
+    "type": "alternative_to",
+    "basis": "Both are full-frame fast Sony E zooms covering the standard range, per manufacturer specifications. The Tamron trades the wide end for reach to 150mm and an F2 wide aperture at 1,165g against the Sigma's 735g.",
+    "source_url": "https://www.tamron.com/global/consumer/lenses/a058/spec.html"
+  },
+  {
+    "from_slug": "sigma-18-50mm-f2-8-dc-dn-contemporary-e",
+    "to_slug": "tamron-17-70mm-f2-8-di-iii-a-vc-rxd-b070-e",
+    "type": "alternative_to",
+    "basis": "Both are APS-C constant-F2.8 standard zooms in Sony E mount, per each manufacturer's specification table. The Tamron adds VC stabilisation and more reach; the Sigma is the smaller lens at 290g with a 55mm filter thread.",
+    "source_url": "https://www.sigma-global.com/en/lenses/c021_18_50_28/"
+  },
+  {
+    "from_slug": "sigma-18-50mm-f2-8-dc-dn-contemporary-x",
+    "to_slug": "tamron-17-70mm-f2-8-di-iii-a-vc-rxd-b070-x",
+    "type": "alternative_to",
+    "basis": "Both are APS-C constant-F2.8 standard zooms offered in Fujifilm X mount, per each manufacturer's specification table.",
+    "source_url": "https://www.tamron.com/global/consumer/lenses/b070/spec.html"
+  },
+  {
+    "from_slug": "sigma-150-600mm-f5-6-3-dg-dn-os-sports-e",
+    "to_slug": "tamron-150-500mm-f5-6-7-di-iii-vc-vxd-a057-e",
+    "type": "alternative_to",
+    "basis": "Both are full-frame super-telephoto zooms starting at 150mm with in-lens stabilisation, in Sony E mount, per manufacturer specifications. The Sigma reaches 600mm at 2,100g; the Tamron reaches 500mm at 1,725g.",
+    "source_url": "https://www.sigma-global.com/en/lenses/s021_150_600_5_63/"
+  },
+  {
+    "from_slug": "sigma-100-400mm-f5-6-3-dg-dn-os-contemporary-e",
+    "to_slug": "tamron-150-500mm-f5-6-7-di-iii-vc-vxd-a057-e",
+    "type": "alternative_to",
+    "basis": "Both are stabilised full-frame telephoto zooms in Sony E mount with variable maximum apertures, per manufacturer specifications. Overlapping but not identical ranges (100-400 vs 150-500).",
+    "source_url": "https://www.sigma-global.com/en/lenses/c020_100_400_5_63/"
+  },
+  {
+    "from_slug": "sigma-85mm-f1-4-dg-dn-art-e",
+    "to_slug": "samyang-af-85mm-f1-4-fe-ii-fe",
+    "type": "alternative_to",
+    "basis": "Both are full-frame 85mm F1.4 autofocus primes for Sony E/FE with documented weather sealing, per manufacturer specifications. The Samyang is 509g against the Sigma's 625g; Samyang claims it is the lightest large-aperture 85mm for Sony FE.",
+    "source_url": "https://www.lksamyang.com/en/product/product-view.php?seq=588"
+  },
+  {
+    "from_slug": "viltrox-af-85mm-f1-4-pro-fe",
+    "to_slug": "samyang-af-85mm-f1-4-fe-ii-fe",
+    "type": "alternative_to",
+    "basis": "Both are full-frame 85mm F1.4 autofocus primes for Sony FE, per manufacturer specifications. The Viltrox has an 11-blade diaphragm and weighs about 800g; the Samyang has 9 blades and weighs 509g.",
+    "source_url": "https://viltrox.com/products/af-85mm-f1-4-fe"
+  },
+  {
+    "from_slug": "viltrox-af-85mm-f1-4-pro-fe",
+    "to_slug": "sigma-85mm-f1-4-dg-dn-art-e",
+    "type": "alternative_to",
+    "basis": "Both are full-frame 85mm F1.4 autofocus primes for Sony E/FE with 11-blade diaphragms and stated weather sealing, per manufacturer specifications.",
+    "source_url": "https://viltrox.com/products/af-85mm-f1-4-fe"
+  },
+  {
+    "from_slug": "sigma-35mm-f1-4-dg-dn-art-e",
+    "to_slug": "samyang-af-35mm-f1-4-fe-ii-fe",
+    "type": "alternative_to",
+    "basis": "Both are full-frame 35mm F1.4 autofocus primes for Sony E/FE with a 67mm filter thread and 9-blade or better diaphragms, per manufacturer specifications. Sigma 640g, Samyang 659g.",
+    "source_url": "https://www.lksamyang.com/en/product/product-view.php?seq=580"
+  },
+  {
+    "from_slug": "sigma-14-24mm-f2-8-dg-dn-art-e",
+    "to_slug": "sigma-16-28mm-f2-8-dg-dn-contemporary-e",
+    "type": "alternative_to",
+    "basis": "Two Sigma full-frame constant-F2.8 ultra-wide zooms for the same mount from different lines. The Art goes wider to 14mm at 795g with no front filter thread; the Contemporary is 450g with a 72mm filter thread and an inner zoom mechanism.",
+    "source_url": "https://www.sigma-global.com/en/lenses/c022_16_28_28/"
+  },
+  {
+    "from_slug": "tamron-11-20mm-f2-8-di-iii-a-rxd-b060-e",
+    "to_slug": "tokina-atx-m-11-18mm-f2-8-e",
+    "type": "alternative_to",
+    "basis": "Both are APS-C constant-F2.8 ultra-wide zooms starting at 11mm in Sony E mount with 67mm filter threads, per manufacturer specifications. Tamron 335g reaching 20mm; Tokina 335g reaching 18mm.",
+    "source_url": "https://tokinalens.com/product/atx_m_11_18mm_f2_8_e/"
+  },
+  {
+    "from_slug": "tamron-11-20mm-f2-8-di-iii-a-rxd-b060-x",
+    "to_slug": "tokina-atx-m-11-18mm-f2-8-x",
+    "type": "alternative_to",
+    "basis": "Both are APS-C constant-F2.8 ultra-wide zooms starting at 11mm in Fujifilm X mount with 67mm filter threads, per manufacturer specifications.",
+    "source_url": "https://tokinalens.com/product/atx_m_11_18mm_f2_8_x/"
+  },
+  {
+    "from_slug": "sigma-35mm-f1-4-dg-dn-art-l",
+    "to_slug": "sigma-50mm-f1-4-dg-dn-art-l",
+    "type": "same_family",
+    "basis": "Both carry Sigma's Art designation in the manufacturer's own product name and share the Art control layout of aperture ring with click and lock switches, focus mode switch and AFL button.",
+    "source_url": "https://www.sigma-global.com/en/lenses/a023_50_14/"
+  },
+  {
+    "from_slug": "sigma-50mm-f1-4-dg-dn-art-l",
+    "to_slug": "sigma-85mm-f1-4-dg-dn-art-l",
+    "type": "same_family",
+    "basis": "Both carry Sigma's Art designation in the manufacturer's own product name, and both are F1.4 DG DN primes with 11-blade rounded diaphragms and dust and splash resistant structures.",
+    "source_url": "https://www.sigma-global.com/en/lenses/a020_85_14/"
+  },
+  {
+    "from_slug": "sigma-24-70mm-f2-8-dg-dn-ii-art-l",
+    "to_slug": "sigma-14-24mm-f2-8-dg-dn-art-l",
+    "type": "same_family",
+    "basis": "Both carry Sigma's Art designation in the manufacturer's own product name and are full-frame constant-F2.8 DG DN zooms with 11-blade rounded diaphragms.",
+    "source_url": "https://www.sigma-global.com/en/lenses/a024_24_70_28_ii/"
+  },
+  {
+    "from_slug": "sigma-105mm-f2-8-dg-dn-macro-art-l",
+    "to_slug": "sigma-50mm-f1-4-dg-dn-art-l",
+    "type": "same_family",
+    "basis": "Both carry Sigma's Art designation in the manufacturer's own product name; Sigma describes the 105mm macro as having \"Sigma Art line class optical and AF performance\".",
+    "source_url": "https://www.sigma-global.com/en/lenses/a020_105_28/"
+  },
+  {
+    "from_slug": "sigma-18-50mm-f2-8-dc-dn-contemporary-e",
+    "to_slug": "sigma-100-400mm-f5-6-3-dg-dn-os-contemporary-e",
+    "type": "same_family",
+    "basis": "Both carry Sigma's Contemporary designation in the manufacturer's own product name.",
+    "source_url": "https://www.sigma-global.com/en/lenses/c020_100_400_5_63/"
+  },
+  {
+    "from_slug": "sigma-16-28mm-f2-8-dg-dn-contemporary-e",
+    "to_slug": "sigma-18-50mm-f2-8-dc-dn-contemporary-e",
+    "type": "same_family",
+    "basis": "Both carry Sigma's Contemporary designation in the manufacturer's own product name.",
+    "source_url": "https://www.sigma-global.com/en/lenses/c022_16_28_28/"
+  },
+  {
+    "from_slug": "tamron-28-75mm-f2-8-di-iii-vxd-g2-a063-e",
+    "to_slug": "tamron-35-150mm-f2-2-8-di-iii-vxd-a058-e",
+    "type": "same_family",
+    "basis": "Tamron lists both under its \"Di III Lineup\" heading for Sony E mount, and both use the VXD focus motor with Moisture-Resistant Construction.",
+    "source_url": "https://www.tamron.com/global/consumer/lenses/sony_e/"
+  },
+  {
+    "from_slug": "tamron-70-180mm-f2-8-di-iii-vxd-a056-e",
+    "to_slug": "tamron-150-500mm-f5-6-7-di-iii-vc-vxd-a057-e",
+    "type": "same_family",
+    "basis": "Tamron lists both under its \"Di III Lineup\" heading for Sony E mount, and both use the VXD focus motor.",
+    "source_url": "https://www.tamron.com/global/consumer/lenses/sony_e/"
+  },
+  {
+    "from_slug": "tamron-11-20mm-f2-8-di-iii-a-rxd-b060-e",
+    "to_slug": "tamron-17-70mm-f2-8-di-iii-a-vc-rxd-b070-e",
+    "type": "same_family",
+    "basis": "Tamron lists both under its \"Di III-A Lineup\" heading, separately from the full-frame Di III lenses, and both use the RXD focus motor.",
+    "source_url": "https://www.tamron.com/global/consumer/lenses/sony_e/"
+  },
+  {
+    "from_slug": "tokina-atx-m-11-18mm-f2-8-e",
+    "to_slug": "tokina-atx-m-11-18mm-f2-8-x",
+    "type": "same_family",
+    "basis": "Same Tokina atx-m model in two mounts, sharing the 13 elements in 11 groups formula, 9 blades, 0.19m minimum focus and 1:9.2 magnification.",
+    "source_url": "https://tokinalens.com/product/atx_m_11_18mm_f2_8_x/"
+  },
+  {
+    "from_slug": "viltrox-af-16mm-f1-8-e",
+    "to_slug": "viltrox-af-16mm-f1-8-z",
+    "type": "same_family",
+    "basis": "Same Viltrox model, listed by Viltrox with mount type \"E/Z\" against a single shared specification table.",
+    "source_url": "https://viltrox.com/products/viltrox-af-16mm-f1-8-z"
+  },
+  {
+    "from_slug": "sigma-150-600mm-f5-6-3-dg-dn-os-sports-l",
+    "to_slug": "sigma-tc-1411",
+    "type": "supports_extender",
+    "basis": "Sigma states TC-1411 (1.4x) teleconverter compatibility for the L-Mount version only. Target is a Sigma teleconverter accessory and is deliberately not present in lenses.json, which holds lenses only.",
+    "source_url": "https://www.sigma-global.com/en/lenses/s021_150_600_5_63/"
+  },
+  {
+    "from_slug": "sigma-150-600mm-f5-6-3-dg-dn-os-sports-l",
+    "to_slug": "sigma-tc-2011",
+    "type": "supports_extender",
+    "basis": "Sigma states TC-2011 (2x) teleconverter compatibility for the L-Mount version only. Target is a Sigma teleconverter accessory and is deliberately not present in lenses.json.",
+    "source_url": "https://www.sigma-global.com/en/lenses/s021_150_600_5_63/"
+  },
+  {
+    "from_slug": "sigma-100-400mm-f5-6-3-dg-dn-os-contemporary-l",
+    "to_slug": "sigma-tc-1411",
+    "type": "supports_extender",
+    "basis": "Sigma states TC-1411 and TC-2011 compatibility for the L-Mount version only, enabling up to 800mm. Target is a teleconverter accessory, not present in lenses.json.",
+    "source_url": "https://www.sigma-global.com/en/lenses/c020_100_400_5_63/"
+  },
+  {
+    "from_slug": "sigma-105mm-f2-8-dg-dn-macro-art-l",
+    "to_slug": "sigma-tc-1411",
+    "type": "supports_extender",
+    "basis": "Sigma lists the 105mm F2.8 DG DN MACRO as compatible with the TC-1411 (1.4x) and TC-2011 (2.0x) teleconverters. Target is a teleconverter accessory, not present in lenses.json.",
+    "source_url": "https://www.sigma-global.com/en/lenses/a020_105_28/"
+  }
+]

@@ -1,0 +1,68 @@
+[
+  {
+    "slug": "sigma-art",
+    "name": "Sigma Art",
+    "manufacturer_slug": "sigma",
+    "note": "Sigma's Art designation, printed after a vertical bar in the product name. Covers the 35mm/50mm/85mm F1.4 DG DN primes, the 105mm F2.8 DG DN MACRO, the 14-24mm F2.8 DG DN and the 24-70mm F2.8 DG DN II in this dataset. Sigma published no prose definition of the line on any page retrieved."
+  },
+  {
+    "slug": "sigma-contemporary",
+    "name": "Sigma Contemporary",
+    "manufacturer_slug": "sigma",
+    "note": "Sigma's Contemporary designation. Covers the 18-50mm F2.8 DC DN, 16-28mm F2.8 DG DN and 100-400mm F5-6.3 DG DN OS here. The 18-50mm is the only Sigma lens in this dataset offered in four mounts (L, E, X, RF)."
+  },
+  {
+    "slug": "sigma-sports",
+    "name": "Sigma Sports",
+    "manufacturer_slug": "sigma",
+    "note": "Sigma's Sports designation. Represented here only by the 150-600mm F5-6.3 DG DN OS, which ships with a magnesium-alloy tripod socket, three AFL buttons and Custom OS modes."
+  },
+  {
+    "slug": "tamron-di-iii",
+    "name": "Tamron Di III",
+    "manufacturer_slug": "tamron",
+    "note": "Tamron's full-frame mirrorless line, listed under a \"Di III Lineup\" heading on Tamron's own mount pages. Covers the 28-75mm G2, 35-150mm F/2-2.8, 70-180mm F/2.8 and 150-500mm here. All carry Moisture-Resistant Construction."
+  },
+  {
+    "slug": "tamron-di-iii-a",
+    "name": "Tamron Di III-A",
+    "manufacturer_slug": "tamron",
+    "note": "Tamron's APS-C mirrorless line, listed separately from Di III on Tamron's mount pages. Covers the 17-70mm F/2.8 VC RXD and 11-20mm F/2.8 RXD here. Tamron did not state Moisture-Resistant Construction on either specification page retrieved."
+  },
+  {
+    "slug": "tokina-atx-m",
+    "name": "Tokina atx-m",
+    "manufacturer_slug": "tokina",
+    "note": "Tokina's mirrorless-only autofocus line. Both entries here are the 11-18mm F2.8 APS-C ultra-wide zoom, in Sony E and Fujifilm X. The X version was released later and is 15g lighter than the E version."
+  },
+  {
+    "slug": "tokina-atx-i",
+    "name": "Tokina atx-i",
+    "manufacturer_slug": "tokina",
+    "note": "Tokina's DSLR-mount line, offered in Canon EF and Nikon F. Only the Canon EF version of the 100mm F2.8 FF MACRO PLUS is recorded, because the target schema's mount vocabulary has no value for Nikon F."
+  },
+  {
+    "slug": "samyang-af",
+    "name": "Samyang AF",
+    "manufacturer_slug": "samyang",
+    "note": "Samyang's autofocus lenses, listed under category code A on Samyang's own product search. All four entries here are Sony FE mount. Samyang appends \"II\" to the product name for second-generation versions rather than changing the model designation."
+  },
+  {
+    "slug": "viltrox-lab",
+    "name": "Viltrox LAB",
+    "manufacturer_slug": "viltrox",
+    "note": "Viltrox's top line, represented here by the AF 35mm F1.2 LAB FE. Viltrox markets it on an \"All-Metal Weather-Sealed Durable Build\" and an integrated LED lens display. Viltrox published no specification table for it on the product page retrieved, so most physical fields are null."
+  },
+  {
+    "slug": "viltrox-pro",
+    "name": "Viltrox Pro",
+    "manufacturer_slug": "viltrox",
+    "note": "Viltrox's professional line, represented here by the AF 85mm F1.4 Pro FE, which uses the HyperVCM motor and an 11-blade diaphragm."
+  },
+  {
+    "slug": "viltrox-evo",
+    "name": "Viltrox EVO",
+    "manufacturer_slug": "viltrox",
+    "note": "Viltrox's compact line, represented here by the AF 85mm F2.0 EVO FE. Viltrox published marketing bullets but no full specification table for it, so blade count, magnification and dimensions are null."
+  }
+]

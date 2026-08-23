@@ -1326,7 +1326,7 @@
     "aperture_max": 5,
     "aperture_max_tele": 6.7,
     "aperture_min": 22,
-    "stabilisation": "VC (Vibration Compensation), 3 modes",
+    "stabilisation": "VC, 3 modes",
     "stabilisation_stops_claim": null,
     "focus_motor": "VXD (Voice-coil eXtreme-torque Drive)",
     "premium_line": true,
@@ -1383,7 +1383,7 @@
     "aperture_max": 5,
     "aperture_max_tele": 6.7,
     "aperture_min": 22,
-    "stabilisation": "VC (Vibration Compensation), 3 modes",
+    "stabilisation": "VC, 3 modes",
     "stabilisation_stops_claim": null,
     "focus_motor": "VXD (Voice-coil eXtreme-torque Drive)",
     "premium_line": true,
@@ -1634,9 +1634,9 @@
     "aperture_max": 2.8,
     "aperture_max_tele": 2.8,
     "aperture_min": 22,
-    "stabilisation": "VC (Vibration Compensation)",
+    "stabilisation": "VC",
     "stabilisation_stops_claim": null,
-    "focus_motor": "RXD (Rapid eXtra-silent stepping Drive)",
+    "focus_motor": "RXD",
     "premium_line": true,
     "premium_line_name": "Di III",
     "macro": false,
@@ -1695,9 +1695,9 @@
     "aperture_max": 2.8,
     "aperture_max_tele": 2.8,
     "aperture_min": 22,
-    "stabilisation": "VC (Vibration Compensation)",
+    "stabilisation": "VC",
     "stabilisation_stops_claim": null,
-    "focus_motor": "RXD (Rapid eXtra-silent stepping Drive)",
+    "focus_motor": "RXD",
     "premium_line": true,
     "premium_line_name": "Di III",
     "macro": false,
@@ -1756,9 +1756,9 @@
     "aperture_max": 2.8,
     "aperture_max_tele": 2.8,
     "aperture_min": 22,
-    "stabilisation": "VC (Vibration Compensation)",
+    "stabilisation": "VC",
     "stabilisation_stops_claim": null,
-    "focus_motor": "RXD (Rapid eXtra-silent stepping Drive)",
+    "focus_motor": "RXD",
     "premium_line": true,
     "premium_line_name": "Di III",
     "macro": false,
@@ -1817,9 +1817,9 @@
     "aperture_max": 2.8,
     "aperture_max_tele": 2.8,
     "aperture_min": 22,
-    "stabilisation": "VC (Vibration Compensation)",
+    "stabilisation": "VC",
     "stabilisation_stops_claim": null,
-    "focus_motor": "RXD (Rapid eXtra-silent stepping Drive)",
+    "focus_motor": "RXD",
     "premium_line": true,
     "premium_line_name": "Di III",
     "macro": false,
@@ -1879,7 +1879,7 @@
     "aperture_min": 16,
     "stabilisation": "none",
     "stabilisation_stops_claim": null,
-    "focus_motor": "RXD (Rapid eXtra-silent stepping Drive)",
+    "focus_motor": "RXD",
     "premium_line": true,
     "premium_line_name": "Di III",
     "macro": false,
@@ -1936,7 +1936,7 @@
     "aperture_min": 16,
     "stabilisation": "none",
     "stabilisation_stops_claim": null,
-    "focus_motor": "RXD (Rapid eXtra-silent stepping Drive)",
+    "focus_motor": "RXD",
     "premium_line": true,
     "premium_line_name": "Di III",
     "macro": false,
@@ -1993,7 +1993,7 @@
     "aperture_min": 16,
     "stabilisation": "none",
     "stabilisation_stops_claim": null,
-    "focus_motor": "RXD (Rapid eXtra-silent stepping Drive)",
+    "focus_motor": "RXD",
     "premium_line": true,
     "premium_line_name": "Di III",
     "macro": false,
@@ -2483,6 +2483,612 @@
     ],
     "unsourced_fields": [
       "focus_motor",
+      "weather_sealed",
+      "control_ring",
+      "tripod_collar",
+      "focus_limiter",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced",
+      "discontinued"
+    ]
+  },
+  {
+    "name": "Viltrox AF 16mm F1.8",
+    "slug": "viltrox-af-16mm-f1-8-e",
+    "manufacturer_slug": "viltrox",
+    "mount": "E",
+    "coverage": "full-frame",
+    "lens_type": "prime",
+    "categories": [
+      "ultra-wide-prime",
+      "fast-prime",
+      "astrophotography"
+    ],
+    "focal_min_mm": 16,
+    "focal_max_mm": 16,
+    "aperture_max": 1.8,
+    "aperture_max_tele": null,
+    "aperture_min": 22,
+    "stabilisation": "none",
+    "stabilisation_stops_claim": null,
+    "focus_motor": "STM + Lead Screw",
+    "premium_line": false,
+    "premium_line_name": null,
+    "macro": false,
+    "elements": 15,
+    "groups": 12,
+    "aperture_blades": 9,
+    "min_focus_m": 0.27,
+    "max_magnification": "0.1X",
+    "filter_diameter_mm": 77,
+    "weight_g": 550,
+    "diameter_mm": 85.2,
+    "length_mm": 103,
+    "weather_sealed": null,
+    "control_ring": true,
+    "tripod_collar": null,
+    "focus_limiter": null,
+    "internal_zoom": null,
+    "internal_focus": true,
+    "teleconverter_compatible": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://viltrox.com/products/viltrox-af-16mm-f1-8-z"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "Ultra-Wide, Bright, and Precise",
+        "source_url": "https://viltrox.com/products/viltrox-af-16mm-f1-8-z"
+      },
+      {
+        "claim": "Efficient Dust-proof Structure",
+        "source_url": "https://viltrox.com/products/viltrox-af-16mm-f1-8-z"
+      },
+      {
+        "claim": "Stepless Aperture Ring Design",
+        "source_url": "https://viltrox.com/products/viltrox-af-16mm-f1-8-z"
+      }
+    ],
+    "unsourced_fields": [
+      "weather_sealed",
+      "tripod_collar",
+      "focus_limiter",
+      "teleconverter_compatible",
+      "announced",
+      "discontinued"
+    ]
+  },
+  {
+    "name": "Viltrox AF 16mm F1.8",
+    "slug": "viltrox-af-16mm-f1-8-z",
+    "manufacturer_slug": "viltrox",
+    "mount": "Z",
+    "coverage": "full-frame",
+    "lens_type": "prime",
+    "categories": [
+      "ultra-wide-prime",
+      "fast-prime",
+      "astrophotography"
+    ],
+    "focal_min_mm": 16,
+    "focal_max_mm": 16,
+    "aperture_max": 1.8,
+    "aperture_max_tele": null,
+    "aperture_min": 22,
+    "stabilisation": "none",
+    "stabilisation_stops_claim": null,
+    "focus_motor": "STM + Lead Screw",
+    "premium_line": false,
+    "premium_line_name": null,
+    "macro": false,
+    "elements": 15,
+    "groups": 12,
+    "aperture_blades": 9,
+    "min_focus_m": 0.27,
+    "max_magnification": "0.1X",
+    "filter_diameter_mm": 77,
+    "weight_g": 550,
+    "diameter_mm": 85.2,
+    "length_mm": 103,
+    "weather_sealed": null,
+    "control_ring": true,
+    "tripod_collar": null,
+    "focus_limiter": null,
+    "internal_zoom": null,
+    "internal_focus": true,
+    "teleconverter_compatible": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://viltrox.com/products/viltrox-af-16mm-f1-8-z"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "F1.8 Super Large Aperture",
+        "source_url": "https://viltrox.com/products/viltrox-af-16mm-f1-8-z"
+      },
+      {
+        "claim": "Powerful Autofocus Performance",
+        "source_url": "https://viltrox.com/products/viltrox-af-16mm-f1-8-z"
+      }
+    ],
+    "unsourced_fields": [
+      "weather_sealed",
+      "tripod_collar",
+      "focus_limiter",
+      "teleconverter_compatible",
+      "announced",
+      "discontinued"
+    ]
+  },
+  {
+    "name": "Viltrox AF 85mm F1.4 Pro FE",
+    "slug": "viltrox-af-85mm-f1-4-pro-fe",
+    "manufacturer_slug": "viltrox",
+    "mount": "FE",
+    "coverage": "full-frame",
+    "lens_type": "prime",
+    "categories": [
+      "portrait-prime",
+      "short-telephoto-prime",
+      "fast-prime"
+    ],
+    "focal_min_mm": 85,
+    "focal_max_mm": 85,
+    "aperture_max": 1.4,
+    "aperture_max_tele": null,
+    "aperture_min": 16,
+    "stabilisation": "none",
+    "stabilisation_stops_claim": null,
+    "focus_motor": "HyperVCM (voice coil motor)",
+    "premium_line": false,
+    "premium_line_name": null,
+    "macro": false,
+    "elements": 15,
+    "groups": 11,
+    "aperture_blades": 11,
+    "min_focus_m": 0.79,
+    "max_magnification": "0.13x",
+    "filter_diameter_mm": 77,
+    "weight_g": 800,
+    "diameter_mm": 84.5,
+    "length_mm": 108.5,
+    "weather_sealed": true,
+    "control_ring": null,
+    "tripod_collar": null,
+    "focus_limiter": null,
+    "internal_zoom": null,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://viltrox.com/products/af-85mm-f1-4-fe"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "Ultra-Large F1.4 Aperture for Dreamy bokeh and Low-Light Mastery",
+        "source_url": "https://viltrox.com/products/af-85mm-f1-4-fe"
+      },
+      {
+        "claim": "Patented Fast Viltrox HyperVCM Autofocus for Photos and Videos",
+        "source_url": "https://viltrox.com/products/af-85mm-f1-4-fe"
+      },
+      {
+        "claim": "Robust, All-Weather-Sealed Build",
+        "source_url": "https://viltrox.com/products/af-85mm-f1-4-fe"
+      }
+    ],
+    "unsourced_fields": [
+      "control_ring",
+      "tripod_collar",
+      "focus_limiter",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced",
+      "discontinued"
+    ]
+  },
+  {
+    "name": "Viltrox AF 35mm F1.2 LAB FE",
+    "slug": "viltrox-af-35mm-f1-2-lab-fe",
+    "manufacturer_slug": "viltrox",
+    "mount": "FE",
+    "coverage": "full-frame",
+    "lens_type": "prime",
+    "categories": [
+      "wide-prime",
+      "fast-prime"
+    ],
+    "focal_min_mm": 35,
+    "focal_max_mm": 35,
+    "aperture_max": 1.2,
+    "aperture_max_tele": null,
+    "aperture_min": null,
+    "stabilisation": "none",
+    "stabilisation_stops_claim": null,
+    "focus_motor": "HyperVCM (voice coil motor)",
+    "premium_line": false,
+    "premium_line_name": null,
+    "macro": false,
+    "elements": 15,
+    "groups": 10,
+    "aperture_blades": null,
+    "min_focus_m": 0.34,
+    "max_magnification": null,
+    "filter_diameter_mm": null,
+    "weight_g": null,
+    "diameter_mm": null,
+    "length_mm": null,
+    "weather_sealed": true,
+    "control_ring": null,
+    "tripod_collar": null,
+    "focus_limiter": null,
+    "internal_zoom": null,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://viltrox.com/products/af-35mm-f1-2-fe"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "Full-Frame 35mm Prime Engineered for Ultimate Image Quality",
+        "source_url": "https://viltrox.com/products/af-35mm-f1-2-fe"
+      },
+      {
+        "claim": "All-Metal Weather-Sealed Durable Build",
+        "source_url": "https://viltrox.com/products/af-35mm-f1-2-fe"
+      },
+      {
+        "claim": "Comprehensive Control Button and Integrated LED Lens Display",
+        "source_url": "https://viltrox.com/products/af-35mm-f1-2-fe"
+      }
+    ],
+    "unsourced_fields": [
+      "aperture_min",
+      "aperture_blades",
+      "max_magnification",
+      "filter_diameter_mm",
+      "weight_g",
+      "diameter_mm",
+      "length_mm",
+      "control_ring",
+      "tripod_collar",
+      "focus_limiter",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced",
+      "discontinued"
+    ]
+  },
+  {
+    "name": "Viltrox AF 85mm F2.0 EVO FE",
+    "slug": "viltrox-af-85mm-f2-0-evo-fe",
+    "manufacturer_slug": "viltrox",
+    "mount": "FE",
+    "coverage": "full-frame",
+    "lens_type": "prime",
+    "categories": [
+      "portrait-prime",
+      "short-telephoto-prime",
+      "compact"
+    ],
+    "focal_min_mm": 85,
+    "focal_max_mm": 85,
+    "aperture_max": 2,
+    "aperture_max_tele": null,
+    "aperture_min": null,
+    "stabilisation": "none",
+    "stabilisation_stops_claim": null,
+    "focus_motor": "STM",
+    "premium_line": false,
+    "premium_line_name": null,
+    "macro": false,
+    "elements": 10,
+    "groups": 8,
+    "aperture_blades": null,
+    "min_focus_m": 0.74,
+    "max_magnification": null,
+    "filter_diameter_mm": 58,
+    "weight_g": 340,
+    "diameter_mm": null,
+    "length_mm": null,
+    "weather_sealed": true,
+    "control_ring": null,
+    "tripod_collar": null,
+    "focus_limiter": null,
+    "internal_zoom": null,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://viltrox.com/products/af-85mm-f2-0-fe"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "Full-Frame 85mm Portrait Prime for Every Creator.",
+        "source_url": "https://viltrox.com/products/af-85mm-f2-0-fe"
+      },
+      {
+        "claim": "Durable Build with Dust and Moisture Protection.",
+        "source_url": "https://viltrox.com/products/af-85mm-f2-0-fe"
+      },
+      {
+        "claim": "Compact 340g Design with Comfortable Handling.",
+        "source_url": "https://viltrox.com/products/af-85mm-f2-0-fe"
+      }
+    ],
+    "unsourced_fields": [
+      "aperture_min",
+      "aperture_blades",
+      "max_magnification",
+      "diameter_mm",
+      "length_mm",
+      "control_ring",
+      "tripod_collar",
+      "focus_limiter",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced",
+      "discontinued"
+    ]
+  },
+  {
+    "name": "Sigma 105mm F2.8 DG DN MACRO | Art",
+    "slug": "sigma-105mm-f2-8-dg-dn-macro-art-l",
+    "manufacturer_slug": "sigma",
+    "mount": "L",
+    "coverage": "full-frame",
+    "lens_type": "prime",
+    "categories": [
+      "macro",
+      "telephoto-prime"
+    ],
+    "focal_min_mm": 105,
+    "focal_max_mm": 105,
+    "aperture_max": 2.8,
+    "aperture_max_tele": null,
+    "aperture_min": 22,
+    "stabilisation": "none",
+    "stabilisation_stops_claim": null,
+    "focus_motor": "HSM (Hyper-Sonic Motor)",
+    "premium_line": true,
+    "premium_line_name": "Art",
+    "macro": true,
+    "elements": 17,
+    "groups": 12,
+    "aperture_blades": 9,
+    "min_focus_m": 0.295,
+    "max_magnification": "1:1",
+    "filter_diameter_mm": 62,
+    "weight_g": 715,
+    "diameter_mm": 74,
+    "length_mm": 133.6,
+    "weather_sealed": true,
+    "control_ring": true,
+    "tripod_collar": null,
+    "focus_limiter": true,
+    "internal_zoom": null,
+    "internal_focus": null,
+    "teleconverter_compatible": true,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://www.sigma-global.com/en/lenses/a020_105_28/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "Everything required in a mid-telephoto macro lens has been achieved at highest levels",
+        "source_url": "https://www.sigma-global.com/en/lenses/a020_105_28/"
+      },
+      {
+        "claim": "exceptional sharpness at all shooting distances",
+        "source_url": "https://www.sigma-global.com/en/lenses/a020_105_28/"
+      }
+    ],
+    "unsourced_fields": [
+      "tripod_collar",
+      "internal_focus",
+      "announced",
+      "discontinued"
+    ]
+  },
+  {
+    "name": "Sigma 105mm F2.8 DG DN MACRO | Art",
+    "slug": "sigma-105mm-f2-8-dg-dn-macro-art-e",
+    "manufacturer_slug": "sigma",
+    "mount": "E",
+    "coverage": "full-frame",
+    "lens_type": "prime",
+    "categories": [
+      "macro",
+      "telephoto-prime"
+    ],
+    "focal_min_mm": 105,
+    "focal_max_mm": 105,
+    "aperture_max": 2.8,
+    "aperture_max_tele": null,
+    "aperture_min": 22,
+    "stabilisation": "none",
+    "stabilisation_stops_claim": null,
+    "focus_motor": "HSM (Hyper-Sonic Motor)",
+    "premium_line": true,
+    "premium_line_name": "Art",
+    "macro": true,
+    "elements": 17,
+    "groups": 12,
+    "aperture_blades": 9,
+    "min_focus_m": 0.295,
+    "max_magnification": "1:1",
+    "filter_diameter_mm": 62,
+    "weight_g": 710,
+    "diameter_mm": 74,
+    "length_mm": 135.6,
+    "weather_sealed": true,
+    "control_ring": true,
+    "tripod_collar": null,
+    "focus_limiter": true,
+    "internal_zoom": null,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://www.sigma-global.com/en/lenses/a020_105_28/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "Sigma Art line class optical and AF performance",
+        "source_url": "https://www.sigma-global.com/en/lenses/a020_105_28/"
+      }
+    ],
+    "unsourced_fields": [
+      "tripod_collar",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced",
+      "discontinued"
+    ]
+  },
+  {
+    "name": "Sigma 16-28mm F2.8 DG DN | Contemporary",
+    "slug": "sigma-16-28mm-f2-8-dg-dn-contemporary-l",
+    "manufacturer_slug": "sigma",
+    "mount": "L",
+    "coverage": "full-frame",
+    "lens_type": "zoom",
+    "categories": [
+      "ultra-wide-zoom",
+      "fast-zoom",
+      "compact"
+    ],
+    "focal_min_mm": 16,
+    "focal_max_mm": 28,
+    "aperture_max": 2.8,
+    "aperture_max_tele": 2.8,
+    "aperture_min": 22,
+    "stabilisation": "none",
+    "stabilisation_stops_claim": null,
+    "focus_motor": "stepping motor",
+    "premium_line": true,
+    "premium_line_name": "Contemporary",
+    "macro": false,
+    "elements": 16,
+    "groups": 11,
+    "aperture_blades": 9,
+    "min_focus_m": 0.25,
+    "max_magnification": "1:5.6",
+    "filter_diameter_mm": 72,
+    "weight_g": 450,
+    "diameter_mm": 77.2,
+    "length_mm": 100.6,
+    "weather_sealed": null,
+    "control_ring": null,
+    "tripod_collar": null,
+    "focus_limiter": null,
+    "internal_zoom": true,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://www.sigma-global.com/en/lenses/c022_16_28_28/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "Uncompromising optical performance within a compact body",
+        "source_url": "https://www.sigma-global.com/en/lenses/c022_16_28_28/"
+      },
+      {
+        "claim": "Convenient form-factor allowing more freedom and usability",
+        "source_url": "https://www.sigma-global.com/en/lenses/c022_16_28_28/"
+      }
+    ],
+    "unsourced_fields": [
+      "weather_sealed",
+      "control_ring",
+      "tripod_collar",
+      "focus_limiter",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced",
+      "discontinued"
+    ]
+  },
+  {
+    "name": "Sigma 16-28mm F2.8 DG DN | Contemporary",
+    "slug": "sigma-16-28mm-f2-8-dg-dn-contemporary-e",
+    "manufacturer_slug": "sigma",
+    "mount": "E",
+    "coverage": "full-frame",
+    "lens_type": "zoom",
+    "categories": [
+      "ultra-wide-zoom",
+      "fast-zoom",
+      "compact"
+    ],
+    "focal_min_mm": 16,
+    "focal_max_mm": 28,
+    "aperture_max": 2.8,
+    "aperture_max_tele": 2.8,
+    "aperture_min": 22,
+    "stabilisation": "none",
+    "stabilisation_stops_claim": null,
+    "focus_motor": "stepping motor",
+    "premium_line": true,
+    "premium_line_name": "Contemporary",
+    "macro": false,
+    "elements": 16,
+    "groups": 11,
+    "aperture_blades": 9,
+    "min_focus_m": 0.25,
+    "max_magnification": "1:5.6",
+    "filter_diameter_mm": 72,
+    "weight_g": 450,
+    "diameter_mm": 77.2,
+    "length_mm": 102.6,
+    "weather_sealed": null,
+    "control_ring": null,
+    "tripod_collar": null,
+    "focus_limiter": null,
+    "internal_zoom": true,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://www.sigma-global.com/en/lenses/c022_16_28_28/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "inner zoom mechanism",
+        "source_url": "https://www.sigma-global.com/en/lenses/c022_16_28_28/"
+      }
+    ],
+    "unsourced_fields": [
       "weather_sealed",
       "control_ring",
       "tripod_collar",
