@@ -30,6 +30,14 @@ export type ContentStatus =
   | "awaiting_media"
   | "archived";
 export type ContentProductRole = "primary_subject" | "mentioned" | "compared_against";
+// Added by supabase/migrations/20260824_translation_model.sql. Deliberately
+// re-declared here rather than imported from src/lib/i18n/locales.ts: this file
+// has no imports at all, and locales.ts is imported by the sitemap, metadata and
+// the proxy. Keep the two in sync — LOCALES there is the vocabulary of record,
+// and public.locales in the database is the row-level source of truth (four
+// rows: en/pt/es/fr, en being is_source).
+export type Locale = "en" | "pt" | "es" | "fr";
+export type TranslationState = "draft" | "needs_review" | "ready" | "published" | "failed";
 // Added by supabase/migrations/20260820_content_relationships.sql.
 export type ContentRelationshipType = "pillar_of" | "supporting_of" | "related_to";
 // Added by supabase/migrations/20260820_product_offers.sql.
@@ -116,6 +124,11 @@ export type MediaAssetRole =
   | "logo_brand"
   | "icon"
   | "screenshot";
+// Drafted by supabase/migrations_pending/20260825_media_derivatives.sql.
+// Mirrors CropName / DerivativeFormat in src/lib/media/derivatives.ts — keep
+// the three in sync (the SQL CHECK, this union, and the TS type).
+export type MediaDerivativeCrop = "natural" | "square" | "og";
+export type MediaDerivativeFormat = "avif" | "webp" | "jpeg" | "png";
 export type SearchIntent = "informational" | "commercial" | "transactional" | "navigational";
 
 // ---- Growth Engine column unions (Phase 3) ----
@@ -260,6 +273,17 @@ export interface Database {
           // Phase 5 editorial role — broader than brand_role, lets the library
           // be filtered and reused instead of being an undifferentiated pile.
           asset_role: MediaAssetRole | null;
+          // Added by supabase/migrations_pending/20260825_media_derivatives.sql
+          // — NOT YET APPLIED, so these read as undefined on a live row today.
+          // Whether the licence permits ALTERING the image (watermarking,
+          // re-cropping). null means NOBODY HAS ASSESSED IT and is never
+          // treated as permission — see modificationPermission() in
+          // src/lib/media/derivatives.ts. Distinct from whether the licence
+          // permits reuse, which `license`/`rights_status` already cover.
+          licence_permits_modification: boolean | null;
+          licence_modification_note: string | null;
+          licence_modification_assessed_at: string | null;
+          licence_modification_assessed_by: string | null;
         };
         Insert: {
           id?: string;
@@ -285,8 +309,49 @@ export interface Database {
           rights_status?: MediaRightsStatus;
           brand_role?: MediaBrandRole | null;
           asset_role?: MediaAssetRole | null;
+          licence_permits_modification?: boolean | null;
+          licence_modification_note?: string | null;
+          licence_modification_assessed_at?: string | null;
+          licence_modification_assessed_by?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["media_assets"]["Insert"]>;
+        Relationships: [];
+      };
+      // Drafted by supabase/migrations_pending/20260825_media_derivatives.sql —
+      // NOT YET APPLIED. Derived renditions of a media asset (responsive
+      // widths x formats x crops). Never holds the master, which stays at
+      // media_assets.storage_path; the table's own CHECK enforces that every
+      // storage_path here is under 'derivatives/'.
+      media_derivatives: {
+        Row: {
+          id: string;
+          media_asset_id: string;
+          crop: MediaDerivativeCrop;
+          width: number;
+          height: number | null;
+          format: MediaDerivativeFormat;
+          storage_path: string;
+          public_storage_path: string | null;
+          watermarked: boolean;
+          bytes: number | null;
+          content_hash: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          media_asset_id: string;
+          crop: MediaDerivativeCrop;
+          width: number;
+          height?: number | null;
+          format: MediaDerivativeFormat;
+          storage_path: string;
+          public_storage_path?: string | null;
+          watermarked?: boolean;
+          bytes?: number | null;
+          content_hash?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["media_derivatives"]["Insert"]>;
         Relationships: [];
       };
       taxonomy_categories: {
@@ -543,6 +608,22 @@ export interface Database {
           search_intent: SearchIntent | null;
           primary_query: string | null;
           intent_fingerprint: string | null;
+          // Added by supabase/migrations/20260824_translation_model.sql, applied to
+          // production. Identity/fact stays single-valued site-wide; only these
+          // per-locale columns exist, so a product name cannot be translated even
+          // by trying. See that migration's header.
+          locale: Locale;
+          /** The editorial family. Every language variant of one piece shares this. */
+          translation_group_id: string;
+          /** The row this was translated FROM. NULL on a source-language row. */
+          source_content_id: string | null;
+          /** Bumped by trigger ONLY when title or body change. NOT updated_at. */
+          translatable_revision: number;
+          /** The source revision this translation was made from. */
+          source_revision_seen: number | null;
+          translation_state: TranslationState | null;
+          translated_at: string | null;
+          translation_reviewed_by: string | null;
         };
         Insert: {
           id?: string;
@@ -559,8 +640,47 @@ export interface Database {
           search_intent?: SearchIntent | null;
           primary_query?: string | null;
           intent_fingerprint?: string | null;
+          locale?: Locale;
+          // OPTIONAL in the type but NOT in the database: the column is NOT NULL
+          // with no default, and the BEFORE INSERT trigger that would supply one
+          // lives in supabase/migrations_pending/20260825_translation_group_default.sql,
+          // which is NOT applied. Until it is, every insert that omits this fails
+          // with 23502. createTranslation() in
+          // src/app/admin/(dashboard)/translations/actions.ts therefore always
+          // sets it explicitly — which is the correct behaviour anyway, because a
+          // translation must join its SOURCE's family rather than self-root.
+          translation_group_id?: string;
+          source_content_id?: string | null;
+          translatable_revision?: number;
+          source_revision_seen?: number | null;
+          translation_state?: TranslationState | null;
+          translated_at?: string | null;
+          translation_reviewed_by?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["content_items"]["Insert"]>;
+        Relationships: [];
+      };
+      // Added by supabase/migrations/20260824_translation_model.sql, applied to
+      // production. A table rather than an enum so adding a language does not
+      // require an ALTER TYPE on a live database. World-readable; admin-write.
+      locales: {
+        Row: {
+          code: Locale;
+          label: string;
+          /** BCP-47 tag for hreflang and <html lang>. Unregioned on purpose. */
+          bcp47: string;
+          /** Exactly one row has this true (unique partial index). */
+          is_source: boolean;
+          sort_order: number;
+        };
+        Insert: {
+          code: string;
+          label: string;
+          bcp47: string;
+          is_source?: boolean;
+          sort_order?: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["locales"]["Insert"]>;
         Relationships: [];
       };
       content_tags: {
@@ -1984,6 +2104,30 @@ export interface Database {
           method: string;
           observed: string;
           passed: boolean;
+        }[];
+      };
+      // Added by supabase/migrations/20260824_translation_model.sql. SECURITY
+      // DEFINER and admin-only: it RAISES for a non-admin rather than returning
+      // zero rows, because an empty coverage report reads as "everything is
+      // translated". Verified: anon calling it gets 42501.
+      //
+      // NOT used by src/lib/admin/translation-service.ts — see the note there.
+      // It cannot report translation_reviewed_by, which the "reviewed" state
+      // needs, and widening its return type would mean a migration. Typed here
+      // anyway so any future caller gets the real shape.
+      content_translation_status: {
+        Args: Record<string, never>;
+        Returns: {
+          translation_group_id: string;
+          source_id: string;
+          source_title: string;
+          source_slug: string;
+          source_status: ContentStatus;
+          locale: Locale;
+          translation_id: string | null;
+          translation_state: TranslationState | null;
+          is_stale: boolean | null;
+          translated_at: string | null;
         }[];
       };
       engine_shadow_record_proof_run: {

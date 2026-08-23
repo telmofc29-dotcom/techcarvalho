@@ -41,6 +41,14 @@ export default async function SearchPage({
       <PageViewTracker />
       <Breadcrumbs items={[{ name: "Home", path: "/" }, { name: "Search", path: "/search" }]} />
 
+      {/* This page had no h1 at all — the breadcrumb went straight into the
+          search box, so a screen-reader user landing here had nothing naming
+          the page and the document outline began at h2. It states the query
+          when there is one, because "Results for X" is what the page IS. */}
+      <h1 className="font-display mb-5 text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl">
+        {q ? <>Results for &ldquo;{q}&rdquo;</> : "Search"}
+      </h1>
+
       <form action="/search" method="get" className="max-w-md mb-10">
         <input
           type="search"
