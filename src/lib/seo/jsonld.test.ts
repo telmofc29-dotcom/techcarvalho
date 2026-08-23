@@ -144,31 +144,67 @@ test("articleJsonLd attributes authorship to the Organization, never an invented
 // Person appears if and only if the caller was handed a real author record.
 // getArticleDetail only produces one when content_items.author_id is set AND
 // the matching author_profiles row is is_public.
-test("articleJsonLd emits a Person only when a real author record is passed", () => {
+test("articleJsonLd names a Person as AUTHOR only when a person actually wrote it", () => {
+  // This test previously asserted the opposite, and the assertion was the bug:
+  // it locked in `author: Person` for a corpus drafted with machine assistance
+  // and merely reviewed by a person. Both the page and the structured data made
+  // the same untrue claim, so the test passing meant nothing.
   const anonymous = articleJsonLd({ title: "T", slug: "t", publishedAt: null, author: null });
   assert.deepEqual(anonymous.author, { "@id": ORGANIZATION_ID });
 
-  const named = articleJsonLd({
+  // A named person WITHOUT an attribution defaults to reviewed_published, so
+  // the publication is the author and the person is the editor.
+  const reviewed = articleJsonLd({
     title: "T",
     slug: "t",
     publishedAt: null,
     author: { name: "A Contributor", role: "Contributor" },
   });
-  assert.equal((named.author as { "@type": string })["@type"], "Person");
-  assert.equal((named.author as { name: string }).name, "A Contributor");
-  assert.equal((named.author as { jobTitle?: string }).jobTitle, "Contributor");
-  // Not the publisher, so it must NOT claim the publisher's node identity.
-  assert.equal("@id" in (named.author as object), false);
-});
+  assert.deepEqual(reviewed.author, { "@id": ORGANIZATION_ID }, "a reviewer is not the author");
+  assert.equal((reviewed.editor as { "@type": string })["@type"], "Person");
+  assert.equal((reviewed.editor as { name: string }).name, "A Contributor");
+  assert.equal((reviewed.editor as { jobTitle?: string }).jobTitle, "Contributor");
 
-test("articleJsonLd reuses the publisher's Person node when the byline is the publisher", () => {
-  const result = articleJsonLd({
+  // Only an explicit `authored` makes the person the author.
+  const written = articleJsonLd({
     title: "T",
     slug: "t",
     publishedAt: null,
-    author: { name: PUBLISHER_NAME },
+    author: { name: "A Contributor", role: "Contributor" },
+    attribution: "authored",
   });
-  assert.equal((result.author as { "@id": string })["@id"], PUBLISHER_PERSON_ID);
+  assert.equal((written.author as { "@type": string })["@type"], "Person");
+  assert.equal((written.author as { name: string }).name, "A Contributor");
+  // Not the publisher, so it must NOT claim the publisher's node identity.
+  assert.equal("@id" in (written.author as object), false);
+  assert.equal(written.editor, undefined, "the author is not separately the editor");
+});
+
+test("an unattributed piece names no person at all", () => {
+  const r = articleJsonLd({
+    title: "T",
+    slug: "t",
+    publishedAt: null,
+    author: { name: "A Contributor" },
+    attribution: "unattributed",
+  });
+  assert.deepEqual(r.author, { "@id": ORGANIZATION_ID });
+  assert.equal(r.editor, undefined);
+});
+
+test("articleJsonLd reuses the publisher's Person node wherever that person appears", () => {
+  // Same human, same node — whether they appear as editor (the default) or as
+  // author. Two similarly-named nodes would describe two people.
+  const reviewed = articleJsonLd({
+    title: "T", slug: "t", publishedAt: null, author: { name: PUBLISHER_NAME },
+  });
+  assert.equal((reviewed.editor as { "@id": string })["@id"], PUBLISHER_PERSON_ID);
+
+  const written = articleJsonLd({
+    title: "T", slug: "t", publishedAt: null,
+    author: { name: PUBLISHER_NAME }, attribution: "authored",
+  });
+  assert.equal((written.author as { "@id": string })["@id"], PUBLISHER_PERSON_ID);
 });
 
 // --- publisher identity ----------------------------------------------------

@@ -1,5 +1,10 @@
 import { SITE_NAME, SITE_TAGLINE, SITE_URL, absoluteUrl } from "./site.ts";
 import {
+  structuredAttribution,
+  DEFAULT_ATTRIBUTION,
+  type AttributionKind,
+} from "../content/attribution.ts";
+import {
   PUBLISHER_NAME,
   PUBLISHER_ROLE,
   PUBLISHER_PERSON_ID,
@@ -264,19 +269,42 @@ export function articleJsonLd(article: {
    * path anywhere that manufactures this value.
    */
   author?: { name: string; role?: string | null } | null;
+  /**
+   * How the named person is related to this piece. Defaults to
+   * `reviewed_published` — see lib/content/attribution.ts. Omitting it can only
+   * ever produce the MODEST claim, never the strong one.
+   */
+  attribution?: AttributionKind | null;
 }) {
   const url = absoluteUrl(`/articles/${article.slug}`);
   // Same person, same node: when the byline is the site's publisher, reuse the
   // Person @id that organizationJsonLd already emits so the graph links one
   // human to the publication instead of describing two similarly-named ones.
-  const authorNode = article.author
+  // WHO WROTE IT vs WHO STOOD BEHIND IT.
+  //
+  // These pieces are drafted with machine assistance and then read, corrected
+  // and published by a person. Emitting `author: Person` said the person wrote
+  // them, which is not true, and it said it to every crawler while the page
+  // said the same thing to every reader. Fixing one without the other would
+  // have left the claim standing in the other place.
+  //
+  // So the mapping follows lib/content/attribution.ts:
+  //   reviewed_published -> the PUBLICATION is the author; the person is the
+  //                         `editor`, which is precisely what they did.
+  //   authored           -> the person is the author.
+  // Neither invents a role, and no piece ever names the same person as both.
+  const structured = structuredAttribution(article.attribution ?? DEFAULT_ATTRIBUTION);
+  const personNode = article.author
     ? {
         "@type": "Person" as const,
         ...(article.author.name === PUBLISHER_NAME ? { "@id": PUBLISHER_PERSON_ID } : {}),
         name: article.author.name,
         ...(article.author.role ? { jobTitle: article.author.role } : {}),
       }
-    : { "@id": ORGANIZATION_ID };
+    : null;
+  const authorNode =
+    personNode && structured.personIsAuthor ? personNode : { "@id": ORGANIZATION_ID };
+  const editorNode = personNode && structured.personIsEditor ? personNode : undefined;
   return {
     "@context": "https://schema.org",
     "@type": articleTypeFor(article.contentType),
@@ -296,6 +324,9 @@ export function articleJsonLd(article: {
     // (supabase/migrations_pending/20260825_author_profiles.sql), a separate,
     // opt-in, publicly-readable editorial identity. No record, no Person.
     author: authorNode,
+    // Present only for a piece a person reviewed rather than wrote. schema.org
+    // `editor` is "the person who edited this", which is the true statement.
+    ...(editorNode ? { editor: editorNode } : {}),
     publisher: { "@id": ORGANIZATION_ID },
     isPartOf: { "@id": WEBSITE_ID },
     mainEntityOfPage: { "@type": "WebPage", "@id": url },

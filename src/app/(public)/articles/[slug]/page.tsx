@@ -18,6 +18,7 @@ import {
 import { RelatedContentTracker } from "@/components/public/related-content-tracker";
 import { Badge } from "@/components/shared/ui";
 import { parseBodyBlocks, excerptFromBody } from "@/lib/content/body-format";
+import { attributionKind, bylineFor } from "@/lib/content/attribution";
 import { assessSourceConfidence, shouldShowConfidence } from "@/lib/public/source-confidence";
 import { SourceConfidenceNote } from "@/components/public/source-confidence";
 import type { ReliabilityTier } from "@/lib/types/database";
@@ -108,6 +109,13 @@ export default async function ArticlePage({
     proseRevisions: content.translatable_revision,
     lastReviewedAt: lastVerified,
   });
+  // How this piece is attributed. Defaults to `reviewed_published`, which is
+  // what is true of every article in this corpus today.
+  const attribution = attributionKind(
+    (content as { attribution?: unknown }).attribution
+  );
+  const byline = bylineFor(attribution, author?.name ?? null);
+
   const deck = articleDeck({
     metaDescription: seo?.meta_description ?? null,
     body: content.body,
@@ -173,6 +181,7 @@ export default async function ArticlePage({
     // made with dateModified, where the crawler was told one thing and the
     // reader another, is not repeated here.
     author,
+    attribution,
   });
 
   return (
@@ -242,16 +251,23 @@ export default async function ArticlePage({
             `author` is non-null only if an editor set content_items.author_id
             AND the matching author_profiles row is is_public — see
             getArticleDetail. There is deliberately no fallback: no "Staff", no
-            "Editorial team", no site name standing in for a person. A page with
-            no byline is telling the truth about what this site knows. */}
-        {author && (
+            "Editorial team", no site name standing in for a person.
+
+            It says "Reviewed and published by", NOT "By". These pieces are
+            drafted with machine assistance and then read, corrected and
+            published by a person; "By" claims the first half of that and hides
+            the second. The phrasing comes from lib/content/attribution.ts,
+            which defaults to the modest claim, so a piece that says nothing
+            about itself can never accidentally assert authorship. */}
+        {byline && (
           <span>
-            By <span className="font-medium text-zinc-700">{author.name}</span>
+            {byline.prefix}{" "}
+            <span className="font-medium text-zinc-700">{byline.name}</span>
           </span>
         )}
         {displayDate && (
           <>
-            {author && (
+            {byline && (
               <span aria-hidden="true" className="text-zinc-300">
                 •
               </span>
