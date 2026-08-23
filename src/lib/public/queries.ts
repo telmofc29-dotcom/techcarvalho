@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { logQueryError } from "@/lib/log/query-error";
 import { attachExcerpts } from "./excerpt";
 import { attachHeroImages } from "./hero-image";
+import { ROOT_LOCALE } from "@/lib/i18n/locales";
 
 // Public-facing reads. Every table queried here has RLS policies that
 // already scope results to published rows for the anon/authenticated
@@ -69,6 +70,7 @@ export const getCategoryPublishedCounts = cache(async (categoryId: string) => {
         .from("content_items")
         .select("id", { count: "exact", head: true })
         .eq("category_id", categoryId)
+        .eq("locale", ROOT_LOCALE)
         .eq("status", "published")
         .lte("published_at", new Date().toISOString()),
     ]);
@@ -152,6 +154,7 @@ export async function getPublishedContentForCategory(categoryId: string) {
         .from("content_items")
         .select("id, title, slug, type, published_at")
         .eq("category_id", categoryId)
+        .eq("locale", ROOT_LOCALE)
         .eq("status", "published")
         .lte("published_at", new Date().toISOString()),
       supabase.from("products").select("id").eq("category_id", categoryId),
@@ -176,6 +179,7 @@ export async function getPublishedContentForCategory(categoryId: string) {
         .from("content_items")
         .select("id, title, slug, type, published_at")
         .in("id", indirectIds)
+        .eq("locale", ROOT_LOCALE)
         .eq("status", "published")
         .lte("published_at", new Date().toISOString());
       logQueryError(`getPublishedContentForCategory(${categoryId}) indirect`, indirectError);
@@ -192,6 +196,7 @@ export async function getLatestPublishedContent(limit = 6) {
   const { data, error } = await supabase
     .from("content_items")
     .select("id, title, slug, type, published_at")
+    .eq("locale", ROOT_LOCALE)
     .eq("status", "published")
     .lte("published_at", new Date().toISOString())
     .order("published_at", { ascending: false })
@@ -206,6 +211,7 @@ export async function getLatestPublishedGuides(limit = 6) {
     .from("content_items")
     .select("id, title, slug, type, published_at")
     .eq("type", "guide")
+    .eq("locale", ROOT_LOCALE)
     .eq("status", "published")
     .lte("published_at", new Date().toISOString())
     .order("published_at", { ascending: false })

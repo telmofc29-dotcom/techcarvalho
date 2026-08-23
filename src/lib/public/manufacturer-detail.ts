@@ -6,6 +6,7 @@ import { attachExcerpts } from "./excerpt";
 import { HUB_SECTION_PAGE_SIZE, pageSlice, resolveHubPage } from "./pagination";
 import { mediaPublicUrl } from "@/lib/media/public-url";
 import { logQueryError } from "@/lib/log/query-error";
+import { ROOT_LOCALE } from "@/lib/i18n/locales";
 
 export type ManufacturerArticle = {
   id: string;
@@ -214,6 +215,7 @@ async function getBrandArticles(
     .from("content_items")
     .select("id, title, slug, type, published_at, updated_at")
     .in("id", contentIds)
+    .eq("locale", ROOT_LOCALE)
     .eq("status", "published")
     .lte("published_at", new Date().toISOString())
     .order("published_at", { ascending: false });

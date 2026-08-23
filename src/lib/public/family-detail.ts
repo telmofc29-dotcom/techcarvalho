@@ -5,6 +5,7 @@ import { attachHeroImages, type HeroImage } from "./hero-image";
 import { attachExcerpts } from "./excerpt";
 import { HUB_SECTION_PAGE_SIZE, pageSlice, resolveHubPage } from "./pagination";
 import { logQueryError } from "@/lib/log/query-error";
+import { ROOT_LOCALE } from "@/lib/i18n/locales";
 
 // ---------------------------------------------------------------------------
 // Product-family hubs (/families/[slug]).
@@ -143,6 +144,7 @@ export const getFamilyDetail = cache(async (slug: string, requestedPage = 1): Pr
           .from("content_items")
           .select("id, title, slug, type, published_at, updated_at")
           .in("id", contentIds)
+          .eq("locale", ROOT_LOCALE)
           .eq("status", "published")
           .lte("published_at", new Date().toISOString())
           .order("published_at", { ascending: false })
@@ -239,6 +241,7 @@ export const listFamiliesWithPublishedMaterial = cache(async (): Promise<FamilyS
           .from("content_items")
           .select("id, updated_at")
           .in("id", contentIds)
+          .eq("locale", ROOT_LOCALE)
           .eq("status", "published")
           .lte("published_at", new Date().toISOString())
       : { data: [], error: null };

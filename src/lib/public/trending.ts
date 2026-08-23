@@ -9,6 +9,7 @@ import { classifyMediaTier, tierRank, type MediaTier } from "@/lib/media/hierarc
 // thing in every rail on the page (see src/lib/public/dates.ts for why the
 // clock is read here rather than in a component).
 import { freshnessLabel } from "./dates";
+import { ROOT_LOCALE } from "@/lib/i18n/locales";
 
 // Deterministic "Trending Now" ranking for the public homepage and category
 // pages.
@@ -174,6 +175,7 @@ export const getTrendingContent = cache(
     let query = supabase
       .from("content_items")
       .select("id, title, slug, type, published_at, category_id")
+      .eq("locale", ROOT_LOCALE)
       .eq("status", "published")
       .lte("published_at", new Date().toISOString())
       .order("published_at", { ascending: false })

@@ -73,6 +73,15 @@ export type ArticleDetail = {
    */
   sources: { url: string; publisher: string | null; reliability_tier: string; retrieved_at: string }[];
   seo: { meta_title: string | null; meta_description: string | null; canonical_url: string | null; noindex: boolean } | null;
+  /**
+   * The named author, or null.
+   *
+   * Non-null requires BOTH content_items.author_id to be set AND a matching
+   * public.author_profiles row with is_public = true. No author record, no
+   * byline — there is no fallback name anywhere in this file, deliberately.
+   * Every one of the 81 published articles resolves to null today.
+   */
+  author: { name: string; role: string | null } | null;
   related: { id: string; title: string; slug: string; type: string; published_at: string | null; heroImage: HeroImage | null }[];
   heroImage: HeroImage | null;
   // --- Cluster structure (new) -------------------------------------------
@@ -113,7 +122,7 @@ export const getArticleDetail = cache(
   // there are currently zero translations and the query looks correct.
   const { data: content, error: contentError } = await supabase
     .from("content_items")
-    .select("id, title, slug, type, body, published_at, updated_at, status, category_id, translatable_revision, translation_group_id")
+    .select("id, title, slug, type, body, published_at, updated_at, status, category_id, translatable_revision, translation_group_id, author_id")
     .eq("slug", slug)
     .eq("locale", locale)
     .eq("status", "published")
@@ -149,6 +158,8 @@ export const getArticleDetail = cache(
     // before this batch runs, so this costs nothing on the ~75% of articles
     // that are not comparisons.
     { data: comparisonCandidates, error: comparisonCandidatesError },
+    // The byline, and ONLY when there is a real one to render. See below.
+    { data: authorProfile, error: authorProfileError },
   ] = await Promise.all([
     supabase.from("content_products").select("product_id, role").eq("content_id", content.id),
     supabase.from("content_tags").select("tag_id").eq("content_id", content.id),
@@ -179,6 +190,7 @@ export const getArticleDetail = cache(
       .from("content_items")
       .select("id, title, slug, type, published_at")
       .eq("type", content.type)
+      .eq("locale", ROOT_LOCALE)
       .eq("status", "published")
       .neq("id", content.id)
       .lte("published_at", new Date().toISOString())
@@ -216,10 +228,33 @@ export const getArticleDetail = cache(
           .from("content_items")
           .select("id, title, slug, type, published_at, category_id")
           .eq("type", "comparison")
+          .eq("locale", ROOT_LOCALE)
           .eq("status", "published")
           .neq("id", content.id)
           .lte("published_at", new Date().toISOString())
       : Promise.resolve({ data: [], error: null }),
+    // TWO conditions, both required, and neither of them defaultable:
+    //
+    //   content_items.author_id  — an editor said who wrote this piece.
+    //   author_profiles.is_public — that person agreed to be named publicly.
+    //
+    // Miss either and this resolves to null and NO byline renders. There is no
+    // fallback to a site name, no "Staff", no "Editorial team": an invented
+    // byline is worse than none, and "none" is the honest state of all 81
+    // published articles today (author_id is NULL on every one).
+    //
+    // The query is skipped entirely when author_id is null, which is why this
+    // costs nothing until somebody sets one — and why it does not fail today
+    // against a production database where author_profiles does not yet exist
+    // (supabase/migrations_pending/20260825_author_profiles.sql is unapplied).
+    content.author_id
+      ? supabase
+          .from("author_profiles")
+          .select("display_name, role_title")
+          .eq("id", content.author_id)
+          .eq("is_public", true)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
   ]);
   for (const [ctx, err] of [
     ["productLinks", productLinksError],
@@ -235,6 +270,10 @@ export const getArticleDetail = cache(
     ["allManufacturers", allManufacturersError],
     ["allFamilies", allFamiliesError],
     ["comparisonCandidates", comparisonCandidatesError],
+    // Logged like every other query: a byline that silently stopped rendering
+    // because the table is missing or the policy changed must be visible in
+    // the server logs, not indistinguishable from "this piece has no author".
+    ["authorProfile", authorProfileError],
   ] as const) {
     logQueryError(`getArticleDetail(${slug}) ${ctx}`, err);
   }
@@ -300,6 +339,7 @@ export const getArticleDetail = cache(
           .from("content_items")
           .select("id, title, slug, type, published_at")
           .in("id", relatedByProductIds)
+          .eq("locale", ROOT_LOCALE)
           .eq("status", "published")
           .lte("published_at", new Date().toISOString())
           .order("published_at", { ascending: false })
@@ -310,6 +350,7 @@ export const getArticleDetail = cache(
           .from("content_items")
           .select("id, title, slug, type, published_at")
           .in("id", relationshipIds)
+          .eq("locale", ROOT_LOCALE)
           .eq("status", "published")
           .lte("published_at", new Date().toISOString())
           .order("published_at", { ascending: false })
@@ -428,6 +469,7 @@ export const getArticleDetail = cache(
     freshness: freshnessRows ?? [],
     sources: sourceRows ?? [],
     seo: seo ?? null,
+    author: authorProfile ? { name: authorProfile.display_name, role: authorProfile.role_title } : null,
     related: relatedWithImages,
     heroImage,
     // A "series" of one is just a link; labelling it as a series overstates

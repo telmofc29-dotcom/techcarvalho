@@ -4,6 +4,7 @@ import { sanitizeSearchTerm } from "@/lib/search/sanitize";
 import { logQueryError } from "@/lib/log/query-error";
 import { attachExcerpts } from "./excerpt";
 import { attachHeroImages, type HeroImage } from "./hero-image";
+import { ROOT_LOCALE } from "@/lib/i18n/locales";
 
 export type SiteSearchResults = {
   products: { id: string; name: string; slug: string; summary: string | null; heroImage: HeroImage | null }[];
@@ -37,6 +38,7 @@ export async function searchSite(rawQuery: string): Promise<SiteSearchResults> {
     supabase
       .from("content_items")
       .select("id, title, slug, type")
+      .eq("locale", ROOT_LOCALE)
       .eq("status", "published")
       .lte("published_at", new Date().toISOString())
       .ilike("title", like)

@@ -13,6 +13,7 @@ import {
   type HomepageData,
   type SubjectArea,
 } from "./homepage-sections";
+import { ROOT_LOCALE } from "@/lib/i18n/locales";
 
 // The section-building rules and their types live in ./homepage-sections.ts
 // (pure, unit tested). Re-exported here so callers have a single import for the
@@ -84,13 +85,16 @@ export const getHomepageData = cache(async (): Promise<HomepageData> => {
       supabase
         .from("content_items")
         .select("id, title, slug, type, published_at, category_id, primary_query")
+        .eq("locale", ROOT_LOCALE)
         .eq("status", "published")
         .lte("published_at", nowIso)
         .order("published_at", { ascending: false })
         .limit(STORY_FETCH_LIMIT),
       // id-only, unbounded: the subject-area grid must count the whole
       // catalogue, not just the window fetched above.
-      supabase.from("content_items").select("id, category_id").eq("status", "published").lte("published_at", nowIso),
+      supabase.from("content_items").select("id, category_id")
+        .eq("locale", ROOT_LOCALE)
+        .eq("status", "published").lte("published_at", nowIso),
       supabase
         .from("products")
         .select("id, name, slug, summary, status, release_date, manufacturer_id, category_id")

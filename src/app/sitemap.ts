@@ -7,6 +7,7 @@ import { ARTICLE_HUBS } from "@/lib/public/article-hubs";
 import { listFamiliesWithPublishedMaterial } from "@/lib/public/family-detail";
 import { isManufacturerHubIndexable, isFamilyHubIndexable } from "@/lib/public/hub-eligibility";
 import { logQueryError } from "@/lib/log/query-error";
+import { ROOT_LOCALE } from "@/lib/i18n/locales";
 
 // A sitemap is a set of assertions: "these URLs exist, they are canonical,
 // they are worth indexing, and this is when they last changed." Every entry
@@ -56,6 +57,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     supabase
       .from("content_items")
       .select("id, slug, type, updated_at, published_at, category_id")
+      .eq("locale", ROOT_LOCALE)
       .eq("status", "published")
       .lte("published_at", new Date().toISOString()),
     supabase.from("manufacturers").select("id, slug"),

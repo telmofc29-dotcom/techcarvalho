@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getPublishedHeroImage, attachHeroImages, type HeroImage } from "./hero-image";
 import { logQueryError } from "@/lib/log/query-error";
 import type { RelationshipType } from "@/lib/types/database";
+import { ROOT_LOCALE } from "@/lib/i18n/locales";
 
 export type RelatedProduct = {
   label: string;
@@ -200,6 +201,7 @@ export const getProductDetail = cache(async (slug: string): Promise<ProductDetai
           .from("content_items")
           .select("id, title, slug, type, published_at, status")
           .in("id", contentIds)
+          .eq("locale", ROOT_LOCALE)
           .eq("status", "published")
           .lte("published_at", new Date().toISOString())
       : Promise.resolve({ data: [], error: null }),

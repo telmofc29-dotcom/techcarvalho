@@ -4,6 +4,7 @@ import { mediaPublicUrl } from "@/lib/media/public-url";
 import { logQueryError } from "@/lib/log/query-error";
 import { selectArticleHero, type HeroCandidate, type ProductLinkRole } from "@/lib/media/hero-selection";
 import type { MediaSourceType } from "@/lib/types/database";
+import { ROOT_LOCALE } from "@/lib/i18n/locales";
 
 // Provenance travels with the hero image because the PAGE has to disclose it.
 // See src/lib/media/presentation.ts: a TechCarvalho original graphic occupying
@@ -346,7 +347,16 @@ async function articleInputs(
   }
   if (missing.length === 0) return present;
 
-  const { data, error } = await supabase.from("content_items").select("id, title, type").in("id", missing);
+  // Scoped to the source locale even though this is a by-id lookup: the ids
+  // arrive from already-scoped callers, so the filter is redundant today and
+  // costs nothing — and it means a future caller that passes a translation's id
+  // gets nothing rather than silently mixing a Portuguese title into an English
+  // hero selection.
+  const { data, error } = await supabase
+    .from("content_items")
+    .select("id, title, type")
+    .eq("locale", ROOT_LOCALE)
+    .in("id", missing);
   logQueryError("articleInputs", error);
   for (const row of data ?? []) present.push({ id: row.id, title: row.title, type: row.type });
   return present;

@@ -4,6 +4,7 @@ import { logQueryError } from "@/lib/log/query-error";
 import { attachExcerpts } from "./excerpt";
 import { attachHeroImages, type HeroImage } from "./hero-image";
 import type { ContentType } from "@/lib/types/database";
+import { ROOT_LOCALE } from "@/lib/i18n/locales";
 
 const PAGE_SIZE = 24;
 
@@ -15,6 +16,7 @@ export async function getPublishedContentPage(page: number, type?: ContentType) 
   let query = supabase
     .from("content_items")
     .select("id, title, slug, type, published_at", { count: "exact" })
+    .eq("locale", ROOT_LOCALE)
     .eq("status", "published")
     .lte("published_at", new Date().toISOString())
     .order("published_at", { ascending: false })
@@ -80,6 +82,7 @@ export async function getCategoryContentRows(categoryId: string): Promise<Catego
         .from("content_items")
         .select("id, title, slug, type, published_at")
         .eq("category_id", categoryId)
+        .eq("locale", ROOT_LOCALE)
         .eq("status", "published")
         .lte("published_at", now),
       supabase.from("products").select("id").eq("category_id", categoryId),
@@ -104,6 +107,7 @@ export async function getCategoryContentRows(categoryId: string): Promise<Catego
         .from("content_items")
         .select("id, title, slug, type, published_at")
         .in("id", indirectIds)
+        .eq("locale", ROOT_LOCALE)
         .eq("status", "published")
         .lte("published_at", now);
       logQueryError(`getCategoryContentRows(${categoryId}) indirect`, indirectError);
