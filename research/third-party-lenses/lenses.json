@@ -6,7 +6,10 @@
     "mount": "L",
     "coverage": "full-frame",
     "lens_type": "prime",
-    "categories": ["wide-prime", "fast-prime"],
+    "categories": [
+      "wide-prime",
+      "fast-prime"
+    ],
     "focal_min_mm": 35,
     "focal_max_mm": 35,
     "aperture_max": 1.4,
@@ -37,7 +40,9 @@
     "announced": null,
     "discontinued": null,
     "status": "current",
-    "source_urls": ["https://www.sigma-global.com/en/lenses/a021_35_14/"],
+    "source_urls": [
+      "https://www.sigma-global.com/en/lenses/a021_35_14/"
+    ],
     "retrieved_at": "2026-08-23",
     "manufacturer_claims": [
       {
@@ -49,7 +54,14 @@
         "source_url": "https://www.sigma-global.com/en/lenses/a021_35_14/"
       }
     ],
-    "unsourced_fields": ["tripod_collar", "focus_limiter", "internal_focus", "teleconverter_compatible", "announced", "discontinued"]
+    "unsourced_fields": [
+      "tripod_collar",
+      "focus_limiter",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced",
+      "discontinued"
+    ]
   },
   {
     "name": "Sigma 35mm F1.4 DG DN | Art",
@@ -58,7 +70,10 @@
     "mount": "E",
     "coverage": "full-frame",
     "lens_type": "prime",
-    "categories": ["wide-prime", "fast-prime"],
+    "categories": [
+      "wide-prime",
+      "fast-prime"
+    ],
     "focal_min_mm": 35,
     "focal_max_mm": 35,
     "aperture_max": 1.4,
@@ -89,7 +104,9 @@
     "announced": null,
     "discontinued": null,
     "status": "current",
-    "source_urls": ["https://www.sigma-global.com/en/lenses/a021_35_14/"],
+    "source_urls": [
+      "https://www.sigma-global.com/en/lenses/a021_35_14/"
+    ],
     "retrieved_at": "2026-08-23",
     "manufacturer_claims": [
       {
@@ -97,7 +114,14 @@
         "source_url": "https://www.sigma-global.com/en/lenses/a021_35_14/"
       }
     ],
-    "unsourced_fields": ["tripod_collar", "focus_limiter", "internal_focus", "teleconverter_compatible", "announced", "discontinued"]
+    "unsourced_fields": [
+      "tripod_collar",
+      "focus_limiter",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced",
+      "discontinued"
+    ]
   },
   {
     "name": "Sigma 50mm F1.4 DG DN | Art",
@@ -106,7 +130,10 @@
     "mount": "L",
     "coverage": "full-frame",
     "lens_type": "prime",
-    "categories": ["standard-prime", "fast-prime"],
+    "categories": [
+      "standard-prime",
+      "fast-prime"
+    ],
     "focal_min_mm": 50,
     "focal_max_mm": 50,
     "aperture_max": 1.4,
@@ -137,7 +164,9 @@
     "announced": null,
     "discontinued": null,
     "status": "current",
-    "source_urls": ["https://www.sigma-global.com/en/lenses/a023_50_14/"],
+    "source_urls": [
+      "https://www.sigma-global.com/en/lenses/a023_50_14/"
+    ],
     "retrieved_at": "2026-08-23",
     "manufacturer_claims": [
       {
@@ -149,7 +178,14 @@
         "source_url": "https://www.sigma-global.com/en/lenses/a023_50_14/"
       }
     ],
-    "unsourced_fields": ["tripod_collar", "focus_limiter", "internal_focus", "teleconverter_compatible", "announced", "discontinued"]
+    "unsourced_fields": [
+      "tripod_collar",
+      "focus_limiter",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced",
+      "discontinued"
+    ]
   },
   {
     "name": "Sigma 50mm F1.4 DG DN | Art",
@@ -158,7 +194,10 @@
     "mount": "E",
     "coverage": "full-frame",
     "lens_type": "prime",
-    "categories": ["standard-prime", "fast-prime"],
+    "categories": [
+      "standard-prime",
+      "fast-prime"
+    ],
     "focal_min_mm": 50,
     "focal_max_mm": 50,
     "aperture_max": 1.4,
@@ -189,7 +228,9 @@
     "announced": null,
     "discontinued": null,
     "status": "current",
-    "source_urls": ["https://www.sigma-global.com/en/lenses/a023_50_14/"],
+    "source_urls": [
+      "https://www.sigma-global.com/en/lenses/a023_50_14/"
+    ],
     "retrieved_at": "2026-08-23",
     "manufacturer_claims": [
       {
@@ -197,7 +238,14 @@
         "source_url": "https://www.sigma-global.com/en/lenses/a023_50_14/"
       }
     ],
-    "unsourced_fields": ["tripod_collar", "focus_limiter", "internal_focus", "teleconverter_compatible", "announced", "discontinued"]
+    "unsourced_fields": [
+      "tripod_collar",
+      "focus_limiter",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced",
+      "discontinued"
+    ]
   },
   {
     "name": "Sigma 85mm F1.4 DG DN | Art",
@@ -206,7 +254,11 @@
     "mount": "L",
     "coverage": "full-frame",
     "lens_type": "prime",
-    "categories": ["portrait-prime", "short-telephoto-prime", "fast-prime"],
+    "categories": [
+      "portrait-prime",
+      "short-telephoto-prime",
+      "fast-prime"
+    ],
     "focal_min_mm": 85,
     "focal_max_mm": 85,
     "aperture_max": 1.4,
@@ -237,7 +289,9 @@
     "announced": null,
     "discontinued": null,
     "status": "current",
-    "source_urls": ["https://www.sigma-global.com/en/lenses/a020_85_14/"],
+    "source_urls": [
+      "https://www.sigma-global.com/en/lenses/a020_85_14/"
+    ],
     "retrieved_at": "2026-08-23",
     "manufacturer_claims": [
       {
@@ -249,7 +303,15 @@
         "source_url": "https://www.sigma-global.com/en/lenses/a020_85_14/"
       }
     ],
-    "unsourced_fields": ["focus_motor", "tripod_collar", "focus_limiter", "internal_focus", "teleconverter_compatible", "announced", "discontinued"]
+    "unsourced_fields": [
+      "focus_motor",
+      "tripod_collar",
+      "focus_limiter",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced",
+      "discontinued"
+    ]
   },
   {
     "name": "Sigma 85mm F1.4 DG DN | Art",
@@ -258,7 +320,11 @@
     "mount": "E",
     "coverage": "full-frame",
     "lens_type": "prime",
-    "categories": ["portrait-prime", "short-telephoto-prime", "fast-prime"],
+    "categories": [
+      "portrait-prime",
+      "short-telephoto-prime",
+      "fast-prime"
+    ],
     "focal_min_mm": 85,
     "focal_max_mm": 85,
     "aperture_max": 1.4,
@@ -289,7 +355,9 @@
     "announced": null,
     "discontinued": null,
     "status": "current",
-    "source_urls": ["https://www.sigma-global.com/en/lenses/a020_85_14/"],
+    "source_urls": [
+      "https://www.sigma-global.com/en/lenses/a020_85_14/"
+    ],
     "retrieved_at": "2026-08-23",
     "manufacturer_claims": [
       {
@@ -297,7 +365,15 @@
         "source_url": "https://www.sigma-global.com/en/lenses/a020_85_14/"
       }
     ],
-    "unsourced_fields": ["focus_motor", "tripod_collar", "focus_limiter", "internal_focus", "teleconverter_compatible", "announced", "discontinued"]
+    "unsourced_fields": [
+      "focus_motor",
+      "tripod_collar",
+      "focus_limiter",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced",
+      "discontinued"
+    ]
   },
   {
     "name": "Sigma 24-70mm F2.8 DG DN II | Art",
@@ -306,7 +382,10 @@
     "mount": "L",
     "coverage": "full-frame",
     "lens_type": "zoom",
-    "categories": ["standard-zoom", "fast-zoom"],
+    "categories": [
+      "standard-zoom",
+      "fast-zoom"
+    ],
     "focal_min_mm": 24,
     "focal_max_mm": 70,
     "aperture_max": 2.8,
@@ -337,7 +416,9 @@
     "announced": null,
     "discontinued": null,
     "status": "current",
-    "source_urls": ["https://www.sigma-global.com/en/lenses/a024_24_70_28_ii/"],
+    "source_urls": [
+      "https://www.sigma-global.com/en/lenses/a024_24_70_28_ii/"
+    ],
     "retrieved_at": "2026-08-23",
     "manufacturer_claims": [
       {
@@ -349,7 +430,15 @@
         "source_url": "https://www.sigma-global.com/en/lenses/a024_24_70_28_ii/"
       }
     ],
-    "unsourced_fields": ["tripod_collar", "focus_limiter", "internal_zoom", "internal_focus", "teleconverter_compatible", "announced", "discontinued"]
+    "unsourced_fields": [
+      "tripod_collar",
+      "focus_limiter",
+      "internal_zoom",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced",
+      "discontinued"
+    ]
   },
   {
     "name": "Sigma 24-70mm F2.8 DG DN II | Art",
@@ -358,7 +447,10 @@
     "mount": "E",
     "coverage": "full-frame",
     "lens_type": "zoom",
-    "categories": ["standard-zoom", "fast-zoom"],
+    "categories": [
+      "standard-zoom",
+      "fast-zoom"
+    ],
     "focal_min_mm": 24,
     "focal_max_mm": 70,
     "aperture_max": 2.8,
@@ -389,7 +481,9 @@
     "announced": null,
     "discontinued": null,
     "status": "current",
-    "source_urls": ["https://www.sigma-global.com/en/lenses/a024_24_70_28_ii/"],
+    "source_urls": [
+      "https://www.sigma-global.com/en/lenses/a024_24_70_28_ii/"
+    ],
     "retrieved_at": "2026-08-23",
     "manufacturer_claims": [
       {
@@ -397,7 +491,15 @@
         "source_url": "https://www.sigma-global.com/en/lenses/a024_24_70_28_ii/"
       }
     ],
-    "unsourced_fields": ["tripod_collar", "focus_limiter", "internal_zoom", "internal_focus", "teleconverter_compatible", "announced", "discontinued"]
+    "unsourced_fields": [
+      "tripod_collar",
+      "focus_limiter",
+      "internal_zoom",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced",
+      "discontinued"
+    ]
   },
   {
     "name": "Sigma 14-24mm F2.8 DG DN | Art",
@@ -406,7 +508,11 @@
     "mount": "L",
     "coverage": "full-frame",
     "lens_type": "zoom",
-    "categories": ["ultra-wide-zoom", "fast-zoom", "astrophotography"],
+    "categories": [
+      "ultra-wide-zoom",
+      "fast-zoom",
+      "astrophotography"
+    ],
     "focal_min_mm": 14,
     "focal_max_mm": 24,
     "aperture_max": 2.8,
@@ -425,8 +531,8 @@
     "max_magnification": "1:7.3",
     "filter_diameter_mm": null,
     "weight_g": 795,
-    "diameter_mm": 85.0,
-    "length_mm": 131.0,
+    "diameter_mm": 85,
+    "length_mm": 131,
     "weather_sealed": true,
     "control_ring": null,
     "tripod_collar": null,
@@ -437,7 +543,9 @@
     "announced": null,
     "discontinued": null,
     "status": "current",
-    "source_urls": ["https://www.sigma-global.com/en/lenses/a019_14_24_28/"],
+    "source_urls": [
+      "https://www.sigma-global.com/en/lenses/a019_14_24_28/"
+    ],
     "retrieved_at": "2026-08-23",
     "manufacturer_claims": [
       {
@@ -449,7 +557,17 @@
         "source_url": "https://www.sigma-global.com/en/lenses/a019_14_24_28/"
       }
     ],
-    "unsourced_fields": ["filter_diameter_mm", "control_ring", "tripod_collar", "focus_limiter", "internal_zoom", "internal_focus", "teleconverter_compatible", "announced", "discontinued"]
+    "unsourced_fields": [
+      "filter_diameter_mm",
+      "control_ring",
+      "tripod_collar",
+      "focus_limiter",
+      "internal_zoom",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced",
+      "discontinued"
+    ]
   },
   {
     "name": "Sigma 14-24mm F2.8 DG DN | Art",
@@ -458,7 +576,11 @@
     "mount": "E",
     "coverage": "full-frame",
     "lens_type": "zoom",
-    "categories": ["ultra-wide-zoom", "fast-zoom", "astrophotography"],
+    "categories": [
+      "ultra-wide-zoom",
+      "fast-zoom",
+      "astrophotography"
+    ],
     "focal_min_mm": 14,
     "focal_max_mm": 24,
     "aperture_max": 2.8,
@@ -477,8 +599,8 @@
     "max_magnification": "1:7.3",
     "filter_diameter_mm": null,
     "weight_g": 795,
-    "diameter_mm": 85.0,
-    "length_mm": 133.0,
+    "diameter_mm": 85,
+    "length_mm": 133,
     "weather_sealed": true,
     "control_ring": null,
     "tripod_collar": null,
@@ -489,7 +611,9 @@
     "announced": null,
     "discontinued": null,
     "status": "current",
-    "source_urls": ["https://www.sigma-global.com/en/lenses/a019_14_24_28/"],
+    "source_urls": [
+      "https://www.sigma-global.com/en/lenses/a019_14_24_28/"
+    ],
     "retrieved_at": "2026-08-23",
     "manufacturer_claims": [
       {
@@ -497,7 +621,17 @@
         "source_url": "https://www.sigma-global.com/en/lenses/a019_14_24_28/"
       }
     ],
-    "unsourced_fields": ["filter_diameter_mm", "control_ring", "tripod_collar", "focus_limiter", "internal_zoom", "internal_focus", "teleconverter_compatible", "announced", "discontinued"]
+    "unsourced_fields": [
+      "filter_diameter_mm",
+      "control_ring",
+      "tripod_collar",
+      "focus_limiter",
+      "internal_zoom",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced",
+      "discontinued"
+    ]
   },
   {
     "name": "Sigma 18-50mm F2.8 DC DN | Contemporary",
@@ -506,7 +640,11 @@
     "mount": "L",
     "coverage": "aps-c",
     "lens_type": "zoom",
-    "categories": ["standard-zoom", "fast-zoom", "compact"],
+    "categories": [
+      "standard-zoom",
+      "fast-zoom",
+      "compact"
+    ],
     "focal_min_mm": 18,
     "focal_max_mm": 50,
     "aperture_max": 2.8,
@@ -537,7 +675,9 @@
     "announced": null,
     "discontinued": null,
     "status": "current",
-    "source_urls": ["https://www.sigma-global.com/en/lenses/c021_18_50_28/"],
+    "source_urls": [
+      "https://www.sigma-global.com/en/lenses/c021_18_50_28/"
+    ],
     "retrieved_at": "2026-08-23",
     "manufacturer_claims": [
       {
@@ -549,7 +689,17 @@
         "source_url": "https://www.sigma-global.com/en/lenses/c021_18_50_28/"
       }
     ],
-    "unsourced_fields": ["weather_sealed", "control_ring", "tripod_collar", "focus_limiter", "internal_zoom", "internal_focus", "teleconverter_compatible", "announced", "discontinued"]
+    "unsourced_fields": [
+      "weather_sealed",
+      "control_ring",
+      "tripod_collar",
+      "focus_limiter",
+      "internal_zoom",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced",
+      "discontinued"
+    ]
   },
   {
     "name": "Sigma 18-50mm F2.8 DC DN | Contemporary",
@@ -558,7 +708,11 @@
     "mount": "E",
     "coverage": "aps-c",
     "lens_type": "zoom",
-    "categories": ["standard-zoom", "fast-zoom", "compact"],
+    "categories": [
+      "standard-zoom",
+      "fast-zoom",
+      "compact"
+    ],
     "focal_min_mm": 18,
     "focal_max_mm": 50,
     "aperture_max": 2.8,
@@ -589,7 +743,9 @@
     "announced": null,
     "discontinued": null,
     "status": "current",
-    "source_urls": ["https://www.sigma-global.com/en/lenses/c021_18_50_28/"],
+    "source_urls": [
+      "https://www.sigma-global.com/en/lenses/c021_18_50_28/"
+    ],
     "retrieved_at": "2026-08-23",
     "manufacturer_claims": [
       {
@@ -597,7 +753,17 @@
         "source_url": "https://www.sigma-global.com/en/lenses/c021_18_50_28/"
       }
     ],
-    "unsourced_fields": ["weather_sealed", "control_ring", "tripod_collar", "focus_limiter", "internal_zoom", "internal_focus", "teleconverter_compatible", "announced", "discontinued"]
+    "unsourced_fields": [
+      "weather_sealed",
+      "control_ring",
+      "tripod_collar",
+      "focus_limiter",
+      "internal_zoom",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced",
+      "discontinued"
+    ]
   },
   {
     "name": "Sigma 18-50mm F2.8 DC DN | Contemporary",
@@ -606,7 +772,11 @@
     "mount": "X",
     "coverage": "aps-c",
     "lens_type": "zoom",
-    "categories": ["standard-zoom", "fast-zoom", "compact"],
+    "categories": [
+      "standard-zoom",
+      "fast-zoom",
+      "compact"
+    ],
     "focal_min_mm": 18,
     "focal_max_mm": 50,
     "aperture_max": 2.8,
@@ -637,7 +807,9 @@
     "announced": null,
     "discontinued": null,
     "status": "current",
-    "source_urls": ["https://www.sigma-global.com/en/lenses/c021_18_50_28/"],
+    "source_urls": [
+      "https://www.sigma-global.com/en/lenses/c021_18_50_28/"
+    ],
     "retrieved_at": "2026-08-23",
     "manufacturer_claims": [
       {
@@ -645,7 +817,17 @@
         "source_url": "https://www.sigma-global.com/en/lenses/c021_18_50_28/"
       }
     ],
-    "unsourced_fields": ["weather_sealed", "control_ring", "tripod_collar", "focus_limiter", "internal_zoom", "internal_focus", "teleconverter_compatible", "announced", "discontinued"]
+    "unsourced_fields": [
+      "weather_sealed",
+      "control_ring",
+      "tripod_collar",
+      "focus_limiter",
+      "internal_zoom",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced",
+      "discontinued"
+    ]
   },
   {
     "name": "Sigma 18-50mm F2.8 DC DN | Contemporary",
@@ -654,7 +836,11 @@
     "mount": "RF",
     "coverage": "aps-c",
     "lens_type": "zoom",
-    "categories": ["standard-zoom", "fast-zoom", "compact"],
+    "categories": [
+      "standard-zoom",
+      "fast-zoom",
+      "compact"
+    ],
     "focal_min_mm": 18,
     "focal_max_mm": 50,
     "aperture_max": 2.8,
@@ -685,7 +871,9 @@
     "announced": null,
     "discontinued": null,
     "status": "current",
-    "source_urls": ["https://www.sigma-global.com/en/lenses/c021_18_50_28/"],
+    "source_urls": [
+      "https://www.sigma-global.com/en/lenses/c021_18_50_28/"
+    ],
     "retrieved_at": "2026-08-23",
     "manufacturer_claims": [
       {
@@ -693,6 +881,614 @@
         "source_url": "https://www.sigma-global.com/en/lenses/c021_18_50_28/"
       }
     ],
-    "unsourced_fields": ["weather_sealed", "control_ring", "tripod_collar", "focus_limiter", "internal_zoom", "internal_focus", "teleconverter_compatible", "announced", "discontinued"]
+    "unsourced_fields": [
+      "weather_sealed",
+      "control_ring",
+      "tripod_collar",
+      "focus_limiter",
+      "internal_zoom",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced",
+      "discontinued"
+    ]
+  },
+  {
+    "name": "Sigma 100-400mm F5-6.3 DG DN OS | Contemporary",
+    "slug": "sigma-100-400mm-f5-6-3-dg-dn-os-contemporary-l",
+    "manufacturer_slug": "sigma",
+    "mount": "L",
+    "coverage": "full-frame",
+    "lens_type": "zoom",
+    "categories": [
+      "telephoto-zoom",
+      "wildlife",
+      "sports"
+    ],
+    "focal_min_mm": 100,
+    "focal_max_mm": 400,
+    "aperture_max": 5,
+    "aperture_max_tele": 6.3,
+    "aperture_min": 22,
+    "stabilisation": "OS (Optical Stabilizer), Mode 1 and Mode 2",
+    "stabilisation_stops_claim": "4 steps (CIPA standard, at 400mm, full-frame)",
+    "focus_motor": "stepping motor",
+    "premium_line": true,
+    "premium_line_name": "Contemporary",
+    "macro": false,
+    "elements": 22,
+    "groups": 16,
+    "aperture_blades": 9,
+    "min_focus_m": 1.12,
+    "max_magnification": "1:4.1 (at 400mm)",
+    "filter_diameter_mm": 67,
+    "weight_g": 1135,
+    "diameter_mm": 86,
+    "length_mm": 197.2,
+    "weather_sealed": true,
+    "control_ring": null,
+    "tripod_collar": false,
+    "focus_limiter": true,
+    "internal_zoom": false,
+    "internal_focus": null,
+    "teleconverter_compatible": true,
+    "announced": "2020",
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://www.sigma-global.com/en/lenses/c020_100_400_5_63/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [],
+    "unsourced_fields": [
+      "control_ring",
+      "internal_focus",
+      "discontinued"
+    ]
+  },
+  {
+    "name": "Sigma 100-400mm F5-6.3 DG DN OS | Contemporary",
+    "slug": "sigma-100-400mm-f5-6-3-dg-dn-os-contemporary-e",
+    "manufacturer_slug": "sigma",
+    "mount": "E",
+    "coverage": "full-frame",
+    "lens_type": "zoom",
+    "categories": [
+      "telephoto-zoom",
+      "wildlife",
+      "sports"
+    ],
+    "focal_min_mm": 100,
+    "focal_max_mm": 400,
+    "aperture_max": 5,
+    "aperture_max_tele": 6.3,
+    "aperture_min": 22,
+    "stabilisation": "OS (Optical Stabilizer), Mode 1 and Mode 2",
+    "stabilisation_stops_claim": "4 steps (CIPA standard, at 400mm, full-frame)",
+    "focus_motor": "stepping motor",
+    "premium_line": true,
+    "premium_line_name": "Contemporary",
+    "macro": false,
+    "elements": 22,
+    "groups": 16,
+    "aperture_blades": 9,
+    "min_focus_m": 1.12,
+    "max_magnification": "1:4.1 (at 400mm)",
+    "filter_diameter_mm": 67,
+    "weight_g": 1140,
+    "diameter_mm": 86,
+    "length_mm": 199.2,
+    "weather_sealed": true,
+    "control_ring": null,
+    "tripod_collar": false,
+    "focus_limiter": true,
+    "internal_zoom": false,
+    "internal_focus": null,
+    "teleconverter_compatible": false,
+    "announced": "2020",
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://www.sigma-global.com/en/lenses/c020_100_400_5_63/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [],
+    "unsourced_fields": [
+      "control_ring",
+      "internal_focus",
+      "discontinued"
+    ]
+  },
+  {
+    "name": "Sigma 100-400mm F5-6.3 DG DN OS | Contemporary",
+    "slug": "sigma-100-400mm-f5-6-3-dg-dn-os-contemporary-x",
+    "manufacturer_slug": "sigma",
+    "mount": "X",
+    "coverage": "full-frame",
+    "lens_type": "zoom",
+    "categories": [
+      "telephoto-zoom",
+      "wildlife",
+      "sports"
+    ],
+    "focal_min_mm": 100,
+    "focal_max_mm": 400,
+    "aperture_max": 5,
+    "aperture_max_tele": 6.3,
+    "aperture_min": 22,
+    "stabilisation": "OS (Optical Stabilizer), Mode 1 and Mode 2",
+    "stabilisation_stops_claim": "4 steps (CIPA standard, at 400mm, full-frame)",
+    "focus_motor": "stepping motor",
+    "premium_line": true,
+    "premium_line_name": "Contemporary",
+    "macro": false,
+    "elements": 22,
+    "groups": 16,
+    "aperture_blades": 9,
+    "min_focus_m": 1.12,
+    "max_magnification": "1:4.1 (at 400mm)",
+    "filter_diameter_mm": 67,
+    "weight_g": 1135,
+    "diameter_mm": 86,
+    "length_mm": 199.5,
+    "weather_sealed": true,
+    "control_ring": null,
+    "tripod_collar": false,
+    "focus_limiter": true,
+    "internal_zoom": false,
+    "internal_focus": null,
+    "teleconverter_compatible": false,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://www.sigma-global.com/en/lenses/c020_100_400_5_63/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [],
+    "unsourced_fields": [
+      "control_ring",
+      "internal_focus",
+      "announced",
+      "discontinued"
+    ]
+  },
+  {
+    "name": "Sigma 150-600mm F5-6.3 DG DN OS | Sports",
+    "slug": "sigma-150-600mm-f5-6-3-dg-dn-os-sports-l",
+    "manufacturer_slug": "sigma",
+    "mount": "L",
+    "coverage": "full-frame",
+    "lens_type": "zoom",
+    "categories": [
+      "super-telephoto-zoom",
+      "wildlife",
+      "sports"
+    ],
+    "focal_min_mm": 150,
+    "focal_max_mm": 600,
+    "aperture_max": 5,
+    "aperture_max_tele": 6.3,
+    "aperture_min": 22,
+    "stabilisation": "OS (Optical Stabilizer), Mode 1, Mode 2, plus Custom modes C1/C2",
+    "stabilisation_stops_claim": "Approximately 4 stops; with firmware Ver.1.1 or later, 6.5 stops at the wide end and 5.5 stops at the telephoto end",
+    "focus_motor": "stepping motor",
+    "premium_line": true,
+    "premium_line_name": "Sports",
+    "macro": false,
+    "elements": 25,
+    "groups": 15,
+    "aperture_blades": 9,
+    "min_focus_m": 0.58,
+    "max_magnification": "1:2.9 (at 180mm)",
+    "filter_diameter_mm": 95,
+    "weight_g": 2100,
+    "diameter_mm": 109.4,
+    "length_mm": 263.6,
+    "weather_sealed": true,
+    "control_ring": null,
+    "tripod_collar": true,
+    "focus_limiter": true,
+    "internal_zoom": false,
+    "internal_focus": null,
+    "teleconverter_compatible": true,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://www.sigma-global.com/en/lenses/s021_150_600_5_63/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "fast and quiet autofocus with excellent tracking of moving objects",
+        "source_url": "https://www.sigma-global.com/en/lenses/s021_150_600_5_63/"
+      }
+    ],
+    "unsourced_fields": [
+      "control_ring",
+      "internal_focus",
+      "announced",
+      "discontinued"
+    ]
+  },
+  {
+    "name": "Sigma 150-600mm F5-6.3 DG DN OS | Sports",
+    "slug": "sigma-150-600mm-f5-6-3-dg-dn-os-sports-e",
+    "manufacturer_slug": "sigma",
+    "mount": "E",
+    "coverage": "full-frame",
+    "lens_type": "zoom",
+    "categories": [
+      "super-telephoto-zoom",
+      "wildlife",
+      "sports"
+    ],
+    "focal_min_mm": 150,
+    "focal_max_mm": 600,
+    "aperture_max": 5,
+    "aperture_max_tele": 6.3,
+    "aperture_min": 22,
+    "stabilisation": "OS (Optical Stabilizer), Mode 1, Mode 2, plus Custom modes C1/C2",
+    "stabilisation_stops_claim": "Approximately 4 stops; with firmware Ver.1.1 or later, 6.5 stops at the wide end and 5.5 stops at the telephoto end",
+    "focus_motor": "stepping motor",
+    "premium_line": true,
+    "premium_line_name": "Sports",
+    "macro": false,
+    "elements": 25,
+    "groups": 15,
+    "aperture_blades": 9,
+    "min_focus_m": 0.58,
+    "max_magnification": "1:2.9 (at 180mm)",
+    "filter_diameter_mm": 95,
+    "weight_g": 2100,
+    "diameter_mm": 109.4,
+    "length_mm": 265.6,
+    "weather_sealed": true,
+    "control_ring": null,
+    "tripod_collar": true,
+    "focus_limiter": true,
+    "internal_zoom": false,
+    "internal_focus": null,
+    "teleconverter_compatible": false,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://www.sigma-global.com/en/lenses/s021_150_600_5_63/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "fast and quiet autofocus with excellent tracking of moving objects",
+        "source_url": "https://www.sigma-global.com/en/lenses/s021_150_600_5_63/"
+      }
+    ],
+    "unsourced_fields": [
+      "control_ring",
+      "internal_focus",
+      "announced",
+      "discontinued"
+    ]
+  },
+  {
+    "name": "Tamron 35-150mm F/2-2.8 Di III VXD (Model A058)",
+    "slug": "tamron-35-150mm-f2-2-8-di-iii-vxd-a058-e",
+    "manufacturer_slug": "tamron",
+    "mount": "E",
+    "coverage": "full-frame",
+    "lens_type": "zoom",
+    "categories": [
+      "standard-zoom",
+      "telephoto-zoom",
+      "fast-zoom",
+      "portrait",
+      "event"
+    ],
+    "focal_min_mm": 35,
+    "focal_max_mm": 150,
+    "aperture_max": 2,
+    "aperture_max_tele": 2.8,
+    "aperture_min": 16,
+    "stabilisation": "none",
+    "stabilisation_stops_claim": null,
+    "focus_motor": "VXD (Voice-coil eXtreme-torque Drive)",
+    "premium_line": true,
+    "premium_line_name": "Di III",
+    "macro": false,
+    "elements": 21,
+    "groups": 15,
+    "aperture_blades": 9,
+    "min_focus_m": 0.33,
+    "max_magnification": "1:5.7 (WIDE) / 1:5.9 (TELE)",
+    "filter_diameter_mm": 82,
+    "weight_g": 1165,
+    "diameter_mm": 89.2,
+    "length_mm": 158,
+    "weather_sealed": true,
+    "control_ring": null,
+    "tripod_collar": null,
+    "focus_limiter": null,
+    "internal_zoom": null,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": "2021-10",
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://www.tamron.com/global/consumer/lenses/a058/",
+      "https://www.tamron.com/global/consumer/lenses/a058/spec.html"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "world's first* starting at F2",
+        "source_url": "https://www.tamron.com/global/consumer/lenses/a058/"
+      },
+      {
+        "claim": "high speed, high precision autofocusing",
+        "source_url": "https://www.tamron.com/global/consumer/lenses/a058/"
+      },
+      {
+        "claim": "beautiful, soft bokeh",
+        "source_url": "https://www.tamron.com/global/consumer/lenses/a058/"
+      }
+    ],
+    "unsourced_fields": [
+      "control_ring",
+      "tripod_collar",
+      "focus_limiter",
+      "internal_zoom",
+      "internal_focus",
+      "teleconverter_compatible",
+      "discontinued"
+    ]
+  },
+  {
+    "name": "Tamron 35-150mm F/2-2.8 Di III VXD (Model A058)",
+    "slug": "tamron-35-150mm-f2-2-8-di-iii-vxd-a058-z",
+    "manufacturer_slug": "tamron",
+    "mount": "Z",
+    "coverage": "full-frame",
+    "lens_type": "zoom",
+    "categories": [
+      "standard-zoom",
+      "telephoto-zoom",
+      "fast-zoom",
+      "portrait",
+      "event"
+    ],
+    "focal_min_mm": 35,
+    "focal_max_mm": 150,
+    "aperture_max": 2,
+    "aperture_max_tele": 2.8,
+    "aperture_min": 16,
+    "stabilisation": "none",
+    "stabilisation_stops_claim": null,
+    "focus_motor": "VXD (Voice-coil eXtreme-torque Drive)",
+    "premium_line": true,
+    "premium_line_name": "Di III",
+    "macro": false,
+    "elements": 21,
+    "groups": 15,
+    "aperture_blades": 9,
+    "min_focus_m": 0.33,
+    "max_magnification": "1:5.7 (WIDE) / 1:5.9 (TELE)",
+    "filter_diameter_mm": 82,
+    "weight_g": 1190,
+    "diameter_mm": 89.2,
+    "length_mm": 160.1,
+    "weather_sealed": true,
+    "control_ring": null,
+    "tripod_collar": null,
+    "focus_limiter": null,
+    "internal_zoom": null,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": "2023-09",
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://www.tamron.com/global/consumer/lenses/a058/",
+      "https://www.tamron.com/global/consumer/lenses/a058/spec.html"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "world's first* starting at F2",
+        "source_url": "https://www.tamron.com/global/consumer/lenses/a058/"
+      }
+    ],
+    "unsourced_fields": [
+      "control_ring",
+      "tripod_collar",
+      "focus_limiter",
+      "internal_zoom",
+      "internal_focus",
+      "teleconverter_compatible",
+      "discontinued"
+    ]
+  },
+  {
+    "name": "Tamron 150-500mm F/5-6.7 Di III VC VXD (Model A057)",
+    "slug": "tamron-150-500mm-f5-6-7-di-iii-vc-vxd-a057-e",
+    "manufacturer_slug": "tamron",
+    "mount": "E",
+    "coverage": "full-frame",
+    "lens_type": "zoom",
+    "categories": [
+      "super-telephoto-zoom",
+      "wildlife",
+      "sports"
+    ],
+    "focal_min_mm": 150,
+    "focal_max_mm": 500,
+    "aperture_max": 5,
+    "aperture_max_tele": 6.7,
+    "aperture_min": 22,
+    "stabilisation": "VC (Vibration Compensation), 3 modes",
+    "stabilisation_stops_claim": null,
+    "focus_motor": "VXD (Voice-coil eXtreme-torque Drive)",
+    "premium_line": true,
+    "premium_line_name": "Di III",
+    "macro": false,
+    "elements": 25,
+    "groups": 16,
+    "aperture_blades": 7,
+    "min_focus_m": 0.6,
+    "max_magnification": "1:3.1 (WIDE) / 1:3.7 (TELE)",
+    "filter_diameter_mm": 82,
+    "weight_g": 1725,
+    "diameter_mm": 93,
+    "length_mm": 209.6,
+    "weather_sealed": true,
+    "control_ring": null,
+    "tripod_collar": true,
+    "focus_limiter": null,
+    "internal_zoom": false,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": "2021-06",
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://www.tamron.com/global/consumer/lenses/a057/",
+      "https://www.tamron.com/global/consumer/lenses/a057/spec.html"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [],
+    "unsourced_fields": [
+      "stabilisation_stops_claim",
+      "control_ring",
+      "focus_limiter",
+      "internal_focus",
+      "teleconverter_compatible",
+      "discontinued"
+    ]
+  },
+  {
+    "name": "Tamron 150-500mm F/5-6.7 Di III VC VXD (Model A057)",
+    "slug": "tamron-150-500mm-f5-6-7-di-iii-vc-vxd-a057-z",
+    "manufacturer_slug": "tamron",
+    "mount": "Z",
+    "coverage": "full-frame",
+    "lens_type": "zoom",
+    "categories": [
+      "super-telephoto-zoom",
+      "wildlife",
+      "sports"
+    ],
+    "focal_min_mm": 150,
+    "focal_max_mm": 500,
+    "aperture_max": 5,
+    "aperture_max_tele": 6.7,
+    "aperture_min": 22,
+    "stabilisation": "VC (Vibration Compensation), 3 modes",
+    "stabilisation_stops_claim": null,
+    "focus_motor": "VXD (Voice-coil eXtreme-torque Drive)",
+    "premium_line": true,
+    "premium_line_name": "Di III",
+    "macro": false,
+    "elements": 25,
+    "groups": 16,
+    "aperture_blades": 7,
+    "min_focus_m": 0.6,
+    "max_magnification": "1:3.1 (WIDE) / 1:3.7 (TELE)",
+    "filter_diameter_mm": 82,
+    "weight_g": 1720,
+    "diameter_mm": 93,
+    "length_mm": 212.3,
+    "weather_sealed": true,
+    "control_ring": null,
+    "tripod_collar": true,
+    "focus_limiter": null,
+    "internal_zoom": false,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": "2023-10",
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://www.tamron.com/global/consumer/lenses/a057/",
+      "https://www.tamron.com/global/consumer/lenses/a057/spec.html"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [],
+    "unsourced_fields": [
+      "stabilisation_stops_claim",
+      "control_ring",
+      "focus_limiter",
+      "internal_focus",
+      "teleconverter_compatible",
+      "discontinued"
+    ]
+  },
+  {
+    "name": "Tamron 70-180mm F/2.8 Di III VXD (Model A056)",
+    "slug": "tamron-70-180mm-f2-8-di-iii-vxd-a056-e",
+    "manufacturer_slug": "tamron",
+    "mount": "E",
+    "coverage": "full-frame",
+    "lens_type": "zoom",
+    "categories": [
+      "telephoto-zoom",
+      "fast-zoom",
+      "portrait"
+    ],
+    "focal_min_mm": 70,
+    "focal_max_mm": 180,
+    "aperture_max": 2.8,
+    "aperture_max_tele": 2.8,
+    "aperture_min": null,
+    "stabilisation": "none",
+    "stabilisation_stops_claim": null,
+    "focus_motor": "VXD (Voice-coil eXtreme-torque Drive)",
+    "premium_line": true,
+    "premium_line_name": "Di III",
+    "macro": false,
+    "elements": 19,
+    "groups": 14,
+    "aperture_blades": null,
+    "min_focus_m": 0.85,
+    "max_magnification": "1:4.6",
+    "filter_diameter_mm": 67,
+    "weight_g": 810,
+    "diameter_mm": 81,
+    "length_mm": 149,
+    "weather_sealed": true,
+    "control_ring": null,
+    "tripod_collar": null,
+    "focus_limiter": null,
+    "internal_zoom": true,
+    "internal_focus": null,
+    "teleconverter_compatible": null,
+    "announced": null,
+    "discontinued": null,
+    "status": "current",
+    "source_urls": [
+      "https://www.tamron.com/global/consumer/lenses/a056/"
+    ],
+    "retrieved_at": "2026-08-23",
+    "manufacturer_claims": [
+      {
+        "claim": "Lighter, smaller, faster - for true telephoto freedom",
+        "source_url": "https://www.tamron.com/global/consumer/lenses/a056/"
+      },
+      {
+        "claim": "World's lightest and most compact package",
+        "source_url": "https://www.tamron.com/global/consumer/lenses/a056/"
+      }
+    ],
+    "unsourced_fields": [
+      "aperture_min",
+      "aperture_blades",
+      "control_ring",
+      "tripod_collar",
+      "focus_limiter",
+      "internal_focus",
+      "teleconverter_compatible",
+      "announced",
+      "discontinued"
+    ]
   }
 ]
