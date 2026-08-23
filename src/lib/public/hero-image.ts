@@ -2,6 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { mediaPublicUrl } from "@/lib/media/public-url";
 import { logQueryError } from "@/lib/log/query-error";
+import { selectArticleHero, type HeroCandidate, type ProductLinkRole } from "@/lib/media/hero-selection";
 import type { MediaSourceType } from "@/lib/types/database";
 
 // Provenance travels with the hero image because the PAGE has to disclose it.
@@ -156,12 +157,111 @@ export async function getPublishedHeroImage(
   }
 }
 
+// Every column the hero pipeline needs: what to render, what to disclose, and
+// (rights_status / brand_role) what selection is allowed to consider at all.
+// One list, used by the batched list path and the article resolver alike, so
+// the two cannot drift into classifying the same asset differently.
+const HERO_ASSET_COLUMNS =
+  "id, alt_text, caption, publication_status, storage_path, public_storage_path, source_type, asset_role, owned, ai_generated, attribution, attribution_required, creator, source_url, license, width, height, rights_status, brand_role";
+
+type HeroAssetRow = {
+  id: string;
+  alt_text: string | null;
+  caption: string | null;
+  publication_status: string;
+  storage_path: string;
+  public_storage_path: string | null;
+  source_type: MediaSourceType | null;
+  asset_role: string | null;
+  owned: boolean;
+  ai_generated: boolean;
+  attribution: string | null;
+  attribution_required: boolean;
+  creator: string | null;
+  source_url: string | null;
+  license: string | null;
+  width: number | null;
+  height: number | null;
+  rights_status: string;
+  brand_role: string | null;
+};
+
+/** Null when the asset has no public copy — there is no URL to render. */
+function heroImageFromAsset(asset: HeroAssetRow): HeroImage | null {
+  if (asset.publication_status !== "published" || !asset.public_storage_path) return null;
+  return {
+    url: mediaPublicUrl(asset.public_storage_path),
+    alt: asset.alt_text,
+    sourceType: asset.source_type,
+    owned: asset.owned,
+    aiGenerated: asset.ai_generated,
+    // Carried so a CARD can render its credit too. Omitting these on the
+    // batched path was a live licence breach: the detail-page query selected
+    // them and the list query did not, so every CC BY photograph on the
+    // homepage, category pages and index pages rendered uncredited.
+    attribution: asset.attribution,
+    attributionRequired: asset.attribution_required,
+    creator: asset.creator,
+    sourceUrl: asset.source_url,
+    license: asset.license,
+    caption: asset.caption,
+    storagePath: asset.storage_path,
+    assetRole: asset.asset_role,
+    width: asset.width,
+    height: asset.height,
+  };
+}
+
+/**
+ * Wraps an asset row as a selection candidate.
+ *
+ * Null when the asset cannot be rendered at all. Everything else — rights
+ * state, brand role, dimensions — is passed THROUGH rather than filtered here,
+ * so `isEligibleHeroCandidate` remains the single place that decides what may
+ * be surfaced and its reasons stay auditable.
+ */
+function heroCandidate(
+  asset: HeroAssetRow,
+  origin: "article" | "product",
+  extra: { linkRole?: ProductLinkRole | null; productName?: string | null; heroUseCount?: number } = {}
+): HeroCandidate<HeroImage> | null {
+  const image = heroImageFromAsset(asset);
+  if (!image) return null;
+  return {
+    ref: image,
+    assetId: asset.id,
+    asset: {
+      source_type: asset.source_type,
+      asset_role: asset.asset_role,
+      owned: asset.owned,
+      ai_generated: asset.ai_generated,
+      storage_path: asset.storage_path,
+      source_url: asset.source_url,
+      license: asset.license,
+    },
+    origin,
+    rightsStatus: asset.rights_status,
+    publicationStatus: asset.publication_status,
+    hasPublicCopy: Boolean(asset.public_storage_path),
+    brandRole: asset.brand_role,
+    width: asset.width,
+    height: asset.height,
+    ...extra,
+  };
+}
+
 // Batched hero-image lookup for LIST pages (homepage rails, category/
 // products/articles indexes, search results, manufacturer product lists,
 // related-item rails) — one query pair for the whole list rather than
 // calling getPublishedHeroImage per row, same fixed-round-trip-count
 // discipline as attachExcerpts in ./excerpt.ts. Rows with no hero (or an
 // unpublished/deleted one) get heroImage: null, never an error.
+//
+// For `kind: "content"` the stored link is the STARTING point, not the answer:
+// the result goes through resolveArticleHeroes() so a card shows the same lead
+// image the article page will. Before that, an article could open with a
+// photograph of the product it covers while its card on the homepage still
+// showed the category title card, because the two came from different code.
 export async function attachHeroImages<T extends { id: string }>(
   supabase: Awaited<ReturnType<typeof createClient>>,
   rows: T[],
@@ -182,54 +282,236 @@ export async function attachHeroImages<T extends { id: string }>(
         ? { entityId: (l as { product_id: string; media_id: string }).product_id, media_id: l.media_id }
         : { entityId: (l as { content_id: string; media_id: string }).content_id, media_id: l.media_id }
     );
-    if (links.length === 0) return rows.map((r) => ({ ...r, heroImage: null }));
 
-    const mediaIds = [...new Set(links.map((l) => l.media_id))];
-    const { data: assets, error: assetError } = await supabase
-      .from("media_assets")
-      // storage_path/asset_role/source_type/owned/ai_generated let the CARD
-      // classify the asset (chart vs photograph) and so choose contain vs
-      // cover; width/height let it size the frame. Same single round trip —
-      // these are extra columns on a query that already ran, not extra
-      // queries.
-      .select(
-        "id, alt_text, publication_status, storage_path, public_storage_path, source_type, asset_role, owned, ai_generated, source_url, license, width, height, attribution, attribution_required, creator"
-      )
-      .in("id", mediaIds);
-    logQueryError(`attachHeroImages(${kind}) assets`, assetError);
+    const assetByEntityId = new Map<string, HeroAssetRow>();
+    if (links.length > 0) {
+      const mediaIds = [...new Set(links.map((l) => l.media_id))];
+      const { data: assets, error: assetError } = await supabase
+        .from("media_assets")
+        // storage_path/asset_role/source_type/owned/ai_generated let the CARD
+        // classify the asset (chart vs photograph) and so choose contain vs
+        // cover; width/height let it size the frame. Same single round trip —
+        // these are extra columns on a query that already ran, not extra
+        // queries.
+        .select(HERO_ASSET_COLUMNS)
+        .in("id", mediaIds);
+      logQueryError(`attachHeroImages(${kind}) assets`, assetError);
 
-    const assetById = new Map((assets ?? []).map((a) => [a.id, a]));
-    const heroByEntityId = new Map<string, HeroImage>();
-    for (const link of links) {
-      if (heroByEntityId.has(link.entityId)) continue;
-      const asset = assetById.get(link.media_id);
-      if (!asset || asset.publication_status !== "published" || !asset.public_storage_path) continue;
-      heroByEntityId.set(link.entityId, {
-        url: mediaPublicUrl(asset.public_storage_path),
-        alt: asset.alt_text,
-        sourceType: asset.source_type,
-        owned: asset.owned,
-        aiGenerated: asset.ai_generated,
-        sourceUrl: asset.source_url,
-        license: asset.license,
-        // Carried so a CARD can render its credit. Omitting these here was a
-        // live licence breach: the detail-page query selected them and the
-        // batched list query did not, so every CC BY photograph on the
-        // homepage, category pages and index pages rendered uncredited.
-        attribution: asset.attribution,
-        attributionRequired: asset.attribution_required,
-        creator: asset.creator,
-        storagePath: asset.storage_path,
-        assetRole: asset.asset_role,
-        width: asset.width,
-        height: asset.height,
+      const assetById = new Map((assets ?? []).map((a) => [a.id, a as unknown as HeroAssetRow]));
+      for (const link of links) {
+        if (assetByEntityId.has(link.entityId)) continue;
+        const asset = assetById.get(link.media_id);
+        if (!asset) continue;
+        assetByEntityId.set(link.entityId, asset);
+      }
+    }
+
+    if (kind === "product") {
+      return rows.map((r) => {
+        const asset = assetByEntityId.get(r.id);
+        return { ...r, heroImage: asset ? heroImageFromAsset(asset) : null };
       });
     }
 
-    return rows.map((r) => ({ ...r, heroImage: heroByEntityId.get(r.id) ?? null }));
+    const resolved = await resolveArticleHeroes(supabase, await articleInputs(supabase, rows), assetByEntityId);
+    return rows.map((r) => ({ ...r, heroImage: resolved.get(r.id) ?? null }));
   } catch (e) {
     console.error(`[query-error] attachHeroImages(${kind}) threw`, e);
     return rows.map((r) => ({ ...r, heroImage: null }));
+  }
+}
+
+export type ArticleHeroInput = { id: string; title: string; type: string | null };
+
+/**
+ * Selection needs the article's title and type, which every content list in
+ * this repo already selects — so in practice this is a free structural read.
+ * A caller that does not carry them gets one extra query rather than being
+ * silently skipped: a page quietly opting out of hero selection is exactly the
+ * kind of invisible difference this codebase keeps getting bitten by.
+ */
+async function articleInputs(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  rows: { id: string }[]
+): Promise<ArticleHeroInput[]> {
+  const present: ArticleHeroInput[] = [];
+  const missing: string[] = [];
+  for (const row of rows) {
+    const r = row as { id: string; title?: unknown; type?: unknown };
+    if (typeof r.title === "string") {
+      present.push({ id: r.id, title: r.title, type: typeof r.type === "string" ? r.type : null });
+    } else {
+      missing.push(r.id);
+    }
+  }
+  if (missing.length === 0) return present;
+
+  const { data, error } = await supabase.from("content_items").select("id, title, type").in("id", missing);
+  logQueryError("articleInputs", error);
+  for (const row of data ?? []) present.push({ id: row.id, title: row.title, type: row.type });
+  return present;
+}
+
+/**
+ * THE FIX. Chooses each article's lead image from everything the site already
+ * holds for it, instead of returning whatever `content_media` happened to
+ * store.
+ *
+ * Candidates are the stored hero (the incumbent) plus the hero photography of
+ * every PUBLISHED product the article links through `content_products`. The
+ * judgement itself lives in src/lib/media/hero-selection.ts and is pure; this
+ * function only assembles the inputs and maps the winner back to a HeroImage.
+ *
+ * Round-trip discipline: three further rounds at most, each `.in(...)`-bounded
+ * by the batch, and every one of them skipped entirely when no article in the
+ * batch has a replaceable hero — a list of comparison articles leading with
+ * their comparison charts costs nothing extra.
+ *
+ * Degrades to the stored hero on any error. A failure to find a BETTER image
+ * must never cost a page the image it already had.
+ */
+export async function resolveArticleHeroes(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  articles: ArticleHeroInput[],
+  incumbentAssetByArticleId: Map<string, HeroAssetRow>
+): Promise<Map<string, HeroImage | null>> {
+  const stored = new Map<string, HeroImage | null>(
+    articles.map((a) => {
+      const asset = incumbentAssetByArticleId.get(a.id);
+      return [a.id, asset ? heroImageFromAsset(asset) : null];
+    })
+  );
+  if (articles.length === 0) return stored;
+
+  try {
+    const articleIds = articles.map((a) => a.id);
+    const { data: productLinks, error: productLinksError } = await supabase
+      .from("content_products")
+      .select("content_id, product_id, role")
+      .in("content_id", articleIds);
+    logQueryError("resolveArticleHeroes productLinks", productLinksError);
+    if (!productLinks || productLinks.length === 0) return stored;
+
+    const productIds = [...new Set(productLinks.map((l) => l.product_id))];
+    // RLS already hides media of unpublished products from `anon`, but an
+    // admin-authenticated session (the audit script, a preview) sees them, and
+    // the public site must render the same thing either way — so the published
+    // set is filtered explicitly rather than left to the policy.
+    const [{ data: products, error: productsError }, { data: productMedia, error: productMediaError }] =
+      await Promise.all([
+        supabase.from("products").select("id, name").in("id", productIds).eq("is_published", true),
+        supabase.from("product_media").select("product_id, media_id, sort_order").in("product_id", productIds).eq("role", "hero"),
+      ]);
+    logQueryError("resolveArticleHeroes products", productsError);
+    logQueryError("resolveArticleHeroes productMedia", productMediaError);
+
+    const productNameById = new Map((products ?? []).map((p) => [p.id, p.name]));
+    const publishedProductMedia = (productMedia ?? []).filter((m) => productNameById.has(m.product_id));
+    if (publishedProductMedia.length === 0) return stored;
+
+    const productMediaIds = [...new Set(publishedProductMedia.map((m) => m.media_id))];
+    const incumbentIds = [...new Set([...incumbentAssetByArticleId.values()].map((a) => a.id))];
+    const [{ data: assets, error: assetsError }, { data: heroUses, error: heroUsesError }] = await Promise.all([
+      supabase.from("media_assets").select(HERO_ASSET_COLUMNS).in("id", productMediaIds),
+      // How many PUBLISHED articles already lead with each asset. RLS restricts
+      // content_media to published parents, so this count is exactly the
+      // reader-visible duplication and needs no status filter of its own.
+      supabase
+        .from("content_media")
+        .select("media_id")
+        .eq("role", "hero")
+        .in("media_id", [...new Set([...productMediaIds, ...incumbentIds])]),
+    ]);
+    logQueryError("resolveArticleHeroes assets", assetsError);
+    logQueryError("resolveArticleHeroes heroUses", heroUsesError);
+
+    const heroUseCount = new Map<string, number>();
+    for (const row of heroUses ?? []) heroUseCount.set(row.media_id, (heroUseCount.get(row.media_id) ?? 0) + 1);
+
+    const productAssetById = new Map((assets ?? []).map((a) => [a.id, a as unknown as HeroAssetRow]));
+    const productHeroAssetByProductId = new Map<string, HeroAssetRow>();
+    for (const link of [...publishedProductMedia].sort((a, b) => a.sort_order - b.sort_order)) {
+      if (productHeroAssetByProductId.has(link.product_id)) continue;
+      const asset = productAssetById.get(link.media_id);
+      if (asset) productHeroAssetByProductId.set(link.product_id, asset);
+    }
+
+    const linksByArticle = new Map<string, { product_id: string; role: ProductLinkRole }[]>();
+    for (const link of productLinks) {
+      const list = linksByArticle.get(link.content_id) ?? [];
+      list.push({ product_id: link.product_id, role: link.role as ProductLinkRole });
+      linksByArticle.set(link.content_id, list);
+    }
+
+    const resolved = new Map(stored);
+    for (const article of articles) {
+      const incumbentAsset = incumbentAssetByArticleId.get(article.id);
+      const incumbent = incumbentAsset
+        ? heroCandidate(incumbentAsset, "article", { heroUseCount: heroUseCount.get(incumbentAsset.id) ?? 0 })
+        : null;
+
+      const candidates: HeroCandidate<HeroImage>[] = [];
+      const seen = new Set<string>();
+      for (const link of linksByArticle.get(article.id) ?? []) {
+        const asset = productHeroAssetByProductId.get(link.product_id);
+        if (!asset || seen.has(asset.id)) continue;
+        seen.add(asset.id);
+        const candidate = heroCandidate(asset, "product", {
+          linkRole: link.role,
+          productName: productNameById.get(link.product_id) ?? null,
+          heroUseCount: heroUseCount.get(asset.id) ?? 0,
+        });
+        if (candidate) candidates.push(candidate);
+      }
+
+      const decision = selectArticleHero({
+        contentId: article.id,
+        title: article.title,
+        contentType: article.type,
+        incumbent,
+        candidates,
+      });
+      resolved.set(article.id, decision.winner?.ref ?? null);
+    }
+    return resolved;
+  } catch (e) {
+    console.error("[query-error] resolveArticleHeroes threw", e);
+    return stored;
+  }
+}
+
+/**
+ * The article detail page's lead image. Same selection as the cards, so a
+ * reader who clicks a card sees the image the card showed them.
+ */
+export async function getResolvedArticleHero(article: ArticleHeroInput): Promise<HeroImage | null> {
+  const supabase = await createClient();
+  try {
+    const { data: link, error: linkError } = await supabase
+      .from("content_media")
+      .select("media_id")
+      .eq("content_id", article.id)
+      .eq("role", "hero")
+      .limit(1)
+      .maybeSingle();
+    if (linkError) logQueryError(`getResolvedArticleHero(${article.id}) link`, linkError);
+
+    const incumbentByArticleId = new Map<string, HeroAssetRow>();
+    if (link) {
+      const { data: asset, error: assetError } = await supabase
+        .from("media_assets")
+        .select(HERO_ASSET_COLUMNS)
+        .eq("id", link.media_id)
+        .maybeSingle();
+      if (assetError) logQueryError(`getResolvedArticleHero(${article.id}) asset`, assetError);
+      if (asset) incumbentByArticleId.set(article.id, asset as unknown as HeroAssetRow);
+    }
+
+    const resolved = await resolveArticleHeroes(supabase, [article], incumbentByArticleId);
+    return resolved.get(article.id) ?? null;
+  } catch (e) {
+    console.error(`[query-error] getResolvedArticleHero(${article.id}) threw`, e);
+    return null;
   }
 }
 

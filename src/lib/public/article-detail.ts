@@ -1,7 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
-import { getPublishedHeroImage, attachHeroImages, type HeroImage } from "./hero-image";
+import { getResolvedArticleHero, attachHeroImages, type HeroImage } from "./hero-image";
 import { attachExcerpts } from "./excerpt";
 import {
   classifyClusterEdges,
@@ -167,7 +167,13 @@ export const getArticleDetail = cache(async (slug: string): Promise<ArticleDetai
       .lte("published_at", new Date().toISOString())
       .order("published_at", { ascending: false })
       .limit(3),
-    getPublishedHeroImage("content", content.id),
+    // Not a lookup of `content_media` role='hero' any more — a SELECTION over
+    // everything the site holds for this piece, including the photography of
+    // the products it links to. See resolveArticleHeroes() in ./hero-image.ts
+    // and src/lib/media/hero-selection.ts for what it will and will not swap:
+    // a comparison chart on a comparison page, and a diagram on an explainer,
+    // are kept deliberately.
+    getResolvedArticleHero({ id: content.id, title: content.title, type: content.type }),
     // Explicit editorial clustering (pillar_of/supporting_of/related_to),
     // curated via the admin content edit page — same directional-row +
     // reverse-inferred-at-query-time pattern as product_relationships (see
