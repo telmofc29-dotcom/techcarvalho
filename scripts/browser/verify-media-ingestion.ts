@@ -1,6 +1,6 @@
 // End-to-end verification of the manual media ingestion workflow.
 //
-//   TC_ADMIN_EMAIL=... TC_ADMIN_PASSWORD=... npx tsx scripts/verify-media-ingestion.ts [baseUrl]
+//   TC_ADMIN_EMAIL=... TC_ADMIN_PASSWORD=... npx tsx scripts/browser/verify-media-ingestion.ts [baseUrl]
 //
 // Drives the REAL admin form in a real browser and then checks the database and
 // storage directly. "The page renders" is not verification of an upload path —
@@ -13,8 +13,8 @@
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { deflateSync } from "node:zlib";
 import { chromium } from "playwright";
-import { loadEnvLocal, createAdminClient } from "./_shared.ts";
-import { classifyMedia, isDepictionOfRealProduct, requiredDisclosure } from "../src/lib/media/classification.ts";
+import { loadEnvLocal, createAdminClient } from "../_shared.ts";
+import { classifyMedia, isDepictionOfRealProduct, requiredDisclosure } from "../../src/lib/media/classification.ts";
 
 loadEnvLocal();
 
