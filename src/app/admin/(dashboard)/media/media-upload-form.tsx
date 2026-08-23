@@ -58,6 +58,7 @@ export function MediaUploadForm({ existingFileNames }: { existingFileNames: stri
   const [isPending, startTransition] = useTransition();
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [owned, setOwned] = useState(false);
+  const [assetRole, setAssetRole] = useState("");
   const [batchDone, setBatchDone] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const existingSet = useRef(new Set(existingFileNames.map(sanitizeCompare)));
@@ -292,6 +293,53 @@ export function MediaUploadForm({ existingFileNames }: { existingFileNames: stri
             <option value="video">Video</option>
           </Select>
         </Field>
+        {/* The editorial role. Previously absent from this form entirely, which
+            meant every uploaded asset arrived with asset_role NULL and the
+            library could not tell a product photograph from a diagram. */}
+        <Field
+          label="Editorial role"
+          htmlFor="asset_role"
+          hint="What this image IS. Decides how the site may use it — a concept render can never be product photography."
+        >
+          <Select
+            id="asset_role"
+            name="asset_role"
+            value={assetRole}
+            onChange={(e) => setAssetRole(e.target.value)}
+          >
+            <option value="">— not set —</option>
+            <option value="product_photo">Product photograph</option>
+            <option value="article_hero">Article hero</option>
+            <option value="concept_render">Concept render (unreleased / unrevealed product)</option>
+            <option value="diagram">Diagram</option>
+            <option value="chart">Data chart</option>
+            <option value="comparison_graphic">Comparison graphic</option>
+            <option value="screenshot">Screenshot</option>
+            <option value="logo_brand">Logo / brand mark</option>
+            <option value="icon">Icon</option>
+            <option value="category_hero">Category hero</option>
+            <option value="homepage_feature">Homepage feature</option>
+            <option value="banner">Banner</option>
+            <option value="background">Background</option>
+            <option value="social_og">Social / OG image</option>
+          </Select>
+        </Field>
+
+        {assetRole === "concept_render" && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50/60 px-4 py-3">
+            <p className="text-sm font-medium text-amber-900">This will be published as a concept render.</p>
+            <p className="mt-1 text-xs leading-relaxed text-amber-900/90">
+              Every page using it will carry: <em>&ldquo;Concept render — not official product imagery.
+              The actual hardware has not been revealed.&rdquo;</em>
+            </p>
+            <p className="mt-2 text-xs leading-relaxed text-amber-900/80">
+              It can never become a product photograph, never counts as media coverage for a product,
+              and can never be cited as evidence for a specification. Marked AI-generated automatically.
+            </p>
+            <input type="hidden" name="ai_generated" value="on" />
+          </div>
+        )}
+
         <Field label="Alt text" htmlFor="alt_text" hint="Describes the media for accessibility and SEO. Applied to every file in this batch — edit per-asset afterward if they need distinct alt text.">
           <TextInput id="alt_text" name="alt_text" />
         </Field>
@@ -330,9 +378,18 @@ export function MediaUploadForm({ existingFileNames }: { existingFileNames: stri
             {owned ? (
               <>
                 <input type="hidden" name="rights_status" value="verified" />
+                {/* Ticking "owned" must also record WHAT it is, not only that
+                    we own it. Without this the asset arrives with source_type
+                    NULL, classifies as "unclassified" rather than
+                    owned_original_photo, never counts towards our own
+                    photography — and shouldWatermark(), which requires
+                    staff_photograph, refuses to watermark our own work. */}
+                <input type="hidden" name="source_type" value="staff_photograph" />
+                <input type="hidden" name="licence_permits_modification" value="true" />
                 <p className="text-xs text-neutral-500">
-                  Rights status is set to Verified automatically for owned assets. You can still record who made it
-                  below.
+                  Recorded as a Tech Carvalho original photograph: rights verified, modification
+                  permitted, and eligible for watermarked public derivatives. You can still record
+                  who made it below.
                 </p>
                 <Field label="Creator" htmlFor="creator" hint="Who made this, if relevant to note.">
                   <TextInput id="creator" name="creator" />
@@ -366,6 +423,22 @@ export function MediaUploadForm({ existingFileNames }: { existingFileNames: stri
                   <Textarea id="attribution" name="attribution" rows={2} />
                 </Field>
                 <Checkbox id="attribution_required" name="attribution_required" label="Attribution required" />
+                {/* Whether the licence permits ALTERING the image, which is a
+                    different question from whether it permits reuse. CC BY-SA
+                    allows reuse and says nothing about watermarking. Defaults
+                    to "not assessed", which the watermark gate treats as NO —
+                    unknown is never permission. */}
+                <Field
+                  label="Modification permitted?"
+                  htmlFor="licence_permits_modification"
+                  hint="Reuse permission is NOT modification permission. Leave unassessed unless the licence actually says."
+                >
+                  <Select id="licence_permits_modification" name="licence_permits_modification" defaultValue="">
+                    <option value="">Not assessed</option>
+                    <option value="true">Yes — the licence permits modification</option>
+                    <option value="false">No — no-derivatives licence</option>
+                  </Select>
+                </Field>
                 <Field
                   label="Rights status"
                   htmlFor="rights_status"

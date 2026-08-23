@@ -183,3 +183,30 @@ test("a product still needs its FULL model designation to score strong", () => {
   assert.notEqual(judgeAsset(asset({ altText: "Canon EOS R5 front view" }), R7), "strong");
   assert.equal(judgeAsset(asset({ altText: "Canon EOS R7 front view" }), R7), "strong");
 });
+
+test("A CONCEPT RENDER NEVER COUNTS AS SHOWING THE PRODUCT", () => {
+  // The trap: an imagined PlayStation 6 whose alt text names the subject
+  // perfectly matches every identity token and would score "strong" — the one
+  // claim it must never make. Media coverage that counted it would report a
+  // product as illustrated when nobody has seen the hardware.
+  const ps6: Subject = { name: "Sony PlayStation 6", manufacturerName: "Sony" };
+  const render = asset({
+    altText: "Sony PlayStation 6 concept render, three-quarter view",
+    sourceType: "tc_graphic",
+    assetRole: "concept_render",
+  });
+  assert.notEqual(judgeAsset(render, ps6), "strong");
+  assert.equal(judgeSubject([render], ps6), "generic_placeholder");
+  assert.equal(hasExactSubjectMedia([render], ps6), false);
+});
+
+test("a concept render does not rescue a product's coverage", () => {
+  // Even alongside other assets, it must not be the thing that makes a product
+  // count as having exact-subject imagery.
+  const ps6: Subject = { name: "Sony PlayStation 6", manufacturerName: "Sony" };
+  const assets = [
+    asset({ id: "1", altText: "Sony PlayStation 6 concept", sourceType: "tc_graphic", assetRole: "concept_render" }),
+    asset({ id: "2", altText: "A generic gaming setup", sourceType: "tc_graphic" }),
+  ];
+  assert.equal(hasExactSubjectMedia(assets, ps6), false);
+});

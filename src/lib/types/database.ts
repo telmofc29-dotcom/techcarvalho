@@ -214,7 +214,12 @@ export type MediaAssetRole =
   | "social_og"
   | "logo_brand"
   | "icon"
-  | "screenshot";
+  | "screenshot"
+  // Added by supabase/migrations_pending/20260828_concept_render_role.sql.
+  // Imagery of an unreleased or unrevealed product. NEVER product photography,
+  // never evidence, and always carries a public disclosure — see
+  // src/lib/media/classification.ts.
+  | "concept_render";
 // Drafted by supabase/migrations_pending/20260825_media_derivatives.sql.
 // Mirrors CropName / DerivativeFormat in src/lib/media/derivatives.ts — keep
 // the three in sync (the SQL CHECK, this union, and the TS type).

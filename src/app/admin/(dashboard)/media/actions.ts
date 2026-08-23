@@ -8,7 +8,7 @@ import { updateRow, deleteRow, getRowById, type ValidationResult } from "@/lib/a
 import { MEDIA_PRIVATE_BUCKET, MEDIA_PUBLIC_BUCKET } from "@/lib/media/constants";
 import { evaluatePublishEligibility } from "@/lib/media/rights";
 import { resolvePublicationSource } from "@/lib/media/publication-source";
-import type { MediaType, MediaRole, MediaSourceType, MediaRightsStatus, MediaBrandRole, Insert } from "@/lib/types/database";
+import type { MediaType, MediaRole, MediaSourceType, MediaRightsStatus, MediaBrandRole, MediaAssetRole, Insert } from "@/lib/types/database";
 import type { FormState } from "@/components/admin/reference-form";
 
 const VALID_MEDIA_TYPES: MediaType[] = ["image", "video"];
@@ -22,6 +22,16 @@ const VALID_SOURCE_TYPES: MediaSourceType[] = [
   "other",
 ];
 const VALID_RIGHTS_STATUSES: MediaRightsStatus[] = ["unknown", "pending_verification", "verified", "restricted"];
+// Keyed by the union so omitting a member is a compile error. An array typed
+// MediaAssetRole[] accepts a short list silently, which is how a validator ends
+// up rejecting roles the database happily stores.
+const ASSET_ROLE_KEYS: Record<MediaAssetRole, true> = {
+  product_photo: true, article_hero: true, banner: true, category_hero: true,
+  homepage_feature: true, background: true, diagram: true, chart: true,
+  comparison_graphic: true, social_og: true, logo_brand: true, icon: true,
+  screenshot: true, concept_render: true,
+};
+const VALID_ASSET_ROLES = Object.keys(ASSET_ROLE_KEYS) as MediaAssetRole[];
 const VALID_BRAND_ROLES: MediaBrandRole[] = [
   "logo_full",
   "logo_full_tagline",
@@ -45,6 +55,8 @@ type ProvenanceFields = Pick<
   | "owned"
   | "rights_status"
   | "brand_role"
+  | "asset_role"
+  | "licence_permits_modification"
 >;
 
 // Used on upload, where everything is captured in one form.
@@ -92,9 +104,17 @@ function readProvenanceFields(formData: FormData): ValidationResult<ProvenanceFi
   const owned = formData.get("owned") === "on";
   const rightsStatus = String(formData.get("rights_status") ?? "unknown").trim();
   const brandRole = String(formData.get("brand_role") ?? "").trim();
+  const assetRole = String(formData.get("asset_role") ?? "").trim();
+  const modificationRaw = String(formData.get("licence_permits_modification") ?? "").trim();
 
   if (sourceType && !VALID_SOURCE_TYPES.includes(sourceType as MediaSourceType)) {
     return { error: "Choose a valid source type." };
+  }
+  if (assetRole && !VALID_ASSET_ROLES.includes(assetRole as MediaAssetRole)) {
+    return { error: "Choose a valid editorial role." };
+  }
+  if (modificationRaw && !["true", "false"].includes(modificationRaw)) {
+    return { error: "Modification permission must be yes, no, or unassessed." };
   }
   if (!VALID_RIGHTS_STATUSES.includes(rightsStatus as MediaRightsStatus)) {
     return { error: "Choose a valid rights status." };
@@ -110,10 +130,17 @@ function readProvenanceFields(formData: FormData): ValidationResult<ProvenanceFi
       source_url: sourceUrl || null,
       attribution: attribution || null,
       attribution_required: attributionRequired,
-      ai_generated: aiGenerated,
       owned,
       rights_status: rightsStatus as MediaRightsStatus,
       brand_role: (brandRole as MediaBrandRole) || null,
+      asset_role: (assetRole as MediaAssetRole) || null,
+      // Tri-state on purpose. "" means NOBODY ASSESSED IT and is stored as
+      // NULL, which the watermark gate treats as a refusal — unknown is never
+      // permission. Collapsing it to false would claim we checked and found no.
+      licence_permits_modification: modificationRaw === "" ? null : modificationRaw === "true",
+      // A concept render is machine-made speculation by definition. Recording
+      // it any other way would let it slip past the AI checks downstream.
+      ai_generated: assetRole === "concept_render" ? true : aiGenerated,
     },
   };
 }
@@ -195,6 +222,19 @@ export async function uploadMediaAssetBatchItem(formData: FormData): Promise<Bat
     .insert({ storage_path: path, ...meta.payload })
     .select("id")
     .single();
+  if (insertError && /asset_role/.test(insertError.message)) {
+    // The CHECK rejects a role the code offers. That means
+    // 20260828_concept_render_role.sql has not been applied — say so, rather
+    // than surfacing a bare 23514 that reads as a bug in the upload.
+    await supabase.storage.from(MEDIA_PRIVATE_BUCKET).remove([path]);
+    return {
+      id: null,
+      error:
+        "This editorial role is not yet accepted by the database. Apply " +
+        "supabase/migrations_pending/20260828_concept_render_role.sql, then upload again. " +
+        "The file was not kept.",
+    };
+  }
   if (insertError || !data) {
     await supabase.storage.from(MEDIA_PRIVATE_BUCKET).remove([path]);
     return { id: null, error: insertError?.message ?? "Insert failed." };

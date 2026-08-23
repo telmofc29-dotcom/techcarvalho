@@ -129,6 +129,14 @@ export function isDataGraphic(asset: SubjectMediaAsset): boolean {
  * judgement hero-selection already encodes.
  */
 export function judgeAsset(asset: SubjectMediaAsset, subject: Subject): MediaVerdict {
+  // A CONCEPT RENDER NEVER SHOWS THE PRODUCT, however precisely it names it.
+  //
+  // Checked before anything else, because an imagined PlayStation 6 whose alt
+  // text reads "PlayStation 6 concept render" matches every identity token of
+  // the subject and would otherwise score "strong" — which is exactly the
+  // claim it must never make. See classification.ts.
+  if (asset.assetRole === "concept_render") return "generic_placeholder";
+
   const text = describedText(asset).toLowerCase();
   if (!text) return "undescribed";
 
