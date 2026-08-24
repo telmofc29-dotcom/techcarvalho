@@ -14,6 +14,7 @@ import { PublicPagination } from "@/components/public/pagination";
 import { EmptyState } from "@/components/shared/ui";
 import { PageViewTracker } from "@/components/analytics/page-view-tracker";
 import { InternalLinkTracker } from "@/components/analytics/internal-link-tracker";
+import { requiredDisclosure } from "@/lib/media/classification";
 
 // A product line's hub. See src/lib/public/family-detail.ts for why this is
 // safe to render while most of the catalogue is unpublished: every list here
@@ -206,6 +207,7 @@ export default async function FamilyPage({
                         imageUrl={p.heroImage?.url}
                         imageAlt={p.heroImage?.alt}
                         imageFit={mediaFit(classifiable(p.heroImage))}
+                        imageDisclosure={requiredDisclosure(classifiable(p.heroImage))}
                       />
                     </li>
                   ))}
@@ -230,6 +232,7 @@ export default async function FamilyPage({
                         imageUrl={a.heroImage?.url}
                         imageAlt={a.heroImage?.alt}
                         imageFit={mediaFit(classifiable(a.heroImage))}
+                        imageDisclosure={requiredDisclosure(classifiable(a.heroImage))}
                       />
                     </li>
                   ))}

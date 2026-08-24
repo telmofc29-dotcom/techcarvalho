@@ -27,6 +27,7 @@ import { TrendingSection } from "@/components/public/trending";
 import { EmptyState } from "@/components/shared/ui";
 import { PageViewTracker } from "@/components/analytics/page-view-tracker";
 import { InternalLinkTracker } from "@/components/analytics/internal-link-tracker";
+import { requiredDisclosure } from "@/lib/media/classification";
 
 type CategorySearchParams = { page?: string | string[] };
 
@@ -350,6 +351,7 @@ export default async function CategoryPage({
                           imageUrl={item.heroImage?.url}
                           imageAlt={item.heroImage?.alt}
                           imageFit={mediaFit(classifiable(item.heroImage))}
+                          imageDisclosure={requiredDisclosure(classifiable(item.heroImage))}
                         />
                       </li>
                     ))}
@@ -374,6 +376,7 @@ export default async function CategoryPage({
                           imageUrl={item.heroImage?.url}
                           imageAlt={item.heroImage?.alt}
                           imageFit={mediaFit(classifiable(item.heroImage))}
+                          imageDisclosure={requiredDisclosure(classifiable(item.heroImage))}
                         />
                       </li>
                     ))}
@@ -397,6 +400,7 @@ export default async function CategoryPage({
                           imageUrl={p.heroImage?.url}
                           imageAlt={p.heroImage?.alt}
                           imageFit={mediaFit(classifiable(p.heroImage))}
+                          imageDisclosure={requiredDisclosure(classifiable(p.heroImage))}
                         />
                       </li>
                     ))}

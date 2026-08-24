@@ -16,6 +16,7 @@ import { OutboundLink } from "@/components/public/outbound-link";
 import { destinationDomainOf } from "@/lib/monetisation/affiliate";
 import { PageViewTracker } from "@/components/analytics/page-view-tracker";
 import { InternalLinkTracker } from "@/components/analytics/internal-link-tracker";
+import { requiredDisclosure } from "@/lib/media/classification";
 
 // Describes only what the page actually renders. Never "N products" when the
 // catalogue holds more unpublished — the counts are of published rows, which
@@ -225,6 +226,7 @@ export default async function ManufacturerPage({
                     imageUrl={p.heroImage?.url}
                     imageAlt={p.heroImage?.alt}
                     imageFit={mediaFit(classifiable(p.heroImage))}
+                    imageDisclosure={requiredDisclosure(classifiable(p.heroImage))}
                   />
                 </li>
               ))}
@@ -254,6 +256,7 @@ export default async function ManufacturerPage({
                     imageUrl={a.heroImage?.url}
                     imageAlt={a.heroImage?.alt}
                     imageFit={mediaFit(classifiable(a.heroImage))}
+                    imageDisclosure={requiredDisclosure(classifiable(a.heroImage))}
                   />
                 </li>
               ))}

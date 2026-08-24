@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/shared/ui";
 import { PageViewTracker } from "@/components/analytics/page-view-tracker";
 import { InternalLinkTracker } from "@/components/analytics/internal-link-tracker";
 import { ARTICLE_HUBS, findArticleHub } from "@/lib/public/article-hubs";
+import { requiredDisclosure } from "@/lib/media/classification";
 
 const ALL_ARTICLES = {
   title: "Articles",
@@ -138,6 +139,7 @@ export default async function ArticlesIndexPage({
                     imageUrl={item.heroImage?.url}
                     imageAlt={item.heroImage?.alt}
                     imageFit={mediaFit(classifiable(item.heroImage))}
+                    imageDisclosure={requiredDisclosure(classifiable(item.heroImage))}
                   />
                 </li>
               ))}

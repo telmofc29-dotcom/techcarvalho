@@ -268,6 +268,7 @@ export default async function ProductPage({
                         imageUrl={a.heroImage?.url}
                         imageAlt={a.heroImage?.alt}
                         imageFit={mediaFit(classifiable(a.heroImage))}
+                        imageDisclosure={requiredDisclosure(classifiable(a.heroImage))}
                         // 2-up inside the 2-of-3 product column (~723px), so
                         // each card is ~350px — the same width as the 2-up
                         // rails in the article column.

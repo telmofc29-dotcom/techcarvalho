@@ -101,6 +101,47 @@ export default async function EditMediaPage({
     { key: "creator", label: "Creator", kind: "text" },
   ];
 
+  // WHAT DELETING THIS ACTUALLY COSTS, named before it happens.
+  //
+  // Built from the usage links this page already loads, so it is specific
+  // rather than the old generic "removes all associations". The distinction
+  // that matters is stated plainly: an article that loses its hero stays
+  // PUBLISHED and falls back — losing an image is a presentation problem, not
+  // a reason for editorial content to disappear.
+  const usedOn: string[] = [];
+  const contentTitleById = new Map((allContent ?? []).map((c) => [c.id, c]));
+  const productNameById = new Map((allProducts ?? []).map((p) => [p.id, p]));
+  let publishedLosingLead = 0;
+  for (const [contentId, roles] of contentRolesById) {
+    const row = contentTitleById.get(contentId);
+    if (!row) continue;
+    usedOn.push(`${row.title} — ${roles.join(" + ")}`);
+    if (row.status === "published" && roles.some((r) => r === "hero" || r === "thumbnail")) {
+      publishedLosingLead += 1;
+    }
+  }
+  for (const [productId, roles] of productRolesById) {
+    const row = productNameById.get(productId);
+    if (!row) continue;
+    usedOn.push(`${row.name} — ${roles.join(" + ")}`);
+  }
+
+  const deleteWarning =
+    usedOn.length === 0
+      ? "Delete this media asset? It is not attached to anything, so only the file and its record are removed."
+      : [
+          `This asset is currently used in ${usedOn.length} place${usedOn.length === 1 ? "" : "s"}:`,
+          "",
+          ...usedOn.map((u) => `  • ${u}`),
+          "",
+          publishedLosingLead > 0
+            ? `Deleting it will leave ${publishedLosingLead} published item${publishedLosingLead === 1 ? "" : "s"} without the image you selected. ` +
+              `They REMAIN PUBLISHED and fall back to their next eligible image, or to a neutral placeholder.`
+            : "No published item loses a selected lead image.",
+          "",
+          "No article or product is deleted. Only this file and its associations are removed.",
+        ].join("\n");
+
   return (
     <div className="flex flex-col gap-8 max-w-3xl">
       <div>
@@ -109,7 +150,7 @@ export default async function EditMediaPage({
           action={
             <form action={deleteMediaAsset}>
               <input type="hidden" name="id" value={id} />
-              <ConfirmDeleteButton confirmMessage="Delete this media asset? This removes the file(s) and all associations." />
+              <ConfirmDeleteButton confirmMessage={deleteWarning} />
             </form>
           }
         />

@@ -17,6 +17,7 @@ import {
 import { PageViewTracker } from "@/components/analytics/page-view-tracker";
 import { InternalLinkTracker } from "@/components/analytics/internal-link-tracker";
 import { CtaLink } from "@/components/analytics/cta-link";
+import { requiredDisclosure } from "@/lib/media/classification";
 
 // The front page.
 //
@@ -188,6 +189,7 @@ export default async function HomePage() {
                           imageUrl={item.heroImage?.url}
                           imageAlt={item.heroImage?.alt}
                           imageFit={mediaFit(classifiable(item.heroImage))}
+                          imageDisclosure={requiredDisclosure(classifiable(item.heroImage))}
                           categoryLabel={item.categoryLabel}
                         />
                       </li>
@@ -248,6 +250,7 @@ export default async function HomePage() {
                           imageUrl={product.heroImage?.url}
                           imageAlt={product.heroImage?.alt}
                           imageFit={mediaFit(classifiable(product.heroImage))}
+                          imageDisclosure={requiredDisclosure(classifiable(product.heroImage))}
                         />
                       </li>
                     ))}
@@ -291,6 +294,7 @@ export default async function HomePage() {
                           imageUrl={product.heroImage?.url}
                           imageAlt={product.heroImage?.alt}
                           imageFit={mediaFit(classifiable(product.heroImage))}
+                          imageDisclosure={requiredDisclosure(classifiable(product.heroImage))}
                         />
                       </li>
                     ))}

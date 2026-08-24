@@ -12,6 +12,7 @@ import { FilterSelect } from "@/components/public/filter-select";
 import { EmptyState } from "@/components/shared/ui";
 import { PageViewTracker } from "@/components/analytics/page-view-tracker";
 import { InternalLinkTracker } from "@/components/analytics/internal-link-tracker";
+import { requiredDisclosure } from "@/lib/media/classification";
 
 type ProductsSearchParams = { page?: string; manufacturer?: string; category?: string };
 
@@ -184,6 +185,7 @@ export default async function ProductsIndexPage({
                     imageUrl={p.heroImage?.url}
                     imageAlt={p.heroImage?.alt}
                     imageFit={mediaFit(classifiable(p.heroImage))}
+                    imageDisclosure={requiredDisclosure(classifiable(p.heroImage))}
                   />
                 </li>
               ))}

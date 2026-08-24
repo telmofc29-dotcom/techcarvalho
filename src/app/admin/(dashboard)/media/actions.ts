@@ -647,6 +647,25 @@ export async function unpublishMediaAsset(id: string): Promise<FormState> {
   return { error: null };
 }
 
+/**
+ * Delete a media asset and return to the library.
+ *
+ * THE REDIRECT IS THE FIX. This used to revalidate and stop, leaving the
+ * browser on /admin/media/[deleted-id]. That page then calls notFound() --
+ * correctly, the asset is gone -- and with no not-found boundary under /admin
+ * the request fell through to the ROOT not-found, which renders in the PUBLIC
+ * layout. So deleting an image ended on the public 404 page, and it looked as
+ * though something had been destroyed.
+ *
+ * Nothing had been. media_assets cascades only INTO content_media and
+ * product_media; there is no FK from media to content_items or products, so a
+ * media delete can never remove an article or a product. It removes the
+ * ASSOCIATIONS, which is the intended behaviour, and the parent rows are
+ * untouched.
+ *
+ * `returnTo` carries the library's search/filter/page state so deleting from a
+ * filtered view comes back to that view rather than to an unfiltered list.
+ */
 export async function deleteMediaAsset(formData: FormData): Promise<void> {
   await requireAdmin();
   const id = String(formData.get("id") ?? "");
@@ -668,6 +687,14 @@ export async function deleteMediaAsset(formData: FormData): Promise<void> {
   }
 
   revalidatePath("/admin/media");
+  revalidatePath(`/admin/media/${id}`);
+
+  // Only ever an admin path, and only ever a relative one: `returnTo` arrives
+  // from a form field, so treating it as a trusted URL would be an open
+  // redirect. Anything that is not a /admin/media query string is discarded.
+  const raw = String(formData.get("returnTo") ?? "");
+  const safeQuery = /^\?[\w=&%.\-+]*$/.test(raw) ? raw : "";
+  redirect(`/admin/media${safeQuery}${safeQuery ? "&" : "?"}deleted=1`);
 }
 
 /**

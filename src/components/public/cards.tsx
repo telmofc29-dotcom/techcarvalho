@@ -104,6 +104,7 @@ export function MediaFrame({
   className = "aspect-[4/3] w-full rounded-t-xl",
   iconClassName = "h-9 w-9",
   credit,
+  disclosure,
 }: {
   src?: string | null;
   alt: string;
@@ -139,6 +140,23 @@ export function MediaFrame({
    * no credit at all.
    */
   credit?: string | null;
+  /**
+   * A required disclosure for this image, from requiredDisclosure().
+   *
+   * Rendered as a compact corner marker rather than the full sentence, for the
+   * same reason `credit` is truncated here: a card is a thumbnail with a
+   * headline, and a paragraph under every one would be noise that someone
+   * eventually deletes. The full sentence appears on the detail page, one click
+   * away, exactly as the linked credit does.
+   *
+   * It exists at all because a resolution rule was accidentally hiding these
+   * images from cards. When that was fixed, six published AI-generated assets —
+   * including renders of a real Xbox Series X and PS5 Pro attached to product
+   * pages — began rendering on the homepage with nothing marking them as
+   * machine-made. The lead and gallery surfaces already disclosed; cards never
+   * had.
+   */
+  disclosure?: string | null;
 }) {
   if (src) {
     const contained = fit === "contain";
@@ -158,6 +176,14 @@ export function MediaFrame({
               : "object-cover transition-transform duration-300 group-hover:scale-[1.03]"
           }
         />
+        {disclosure && (
+          <span
+            className="pointer-events-none absolute right-1.5 top-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium leading-tight text-white/90"
+            title={disclosure}
+          >
+            AI
+          </span>
+        )}
         {credit && (
           <span
             className="pointer-events-none absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/55 to-transparent px-2 pb-1 pt-3 text-[10px] leading-tight text-white/85"
@@ -194,6 +220,7 @@ export function ContentCard({
   excerpt,
   imageUrl,
   imageAlt,
+  imageDisclosure,
   imageFit = "cover",
   sizes = CARD_SIZES,
   categoryLabel,
@@ -210,6 +237,8 @@ export function ContentCard({
   excerpt?: string | null;
   imageUrl?: string | null;
   imageAlt?: string | null;
+  /** From requiredDisclosure(classifiable(asset)) at the callsite. */
+  imageDisclosure?: string | null;
   /** From mediaFit(classifiable(heroImage)) — chart vs photograph. */
   imageFit?: MediaFit;
   /** Override when this card sits in a narrower column than the default grid. */
@@ -230,6 +259,7 @@ export function ContentCard({
       <MediaFrame
         src={imageUrl}
         alt={imageAlt ?? ""}
+        disclosure={imageDisclosure}
         kind="content"
         fit={imageFit}
         sizes={sizes}
@@ -269,6 +299,7 @@ export function ProductCard({
   status,
   imageUrl,
   imageAlt,
+  imageDisclosure,
   imageFit = "cover",
   sizes = CARD_SIZES,
   meta,
@@ -280,6 +311,8 @@ export function ProductCard({
   status?: string;
   imageUrl?: string | null;
   imageAlt?: string | null;
+  /** From requiredDisclosure(classifiable(asset)) at the callsite. */
+  imageDisclosure?: string | null;
   /** From mediaFit(classifiable(heroImage)) — chart vs photograph. */
   imageFit?: MediaFit;
   /** Override when this card sits in a narrower column than the default grid. */
@@ -295,6 +328,7 @@ export function ProductCard({
       <MediaFrame
         src={imageUrl}
         alt={imageAlt ?? ""}
+        disclosure={imageDisclosure}
         kind="product"
         fit={imageFit}
         sizes={sizes}

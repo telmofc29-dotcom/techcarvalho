@@ -9,6 +9,7 @@ import { ContentCard, ProductCard, SectionHeading } from "@/components/public/ca
 import { SearchTracker } from "@/components/public/search-tracker";
 import { PageViewTracker } from "@/components/analytics/page-view-tracker";
 import { EmptyState } from "@/components/shared/ui";
+import { requiredDisclosure } from "@/lib/media/classification";
 
 export async function generateMetadata({
   searchParams,
@@ -82,6 +83,7 @@ export default async function SearchPage({
                           imageUrl={item.heroImage?.url}
                           imageAlt={item.heroImage?.alt}
                           imageFit={mediaFit(classifiable(item.heroImage))}
+                          imageDisclosure={requiredDisclosure(classifiable(item.heroImage))}
                         />
                       </li>
                     ))}
@@ -102,6 +104,7 @@ export default async function SearchPage({
                           imageUrl={p.heroImage?.url}
                           imageAlt={p.heroImage?.alt}
                           imageFit={mediaFit(classifiable(p.heroImage))}
+                          imageDisclosure={requiredDisclosure(classifiable(p.heroImage))}
                         />
                       </li>
                     ))}

@@ -538,6 +538,7 @@ export default async function ArticlePage({
                     imageUrl={item.heroImage?.url}
                     imageAlt={item.heroImage?.alt}
                     imageFit={mediaFit(classifiable(item.heroImage))}
+                    imageDisclosure={requiredDisclosure(classifiable(item.heroImage))}
                     sizes={CARD_SIZES_ARTICLE_3}
                   />
                 </li>
@@ -576,6 +577,7 @@ export default async function ArticlePage({
                     imageUrl={article.heroImage?.url}
                     imageAlt={article.heroImage?.alt}
                     imageFit={mediaFit(classifiable(article.heroImage))}
+                    imageDisclosure={requiredDisclosure(classifiable(article.heroImage))}
                     sizes={CARD_SIZES_ARTICLE_2}
                   />
                 </li>
@@ -630,6 +632,7 @@ export default async function ArticlePage({
                     imageUrl={item.heroImage?.url}
                     imageAlt={item.heroImage?.alt}
                     imageFit={mediaFit(classifiable(item.heroImage))}
+                    imageDisclosure={requiredDisclosure(classifiable(item.heroImage))}
                     sizes={CARD_SIZES_ARTICLE_3}
                   />
                 </li>
