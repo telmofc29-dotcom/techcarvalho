@@ -36,6 +36,7 @@ import {
   primarySubject,
   researchQueries,
   identifyingQueries,
+  isOrganisationName,
   type SubjectMatch,
   type ResearchQuery,
 } from "./entity-model.ts";
@@ -220,10 +221,14 @@ export function findMatches(
 ): ResearchMatch[] {
   const bestBySource = new Map<string, ResearchMatch>();
 
-  // Only queries specific enough to identify a STORY may match. See
-  // MIN_QUERY_TERMS — this is the guard against "mentions Apple" being read as
-  // "confirms this claim".
-  const usable = queries.filter((q) => distinctiveTerms(q).length >= MIN_QUERY_TERMS);
+  // Only queries specific enough to identify a STORY may match.
+  //
+  // The rule is "not merely an organisation's name", not "at least two words".
+  // The word-count version blocked "Apple" correctly and blocked "Robotaxis"
+  // incorrectly, which made every single-word topic unresearchable.
+  const usable = queries.filter(
+    (q) => distinctiveTerms(q).length >= MIN_QUERY_TERMS || !isOrganisationName(q)
+  );
   if (usable.length === 0) return [];
 
   for (const item of corpus) {
@@ -373,10 +378,33 @@ export function decide(input: {
       `${origins} independent origins report this. Reportable with attribution, not as established fact.`
     );
   } else if (origins === 1) {
-    framing = "rumoured";
-    reasons.push(
-      "One independent origin. Coverable only as an explicitly unconfirmed report, never as fact."
-    );
+    // ONE ORIGIN IS NOT AUTOMATICALLY A RUMOUR, and conflating them was wrong.
+    // A single reputable outlet reporting its own work — The Verge on robotaxi
+    // regulation — is single-source REPORTING, and labelling it "rumoured"
+    // both insults the source and, worse, trains a reader to discount the word
+    // when it is applied to something that genuinely is a rumour.
+    //
+    // What separates them is the LANGUAGE OF THE CLAIMS. If most of what the
+    // piece says is hedged ("reportedly", "could", "is expected to"), it is
+    // rumour coverage whatever the outlet. If the claims are stated plainly, it
+    // is reporting that happens to have one source.
+    const hedgedShare =
+      input.claimBreakdown.total > 0
+        ? input.claimBreakdown.hedged / input.claimBreakdown.total
+        : 0;
+    if (hedgedShare >= 0.5) {
+      framing = "rumoured";
+      reasons.push(
+        `One independent origin, and ${input.claimBreakdown.hedged} of ${input.claimBreakdown.total} ` +
+          "claims are hedged. Coverable only as explicitly unconfirmed, never as fact."
+      );
+    } else {
+      framing = "reported";
+      reasons.push(
+        "One independent origin reporting plainly. Coverable with clear attribution to that outlet, " +
+          "but a second origin would be worth having before anything is stated as settled."
+      );
+    }
   } else {
     framing = "insufficient";
     reasons.push("No independent origin found. There is nothing here that could be written honestly.");

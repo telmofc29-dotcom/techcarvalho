@@ -320,7 +320,9 @@ export function researchQueries(title: string, subject: SubjectMatch | null): Re
   const beyondIdentity = titleTerms.filter((w) => !identityTerms.has(w.toLowerCase()));
 
   // The full title identifies the story when it says more than who it is about.
-  add(cleaned, beyondIdentity.length > 0 ? "identifying" : "topical");
+  // With no subject resolved there is no identity to exceed, so a distinctive
+  // phrase like "Robotaxis" identifies on its own.
+  add(cleaned, beyondIdentity.length > 0 || !subject ? "identifying" : "topical");
 
   // Subject plus the first distinguishing term: "iphone ultra", "eos r7".
   //
@@ -348,6 +350,23 @@ export function researchQueries(title: string, subject: SubjectMatch | null): Re
   }
 
   return out;
+}
+
+/**
+ * Whether a string is nothing more than an organisation's name or alias.
+ *
+ * This is what MIN_QUERY_TERMS was really trying to express. A single-word
+ * query is dangerous when the word is "Apple", because every Apple story
+ * contains it; it is perfectly precise when the word is "robotaxis". The length
+ * of the query was a proxy for that distinction and a bad one — it also blocked
+ * every genuine single-word topic.
+ */
+export function isOrganisationName(text: string): boolean {
+  const t = text.trim().toLowerCase();
+  if (!t) return true;
+  return ORGANISATIONS.some(
+    (o) => o.name.toLowerCase() === t || o.aliases.some((a) => a.toLowerCase() === t)
+  );
 }
 
 /** Just the queries that can carry evidence. */
