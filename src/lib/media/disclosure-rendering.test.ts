@@ -33,17 +33,27 @@ const asset = (over: Partial<ClassifiableMedia>): ClassifiableMedia => ({
 
 const ARTICLE_LEAD = "src/components/public/article-lead-media.tsx";
 const PRODUCT_LEAD = "src/components/public/product-lead-media.tsx";
+// The article BODY gallery, too. Fixing the lead and leaving this loop alone is
+// exactly what happened first: an AI concept render of unreleased hardware sat
+// published and visible in this gallery, disclosing nothing, while the lead
+// component two files away had already been corrected.
+const ARTICLE_BODY = "src/app/(public)/articles/[slug]/page.tsx";
 
-for (const file of [ARTICLE_LEAD, PRODUCT_LEAD]) {
+for (const file of [ARTICLE_LEAD, PRODUCT_LEAD, ARTICLE_BODY]) {
   test(`${file} renders the derived disclosure`, () => {
     const src = readFileSync(file, "utf8");
     assert.ok(
       src.includes("requiredDisclosure"),
       `${file} must call requiredDisclosure() — a disclosure that is computed but not rendered protects nobody`
     );
+    // Accepts either a named variable or an inline call — the gallery uses the
+    // inline form. What matters is that the value is rendered, not its shape.
     assert.match(
       src,
-      /\{\s*(disclosure|leadDisclosure)\s*&&/,
+      // The inline form nests a call inside the call — requiredDisclosure(
+      // classifiable(img)) — so the argument pattern has to permit one level of
+      // parentheses rather than stopping at the first ')'.
+      /\{\s*(disclosure|leadDisclosure|requiredDisclosure\((?:[^()]|\([^()]*\))*\))\s*&&/,
       `${file} must actually render the disclosure value, not merely import it`
     );
   });

@@ -6,6 +6,7 @@ import { buildMetadata } from "@/lib/seo/metadata";
 import { articleJsonLd, itemListJsonLd, safeJsonLdString } from "@/lib/seo/jsonld";
 import { getArticleDetail } from "@/lib/public/article-detail";
 import { getPublishedGallery, classifiable } from "@/lib/public/hero-image";
+import { requiredDisclosure } from "@/lib/media/classification";
 import { mediaFit, frameAspectRatio, dimensionsUnknown } from "@/lib/media/presentation";
 import { Breadcrumbs } from "@/components/public/breadcrumbs";
 import { ArticleLeadMedia } from "@/components/public/article-lead-media";
@@ -396,6 +397,13 @@ export default async function ArticlePage({
                   loading="lazy"
                 />
               </div>
+              {/* Body images need the disclosure as much as the lead does.
+                  An AI concept render of unreleased hardware sat in this
+                  gallery, published and visible, saying nothing — the lead
+                  component had been fixed and this loop had not. */}
+              {requiredDisclosure(classifiable(img)) && (
+                <p className="text-xs font-medium text-zinc-600">{requiredDisclosure(classifiable(img))}</p>
+              )}
               {img.caption && (
                 <figcaption className="text-xs text-zinc-500">{img.caption}</figcaption>
               )}
