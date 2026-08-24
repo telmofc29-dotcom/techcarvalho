@@ -1571,13 +1571,21 @@ export interface Database {
         Row: {
           id: string;
           content_id: string;
-          mode: "pin_lead" | "pin_supporting" | "suppress";
+          // 'boost' added by supabase/migrations/20260824_homepage_override_windows.sql,
+          // APPLIED. A boost raises a score and lets ranking still decide; a pin
+          // forces a position.
+          mode: "pin_lead" | "pin_supporting" | "boost" | "suppress";
           note: string | null;
           created_at: string;
+          // Same migration, APPLIED. NULL starts_at means "already active";
+          // NULL ends_at means "until removed by hand". Setting ends_at is what
+          // makes a pin self-clearing.
+          starts_at: string | null;
+          ends_at: string | null;
         };
         Insert: Partial<Database["public"]["Tables"]["homepage_overrides"]["Row"]> & {
           content_id: string;
-          mode: "pin_lead" | "pin_supporting" | "suppress";
+          mode: "pin_lead" | "pin_supporting" | "boost" | "suppress";
         };
         Update: Partial<Database["public"]["Tables"]["homepage_overrides"]["Row"]>;
         Relationships: [];
@@ -2142,6 +2150,13 @@ export interface Database {
           last_spotlighted_at: string | null;
           spotlight_count: number;
         }[];
+      };
+      // Added by supabase/migrations_pending/20260825_spotlight_replace.sql —
+      // NOT YET APPLIED. Lets the stage replace a day's rotation rather than
+      // append to it.
+      homepage_clear_spotlight: {
+        Args: { p_rotation_date: string };
+        Returns: number;
       };
       homepage_record_spotlight: {
         Args: {

@@ -187,6 +187,25 @@ export async function runSpotlightRotation(
   const slots = [...(selection.lead ? [selection.lead] : []), ...selection.supporting];
   let recorded = 0;
   let rpcMissing = false;
+
+  // CLEAR THE DAY FIRST, so a re-run REPLACES the rotation instead of adding to
+  // it. The upsert on (rotation_date, content_id) stops the same ITEM being
+  // recorded twice and does nothing about a different SET being recorded for
+  // the same date — live verification took one day from 5 rows to 11, with
+  // three rows marked lead, simply by running the selection twice.
+  //
+  // A cron retry, a manual trigger or a redeploy re-firing the tick all do
+  // that, so this is the normal path rather than an exotic one.
+  const cleared = await supabase.rpc("homepage_clear_spotlight", {
+    p_rotation_date: rotationDate,
+  });
+  let clearAvailable = true;
+  if (cleared.error) {
+    // Absent until 20260825_spotlight_replace.sql is applied. Recording still
+    // proceeds — a rotation that appends is worse than one that replaces, and
+    // better than none — but the run says so rather than reporting a clean pass.
+    clearAvailable = false;
+  }
   for (const [i, slot] of slots.entries()) {
     const { data: outcome, error } = await supabase.rpc("homepage_record_spotlight", {
       p_rotation_date: rotationDate,
@@ -216,7 +235,19 @@ export async function runSpotlightRotation(
     nextUp: selection.nextUp.slice(0, 5).map((c) => c.title),
     recorded,
     memoryAvailable,
+    // Named so a run that could only APPEND is distinguishable from one that
+    // replaced the day cleanly.
+    rotationReplaced: clearAvailable,
+    clearedRows: clearAvailable ? (cleared.data ?? 0) : null,
   };
+
+  if (!clearAvailable) {
+    detail.warning =
+      "homepage_clear_spotlight is not deployed " +
+      "(supabase/migrations_pending/20260825_spotlight_replace.sql). This pass APPENDED to " +
+      "today's rotation instead of replacing it, so a re-run widens the front page and can " +
+      "produce more than one lead.";
+  }
 
   if (rpcMissing) {
     detail.blocked =

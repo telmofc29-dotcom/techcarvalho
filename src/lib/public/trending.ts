@@ -217,7 +217,24 @@ export const getTrendingContent = cache(
     // items are eligible and pinned; the richer presentation data (hero
     // images, excerpts, category labels) is still assembled here from
     // publicly-readable tables.
-    const [selectionResult, relationshipsResult] = await Promise.all([
+    // THE DAILY ROTATION IS THE AUTHORITY WHEN ONE HAS BEEN RECORDED.
+    //
+    // public_spotlight returns the rotation the nightly stage chose: the same
+    // content_id/role shape as public_homepage_selection, so everything below
+    // this point is unchanged. What differs is only WHICH items and which is
+    // lead — score order versus whose turn it is.
+    //
+    // Without this the rotation was recorded and then ignored: the log filled
+    // up, the admin panel showed a rotation, and readers still got the same
+    // five score-ordered stories. That is a worse state than not rotating at
+    // all, because everything looks like it is working.
+    //
+    // The fallback is not decoration. Before the rotation migration is applied,
+    // and on any day the nightly stage did not run, public_spotlight returns
+    // nothing and the existing ranking serves the page exactly as it always
+    // has. The homepage is never empty because a rotation is missing.
+    const [spotlightResult, selectionResult, relationshipsResult] = await Promise.all([
+      supabase.rpc("public_spotlight", { p_rotation_date: null }),
       supabase.rpc("public_homepage_selection", { p_supporting: 8 }),
       supabase.from("content_relationships").select("content_id, related_content_id"),
     ]);
@@ -228,11 +245,24 @@ export const getTrendingContent = cache(
     // rather than attempting to read the table directly — a fallback that
     // tried the table would fail closed to "no rows" under RLS and silently
     // look like "nothing is pinned" forever.
-    const selectionRows = (selectionResult.data ?? []) as { content_id: string; role: string }[];
-    const selectionAvailable = !selectionResult.error && selectionRows.length > 0;
+    const rotationRows = (spotlightResult.data ?? []) as { content_id: string; role: string }[];
+    // A missing public_spotlight (PGRST202) is the expected state before the
+    // rotation migration is applied, not a failure worth logging. Anything
+    // else is.
+    if (
+      spotlightResult.error &&
+      !/PGRST202|could not find the function/i.test(spotlightResult.error.message)
+    ) {
+      logQueryError("getTrendingContent public_spotlight", spotlightResult.error);
+    }
+
+    const rankingRows = (selectionResult.data ?? []) as { content_id: string; role: string }[];
     if (selectionResult.error) {
       logQueryError("getTrendingContent public_homepage_selection", selectionResult.error);
     }
+
+    const selectionRows = rotationRows.length > 0 ? rotationRows : rankingRows;
+    const selectionAvailable = selectionRows.length > 0;
 
     const allowedIds = selectionAvailable ? new Set(selectionRows.map((r) => r.content_id)) : null;
     const overrideMode = new Map<string, string>(
