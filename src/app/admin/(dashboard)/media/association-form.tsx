@@ -30,12 +30,19 @@ export function MediaAssociationForm({
   submitLabel,
   newAssetAlt,
   newAssetPreviewUrl,
+  isPrivate,
+  canPublish,
+  publishBlockedReason,
   children,
 }: {
   action: (prev: AssociationState, formData: FormData) => Promise<AssociationState>;
   submitLabel: string;
   newAssetAlt: string | null;
   newAssetPreviewUrl: string | null;
+  /** Private assets render nothing publicly, however they are attached. */
+  isPrivate: boolean;
+  canPublish: boolean;
+  publishBlockedReason: string | null;
   children: ReactNode;
 }) {
   const [state, formAction] = useActionState(action, { error: null });
@@ -60,8 +67,10 @@ export function MediaAssociationForm({
           <div>
             <p className="text-sm font-semibold text-amber-900">
               {collisions.length === 1
-                ? "This already has a hero image."
-                : `${collisions.length} of these already have a hero image.`}
+                ? collisions[0].slot === "hero"
+                  ? "This already has a hero image."
+                  : "This already has a card image."
+                : `${collisions.length} slots are already taken.`}
             </p>
             <p className="mt-1 text-xs text-amber-900/90">
               Nothing has been saved yet. Choose what should happen to each one — replacing keeps the old image and
@@ -73,11 +82,14 @@ export function MediaAssociationForm({
               <select>s still show their original database values, so without
               these the confirmation submit would apply the decision to the old
               roles and change nothing. */}
+          {(state.pendingScope ?? []).map((targetId) => (
+            <input key={`scope-${targetId}`} type="hidden" name={`scope_${targetId}`} value="1" />
+          ))}
           {(state.pendingRoles ?? []).map((pending) => (
             <input
-              key={pending.targetId}
+              key={`${pending.targetId}-${pending.role}`}
               type="hidden"
-              name={`pending_role_${pending.targetId}`}
+              name={`roles_${pending.targetId}`}
               value={pending.role}
             />
           ))}
@@ -110,8 +122,32 @@ export function MediaAssociationForm({
       {/* While a hero decision is pending the only action is the one inside the
           panel above, so a second button here would just be a way to miss it. */}
       {collisions.length === 0 && (
-        <div className="flex items-center gap-3">
-          <SubmitButton pendingLabel="Saving...">{submitLabel}</SubmitButton>
+        <div className="flex flex-col gap-2">
+          {/* The single most confusing thing in owner testing: a correctly
+              attached image that never appeared, because it was still private.
+              The warning sits next to the button that would fix it. */}
+          {isPrivate && (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3">
+              <p className="text-sm font-medium text-amber-900">This image is still PRIVATE.</p>
+              <p className="mt-1 text-xs leading-relaxed text-amber-900/90">
+                Attaching it does not publish it. Until it is published it will not appear on the live website,
+                whichever slots you tick.
+                {!canPublish && publishBlockedReason ? ` It cannot be published yet: ${publishBlockedReason}` : ""}
+              </p>
+            </div>
+          )}
+          <div className="flex flex-wrap items-center gap-3">
+            <SubmitButton pendingLabel="Saving...">{submitLabel}</SubmitButton>
+            {isPrivate && canPublish && (
+              <button
+                name="publish_after"
+                value="1"
+                className="rounded bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700"
+              >
+                Publish image and apply
+              </button>
+            )}
+          </div>
           {state.savedAt && !state.error && (
             <span className="text-sm text-green-700">{state.savedMessage ?? "Saved."}</span>
           )}
@@ -130,40 +166,48 @@ function HeroCollisionChoice({
   newAssetAlt: string | null;
   newAssetPreviewUrl: string | null;
 }) {
-  const name = `hero_decision_${collision.targetId}`;
+  // Hero and card are separate exclusive slots and each needs its own answer.
+  const name = collision.slot === "hero" ? `hero_decision_${collision.targetId}` : `thumb_decision_${collision.targetId}`;
+  const slotLabel = collision.slot === "hero" ? "hero" : "card image";
   return (
     <fieldset className="rounded border border-amber-200 bg-white p-3">
-      <legend className="px-1 text-xs font-semibold text-neutral-900">{collision.targetLabel}</legend>
+      <legend className="px-1 text-xs font-semibold text-neutral-900">
+        {collision.targetLabel} — {slotLabel}
+      </legend>
 
       <div className="mb-3 grid grid-cols-2 gap-3">
         <Side
-          heading="Current hero"
+          heading={`Current ${slotLabel}`}
           previewUrl={collision.currentHeroPreviewUrl}
           alt={collision.currentHeroAlt}
           descriptor={collision.currentHeroDescriptor}
           href={`/admin/media/${collision.currentHeroMediaId}`}
         />
-        <Side heading="Proposed new hero" previewUrl={newAssetPreviewUrl} alt={newAssetAlt} descriptor="the asset you are editing" />
+        <Side heading={`Proposed new ${slotLabel}`} previewUrl={newAssetPreviewUrl} alt={newAssetAlt} descriptor="the asset you are editing" />
       </div>
 
       <div className="flex flex-col gap-2 text-sm">
         <label className="flex items-start gap-2">
           <input type="radio" name={name} value="replace" defaultChecked className="mt-1" />
           <span>
-            <strong className="font-medium">Replace existing hero.</strong> The current hero moves to the gallery and
-            is kept.
+            <strong className="font-medium">Replace the existing {slotLabel}.</strong>{" "}
+            {collision.slot === "hero"
+              ? "The current hero moves to the gallery and is kept."
+              : "The current card image stops being the card image; it is not removed from anywhere else."}
           </span>
         </label>
         <label className="flex items-start gap-2">
           <input type="radio" name={name} value="add_to_gallery" className="mt-1" />
           <span>
-            <strong className="font-medium">Keep existing hero</strong> and add this one to the gallery instead.
+            <strong className="font-medium">Keep the existing {slotLabel}.</strong> This image will not take that
+            slot — any other slots you ticked for it still apply.
           </span>
         </label>
         <label className="flex items-start gap-2">
           <input type="radio" name={name} value="cancel" className="mt-1" />
           <span>
-            <strong className="font-medium">Cancel</strong> — leave this one exactly as it is.
+            <strong className="font-medium">Cancel</strong> — leave this target completely unchanged, including any
+            other slots you ticked for it.
           </span>
         </label>
       </div>

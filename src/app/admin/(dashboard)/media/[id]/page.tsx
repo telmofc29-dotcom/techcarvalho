@@ -13,7 +13,9 @@ import { MediaAssociationForm } from "../association-form";
 import { AssociationPicker } from "../association-picker";
 import { MediaUsage } from "./media-usage";
 import { ClassificationCard } from "./classification-card";
+import { ReadinessPanel } from "./readiness-panel";
 import { detectPreset } from "@/lib/media/classification-presets";
+import type { MediaRole } from "@/lib/types/database";
 import { ASSET_ROLE_OPTIONS, BRAND_ROLE_OPTIONS, SOURCE_TYPE_OPTIONS, RIGHTS_STATUS_OPTIONS, EDITED_FIELDS_INPUT } from "@/lib/media/form-options";
 import { PublishToggle } from "../publish-toggle";
 import {
@@ -68,8 +70,15 @@ export default async function EditMediaPage({
 
   const { data: allCategories } = await supabase.from("taxonomy_categories").select("id, name");
   const categoryNameById = new Map((allCategories ?? []).map((c) => [c.id, c.name]));
-  const productRoleById = new Map((productLinks ?? []).map((r) => [r.product_id, r.role]));
-  const contentRoleById = new Map((contentLinks ?? []).map((r) => [r.content_id, r.role]));
+  // Every slot this asset holds on each target, not just the first one found.
+  const productRolesById = new Map<string, MediaRole[]>();
+  for (const r of productLinks ?? []) {
+    productRolesById.set(r.product_id, [...(productRolesById.get(r.product_id) ?? []), r.role]);
+  }
+  const contentRolesById = new Map<string, MediaRole[]>();
+  for (const r of contentLinks ?? []) {
+    contentRolesById.set(r.content_id, [...(contentRolesById.get(r.content_id) ?? []), r.role]);
+  }
   const productIds = (allProducts ?? []).map((p) => p.id);
   const contentIds = (allContent ?? []).map((c) => c.id);
 
@@ -145,6 +154,15 @@ export default async function EditMediaPage({
           submitLabel="Save changes"
         />
       </div>
+
+      <ReadinessPanel
+        asset={asset}
+        usageCount={(productLinks ?? []).length + (contentLinks ?? []).length}
+        hasPublicUsage={
+          (productLinks ?? []).some((l) => (allProducts ?? []).find((p) => p.id === l.product_id)?.is_published) ||
+          (contentLinks ?? []).some((l) => (allContent ?? []).find((c) => c.id === l.content_id)?.status === "published")
+        }
+      />
 
       <Card className="p-5">
         <h2 className="text-sm font-semibold text-neutral-900 mb-1">Where did this file come from?</h2>
@@ -286,6 +304,9 @@ export default async function EditMediaPage({
             submitLabel="Save product associations"
             newAssetAlt={asset.alt_text}
             newAssetPreviewUrl={previewUrl}
+            isPrivate={!isPublished}
+            canPublish={eligibility.allowed}
+            publishBlockedReason={eligibility.allowed ? null : eligibility.reason}
           >
             <AssociationPicker
               kindLabel="products"
@@ -295,7 +316,7 @@ export default async function EditMediaPage({
                 label: product.name,
                 facet: categoryNameById.get(product.category_id ?? "") ?? null,
                 status: product.is_published ? "published" : "draft",
-                currentRole: productRoleById.get(product.id) ?? null,
+                currentRoles: productRolesById.get(product.id) ?? [],
               }))}
             />
           </MediaAssociationForm>
@@ -312,6 +333,9 @@ export default async function EditMediaPage({
             submitLabel="Save content associations"
             newAssetAlt={asset.alt_text}
             newAssetPreviewUrl={previewUrl}
+            isPrivate={!isPublished}
+            canPublish={eligibility.allowed}
+            publishBlockedReason={eligibility.allowed ? null : eligibility.reason}
           >
             <AssociationPicker
               kindLabel="articles"
@@ -321,7 +345,7 @@ export default async function EditMediaPage({
                 label: item.title,
                 facet: item.type ?? null,
                 status: item.status,
-                currentRole: contentRoleById.get(item.id) ?? null,
+                currentRoles: contentRolesById.get(item.id) ?? [],
               }))}
             />
           </MediaAssociationForm>

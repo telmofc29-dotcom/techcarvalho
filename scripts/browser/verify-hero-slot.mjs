@@ -51,28 +51,22 @@ async function totals() {
 
 
 /**
- * Choose a role for a target in the searchable association picker.
+ * Tick a slot for a target in the association picker.
  *
- * The picker deliberately does NOT render every article and product up front —
- * that was the point of replacing it. An unattached target therefore has to be
- * searched for before its role control exists, and its control is named
- * __pick_<id> until it is saved, after which it becomes role_<id>.
+ * Slots are checkboxes now, not a dropdown, because one asset can occupy hero
+ * AND card AND gallery at once. An unattached target has to be searched for
+ * before its row exists.
  */
 async function pickRole(page, targetId, searchLabel, searchText, role) {
-  const attached = page.locator(`select[name="role_${targetId}"]`);
-  if ((await attached.count()) === 1) {
-    await attached.selectOption(role);
-    return true;
+  const box = () => page.locator(`input[name="roles_${targetId}"][value="${role}"]`);
+  if ((await box().count()) === 0) {
+    const search = page.getByLabel(searchLabel);
+    if ((await search.count()) === 0) return false;
+    await search.fill(searchText);
+    for (let i = 0; i < 40 && (await box().count()) === 0; i++) await page.waitForTimeout(250);
   }
-  const box = page.getByLabel(searchLabel);
-  if ((await box.count()) === 0) return false;
-  await box.fill(searchText);
-  const picker = page.locator(`select[name="__pick_${targetId}"]`);
-  for (let i = 0; i < 40 && (await picker.count()) === 0; i++) {
-    await page.waitForTimeout(250);
-  }
-  if ((await picker.count()) === 0) return false;
-  await picker.selectOption(role);
+  if ((await box().count()) === 0) return false;
+  await box().first().check();
   return true;
 }
 
@@ -197,7 +191,10 @@ try {
 
   // ---- PRODUCT: same behaviour, choosing Add to gallery --------------------
   await page.goto(`${BASE}/admin/media/${assetB}`, { waitUntil: "networkidle" });
+  // Tick hero AND gallery: choosing "keep the existing hero" must drop ONLY the
+  // contested slot and leave the gallery tick standing.
   if (await pickRole(page, productId, "Search products", TAG, "hero")) {
+    await pickRole(page, productId, "Search products", TAG, "gallery");
     await page.getByRole("button", { name: "Save product associations" }).click();
     await page.waitForTimeout(4000);
     check("PRODUCT collision also detected", /already has a hero image/i.test(await page.locator("body").innerText()));
@@ -210,8 +207,10 @@ try {
     const pHeroes = (productRows ?? []).filter((r) => r.role === "hero");
     check("add-to-gallery leaves the incumbent as hero", pHeroes.length === 1 && pHeroes[0].media_id === assetA,
       `${pHeroes.length} hero(es)`);
-    check("the newcomer joined the gallery instead",
+    check("keeping the hero preserves the OTHER slot the owner ticked",
       (productRows ?? []).some((r) => r.media_id === assetB && r.role === "gallery"));
+    check("...and the newcomer did NOT take the hero slot",
+      !(productRows ?? []).some((r) => r.media_id === assetB && r.role === "hero"));
   } else {
     check("product association control present", false, "product select not rendered (too many products to list?)");
   }

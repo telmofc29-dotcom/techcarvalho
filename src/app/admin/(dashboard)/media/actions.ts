@@ -678,6 +678,8 @@ export async function deleteMediaAsset(formData: FormData): Promise<void> {
  */
 export type HeroCollision = {
   targetId: string;
+  /** Which exclusive slot is contested. */
+  slot: "hero" | "thumbnail";
   targetLabel: string;
   currentHeroMediaId: string;
   currentHeroAlt: string | null;
@@ -700,6 +702,8 @@ export type AssociationState = {
    * decision was applied to an empty request and nothing changed.
    */
   pendingRoles?: { targetId: string; role: MediaRole }[];
+  /** Targets the pending submission was responsible for. */
+  pendingScope?: string[];
   /** Set after a save that actually changed something. */
   savedAt?: string;
   /** What actually happened, in words the admin can check against. */
@@ -723,6 +727,29 @@ const HERO_DECISIONS = new Set(["replace", "add_to_gallery", "cancel"]);
  * whole save STOPS and returns them for a decision. Nothing is partially
  * applied — a half-saved batch is worse than one that asked first.
  */
+/**
+ * Save this asset's associations, as a SET of slots per target.
+ *
+ * WHY THIS IS A SET AND NOT A ROLE
+ * --------------------------------
+ * A media asset is one physical master; its usages are separate relationships.
+ * The same picture legitimately belongs in the hero slot, the card slot AND the
+ * gallery of one article, and the database has always allowed that — the unique
+ * key is on the TRIPLE (target, media, role), so three rows with different
+ * roles coexist and a duplicate of the same role is refused. Verified by probe
+ * before this was written.
+ *
+ * The restriction was entirely here: this function modelled the request as
+ * Map<targetId, MediaRole> — ONE role per target — and then deleted every row
+ * for the asset and re-inserted one. Ticking "hero" therefore silently removed
+ * the gallery use. The UI matched the bug: one dropdown per target.
+ *
+ * SCOPE. Only targets this submission is actually responsible for are touched:
+ * the ones whose checkboxes were submitted, plus the ones already attached
+ * (which the form always renders). A target that was neither shown nor
+ * submitted is left completely alone, so searching for one article can never
+ * disturb another.
+ */
 async function saveAssociations(input: {
   kind: "product" | "content";
   mediaId: string;
@@ -730,67 +757,103 @@ async function saveAssociations(input: {
   formData: FormData;
 }): Promise<AssociationState> {
   await requireAdmin();
-  const { kind, mediaId, targetIds, formData } = input;
+  const { kind, mediaId, formData } = input;
 
-  const table = kind === "product" ? "product_media" : "content_media";
   const targetColumn = kind === "product" ? "product_id" : "content_id";
-
   const supabase = await createClient();
 
-  // What the form is asking for, per target.
-  const desired = new Map<string, MediaRole>();
-  for (const targetId of targetIds) {
-    const role = String(formData.get(`role_${targetId}`) ?? "");
-    if (VALID_ROLES.includes(role as MediaRole)) desired.set(targetId, role as MediaRole);
-  }
-  // Roles carried over from the collision step take precedence over whatever
-  // the (stale) selects submitted. See AssociationState.pendingRoles.
+  // --- what the form is asking for ------------------------------------------
+  const desired = new Map<string, Set<MediaRole>>();
   for (const [key, value] of formData.entries()) {
-    if (!key.startsWith("pending_role_")) continue;
-    const targetId = key.slice("pending_role_".length);
+    if (!key.startsWith("roles_")) continue;
+    const targetId = key.slice("roles_".length);
     const role = String(value);
-    if (VALID_ROLES.includes(role as MediaRole)) desired.set(targetId, role as MediaRole);
+    if (!VALID_ROLES.includes(role as MediaRole)) continue;
+    const set = desired.get(targetId) ?? new Set<MediaRole>();
+    set.add(role as MediaRole);
+    desired.set(targetId, set);
+  }
+  // A row rendered with every box cleared still has to be actionable, so the
+  // form declares which targets it showed.
+  for (const [key] of formData.entries()) {
+    if (!key.startsWith("scope_")) continue;
+    const targetId = key.slice("scope_".length);
+    if (!desired.has(targetId)) desired.set(targetId, new Set());
   }
 
-  const wantsHeroOn = [...desired.entries()].filter(([, role]) => role === "hero").map(([id]) => id);
+  // --- what exists now, for this asset --------------------------------------
+  const mineQuery =
+    kind === "product"
+      ? await supabase.from("product_media").select("id, product_id, media_id, role").eq("media_id", mediaId)
+      : await supabase.from("content_media").select("id, content_id, media_id, role").eq("media_id", mediaId);
+  if (mineQuery.error) return { error: mineQuery.error.message };
+  const mine = (mineQuery.data ?? []) as unknown as Record<string, string>[];
+
+  const currentByTarget = new Map<string, Set<MediaRole>>();
+  for (const row of mine) {
+    const t = row[targetColumn];
+    const set = currentByTarget.get(t) ?? new Set<MediaRole>();
+    set.add(row.role as MediaRole);
+    currentByTarget.set(t, set);
+  }
+  for (const t of currentByTarget.keys()) {
+    if (!desired.has(t)) continue; // untouched targets stay untouched
+  }
+
+  const scope = new Set<string>(desired.keys());
+  if (scope.size === 0) return { error: null, savedAt: new Date().toISOString(), savedMessage: "Nothing to change." };
+
+  // --- exclusive slots held by OTHER assets ---------------------------------
+  const wantsHero = [...desired.entries()].filter(([, r]) => r.has("hero")).map(([t]) => t);
+  const wantsThumb = [...desired.entries()].filter(([, r]) => r.has("thumbnail")).map(([t]) => t);
+  const exclusiveTargets = [...new Set([...wantsHero, ...wantsThumb])];
 
   const collisions: HeroCollision[] = [];
-  const decisions = new Map<string, string>();
-  const plannedDemotions: { targetId: string; mediaId: string }[] = [];
+  const demotions: { targetId: string; mediaId: string; slot: MediaRole }[] = [];
 
-  if (wantsHeroOn.length > 0) {
-    // Queried per kind rather than through the union, so the column names stay
-    // statically checked against each table instead of being cast.
-    const heroQuery =
+  if (exclusiveTargets.length > 0) {
+    const occQuery =
       kind === "product"
-        ? await supabase.from("product_media").select("product_id, media_id").in("product_id", wantsHeroOn).eq("role", "hero")
-        : await supabase.from("content_media").select("content_id, media_id").in("content_id", wantsHeroOn).eq("role", "hero");
-    if (heroQuery.error) return { error: heroQuery.error.message };
+        ? await supabase
+            .from("product_media")
+            .select("product_id, media_id, role")
+            .in("product_id", exclusiveTargets)
+            .in("role", ["hero", "thumbnail"])
+        : await supabase
+            .from("content_media")
+            .select("content_id, media_id, role")
+            .in("content_id", exclusiveTargets)
+            .in("role", ["hero", "thumbnail"]);
+    if (occQuery.error) return { error: occQuery.error.message };
+    const occupants = (occQuery.data ?? []) as unknown as Record<string, string>[];
 
-    const rows = (heroQuery.data ?? []) as unknown as Record<string, string>[];
-    const foreignHeroes = rows.filter((r) => r.media_id !== mediaId);
+    const foreign = occupants.filter((r) => r.media_id !== mediaId);
+    const needed: { targetId: string; slot: MediaRole; holder: string }[] = [];
+    for (const row of foreign) {
+      const t = row[targetColumn];
+      const slot = row.role as MediaRole;
+      if (slot === "hero" && !wantsHero.includes(t)) continue;
+      if (slot === "thumbnail" && !wantsThumb.includes(t)) continue;
+      needed.push({ targetId: t, slot, holder: row.media_id });
+    }
 
-    if (foreignHeroes.length > 0) {
-      const heroAssetIds = [...new Set(foreignHeroes.map((r) => r.media_id))];
-      const { data: heroAssets } = await supabase.from("media_assets").select("*").in("id", heroAssetIds);
-      const assetById = new Map((heroAssets ?? []).map((a) => [a.id, a]));
+    if (needed.length > 0) {
+      const holderIds = [...new Set(needed.map((n) => n.holder))];
+      const { data: holderAssets } = await supabase.from("media_assets").select("*").in("id", holderIds);
+      const byId = new Map((holderAssets ?? []).map((a) => [a.id, a]));
+      const labels = await targetLabels(supabase, kind, needed.map((n) => n.targetId));
 
-      const labels = await targetLabels(
-        supabase,
-        kind,
-        foreignHeroes.map((r) => r[targetColumn])
-      );
-
-      for (const row of foreignHeroes) {
-        const targetId = row[targetColumn];
-        const decision = String(formData.get("hero_decision_" + targetId) ?? "");
+      for (const n of needed) {
+        const decisionField = n.slot === "hero" ? `hero_decision_${n.targetId}` : `thumb_decision_${n.targetId}`;
+        const decision = String(formData.get(decisionField) ?? "");
 
         if (!HERO_DECISIONS.has(decision)) {
-          const asset = assetById.get(row.media_id);
+          const asset = byId.get(n.holder);
           collisions.push({
-            targetId,
-            targetLabel: labels.get(targetId) ?? targetId,
-            currentHeroMediaId: row.media_id,
+            targetId: n.targetId,
+            slot: n.slot === "hero" ? "hero" : "thumbnail",
+            targetLabel: labels.get(n.targetId) ?? n.targetId,
+            currentHeroMediaId: n.holder,
             currentHeroAlt: asset?.alt_text ?? null,
             currentHeroPreviewUrl: asset ? await getAdminPreviewUrl(asset) : null,
             currentHeroDescriptor: describeAsset(asset),
@@ -798,84 +861,143 @@ async function saveAssociations(input: {
           continue;
         }
 
-        decisions.set(targetId, decision);
-        if (decision === "replace") plannedDemotions.push({ targetId, mediaId: row.media_id });
+        if (decision === "cancel") {
+          // Leave this target entirely alone, every slot of it.
+          desired.delete(n.targetId);
+          scope.delete(n.targetId);
+        } else if (decision === "add_to_gallery") {
+          // "Keep the existing one." The OTHER slots the owner ticked must
+          // survive — only the contested slot is dropped.
+          desired.get(n.targetId)?.delete(n.slot);
+        } else if (decision === "replace") {
+          demotions.push({ targetId: n.targetId, mediaId: n.holder, slot: n.slot });
+        }
       }
     }
   }
 
   if (collisions.length > 0) {
-    // Nothing written. The admin has to choose first.
     return {
       error: null,
       collisions,
-      pendingRoles: [...desired.entries()].map(([targetId, role]) => ({ targetId, role })),
+      pendingRoles: [...desired.entries()].flatMap(([targetId, roles]) =>
+        [...roles].map((role) => ({ targetId, role }))
+      ),
+      pendingScope: [...scope],
     };
   }
 
-  // Apply decisions to the OTHER asset's rows before touching our own.
-  for (const demotion of plannedDemotions) {
-    // A displaced hero is DEMOTED, never deleted: the asset keeps its rights,
-    // its provenance and its attachment to the thing it illustrates. Losing the
-    // hero slot is not a reason to throw a picture away.
-    const demote =
-      kind === "product"
-        ? await supabase
-            .from("product_media")
-            .update({ role: "gallery" as MediaRole })
-            .eq("product_id", demotion.targetId)
-            .eq("media_id", demotion.mediaId)
-            .eq("role", "hero")
-        : await supabase
-            .from("content_media")
-            .update({ role: "gallery" as MediaRole })
-            .eq("content_id", demotion.targetId)
-            .eq("media_id", demotion.mediaId)
-            .eq("role", "hero");
-    if (demote.error) return { error: "Could not move the existing hero to the gallery: " + demote.error.message };
+  // --- displace the incumbents ----------------------------------------------
+  for (const d of demotions) {
+    if (d.slot === "hero") {
+      // A displaced hero is DEMOTED to gallery, never deleted — unless it is
+      // already in the gallery, in which case the hero row simply goes.
+      const alreadyGallery =
+        kind === "product"
+          ? await supabase.from("product_media").select("id").eq("product_id", d.targetId).eq("media_id", d.mediaId).eq("role", "gallery").maybeSingle()
+          : await supabase.from("content_media").select("id").eq("content_id", d.targetId).eq("media_id", d.mediaId).eq("role", "gallery").maybeSingle();
+
+      const res = alreadyGallery.data
+        ? await deleteAssoc(supabase, kind, d.targetId, d.mediaId, "hero")
+        : await setRole(supabase, kind, d.targetId, d.mediaId, "hero", "gallery");
+      if (res.error) return { error: `Could not move the existing hero: ${res.error.message}` };
+    } else {
+      // A displaced explicit card image just stops being the card image; it is
+      // not demoted anywhere, because a thumbnail is a pointer rather than a
+      // place in a list.
+      const res = await deleteAssoc(supabase, kind, d.targetId, d.mediaId, "thumbnail");
+      if (res.error) return { error: `Could not clear the existing card image: ${res.error.message}` };
+    }
   }
 
-  for (const [targetId, decision] of decisions) {
-    if (decision === "cancel") desired.delete(targetId);
-    if (decision === "add_to_gallery") desired.set(targetId, "gallery");
+  // --- reconcile THIS asset's rows, per target ------------------------------
+  let added = 0;
+  let removed = 0;
+  for (const targetId of scope) {
+    const want = desired.get(targetId) ?? new Set<MediaRole>();
+    const have = currentByTarget.get(targetId) ?? new Set<MediaRole>();
+
+    for (const role of have) {
+      if (want.has(role)) continue;
+      const res = await deleteAssoc(supabase, kind, targetId, mediaId, role);
+      if (res.error) return { error: res.error.message };
+      removed++;
+    }
+    for (const role of want) {
+      if (have.has(role)) continue;
+      const res = await insertAssoc(supabase, kind, targetId, mediaId, role);
+      if (res.error) return { error: res.error.message };
+      added++;
+    }
   }
 
-  const { error: deleteError } = await supabase.from(table).delete().eq("media_id", mediaId);
-  if (deleteError) return { error: deleteError.message };
-
-  const links = [...desired.entries()].map(([targetId, role]) => ({
-    media_id: mediaId,
-    [targetColumn]: targetId,
-    role,
-  }));
-
-  if (links.length > 0) {
-    const { error: insertError } = await supabase.from(table).insert(links as never);
-    if (insertError) return { error: insertError.message };
+  // Publish-and-apply. Deliberately AFTER the slots are written, and only when
+  // explicitly asked for — uploads stay private by default and nothing here
+  // changes that. publishMediaAsset() runs the same fail-closed rights gate as
+  // the publish button, so this is a shortcut through the clicks, not through
+  // the checks.
+  let publishNote = "";
+  if (String(formData.get("publish_after") ?? "") === "1") {
+    const result = await publishMediaAsset(mediaId);
+    publishNote = result.error
+      ? ` The image could NOT be published: ${result.error} It is attached but still private, so it will not appear publicly yet.`
+      : " The image is now published and will appear on public pages.";
   }
 
   revalidatePath("/admin/media/" + mediaId);
   revalidatePath("/admin/media");
 
-  // Say what happened, not just that something did. "Saved." after a hero
-  // replacement leaves the admin to go and check whether the old image
-  // survived.
-  const replaced = plannedDemotions.length;
-  const keptCount = [...decisions.values()].filter((d) => d === "add_to_gallery").length;
-  const cancelled = [...decisions.values()].filter((d) => d === "cancel").length;
   const parts: string[] = [];
-  if (replaced > 0) {
-    parts.push(
-      replaced === 1
-        ? "Hero replaced successfully. The previous hero was kept in the gallery."
-        : `${replaced} heroes replaced. Each previous hero was kept in its gallery.`
-    );
-  }
-  if (keptCount > 0) parts.push(`${keptCount} existing hero${keptCount === 1 ? "" : "es"} kept; this image was added to the gallery instead.`);
-  if (cancelled > 0) parts.push(`${cancelled} left unchanged.`);
-  if (parts.length === 0) parts.push("Associations saved.");
+  const replacedHero = demotions.filter((d) => d.slot === "hero").length;
+  const replacedThumb = demotions.filter((d) => d.slot === "thumbnail").length;
+  if (replacedHero > 0) parts.push("Hero replaced successfully. The previous hero was kept in the gallery.");
+  if (replacedThumb > 0) parts.push(`Card image replaced.`);
+  if (added > 0) parts.push(`${added} slot${added === 1 ? "" : "s"} added.`);
+  if (removed > 0) parts.push(`${removed} slot${removed === 1 ? "" : "s"} removed.`);
+  if (parts.length === 0) parts.push("No changes were needed.");
 
-  return { error: null, savedAt: new Date().toISOString(), savedMessage: parts.join(" ") };
+  return { error: null, savedAt: new Date().toISOString(), savedMessage: parts.join(" ") + publishNote };
+}
+
+function deleteAssoc(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  kind: "product" | "content",
+  targetId: string,
+  mediaId: string,
+  role: MediaRole
+) {
+  return kind === "product"
+    ? supabase.from("product_media").delete().eq("product_id", targetId).eq("media_id", mediaId).eq("role", role)
+    : supabase.from("content_media").delete().eq("content_id", targetId).eq("media_id", mediaId).eq("role", role);
+}
+
+function insertAssoc(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  kind: "product" | "content",
+  targetId: string,
+  mediaId: string,
+  role: MediaRole
+) {
+  const row =
+    kind === "product"
+      ? { product_id: targetId, media_id: mediaId, role, sort_order: 0 }
+      : { content_id: targetId, media_id: mediaId, role, sort_order: 0 };
+  return kind === "product"
+    ? supabase.from("product_media").insert(row as never)
+    : supabase.from("content_media").insert(row as never);
+}
+
+function setRole(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  kind: "product" | "content",
+  targetId: string,
+  mediaId: string,
+  fromRole: MediaRole,
+  toRole: MediaRole
+) {
+  return kind === "product"
+    ? supabase.from("product_media").update({ role: toRole }).eq("product_id", targetId).eq("media_id", mediaId).eq("role", fromRole)
+    : supabase.from("content_media").update({ role: toRole }).eq("content_id", targetId).eq("media_id", mediaId).eq("role", fromRole);
 }
 
 /** Human labels for the targets named in a collision. */

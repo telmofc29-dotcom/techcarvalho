@@ -57,28 +57,22 @@ async function seed(label, fields) {
 
 
 /**
- * Choose a role for a target in the searchable association picker.
+ * Tick a slot for a target in the association picker.
  *
- * The picker deliberately does NOT render every article and product up front —
- * that was the point of replacing it. An unattached target therefore has to be
- * searched for before its role control exists, and its control is named
- * __pick_<id> until it is saved, after which it becomes role_<id>.
+ * Slots are checkboxes now, not a dropdown, because one asset can occupy hero
+ * AND card AND gallery at once. An unattached target has to be searched for
+ * before its row exists.
  */
 async function pickRole(page, targetId, searchLabel, searchText, role) {
-  const attached = page.locator(`select[name="role_${targetId}"]`);
-  if ((await attached.count()) === 1) {
-    await attached.selectOption(role);
-    return true;
+  const box = () => page.locator(`input[name="roles_${targetId}"][value="${role}"]`);
+  if ((await box().count()) === 0) {
+    const search = page.getByLabel(searchLabel);
+    if ((await search.count()) === 0) return false;
+    await search.fill(searchText);
+    for (let i = 0; i < 40 && (await box().count()) === 0; i++) await page.waitForTimeout(250);
   }
-  const box = page.getByLabel(searchLabel);
-  if ((await box.count()) === 0) return false;
-  await box.fill(searchText);
-  const picker = page.locator(`select[name="__pick_${targetId}"]`);
-  for (let i = 0; i < 40 && (await picker.count()) === 0; i++) {
-    await page.waitForTimeout(250);
-  }
-  if ((await picker.count()) === 0) return false;
-  await picker.selectOption(role);
+  if ((await box().count()) === 0) return false;
+  await box().first().check();
   return true;
 }
 
@@ -127,16 +121,15 @@ try {
     if (await boundary()) { check(`${label}: detail page renders`, false, "error boundary"); return; }
     const before = await rightsOf(id);
 
-    // The picker lists nothing until searched, so search for a real product and
-    // take the first result. Any product will do — this test is about whether
-    // the ASSOCIATION disturbs rights, not about which product it picks.
+    // The picker lists nothing until searched. Any product will do — this test
+    // is about whether the ASSOCIATION disturbs rights, not which product.
     const search = page.getByLabel("Search products");
     if ((await search.count()) === 0) { check(`${label}: has an association control`, false); return; }
     await search.fill("a");
-    const picker = page.locator('select[name^="__pick_"]').first();
-    for (let i = 0; i < 40 && (await picker.count()) === 0; i++) await page.waitForTimeout(250);
-    if ((await picker.count()) === 0) { check(`${label}: has an association control`, false); return; }
-    await picker.selectOption("gallery");
+    const anyGallery = page.locator('input[type=checkbox][name^="roles_"][value="gallery"]').first();
+    for (let i = 0; i < 40 && (await anyGallery.count()) === 0; i++) await page.waitForTimeout(250);
+    if ((await anyGallery.count()) === 0) { check(`${label}: has an association control`, false); return; }
+    await anyGallery.check();
     await page.getByRole("button", { name: "Save product associations" }).click();
     await page.waitForTimeout(4000);
 

@@ -11,7 +11,8 @@ export type AssociationTarget = {
   facet: string | null;
   /** "published" | "draft" etc. Shown so a draft target is obvious. */
   status: string;
-  currentRole: MediaRole | null;
+  /** EVERY slot this asset occupies on that target, not just one. */
+  currentRoles: MediaRole[];
 };
 
 // A searchable association picker.
@@ -40,9 +41,9 @@ export function AssociationPicker({
   const [query, setQuery] = useState("");
   const [facet, setFacet] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [extra, setExtra] = useState<Record<string, MediaRole | "">>({});
+  const [extra, setExtra] = useState<Record<string, MediaRole[]>>({});
 
-  const attached = useMemo(() => targets.filter((t) => t.currentRole), [targets]);
+  const attached = useMemo(() => targets.filter((t) => t.currentRoles.length > 0), [targets]);
   const attachedIds = useMemo(() => new Set(attached.map((t) => t.id)), [attached]);
 
   const facets = useMemo(
@@ -81,7 +82,7 @@ export function AssociationPicker({
                 {t.status !== "published" && (
                   <span className="rounded bg-neutral-100 px-2 py-0.5 text-[11px] text-neutral-600">{t.status}</span>
                 )}
-                <RoleSelect targetId={t.id} defaultValue={t.currentRole ?? ""} />
+                <SlotChecks targetId={t.id} current={t.currentRoles} />
               </li>
             ))}
           </ul>
@@ -147,10 +148,10 @@ export function AssociationPicker({
                 {t.status !== "published" && (
                   <span className="rounded bg-amber-100 px-2 py-0.5 text-[11px] text-amber-900">{t.status}</span>
                 )}
-                <RoleSelect
+                <SlotChecks
                   targetId={t.id}
-                  defaultValue={extra[t.id] ?? ""}
-                  onChange={(v) => setExtra((prev) => ({ ...prev, [t.id]: v }))}
+                  current={extra[t.id] ?? []}
+                  onChange={(roles) => setExtra((prev) => ({ ...prev, [t.id]: roles }))}
                 />
               </li>
             ))}
@@ -161,50 +162,65 @@ export function AssociationPicker({
             so the choice is mirrored into a hidden field that stays in the form
             even after the search text moves on. */}
         {Object.entries(extra)
-          .filter(([id, role]) => role && !attachedIds.has(id))
-          .map(([id, role]) => (
-            <input key={id} type="hidden" name={`role_${id}`} value={role} />
-          ))}
+          .filter(([id, roles]) => roles.length > 0 && !attachedIds.has(id))
+          .flatMap(([id, roles]) => [
+            <input key={`${id}-scope`} type="hidden" name={`scope_${id}`} value="1" />,
+            ...roles.map((role) => <input key={`${id}-${role}`} type="hidden" name={`roles_${id}`} value={role} />),
+          ])}
       </div>
     </div>
   );
 }
 
-function RoleSelect({
+const SLOTS: { role: MediaRole; label: string; hint: string }[] = [
+  { role: "hero", label: "Hero", hint: "The main image on the page. One per article or product." },
+  { role: "thumbnail", label: "Thumbnail / card", hint: "Used on listings and the homepage. One per article or product." },
+  { role: "gallery", label: "Gallery", hint: "Any number of images." },
+];
+
+/**
+ * The slots ONE asset occupies on ONE target.
+ *
+ * Checkboxes, not a dropdown, because these are not alternatives — the same
+ * master legitimately serves as hero AND card AND a gallery entry, and a single
+ * <select> made that impossible to express. Every box submits roles_<targetId>,
+ * so the action receives a set rather than a value.
+ */
+function SlotChecks({
   targetId,
-  defaultValue,
+  current,
   onChange,
 }: {
   targetId: string;
-  defaultValue: MediaRole | "";
-  onChange?: (value: MediaRole | "") => void;
+  current: MediaRole[];
+  onChange?: (roles: MediaRole[]) => void;
 }) {
-  // Controlled only when the caller cares (search results, whose rows unmount);
-  // uncontrolled for attached rows so their submitted value is the stored one.
-  const common = "w-36 rounded border border-neutral-300 px-2 py-1 text-sm";
-  if (onChange) {
-    return (
-      <select
-        name={`__pick_${targetId}`}
-        value={defaultValue}
-        onChange={(e) => onChange(e.target.value as MediaRole | "")}
-        aria-label="Role"
-        className={common}
-      >
-        <option value="">Not linked</option>
-        <option value="hero">Hero</option>
-        <option value="thumbnail">Thumbnail / card</option>
-        <option value="gallery">Gallery</option>
-      </select>
-    );
+  const [roles, setRoles] = useState<MediaRole[]>(current);
+
+  function toggle(role: MediaRole, on: boolean) {
+    const next = on ? [...new Set([...roles, role])] : roles.filter((r) => r !== role);
+    setRoles(next);
+    onChange?.(next);
   }
+
   return (
-    <select name={`role_${targetId}`} defaultValue={defaultValue} aria-label="Role" className={common}>
-      <option value="">Not linked</option>
-      <option value="hero">Hero</option>
-      <option value="thumbnail">Thumbnail / card</option>
-      <option value="gallery">Gallery</option>
-    </select>
+    <div className="flex flex-wrap items-center gap-3">
+      {/* Declares that this row was on the form, so clearing every box is a
+          real instruction rather than an absent field. */}
+      <input type="hidden" name={`scope_${targetId}`} value="1" />
+      {SLOTS.map((slot) => (
+        <label key={slot.role} className="flex items-center gap-1.5 text-sm" title={slot.hint}>
+          <input
+            type="checkbox"
+            name={`roles_${targetId}`}
+            value={slot.role}
+            checked={roles.includes(slot.role)}
+            onChange={(e) => toggle(slot.role, e.target.checked)}
+          />
+          <span>{slot.label}</span>
+        </label>
+      ))}
+    </div>
   );
 }
 

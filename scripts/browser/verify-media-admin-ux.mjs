@@ -159,14 +159,15 @@ try {
   await page.goto(`${BASE}/admin/media/${render}`, { waitUntil: "networkidle" });
 
   // B5: the picker must not list every article up front.
-  const preSearchRows = await page.locator('select[name^="role_"], select[name^="__pick_"]').count();
-  check("B5: the article list is NOT rendered in full before searching", preSearchRows < 20, `${preSearchRows} role selects on the page`);
+  const preSearchRows = await page.locator('input[type=checkbox][name^="roles_"]').count();
+  check("B5: the article list is NOT rendered in full before searching", preSearchRows < 30, `${preSearchRows} slot checkboxes on the page`);
 
   await page.getByLabel("Search articles").fill(TAG);
-  await until(async () => (await page.locator(`select[name="__pick_${article.id}"]`).count()) === 1);
-  check("B5: searching finds the target article", (await page.locator(`select[name="__pick_${article.id}"]`).count()) === 1);
+  await until(async () => (await page.locator(`input[name="roles_${article.id}"][value="hero"]`).count()) === 1);
+  check("B5: searching finds the target article",
+    (await page.locator(`input[name="roles_${article.id}"][value="hero"]`).count()) === 1);
 
-  await page.locator(`select[name="__pick_${article.id}"]`).selectOption("hero");
+  await page.locator(`input[name="roles_${article.id}"][value="hero"]`).check();
   await page.getByRole("button", { name: /Save content associations/ }).click();
 
   const collisionShown = await until(async () =>
