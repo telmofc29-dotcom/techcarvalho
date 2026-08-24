@@ -1,6 +1,7 @@
 import type { HeroImage } from "@/lib/public/hero-image";
 import { classifiable } from "@/lib/public/hero-image";
 import { isDataGraphic } from "@/lib/media/presentation";
+import { requiredDisclosure } from "@/lib/media/classification";
 import { LeadMediaFrame } from "./lead-media-frame";
 import { MediaCredit } from "./media-credit";
 
@@ -35,6 +36,14 @@ const ARTICLE_LEAD_SIZES = "(min-width: 768px) 720px, calc(100vw - 48px)";
 export function ArticleLeadMedia({ heroImage }: { heroImage: HeroImage }) {
   const asset = classifiable(heroImage);
   const labelAsGraphic = isDataGraphic(asset) || heroImage.aiGenerated === true;
+  // The chip alone said "Graphic", which a reader reasonably takes to mean "a
+  // chart". It never said AI-GENERATED. Two published articles were leading
+  // with AI artwork labelled only "Graphic" — requiredDisclosure() had computed
+  // the honest sentence all along and no page had ever rendered it.
+  //
+  // Derived, never typed: a caption an editor has to remember is one that will
+  // be missing on the page where it mattered most.
+  const disclosure = requiredDisclosure(asset);
 
   return (
     <figure className="mb-8">
@@ -49,13 +58,14 @@ export function ArticleLeadMedia({ heroImage }: { heroImage: HeroImage }) {
         sizes={ARTICLE_LEAD_SIZES}
         preload
       />
-      {(labelAsGraphic || heroImage.caption) && (
+      {(labelAsGraphic || heroImage.caption || disclosure) && (
         <figcaption className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-xs leading-relaxed text-zinc-500">
           {labelAsGraphic && (
             <span className="inline-flex shrink-0 items-center rounded-full bg-accent-soft px-2 py-0.5 font-medium text-zinc-700">
               Graphic
             </span>
           )}
+          {disclosure && <span className="font-medium text-zinc-600">{disclosure}</span>}
           {heroImage.caption && <span>{heroImage.caption}</span>}
         </figcaption>
       )}

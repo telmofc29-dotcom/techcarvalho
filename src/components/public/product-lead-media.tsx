@@ -1,5 +1,7 @@
 import type { HeroImage } from "@/lib/public/hero-image";
 import { classifyProductMedia } from "@/lib/media/presentation";
+import { classifiable } from "@/lib/public/hero-image";
+import { requiredDisclosure } from "@/lib/media/classification";
 import { LeadMediaFrame } from "./lead-media-frame";
 import { MediaCredit } from "./media-credit";
 
@@ -60,6 +62,8 @@ export function ProductLeadMedia({
       : null
   );
 
+  const leadDisclosure = requiredDisclosure(classifiable(heroImage));
+
   if (presentation.kind === "none" || !heroImage) {
     return <NoPhotoPanel productName={productName} />;
   }
@@ -99,6 +103,13 @@ export function ProductLeadMedia({
   return (
     <figure className="mb-6">
       <LeadMediaFrame image={heroImage} alt={heroImage.alt ?? productName} sizes={LEAD_SIZES} preload />
+      {/* A product page is exactly where an undisclosed generated image does
+          the most damage: the reader is here to find out what the hardware IS.
+          A concept render of unreleased hardware must say so on the page, not
+          only in the database. Derived from the asset, never typed by hand. */}
+      {leadDisclosure && (
+        <p className="mt-2 text-xs font-medium leading-relaxed text-zinc-600">{leadDisclosure}</p>
+      )}
       {heroImage.caption && (
         <figcaption className="mt-2 text-xs leading-relaxed text-zinc-500">{heroImage.caption}</figcaption>
       )}
