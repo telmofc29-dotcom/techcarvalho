@@ -194,3 +194,82 @@ export function chooseActiveHero<T extends { mediaId: string; rowId: string; sor
   });
   return ordered[0];
 }
+
+
+// ---------------------------------------------------------------------------
+// Card / thumbnail resolution
+// ---------------------------------------------------------------------------
+//
+// WHAT ALREADY EXISTED, BEFORE ADDING ANYTHING
+// --------------------------------------------
+// media role has been 'hero' | 'gallery' | 'thumbnail' since the initial
+// schema, and the admin has offered "Thumbnail" in its dropdowns all along.
+// But NO public rendering path ever read it: every card, list and homepage
+// tile goes through the hero query. So the thumbnail role was inert — an admin
+// could assign one and nothing anywhere would use it.
+//
+// That means the fix is to make the existing role work, not to invent a
+// parallel "card image" concept. There is no new column, no new table and no
+// new role here.
+//
+// THE RULE
+//   explicit thumbnail  ->  hero  ->  nothing (caller's own fallback)
+//
+// with one qualification that matters in practice: a slot occupied by an asset
+// that CANNOT be rendered publicly (private, or never published) is skipped in
+// favour of one that can. A card showing the hero is better than a card showing
+// nothing because someone assigned a thumbnail and forgot to publish it. The
+// admin is told about that separately rather than being silently overridden.
+
+export type SlotRow = {
+  mediaId: string;
+  rowId: string;
+  role: "hero" | "gallery" | "thumbnail";
+  sortOrder: number;
+  renderable: boolean;
+};
+
+export type CardImageResolution = {
+  mediaId: string;
+  /** Which slot supplied it — 'thumbnail' when explicit, 'hero' when inherited. */
+  via: "thumbnail" | "hero";
+  /** True when nothing was explicitly chosen and the hero was reused. */
+  inherited: boolean;
+};
+
+/**
+ * Which asset should a card or thumbnail show?
+ *
+ * Returns null when neither slot offers anything renderable; the caller keeps
+ * whatever fallback it already had (a category title card, a placeholder, or
+ * simply no image).
+ *
+ * Read-only. Resolving a card image never moves, creates or removes a hero
+ * association — an explicit thumbnail overrides what the CARD shows and leaves
+ * the hero exactly where it is.
+ */
+export function resolveCardImage(rows: readonly SlotRow[]): CardImageResolution | null {
+  const pick = (role: "thumbnail" | "hero") =>
+    chooseActiveHero(rows.filter((r) => r.role === role && r.renderable));
+
+  const thumb = pick("thumbnail");
+  if (thumb) return { mediaId: thumb.mediaId, via: "thumbnail", inherited: false };
+
+  const hero = pick("hero");
+  if (hero) return { mediaId: hero.mediaId, via: "hero", inherited: true };
+
+  return null;
+}
+
+/**
+ * Does this target have an explicit thumbnail that is NOT usable?
+ *
+ * Separated from resolution on purpose: resolution degrades so the page still
+ * looks right, and this is what tells an admin their explicit choice is being
+ * bypassed. Silently falling back and never mentioning it is how a deliberate
+ * editorial decision turns into a mystery.
+ */
+export function hasUnusableThumbnail(rows: readonly SlotRow[]): boolean {
+  const thumbs = rows.filter((r) => r.role === "thumbnail");
+  return thumbs.length > 0 && thumbs.every((r) => !r.renderable);
+}

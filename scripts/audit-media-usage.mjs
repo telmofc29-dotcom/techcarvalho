@@ -30,7 +30,7 @@ async function all(table, columns) {
 const [products, content, assets, pm, cm] = await Promise.all([
   all("products", "id, slug, name, is_published"),
   all("content_items", "id, slug, title, status"),
-  all("media_assets", "id, alt_text, asset_role, source_type, owned, ai_generated, publication_status"),
+  all("media_assets", "id, alt_text, asset_role, source_type, owned, ai_generated, publication_status, storage_path"),
   all("product_media", "id, product_id, media_id, role, sort_order"),
   all("content_media", "id, content_id, media_id, role, sort_order"),
 ]);
@@ -179,6 +179,75 @@ for (const [label, rows, keyName, lookup] of [
 }
 if (displaced === 0) console.log("  none (no target currently has both a generated hero and an attached real photograph)");
 
+// --- EXPLICIT CARD IMAGE THAT CANNOT BE USED ---------------------------------
+section("EXPLICIT CARD/THUMBNAIL THAT WILL BE IGNORED");
+let deadThumbs = 0;
+for (const [label, rows, keyName, lookup] of [
+  ["product", pm, "product_id", productById],
+  ["article", cm, "content_id", contentById],
+]) {
+  for (const [targetId, group] of groupBy(rows.filter((r) => r.role === "thumbnail"), keyName)) {
+    const usable = group.some((r) => assetById.get(r.media_id)?.publication_status === "published");
+    if (!usable) {
+      deadThumbs++;
+      console.log(`  ${label}: ${lookup.get(targetId)?.slug ?? targetId} — explicit card image is not published, so cards fall back to the hero`);
+    }
+  }
+}
+if (deadThumbs === 0) console.log("  none");
+
+// --- MORE THAN ONE EXPLICIT CARD IMAGE ---------------------------------------
+section("TARGETS WITH MORE THAN ONE EXPLICIT CARD/THUMBNAIL");
+let multiThumb = 0;
+for (const [label, rows, keyName, lookup] of [
+  ["product", pm, "product_id", productById],
+  ["article", cm, "content_id", contentById],
+]) {
+  for (const [targetId, group] of groupBy(rows.filter((r) => r.role === "thumbnail"), keyName)) {
+    if (group.length > 1) {
+      multiThumb++;
+      console.log(`  ${label}: ${lookup.get(targetId)?.slug ?? targetId} — ${group.length} thumbnail rows`);
+    }
+  }
+}
+if (multiThumb === 0) console.log("  none");
+
+// --- PUBLISHED PAGES POINTING AT PRIVATE ASSETS ------------------------------
+section("PUBLISHED PAGES REFERENCING A PRIVATE ASSET IN ANY PUBLIC SLOT");
+let privateRefs = 0;
+for (const r of pm) {
+  if (r.role === "gallery" && false) continue;
+  const a = assetById.get(r.media_id);
+  const p = productById.get(r.product_id);
+  if (p?.is_published && a && a.publication_status !== "published") {
+    privateRefs++;
+    console.log(`  product ${p.slug} [${r.role}]: asset is ${a.publication_status}`);
+  }
+}
+for (const r of cm) {
+  const a = assetById.get(r.media_id);
+  const c = contentById.get(r.content_id);
+  if (c?.status === "published" && a && a.publication_status !== "published") {
+    privateRefs++;
+    console.log(`  article ${c.slug} [${r.role}]: asset is ${a.publication_status}`);
+  }
+}
+if (privateRefs === 0) console.log("  none");
+
+// --- STORAGE OBJECTS THAT DO NOT EXIST ---------------------------------------
+section("MEDIA ROWS WHOSE STORAGE OBJECT IS MISSING");
+const privListing = await db.storage.from("media-private").list("image", { limit: 2000 });
+const privNames = new Set((privListing.data ?? []).map((o) => "image/" + o.name));
+let missingObjects = 0;
+for (const a of assets) {
+  if (!a.storage_path?.startsWith("image/")) continue;
+  if (!privNames.has(a.storage_path)) {
+    missingObjects++;
+    if (missingObjects <= 10) console.log(`  ${a.id.slice(0, 8)} "${(a.alt_text ?? "").slice(0, 44)}" -> ${a.storage_path}`);
+  }
+}
+console.log(`  total: ${missingObjects}`);
+
 // --- USAGE SPREAD -------------------------------------------------------------
 section("MOST-REUSED ASSETS");
 const useCount = new Map();
@@ -194,4 +263,8 @@ console.log(`same asset in two roles on one target: ${dupRole}`);
 console.log(`duplicate gallery entries: ${dupGallery}`);
 console.log(`unused assets: ${unused.length}`);
 console.log(`hero associations that cannot render: ${cannotRender}`);
+console.log(`explicit card images that will be ignored: ${deadThumbs}`);
+console.log(`targets with more than one explicit card image: ${multiThumb}`);
+console.log(`published pages referencing a private asset: ${privateRefs}`);
+console.log(`media rows whose storage object is missing: ${missingObjects}`);
 console.log("\nNothing was changed. Every item above is reported for human review.");

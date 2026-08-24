@@ -7,6 +7,7 @@ import { SubmitButton, ConfirmDeleteButton } from "@/components/admin/submit-but
 import { ReferenceForm, type ReferenceFieldConfig } from "@/components/admin/reference-form";
 import { SourceRecordsCard, EvidenceRecordsCard } from "@/components/admin/source-evidence-cards";
 import { MediaRequirementCard } from "@/components/admin/media-requirement-card";
+import { MediaSlots } from "@/components/admin/media-slots";
 import {
   updateProduct,
   updateProductTags,
@@ -214,6 +215,8 @@ export default async function EditProductPage({
           submitLabel="Save changes"
         />
       </div>
+
+      <MediaSlots kind="product" targetId={id} targetLabel={product.name} />
 
       <Card className="p-5">
         <h2 className="text-sm font-semibold text-neutral-900 mb-3">Tags</h2>

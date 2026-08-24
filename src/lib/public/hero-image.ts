@@ -2,7 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { mediaPublicUrl } from "@/lib/media/public-url";
 import { logQueryError } from "@/lib/log/query-error";
-import { chooseActiveHero } from "@/lib/media/hero-slot";
+import { chooseActiveHero, resolveCardImage, type SlotRow } from "@/lib/media/hero-slot";
 import { selectArticleHero, type HeroCandidate, type ProductLinkRole } from "@/lib/media/hero-selection";
 import type { MediaSourceType } from "@/lib/types/database";
 import { ROOT_LOCALE } from "@/lib/i18n/locales";
@@ -309,17 +309,31 @@ export async function attachHeroImages<T extends { id: string }>(
   const ids = rows.map((r) => r.id);
 
   try {
+    // Thumbnail AND hero, because a card prefers an explicit thumbnail and falls
+    // back to the hero. The 'thumbnail' role has existed since the initial
+    // schema and NO rendering path had ever read it, so assigning one did
+    // nothing at all. See resolveCardImage() for the rule.
     const linksResult =
       kind === "product"
-        ? await supabase.from("product_media").select("product_id, media_id").in("product_id", ids).eq("role", "hero")
-        : await supabase.from("content_media").select("content_id, media_id").in("content_id", ids).eq("role", "hero");
+        ? await supabase
+            .from("product_media")
+            .select("id, product_id, media_id, role, sort_order")
+            .in("product_id", ids)
+            .in("role", ["hero", "thumbnail"])
+        : await supabase
+            .from("content_media")
+            .select("id, content_id, media_id, role, sort_order")
+            .in("content_id", ids)
+            .in("role", ["hero", "thumbnail"]);
     logQueryError(`attachHeroImages(${kind}) links`, linksResult.error);
 
-    const links: { entityId: string; media_id: string }[] = (linksResult.data ?? []).map((l) =>
-      kind === "product"
-        ? { entityId: (l as { product_id: string; media_id: string }).product_id, media_id: l.media_id }
-        : { entityId: (l as { content_id: string; media_id: string }).content_id, media_id: l.media_id }
-    );
+    type RawSlotLink = { id: string; media_id: string; role: string; sort_order: number | null } & Record<string, unknown>;
+    const rawLinks = (linksResult.data ?? []) as unknown as RawSlotLink[];
+    const entityKey = kind === "product" ? "product_id" : "content_id";
+    const links: { entityId: string; media_id: string }[] = rawLinks.map((l) => ({
+      entityId: String(l[entityKey]),
+      media_id: l.media_id,
+    }));
 
     const assetByEntityId = new Map<string, HeroAssetRow>();
     if (links.length > 0) {
@@ -336,11 +350,34 @@ export async function attachHeroImages<T extends { id: string }>(
       logQueryError(`attachHeroImages(${kind}) assets`, assetError);
 
       const assetById = new Map((assets ?? []).map((a) => [a.id, a as unknown as HeroAssetRow]));
-      for (const link of links) {
-        if (assetByEntityId.has(link.entityId)) continue;
-        const asset = assetById.get(link.media_id);
+
+      // Group by entity, then apply thumbnail-over-hero per entity.
+      const rowsByEntity = new Map<string, SlotRow[]>();
+      for (const raw of rawLinks) {
+        const entityId = String(raw[entityKey]);
+        const asset = assetById.get(raw.media_id);
+        const list = rowsByEntity.get(entityId) ?? [];
+        list.push({
+          mediaId: raw.media_id,
+          rowId: raw.id,
+          role: raw.role as SlotRow["role"],
+          sortOrder: raw.sort_order ?? 0,
+          renderable:
+            (asset as unknown as { publication_status?: string; public_storage_path?: string | null } | undefined)
+              ?.publication_status === "published" &&
+            Boolean(
+              (asset as unknown as { public_storage_path?: string | null } | undefined)?.public_storage_path
+            ),
+        });
+        rowsByEntity.set(entityId, list);
+      }
+
+      for (const [entityId, slotRows] of rowsByEntity) {
+        const resolved = resolveCardImage(slotRows);
+        if (!resolved) continue;
+        const asset = assetById.get(resolved.mediaId);
         if (!asset) continue;
-        assetByEntityId.set(link.entityId, asset);
+        assetByEntityId.set(entityId, asset);
       }
     }
 

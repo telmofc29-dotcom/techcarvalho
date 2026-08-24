@@ -153,3 +153,81 @@ test("among renderable heroes, sort_order then row id decides — deterministica
 test("no hero rows yields null rather than throwing", () => {
   assert.equal(chooseActiveHero([]), null);
 });
+
+
+// ---------------------------------------------------------------------------
+// Card / thumbnail inheritance
+// ---------------------------------------------------------------------------
+//
+// The thumbnail role existed in the schema and the admin dropdown from the
+// start, and no public code ever read it. These lock in the inheritance the
+// owner asked for — explicit thumbnail beats hero, hero is reused when no
+// thumbnail is set — without a second image having to be associated twice.
+
+import { hasUnusableThumbnail, resolveCardImage, type SlotRow } from "./hero-slot.ts";
+
+const slot = (over: Partial<SlotRow> & { mediaId: string; role: SlotRow["role"] }): SlotRow => ({
+  rowId: "row-" + over.mediaId,
+  sortOrder: 0,
+  renderable: true,
+  ...over,
+});
+
+test("with no thumbnail, the card INHERITS the hero", () => {
+  const result = resolveCardImage([slot({ mediaId: "hero", role: "hero" })]);
+  assert.deepEqual(result, { mediaId: "hero", via: "hero", inherited: true });
+});
+
+test("an explicit thumbnail OVERRIDES the hero for cards", () => {
+  const result = resolveCardImage([
+    slot({ mediaId: "hero", role: "hero" }),
+    slot({ mediaId: "thumb", role: "thumbnail" }),
+  ]);
+  assert.deepEqual(result, { mediaId: "thumb", via: "thumbnail", inherited: false });
+});
+
+test("resolving a card image does NOT disturb the hero association", () => {
+  const rows = [slot({ mediaId: "hero", role: "hero" }), slot({ mediaId: "thumb", role: "thumbnail" })];
+  const snapshot = JSON.stringify(rows);
+  resolveCardImage(rows);
+  assert.equal(JSON.stringify(rows), snapshot, "resolution must be read-only");
+  assert.equal(rows.filter((r) => r.role === "hero").length, 1);
+  assert.equal(rows.find((r) => r.role === "hero")?.mediaId, "hero");
+});
+
+test("gallery images are never used as the card image", () => {
+  const result = resolveCardImage([
+    slot({ mediaId: "g1", role: "gallery" }),
+    slot({ mediaId: "g2", role: "gallery" }),
+  ]);
+  assert.equal(result, null);
+});
+
+test("an UNRENDERABLE thumbnail falls back to the hero rather than showing nothing", () => {
+  const result = resolveCardImage([
+    slot({ mediaId: "hero", role: "hero" }),
+    slot({ mediaId: "thumb", role: "thumbnail", renderable: false }),
+  ]);
+  assert.deepEqual(result, { mediaId: "hero", via: "hero", inherited: true });
+});
+
+test("...and that bypass is reported, not hidden", () => {
+  assert.equal(
+    hasUnusableThumbnail([
+      slot({ mediaId: "hero", role: "hero" }),
+      slot({ mediaId: "thumb", role: "thumbnail", renderable: false }),
+    ]),
+    true
+  );
+  assert.equal(hasUnusableThumbnail([slot({ mediaId: "hero", role: "hero" })]), false);
+  assert.equal(hasUnusableThumbnail([slot({ mediaId: "t", role: "thumbnail" })]), false);
+});
+
+test("an unrenderable hero yields nothing, so the caller keeps its own fallback", () => {
+  const result = resolveCardImage([slot({ mediaId: "hero", role: "hero", renderable: false })]);
+  assert.equal(result, null);
+});
+
+test("no associations at all yields null", () => {
+  assert.equal(resolveCardImage([]), null);
+});
