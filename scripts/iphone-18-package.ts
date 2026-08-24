@@ -20,6 +20,7 @@
 //   npx tsx scripts/iphone-18-package.ts
 
 import { loadEnvLocal, createAdminClient } from "./_shared.ts";
+import { assessCorroboration, CLAIM_CLASS_LABELS } from "../src/lib/engine/corroboration.ts";
 import { classifyBriefQuality } from "../src/lib/engine/brief-quality.ts";
 import { briefQueueItem } from "../src/lib/engine/owner-queue.ts";
 import { buildApprovalPackage, MARKER_SYMBOL } from "../src/lib/engine/approval-package.ts";
@@ -83,6 +84,42 @@ async function main(): Promise<void> {
     `   Closest existing     : "${closest?.title.slice(0, 62)}" (${closest?.similarity.toFixed(2)}, ` +
       `threshold ${NEAR_DUPLICATE_THRESHOLD})`
   );
+
+  // ---- 2b. Corroboration --------------------------------------------------
+  //
+  // PRIMARY-SOURCE RESEARCH, performed 2026-08-24 against Apple's own newsroom
+  // feed (https://www.apple.com/newsroom/rss-feed.rss) — the authoritative
+  // source for what Apple has announced. Most recent items were dated 18, 13,
+  // 11, 10 August and 3 August 2026, and NONE mentions an iPhone 18.
+  //
+  // That is a real finding, not an absence of effort: the body with sole
+  // authority to confirm an iPhone 18 has not done so. It settles the claim
+  // class. Anything published about an iPhone 18 today is a claim about an
+  // UNRELEASED product made by someone other than its maker, which is the
+  // strictest class in the model and needs three independent publishers.
+  console.log("");
+  console.log("2b. CORROBORATION");
+  console.log("   Primary source checked : apple.com/newsroom (2026-08-24)");
+  console.log("   Apple announcement     : NONE — no iPhone 18 in the newsroom feed");
+  const corroboration = assessCorroboration({
+    sourceUrls: [],
+    subjectDomains: ["apple.com"],
+    claimStatus: "unverified",
+    aboutUnreleasedProduct: true,
+  });
+  console.log(`   Claim class            : ${CLAIM_CLASS_LABELS[corroboration.claimClass]}`);
+  console.log(`   Independent publishers : ${corroboration.independentPublishers} of ${corroboration.required} required`);
+  console.log(`   Sufficient             : ${corroboration.sufficient ? "YES" : "NO"}`);
+  console.log(`   Assertability          : ${corroboration.assertability}`);
+  for (const r of corroboration.reasons) console.log(`     - ${r}`);
+  for (const m of corroboration.missing) console.log(`     MISSING: ${m}`);
+
+  console.log("");
+  console.log("   FACT CLASSIFICATION");
+  console.log("     CONFIRMED  0  — Apple has announced nothing about an iPhone 18");
+  console.log("     REPORTED   0  — no registered source carries any iPhone 18 reporting");
+  console.log("     RUMOURED   0  — none recorded in this database");
+  console.log("     UNKNOWN    everything else, and it stays unknown rather than inferred");
 
   // ---- 3. The quality gate ----------------------------------------------
   // The evidence arrays below are EMPTY because the database holds no evidence

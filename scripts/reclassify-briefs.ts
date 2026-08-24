@@ -15,6 +15,7 @@
 //   npx tsx scripts/reclassify-briefs.ts --verbose  (per-brief reasons)
 
 import { loadEnvLocal, createAdminClient } from "./_shared.ts";
+import { hostOf, registrableDomain } from "../src/lib/engine/independence.ts";
 import {
   classifyBriefQuality,
   summariseQuality,
@@ -81,10 +82,70 @@ async function main(): Promise<void> {
   }
   const existingTitles = (published ?? []).map((c: { title: string }) => c.title);
 
+  // Corroboration context, resolved from recorded data only. A brief whose
+  // discovery names no manufacturer, or whose manufacturer records no website,
+  // is simply absent here and falls back to the strict flat rule.
+  // First-party domains: those a registered `primary`-trust source publishes
+  // on. See corroboration-context.ts for why trust_level is the right signal
+  // and manufacturer_id is not.
+  const context = new Map<
+    string,
+    { claimStatus: string; subjectDomains: string[]; aboutUnreleasedProduct: boolean }
+  >();
+  const { data: srcRows, error: srcErr } = await db
+    .from("engine_sources")
+    .select("url, trust_level")
+    .eq("trust_level", "primary");
+  if (srcErr) {
+    console.error(`Source registry read failed: ${srcErr.message} — falling back to the strict rule.`);
+  } else {
+    const firstParty = new Set<string>();
+    for (const s of (srcRows ?? []) as { url: string }[]) {
+      const d = registrableDomain(hostOf(s.url));
+      if (d) firstParty.add(d.toLowerCase());
+    }
+
+    const discoveryIds = [...new Set(rows.map((r) => r.discovery_id).filter((v): v is string => !!v))];
+    const claimById = new Map<string, string>();
+    if (discoveryIds.length > 0) {
+      const { data: discs } = await db
+        .from("engine_discoveries")
+        .select("id, claim_status")
+        .in("id", discoveryIds);
+      for (const d of (discs ?? []) as { id: string; claim_status: string }[]) {
+        claimById.set(d.id, d.claim_status);
+      }
+    }
+
+    for (const row of rows) {
+      const subjectDomains = [
+        ...new Set(
+          (row.source_urls ?? [])
+            .map((u) => registrableDomain(hostOf(u))?.toLowerCase())
+            .filter((d): d is string => !!d && firstParty.has(d))
+        ),
+      ];
+      if (subjectDomains.length === 0) continue;
+      context.set(row.id, {
+        claimStatus: row.discovery_id ? (claimById.get(row.discovery_id) ?? "unverified") : "unverified",
+        subjectDomains,
+        aboutUnreleasedProduct: false,
+      });
+    }
+  }
+
   const verdicts: { row: Row; verdict: BriefQualityVerdict }[] = rows.map((row) => {
+    const ctx = context.get(row.id);
     const input: BriefQualityInput = {
       id: row.id,
       title: row.proposed_title,
+      ...(ctx
+        ? {
+            claimStatus: ctx.claimStatus as never,
+            subjectDomains: ctx.subjectDomains,
+            aboutUnreleasedProduct: ctx.aboutUnreleasedProduct,
+          }
+        : {}),
       briefKind: row.brief_kind,
       contentType: row.content_type,
       verifiedFacts: row.verified_facts ?? [],

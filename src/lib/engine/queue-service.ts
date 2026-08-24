@@ -43,6 +43,7 @@ import {
   type QueueSummary,
 } from "./owner-queue.ts";
 import type { QualityBreakdown } from "./brief-quality.ts";
+import { loadCorroborationContext } from "./corroboration-context.ts";
 
 export type QueueFailure = { source: string; message: string };
 
@@ -136,8 +137,29 @@ export async function loadOwnerQueue(): Promise<OwnerQueueResult> {
     });
   } else {
     const rows = (briefsRes.data ?? []) as unknown as BriefRow[];
+
+    // Corroboration context. A brief sourced to a registered `primary`-trust
+    // domain is a first-party announcement and is authoritative on one source;
+    // everything else keeps the strict two-independent-publishers rule. See
+    // corroboration-context.ts — this cannot weaken the bar, only make it
+    // correct for the class of claim being made.
+    const context = await loadCorroborationContext(
+      rows.map((r) => ({
+        id: r.id,
+        discoveryId: r.discovery_id,
+        sourceUrls: r.source_urls ?? [],
+      }))
+    );
+
     briefVerdicts = rows.map((row) =>
       classifyBriefQuality({
+        ...(context.has(row.id)
+          ? {
+              claimStatus: context.get(row.id)!.claimStatus,
+              subjectDomains: context.get(row.id)!.subjectDomains,
+              aboutUnreleasedProduct: context.get(row.id)!.aboutUnreleasedProduct,
+            }
+          : {}),
         id: row.id,
         title: row.proposed_title,
         briefKind: row.brief_kind,

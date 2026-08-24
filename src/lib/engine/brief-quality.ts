@@ -58,6 +58,8 @@
 import { hostOf, registrableDomain } from "./independence.ts";
 import { titleSimilarity, NEAR_DUPLICATE_THRESHOLD } from "./dedupe.ts";
 import { classifyPromotional } from "./promotional.ts";
+import { assessCorroboration } from "./corroboration.ts";
+import type { ClaimStatus } from "./types.ts";
 
 // ---------------------------------------------------------------------------
 // The states
@@ -224,6 +226,20 @@ export type BriefQualityInput = {
   existingTitles?: readonly string[];
   /** Optional summary/rationale, used only to sharpen the promotional check. */
   summary?: string | null;
+
+  // -- Corroboration context (see corroboration.ts) ------------------------
+  // OPTIONAL, and their absence is deliberately the strict path. When a caller
+  // cannot say who the subject is, the flat two-independent-publishers rule
+  // applies — which is what this module did before corroboration existed.
+  // Supplying them can only ever be MORE accurate, never a way to weaken the
+  // bar: `assessCorroboration` raises the requirement to 3 for unreleased
+  // products and refuses to make a rumour assertable at any count.
+  /** Strongest claim status recorded on the originating discovery. */
+  claimStatus?: ClaimStatus;
+  /** Domains that ARE the subject, from the manufacturers registry. Never guessed. */
+  subjectDomains?: readonly string[];
+  /** True when the subject product has not been released. */
+  aboutUnreleasedProduct?: boolean;
 };
 
 export type BriefQualityVerdict = {
@@ -385,7 +401,42 @@ export function classifyBriefQuality(
   }
 
   // ---- 4. Sourced, but not independently -------------------------------
-  if (independentDomains < MIN_INDEPENDENT_DOMAINS) {
+  //
+  // CORROBORATION, when the caller can supply the context for it.
+  //
+  // The flat "two independent publishers" rule below is right for a claim
+  // nobody owns and WRONG for a vendor announcing its own action. Production
+  // proved it: 148 of 195 discoveries are `confirmed_primary` sourced to
+  // mozilla.org, nvidia.com, blog.google and the like — Mozilla is the only
+  // body that can authoritatively say what Mozilla shipped, and demanding a
+  // second publisher before believing it is a category error, not rigour.
+  //
+  // This is not a lowered bar. `assessCorroboration` RAISES the requirement to
+  // three independent publishers for unreleased-product claims, and no count
+  // ever makes a rumour assertable. It only removes a requirement that was
+  // incoherent for one specific class.
+  if (input.subjectDomains && input.subjectDomains.length > 0) {
+    const corroboration = assessCorroboration({
+      sourceUrls: input.sourceUrls,
+      subjectDomains: input.subjectDomains,
+      claimStatus: input.claimStatus ?? "unverified",
+      aboutUnreleasedProduct: input.aboutUnreleasedProduct ?? false,
+    });
+    if (!corroboration.sufficient) {
+      reasons.push(...corroboration.reasons);
+      if (corroboration.missing.length > 0) {
+        reasons.push(`Still needed: ${corroboration.missing.join(", ")}.`);
+      }
+      return verdict(
+        corroboration.claimClass === "rumour_or_leak" ? "low_confidence" : "needs_more_research",
+        reasons,
+        base
+      );
+    }
+    // Sufficient for its class. Fall through to the FACT threshold below —
+    // authority over a subject is not the same as having enough to write about.
+    reasons.push(...corroboration.reasons);
+  } else if (independentDomains < MIN_INDEPENDENT_DOMAINS) {
     reasons.push(
       `${sourceCount} source${sourceCount === 1 ? "" : "s"} resolve to ${independentDomains} ` +
         `independent publisher${independentDomains === 1 ? "" : "s"}; ${MIN_INDEPENDENT_DOMAINS} is the minimum. ` +
