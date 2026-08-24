@@ -10,7 +10,8 @@ import { AdminFilterSelect } from "@/components/admin/filter-select";
 import { Pagination } from "@/components/admin/pagination";
 import { MediaGrid } from "./media-grid";
 import { getMediaComposition } from "@/lib/admin/media-composition";
-import type { MediaRightsStatus, MediaSourceType } from "@/lib/types/database";
+import type { MediaAssetRole, MediaRightsStatus, MediaSourceType } from "@/lib/types/database";
+import { ASSET_ROLE_OPTIONS, VALID_ASSET_ROLES } from "@/lib/media/form-options";
 
 const RIGHTS_FILTERS: { label: string; value: MediaRightsStatus | "" }[] = [
   { label: "All", value: "" },
@@ -42,10 +43,12 @@ export default async function MediaListPage({
     source?: string;
     status?: string;
     brand?: string;
+    role?: string;
+    usage?: string;
   }>;
 }) {
   await requireAdmin();
-  const { q: rawQ, page: rawPage, rights, type, source, status, brand } = await searchParams;
+  const { q: rawQ, page: rawPage, rights, type, source, status, brand, role, usage } = await searchParams;
   const q = rawQ ? sanitizeSearchTerm(rawQ) : "";
   const page = parsePage(rawPage);
   const from = (page - 1) * ADMIN_PAGE_SIZE;
@@ -69,6 +72,29 @@ export default async function MediaListPage({
   if (brand === "brand") query = query.not("brand_role", "is", null);
   if (brand === "editorial") query = query.is("brand_role", null);
 
+  // Editorial role — "what is this image?" — which the library could filter on
+  // nowhere, despite it being the field that separates a product photograph
+  // from a concept render.
+  if (role === "__unset") query = query.is("asset_role", null);
+  else if (role && VALID_ASSET_ROLES.includes(role as MediaAssetRole)) {
+    query = query.eq("asset_role", role as MediaAssetRole);
+  }
+
+  // Usage. Attached/unattached needs the join tables, so it is applied as an id
+  // filter rather than a column filter.
+  if (usage === "attached" || usage === "unattached") {
+    const [{ data: pmRows }, { data: cmRows }] = await Promise.all([
+      supabase.from("product_media").select("media_id"),
+      supabase.from("content_media").select("media_id"),
+    ]);
+    const usedIds = [...new Set([...(pmRows ?? []).map((r) => r.media_id), ...(cmRows ?? []).map((r) => r.media_id)])];
+    if (usage === "attached") {
+      query = usedIds.length > 0 ? query.in("id", usedIds) : query.eq("id", "00000000-0000-0000-0000-000000000000");
+    } else if (usedIds.length > 0) {
+      query = query.not("id", "in", `(${usedIds.join(",")})`);
+    }
+  }
+
   const { data, count, error } = await query;
   // What the library is MADE OF, not merely how many rows it has. "112 assets"
   // was accurate and told nobody that 65 of them are generated graphics and
@@ -79,7 +105,7 @@ export default async function MediaListPage({
   const previewUrls = await Promise.all(media.map((m) => getAdminPreviewUrl(m)));
   const items = media.map((m, i) => ({ ...m, previewUrl: previewUrls[i] }));
 
-  const otherParams = { q, rights, type, source, status, brand };
+  const otherParams = { q, rights, type, source, status, brand, role, usage };
 
   return (
     <div>
@@ -199,6 +225,32 @@ export default async function MediaListPage({
             otherParams={otherParams}
             action="/admin/media"
           />
+          {/* What the image IS — the field that separates a product photograph
+              from a concept render, and which the library could not filter on. */}
+          <AdminFilterSelect
+            label="Editorial role"
+            paramName="role"
+            value={role}
+            options={[
+              { value: "__unset", label: "Not set" },
+              ...ASSET_ROLE_OPTIONS.map((o) => ({ value: o.value, label: o.label })),
+            ]}
+            otherParams={otherParams}
+            action="/admin/media"
+          />
+          {/* "Which of these is doing nothing?" was previously unanswerable
+              without running the audit script. */}
+          <AdminFilterSelect
+            label="Usage"
+            paramName="usage"
+            value={usage}
+            options={[
+              { value: "attached", label: "Used somewhere" },
+              { value: "unattached", label: "Not used anywhere" },
+            ]}
+            otherParams={otherParams}
+            action="/admin/media"
+          />
         </div>
       </div>
 
@@ -207,9 +259,9 @@ export default async function MediaListPage({
       {items.length === 0 ? (
         !error && (
           <EmptyState
-            title={q || rights || type || source || status || brand ? "No media matches your filters" : "No media uploaded yet"}
+            title={q || rights || type || source || status || brand || role || usage ? "No media matches your filters" : "No media uploaded yet"}
             action={
-              !q && !rights && !type && !source && !status && !brand ? (
+              !q && !rights && !type && !source && !status && !brand && !role && !usage ? (
                 <LinkButton href="/admin/media/new">Upload media</LinkButton>
               ) : undefined
             }

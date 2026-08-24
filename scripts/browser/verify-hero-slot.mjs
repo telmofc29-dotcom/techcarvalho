@@ -49,6 +49,33 @@ async function totals() {
   return { assets: a.count ?? 0, productMedia: pm.count ?? 0, contentMedia: cm.count ?? 0 };
 }
 
+
+/**
+ * Choose a role for a target in the searchable association picker.
+ *
+ * The picker deliberately does NOT render every article and product up front —
+ * that was the point of replacing it. An unattached target therefore has to be
+ * searched for before its role control exists, and its control is named
+ * __pick_<id> until it is saved, after which it becomes role_<id>.
+ */
+async function pickRole(page, targetId, searchLabel, searchText, role) {
+  const attached = page.locator(`select[name="role_${targetId}"]`);
+  if ((await attached.count()) === 1) {
+    await attached.selectOption(role);
+    return true;
+  }
+  const box = page.getByLabel(searchLabel);
+  if ((await box.count()) === 0) return false;
+  await box.fill(searchText);
+  const picker = page.locator(`select[name="__pick_${targetId}"]`);
+  for (let i = 0; i < 40 && (await picker.count()) === 0; i++) {
+    await page.waitForTimeout(250);
+  }
+  if ((await picker.count()) === 0) return false;
+  await picker.selectOption(role);
+  return true;
+}
+
 const created = { assets: [], content: [], product: [] };
 
 async function seedAsset(label) {
@@ -135,9 +162,8 @@ try {
   // ---- ARTICLE: assign B as hero while A holds it -------------------------
   await page.goto(`${BASE}/admin/media/${assetB}`, { waitUntil: "networkidle" });
 
-  const articleSelect = page.locator(`select[name="role_${articleId}"]`);
-  check("article association control is present on the new asset", (await articleSelect.count()) === 1);
-  await articleSelect.selectOption("hero");
+  check("article association control reachable via search",
+    await pickRole(page, articleId, "Search articles", TAG, "hero"));
   await page.getByRole("button", { name: "Save content associations" }).click();
   await page.waitForTimeout(4000);
 
@@ -154,7 +180,7 @@ try {
 
   // ---- Choose Replace ------------------------------------------------------
   await page.locator(`input[name="hero_decision_${articleId}"][value="replace"]`).check();
-  await page.getByRole("button", { name: /Apply choices/ }).click();
+  await page.getByRole("button", { name: /Confirm and apply/ }).click();
   await page.waitForTimeout(5000);
 
   const { data: articleRows } = await db.from("content_media").select("media_id, role").eq("content_id", articleId);
@@ -171,15 +197,13 @@ try {
 
   // ---- PRODUCT: same behaviour, choosing Add to gallery --------------------
   await page.goto(`${BASE}/admin/media/${assetB}`, { waitUntil: "networkidle" });
-  const productSelect = page.locator(`select[name="role_${productId}"]`);
-  if ((await productSelect.count()) === 1) {
-    await productSelect.selectOption("hero");
+  if (await pickRole(page, productId, "Search products", TAG, "hero")) {
     await page.getByRole("button", { name: "Save product associations" }).click();
     await page.waitForTimeout(4000);
     check("PRODUCT collision also detected", /already has a hero image/i.test(await page.locator("body").innerText()));
 
     await page.locator(`input[name="hero_decision_${productId}"][value="add_to_gallery"]`).check();
-    await page.getByRole("button", { name: /Apply choices/ }).click();
+    await page.getByRole("button", { name: /Confirm and apply/ }).click();
     await page.waitForTimeout(5000);
 
     const { data: productRows } = await db.from("product_media").select("media_id, role").eq("product_id", productId);

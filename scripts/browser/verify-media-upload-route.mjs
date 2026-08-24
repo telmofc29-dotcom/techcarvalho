@@ -188,7 +188,9 @@ async function uploadOnce(label, assetRole, sourceType, tickOwned) {
   if (assetRole) await page.selectOption("#asset_role", assetRole);
   await page.click("button[aria-expanded]");
   await page.waitForTimeout(300);
-  if (tickOwned) await page.check("#owned");
+  // Ownership now comes from the batch classification question rather than a
+  // lone "owned" checkbox, so this selects the preset the owner would.
+  if (tickOwned) await page.locator('input[name="__batch_preset"][value="tc_photograph"]').check();
   else if (sourceType) await page.selectOption("#source_type", sourceType);
   await page.getByRole("button", { name: /^Upload/ }).click();
   await page.waitForTimeout(9000);

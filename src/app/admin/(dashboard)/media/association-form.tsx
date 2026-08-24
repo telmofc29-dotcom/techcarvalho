@@ -49,6 +49,12 @@ export function MediaAssociationForm({
         </div>
       )}
 
+      {state.savedAt && !state.error && collisions.length === 0 && state.savedMessage && (
+        <div role="status" className="rounded-lg border border-green-200 bg-green-50 p-3">
+          <p className="text-sm text-green-800">{state.savedMessage}</p>
+        </div>
+      )}
+
       {collisions.length > 0 && (
         <div role="alert" className="flex flex-col gap-4 rounded-lg border border-amber-300 bg-amber-50 p-4">
           <div>
@@ -84,17 +90,33 @@ export function MediaAssociationForm({
               newAssetPreviewUrl={newAssetPreviewUrl}
             />
           ))}
+
+          {/* The action lives INSIDE the panel, next to the choice it applies.
+              It was previously only at the foot of the form — below every
+              article row — so after choosing "Replace existing hero" there was
+              nothing visible to press, and the change appeared not to apply.
+              A decision and the button that commits it belong together. */}
+          <div className="flex flex-wrap items-center gap-3 border-t border-amber-200 pt-3">
+            <SubmitButton pendingLabel="Applying…">
+              {collisions.length === 1 ? "Confirm and apply" : `Confirm and apply ${collisions.length} choices`}
+            </SubmitButton>
+            <span className="text-xs text-amber-900/80">Nothing is saved until you press this.</span>
+          </div>
         </div>
       )}
 
       {children}
 
-      <div className="flex items-center gap-3">
-        <SubmitButton pendingLabel="Saving...">
-          {collisions.length > 0 ? "Apply choices" : submitLabel}
-        </SubmitButton>
-        {state.savedAt && !state.error && <span className="text-xs text-green-700">Saved.</span>}
-      </div>
+      {/* While a hero decision is pending the only action is the one inside the
+          panel above, so a second button here would just be a way to miss it. */}
+      {collisions.length === 0 && (
+        <div className="flex items-center gap-3">
+          <SubmitButton pendingLabel="Saving...">{submitLabel}</SubmitButton>
+          {state.savedAt && !state.error && (
+            <span className="text-sm text-green-700">{state.savedMessage ?? "Saved."}</span>
+          )}
+        </div>
+      )}
     </form>
   );
 }

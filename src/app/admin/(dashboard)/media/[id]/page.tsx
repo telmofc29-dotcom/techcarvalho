@@ -10,7 +10,10 @@ import { ConfirmDeleteButton } from "@/components/admin/submit-button";
 import { ReferenceForm, type ReferenceFieldConfig } from "@/components/admin/reference-form";
 import { ActionForm } from "@/components/admin/action-form";
 import { MediaAssociationForm } from "../association-form";
+import { AssociationPicker } from "../association-picker";
 import { MediaUsage } from "./media-usage";
+import { ClassificationCard } from "./classification-card";
+import { detectPreset } from "@/lib/media/classification-presets";
 import { ASSET_ROLE_OPTIONS, BRAND_ROLE_OPTIONS, SOURCE_TYPE_OPTIONS, RIGHTS_STATUS_OPTIONS, EDITED_FIELDS_INPUT } from "@/lib/media/form-options";
 import { PublishToggle } from "../publish-toggle";
 import {
@@ -19,6 +22,7 @@ import {
   deleteMediaAsset,
   updateMediaProductAssociations,
   updateMediaContentAssociations,
+  classifyMediaAsset,
 } from "../actions";
 
 // Exactly the provenance fields this form renders an input for. The action
@@ -56,12 +60,14 @@ export default async function EditMediaPage({
   const [previewUrl, supabase] = await Promise.all([getAdminPreviewUrl(asset), createClient()]);
   const [{ data: allProducts }, { data: productLinks }, { data: allContent }, { data: contentLinks }] =
     await Promise.all([
-      supabase.from("products").select("id, name").order("name"),
+      supabase.from("products").select("id, name, is_published, category_id").order("name"),
       supabase.from("product_media").select("product_id, role").eq("media_id", id),
-      supabase.from("content_items").select("id, title").order("title"),
+      supabase.from("content_items").select("id, title, status, type").order("title"),
       supabase.from("content_media").select("content_id, role").eq("media_id", id),
     ]);
 
+  const { data: allCategories } = await supabase.from("taxonomy_categories").select("id, name");
+  const categoryNameById = new Map((allCategories ?? []).map((c) => [c.id, c.name]));
   const productRoleById = new Map((productLinks ?? []).map((r) => [r.product_id, r.role]));
   const contentRoleById = new Map((contentLinks ?? []).map((r) => [r.content_id, r.role]));
   const productIds = (allProducts ?? []).map((p) => p.id);
@@ -139,6 +145,20 @@ export default async function EditMediaPage({
           submitLabel="Save changes"
         />
       </div>
+
+      <Card className="p-5">
+        <h2 className="text-sm font-semibold text-neutral-900 mb-1">Where did this file come from?</h2>
+        <p className="mb-3 text-xs text-neutral-500">
+          One question. For anything TechCarvalho made, this is the only step needed — ownership, source type and
+          rights are recorded together. External media still needs its real provenance entered by hand.
+        </p>
+        <ClassificationCard
+          action={classifyMediaAsset.bind(null, id)}
+          currentPreset={detectPreset(asset)}
+          isUnclassified={detectPreset(asset) === null || asset.rights_status === "unknown"}
+          aiGenerated={asset.ai_generated ?? false}
+        />
+      </Card>
 
       <MediaUsage mediaId={id} />
 
@@ -267,19 +287,17 @@ export default async function EditMediaPage({
             newAssetAlt={asset.alt_text}
             newAssetPreviewUrl={previewUrl}
           >
-            <div className="flex flex-col gap-2">
-              {(allProducts ?? []).map((product) => (
-                <div key={product.id} className="flex items-center gap-3">
-                  <span className="text-sm text-neutral-800 flex-1">{product.name}</span>
-                  <Select name={`role_${product.id}`} defaultValue={productRoleById.get(product.id) ?? ""} className="w-40">
-                    <option value="">Not linked</option>
-                    <option value="hero">Hero</option>
-                    <option value="gallery">Gallery</option>
-                    <option value="thumbnail">Thumbnail</option>
-                  </Select>
-                </div>
-              ))}
-            </div>
+            <AssociationPicker
+              kindLabel="products"
+              facetLabel="categories"
+              targets={(allProducts ?? []).map((product) => ({
+                id: product.id,
+                label: product.name,
+                facet: categoryNameById.get(product.category_id ?? "") ?? null,
+                status: product.is_published ? "published" : "draft",
+                currentRole: productRoleById.get(product.id) ?? null,
+              }))}
+            />
           </MediaAssociationForm>
         )}
       </Card>
@@ -295,19 +313,17 @@ export default async function EditMediaPage({
             newAssetAlt={asset.alt_text}
             newAssetPreviewUrl={previewUrl}
           >
-            <div className="flex flex-col gap-2">
-              {(allContent ?? []).map((item) => (
-                <div key={item.id} className="flex items-center gap-3">
-                  <span className="text-sm text-neutral-800 flex-1">{item.title}</span>
-                  <Select name={`role_${item.id}`} defaultValue={contentRoleById.get(item.id) ?? ""} className="w-40">
-                    <option value="">Not linked</option>
-                    <option value="hero">Hero</option>
-                    <option value="gallery">Gallery</option>
-                    <option value="thumbnail">Thumbnail</option>
-                  </Select>
-                </div>
-              ))}
-            </div>
+            <AssociationPicker
+              kindLabel="articles"
+              facetLabel="types"
+              targets={(allContent ?? []).map((item) => ({
+                id: item.id,
+                label: item.title,
+                facet: item.type ?? null,
+                status: item.status,
+                currentRole: contentRoleById.get(item.id) ?? null,
+              }))}
+            />
           </MediaAssociationForm>
         )}
       </Card>

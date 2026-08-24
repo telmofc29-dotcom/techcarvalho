@@ -10,6 +10,7 @@ import { evaluatePublishEligibility } from "@/lib/media/rights";
 import { resolvePublicationSource } from "@/lib/media/publication-source";
 import type { MediaType, MediaRole, MediaSourceType, MediaRightsStatus, MediaBrandRole, MediaAssetRole, Insert } from "@/lib/types/database";
 import { explainProvenanceRequirement, stampModificationAssessment } from "@/lib/media/provenance-invariant";
+import { presetById } from "@/lib/media/classification-presets";
 import { checkUploadCandidate, isIssuedStoragePath, sanitizeFileName } from "@/lib/media/upload-limits";
 import { getAdminPreviewUrl } from "@/lib/media/admin-preview-url";
 import {
@@ -701,6 +702,8 @@ export type AssociationState = {
   pendingRoles?: { targetId: string; role: MediaRole }[];
   /** Set after a save that actually changed something. */
   savedAt?: string;
+  /** What actually happened, in words the admin can check against. */
+  savedMessage?: string;
 };
 
 const HERO_DECISIONS = new Set(["replace", "add_to_gallery", "cancel"]);
@@ -853,7 +856,26 @@ async function saveAssociations(input: {
 
   revalidatePath("/admin/media/" + mediaId);
   revalidatePath("/admin/media");
-  return { error: null, savedAt: new Date().toISOString() };
+
+  // Say what happened, not just that something did. "Saved." after a hero
+  // replacement leaves the admin to go and check whether the old image
+  // survived.
+  const replaced = plannedDemotions.length;
+  const keptCount = [...decisions.values()].filter((d) => d === "add_to_gallery").length;
+  const cancelled = [...decisions.values()].filter((d) => d === "cancel").length;
+  const parts: string[] = [];
+  if (replaced > 0) {
+    parts.push(
+      replaced === 1
+        ? "Hero replaced successfully. The previous hero was kept in the gallery."
+        : `${replaced} heroes replaced. Each previous hero was kept in its gallery.`
+    );
+  }
+  if (keptCount > 0) parts.push(`${keptCount} existing hero${keptCount === 1 ? "" : "es"} kept; this image was added to the gallery instead.`);
+  if (cancelled > 0) parts.push(`${cancelled} left unchanged.`);
+  if (parts.length === 0) parts.push("Associations saved.");
+
+  return { error: null, savedAt: new Date().toISOString(), savedMessage: parts.join(" ") };
 }
 
 /** Human labels for the targets named in a collision. */
@@ -919,4 +941,58 @@ export async function updateMediaContentAssociations(
     targetIds: contentIds,
     formData,
   });
+}
+
+/**
+ * Apply a "where did this come from?" classification.
+ *
+ * The whole point is that the owner states ONE fact — who made this and what it
+ * is — and the legitimate metadata follows. It writes only the fields the chosen
+ * preset covers; everything else on the row is left alone (the same PATCH
+ * discipline the provenance form uses).
+ *
+ * It never invents a source URL, licence, creator or attribution. The external
+ * preset deliberately records almost nothing and leaves real provenance to be
+ * typed in by hand.
+ *
+ * The provenance invariant is still checked before writing, so this cannot be
+ * used as a way round the constraint — it is a way to satisfy it honestly.
+ */
+export async function classifyMediaAsset(
+  id: string,
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const admin = await requireAdmin();
+
+  const presetId = String(formData.get("preset") ?? "");
+  const preset = presetById(presetId);
+  if (!preset) return { error: "Choose where this file came from." };
+  if (preset.id === "unclassified") return { error: null };
+
+  const existing = await getRowById("media_assets", id);
+  if (!existing) return { error: "This media asset no longer exists." };
+
+  const patch: Record<string, unknown> = { ...preset.patch };
+
+  // "AI-generated" is a fact about how the file was made, not something a
+  // classification can assume. The render presets ask; a concept render is
+  // machine-made speculation by definition and the preset already fixes it.
+  if (preset.id === "tc_render") {
+    patch.ai_generated = formData.get("ai_generated") === "on";
+  }
+
+  const merged = { ...existing, ...patch };
+  const problem = explainProvenanceRequirement(merged);
+  if (problem) return { error: problem };
+
+  try {
+    await updateRow("media_assets", id, stampModificationAssessment(patch, admin.id, new Date().toISOString()));
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Could not save the classification." };
+  }
+
+  revalidatePath("/admin/media");
+  revalidatePath(`/admin/media/${id}`);
+  return { error: null };
 }

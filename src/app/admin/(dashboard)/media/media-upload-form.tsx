@@ -7,6 +7,7 @@ import { Field, TextInput, Textarea, Select, Checkbox } from "@/components/admin
 import { createMediaUploadTicket, finaliseMediaUpload } from "./actions";
 import { createClient } from "@/lib/supabase/client";
 import { MEDIA_PRIVATE_BUCKET } from "@/lib/media/constants";
+import { CLASSIFICATION_PRESETS, type ClassificationPresetId } from "@/lib/media/classification-presets";
 import {
   ACCEPTED_FORMATS_LABEL,
   ACCEPTED_IMAGE_TYPES,
@@ -64,7 +65,12 @@ export function MediaUploadForm({ existingFileNames }: { existingFileNames: stri
   const [isDragOver, setIsDragOver] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [owned, setOwned] = useState(false);
+  const [preset, setPreset] = useState<ClassificationPresetId | "">("");
+  // Ownership is no longer a checkbox of its own: it follows from the answer
+  // to "where did these come from?", which is the question the owner can
+  // actually answer.
+  const chosenPreset = CLASSIFICATION_PRESETS.find((p) => p.id === preset) ?? null;
+  const owned = chosenPreset?.patch.owned === true;
   const [assetRole, setAssetRole] = useState("");
   const [batchDone, setBatchDone] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -335,6 +341,71 @@ export function MediaUploadForm({ existingFileNames }: { existingFileNames: stri
         </ul>
       )}
 
+      {/* Where did these files come from? Asked BEFORE upload, because the
+          answer decides whether anything else is even required — and because a
+          batch of our own renders arriving as "unknown" was the single biggest
+          source of unusable media in the library. */}
+      <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-4">
+        <div>
+          <h2 className="text-sm font-semibold text-neutral-900">Where did these files come from?</h2>
+          <p className="mt-1 text-xs text-neutral-500">
+            Applies to every file in this batch; you can change any of them individually afterwards. For anything
+            TechCarvalho made this is the only classification needed. Nothing here invents a source, licence or
+            creator for someone else&apos;s work.
+          </p>
+        </div>
+        <fieldset className="flex flex-col gap-2">
+          <legend className="sr-only">Batch source</legend>
+          {CLASSIFICATION_PRESETS.map((option) => (
+            <label
+              key={option.id}
+              className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 ${
+                preset === option.id ? "border-neutral-900 bg-neutral-50" : "border-neutral-200 bg-white"
+              }`}
+            >
+              <input
+                type="radio"
+                name="__batch_preset"
+                value={option.id}
+                checked={preset === option.id}
+                onChange={() => {
+                  setPreset(option.id);
+                  // Drive the visible Editorial role select rather than
+                  // shadowing it with a hidden field — otherwise choosing a
+                  // preset would silently override a role the owner then picked
+                  // by hand, with no indication which had won.
+                  if (option.patch.asset_role) setAssetRole(option.patch.asset_role);
+                }}
+                className="mt-1"
+              />
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-neutral-900">{option.label}</span>
+                <span className="mt-0.5 block text-xs leading-relaxed text-neutral-600">{option.help}</span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+
+        {/* Only legitimate, asserted facts travel with the batch. */}
+        {chosenPreset?.patch.owned === true && <input type="hidden" name="owned" value="on" />}
+        {chosenPreset?.patch.source_type && (
+          <input type="hidden" name="source_type" value={chosenPreset.patch.source_type} />
+        )}
+        {chosenPreset?.patch.rights_status && (
+          <input type="hidden" name="rights_status" value={chosenPreset.patch.rights_status} />
+        )}
+        {/* asset_role is applied to the visible select above, not hidden here.
+            ai_generated for a concept render is emitted by the concept-render
+            notice itself, which is also where the consequences are explained. */}
+
+        {chosenPreset?.requiresManualProvenance && (
+          <p className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900">
+            External media needs its real source URL, licence and creator. Open Advanced below and enter them, or
+            upload now and add them per asset afterwards — it stays private until they are recorded.
+          </p>
+        )}
+      </div>
+
       {/* Basic metadata — applies to the whole batch */}
       <div className="flex flex-col gap-4">
         <h2 className="text-sm font-semibold text-neutral-900">Basic</h2>
@@ -413,28 +484,16 @@ export function MediaUploadForm({ existingFileNames }: { existingFileNames: stri
         </button>
         {advancedOpen && (
           <div className="flex flex-col gap-4 border-t border-neutral-200 p-4">
-            <Checkbox
-              id="owned"
-              name="owned"
-              label="Owned by Tech Carvalho (no external license needed)"
-              checked={owned}
-              onChange={(e) => setOwned(e.target.checked)}
-            />
+            {/* Ownership, source type and rights now come from the batch
+                classification above, so this panel no longer offers a second,
+                conflicting way to set them. It carries the fields that are only
+                ever needed for someone else's work. */}
             {owned ? (
               <>
-                <input type="hidden" name="rights_status" value="verified" />
-                {/* Ticking "owned" must also record WHAT it is, not only that
-                    we own it. Without this the asset arrives with source_type
-                    NULL, classifies as "unclassified" rather than
-                    owned_original_photo, never counts towards our own
-                    photography — and shouldWatermark(), which requires
-                    staff_photograph, refuses to watermark our own work. */}
-                <input type="hidden" name="source_type" value="staff_photograph" />
                 <input type="hidden" name="licence_permits_modification" value="true" />
                 <p className="text-xs text-neutral-500">
-                  Recorded as a Tech Carvalho original photograph: rights verified, modification
-                  permitted, and eligible for watermarked public derivatives. You can still record
-                  who made it below.
+                  Classified above as TechCarvalho-owned: rights verified, modification permitted, and eligible for
+                  watermarked public derivatives. You can still record who made it.
                 </p>
                 <Field label="Creator" htmlFor="creator" hint="Who made this, if relevant to note.">
                   <TextInput id="creator" name="creator" />
@@ -442,16 +501,18 @@ export function MediaUploadForm({ existingFileNames }: { existingFileNames: stri
               </>
             ) : (
               <>
-                <Field label="Source type" htmlFor="source_type">
-                  <Select id="source_type" name="source_type" defaultValue="">
-                    <option value="">Not specified</option>
-                    {SOURCE_TYPE_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
+                {!chosenPreset?.patch.source_type && (
+                  <Field label="Source type" htmlFor="source_type">
+                    <Select id="source_type" name="source_type" defaultValue="">
+                      <option value="">Not specified</option>
+                      {SOURCE_TYPE_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                )}
                 <Field label="Creator" htmlFor="creator" hint="Who made this — photographer, illustrator, studio.">
                   <TextInput id="creator" name="creator" />
                 </Field>
