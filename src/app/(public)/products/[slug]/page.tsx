@@ -6,6 +6,7 @@ import { buildMetadata } from "@/lib/seo/metadata";
 import { productJsonLd, safeJsonLdString } from "@/lib/seo/jsonld";
 import { getProductDetail } from "@/lib/public/product-detail";
 import { getPublishedGallery, classifiable } from "@/lib/public/hero-image";
+import { requiredDisclosure } from "@/lib/media/classification";
 import { mediaFit } from "@/lib/media/presentation";
 import { Breadcrumbs } from "@/components/public/breadcrumbs";
 import { formatSpecValue } from "@/lib/public/spec-value";
@@ -130,6 +131,21 @@ export default async function ProductPage({
                   );
                 })}
               </div>
+              {/* A per-image line under a 128px thumbnail would be unreadable,
+                  so the disclosure follows the same summary pattern the credits
+                  below already use. Distinct sentences only: a strip of six AI
+                  renders should say it once, not six times. */}
+              {Array.from(
+                new Set(
+                  gallery
+                    .map((img) => requiredDisclosure(classifiable(img)))
+                    .filter((d): d is string => Boolean(d))
+                )
+              ).map((d) => (
+                <p key={d} className="mt-1 text-xs font-medium text-zinc-600">
+                  {d}
+                </p>
+              ))}
               {gallery.some((img) => img.attributionRequired && (img.attribution || img.creator)) && (
                 <p className="mt-1 text-xs text-zinc-400">
                   Images:{" "}
