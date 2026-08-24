@@ -6,6 +6,8 @@ import {
   productRelevance,
   titleNamesProduct,
   MIN_HERO_WIDTH,
+  MIN_CARD_WIDTH,
+  minimumWidthFor,
   SHARED_HERO_MIN_USES,
   type HeroCandidate,
   type ProductLinkRole,
@@ -335,4 +337,92 @@ test("a graphic is never swapped for another graphic of the same or worse tier",
     candidates: [{ ...titleCard("other-card", 0), origin: "product", linkRole: "primary_subject", productName: "X" }],
   });
   assert.equal(decision.keptIncumbent, true);
+});
+
+// ---------------------------------------------------------------------------
+// Slot-aware minimum width — the homepage placeholder bug
+// ---------------------------------------------------------------------------
+//
+// A 512x512 router image was assigned as BOTH Hero and Thumbnail on a published
+// article. The article page rendered it; the homepage card rendered a
+// placeholder. MIN_HERO_WIDTH (720) was being applied to a card, and its own
+// rejection reason says what it is for: "a 720px LEAD SLOT would upscale it."
+
+test("a 512px asset is rejected for a lead slot but fine for a card", () => {
+  const candidate = {
+    ref: "x",
+    assetId: "a1",
+    asset: { source_type: "tc_graphic", asset_role: null, owned: true, ai_generated: true,
+             storage_path: "image/router-2.png", source_url: null, license: null },
+    origin: "article" as const,
+    rightsStatus: "verified",
+    publicationStatus: "published",
+    hasPublicCopy: true,
+    brandRole: null,
+    width: 512,
+    height: 512,
+  };
+  assert.equal(isEligibleHeroCandidate(candidate).eligible, false, "lead slot must still refuse it");
+  assert.equal(isEligibleHeroCandidate(candidate, "lead").eligible, false);
+  assert.equal(isEligibleHeroCandidate(candidate, "card").eligible, true, "a card is not a lead slot");
+});
+
+test("the default slot is lead, so existing behaviour is unchanged", () => {
+  assert.equal(minimumWidthFor("lead"), MIN_HERO_WIDTH);
+  assert.equal(minimumWidthFor("card"), MIN_CARD_WIDTH);
+  assert.ok(MIN_CARD_WIDTH < MIN_HERO_WIDTH);
+});
+
+test("a favicon-sized asset is refused even for a card", () => {
+  const tiny = {
+    ref: "x", assetId: "a2",
+    asset: { source_type: "tc_graphic", asset_role: null, owned: true, ai_generated: false,
+             storage_path: "image/icon.png", source_url: null, license: null },
+    origin: "article" as const, rightsStatus: "verified", publicationStatus: "published",
+    hasPublicCopy: true, brandRole: null, width: 64, height: 64,
+  };
+  assert.equal(isEligibleHeroCandidate(tiny, "card").eligible, false);
+});
+
+test("SAFETY rejections apply to every slot, not just the lead", () => {
+  // Loosening the width rule must not loosen anything that protects rights or
+  // privacy. These four must refuse a card exactly as they refuse a lead.
+  const base = {
+    ref: "x", assetId: "a3",
+    asset: { source_type: "tc_graphic", asset_role: null, owned: true, ai_generated: false,
+             storage_path: "image/x.png", source_url: null, license: null },
+    origin: "article" as const, rightsStatus: "verified", publicationStatus: "published",
+    hasPublicCopy: true, brandRole: null, width: 1600, height: 900,
+  };
+  assert.equal(isEligibleHeroCandidate({ ...base, rightsStatus: "restricted" }, "card").eligible, false);
+  assert.equal(isEligibleHeroCandidate({ ...base, publicationStatus: "private" }, "card").eligible, false);
+  assert.equal(isEligibleHeroCandidate({ ...base, hasPublicCopy: false }, "card").eligible, false);
+  assert.equal(isEligibleHeroCandidate({ ...base, brandRole: "logo_full" }, "card").eligible, false);
+});
+
+test("a human-assigned image survives when nothing beats it", () => {
+  // selectArticleHero returning no winner must not mean "show a placeholder".
+  // The caller falls back to the stored assignment; this pins the shape that
+  // makes that correct -- an ineligible incumbent yields no winner, so the
+  // fallback is the ONLY thing standing between a valid assignment and a
+  // placeholder.
+  const incumbent = {
+    ref: "stored-image",
+    assetId: "a4",
+    asset: { source_type: "tc_graphic", asset_role: null, owned: true, ai_generated: true,
+             storage_path: "image/router-2.png", source_url: null, license: null },
+    origin: "article" as const, rightsStatus: "verified", publicationStatus: "published",
+    hasPublicCopy: true, brandRole: null, width: 512, height: 512,
+  };
+  const leadDecision = selectArticleHero({
+    contentId: "c1", title: "Wi-Fi 4 to Wi-Fi 7", contentType: "guide",
+    incumbent, candidates: [], slot: "lead",
+  });
+  assert.equal(leadDecision.winner, null, "too narrow for a lead slot");
+
+  const cardDecision = selectArticleHero({
+    contentId: "c1", title: "Wi-Fi 4 to Wi-Fi 7", contentType: "guide",
+    incumbent, candidates: [], slot: "card",
+  });
+  assert.equal(cardDecision.winner?.ref, "stored-image", "a card must accept it outright");
 });

@@ -91,6 +91,35 @@ export type HeroCandidate<TRef = unknown> = {
 export const MIN_HERO_WIDTH = 720;
 
 /**
+ * The same rule for a CARD, which is a much smaller frame.
+ *
+ * MIN_HERO_WIDTH exists because a lead slot renders roughly 720px wide and
+ * upscaling looks bad there. Its own rejection reason says so: "a 720px lead
+ * slot would upscale it." A card is a fraction of that, so applying the lead
+ * figure to cards rejected images that render perfectly well in them — and,
+ * because rejection produced null rather than a fallback, replaced a human's
+ * explicit assignment with a placeholder.
+ *
+ * Live example: a 512x512 router image assigned as both Hero and Thumbnail
+ * showed on the article page and as a placeholder on the homepage card.
+ *
+ * This floor still exists so a favicon-sized asset cannot become a card image.
+ */
+export const MIN_CARD_WIDTH = 240;
+
+/**
+ * Which frame the candidate is being judged for.
+ *
+ * Defaults to "lead" everywhere, so this parameter changes no existing
+ * behaviour unless a caller asks for card rules.
+ */
+export type HeroSlotKind = "lead" | "card";
+
+export function minimumWidthFor(slot: HeroSlotKind): number {
+  return slot === "card" ? MIN_CARD_WIDTH : MIN_HERO_WIDTH;
+}
+
+/**
  * The point at which a lead image stops being about the article it leads.
  *
  * Two published articles sharing one hero is already a reader-visible defect:
@@ -169,7 +198,10 @@ export type EligibilityVerdict = { eligible: true } | { eligible: false; reason:
  * costs nothing and means a future caller assembling candidates some other way
  * still cannot route a restricted asset onto a page.
  */
-export function isEligibleHeroCandidate(candidate: HeroCandidate): EligibilityVerdict {
+export function isEligibleHeroCandidate(
+  candidate: HeroCandidate,
+  slot: HeroSlotKind = "lead"
+): EligibilityVerdict {
   if (candidate.rightsStatus === "restricted") {
     return { eligible: false, reason: "Asset is marked restricted." };
   }
@@ -182,8 +214,14 @@ export function isEligibleHeroCandidate(candidate: HeroCandidate): EligibilityVe
   if (candidate.brandRole) {
     return { eligible: false, reason: "Site-brand asset (logo/wordmark), not editorial imagery." };
   }
-  if (typeof candidate.width === "number" && candidate.width > 0 && candidate.width < MIN_HERO_WIDTH) {
-    return { eligible: false, reason: `Only ${candidate.width}px wide; a ${MIN_HERO_WIDTH}px lead slot would upscale it.` };
+  // SAFETY rejections are above and apply to every slot. This one is about
+  // RESOLUTION, so it scales with the frame being filled.
+  const minWidth = minimumWidthFor(slot);
+  if (typeof candidate.width === "number" && candidate.width > 0 && candidate.width < minWidth) {
+    return {
+      eligible: false,
+      reason: `Only ${candidate.width}px wide; a ${minWidth}px ${slot} slot would upscale it.`,
+    };
   }
   return { eligible: true };
 }
@@ -242,11 +280,14 @@ export function selectArticleHero<TRef>(input: {
   incumbent: HeroCandidate<TRef> | null;
   /** Catalogue media reachable through this article's content_products links. */
   candidates: HeroCandidate<TRef>[];
+  /** Which frame this is being chosen for. Defaults to the lead slot. */
+  slot?: HeroSlotKind;
 }): HeroDecision<TRef> {
+  const slot: HeroSlotKind = input.slot ?? "lead";
   const subject = inferSubjectKind({ contentType: input.contentType, title: input.title });
 
   const incumbent =
-    input.incumbent && isEligibleHeroCandidate(input.incumbent).eligible ? input.incumbent : null;
+    input.incumbent && isEligibleHeroCandidate(input.incumbent, slot).eligible ? input.incumbent : null;
   const incumbentTier = classifyMediaTier(incumbent?.asset);
   const incumbentShared =
     incumbent !== null &&
@@ -296,7 +337,7 @@ export function selectArticleHero<TRef>(input: {
 
   const scored = input.candidates
     .flatMap((candidate) => {
-      if (!isEligibleHeroCandidate(candidate).eligible) return [];
+      if (!isEligibleHeroCandidate(candidate, slot).eligible) return [];
       const tier = classifyMediaTier(candidate.asset);
       // Never sideways or downhill: the hierarchy's whole point is that the
       // replacement answers "what does this thing look like?" better.

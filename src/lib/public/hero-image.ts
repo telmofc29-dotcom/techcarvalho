@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { mediaPublicUrl } from "@/lib/media/public-url";
 import { logQueryError } from "@/lib/log/query-error";
 import { chooseActiveHero, resolveCardImage, type SlotRow } from "@/lib/media/hero-slot";
-import { selectArticleHero, type HeroCandidate, type ProductLinkRole } from "@/lib/media/hero-selection";
+import { selectArticleHero, type HeroSlotKind, type HeroCandidate, type ProductLinkRole } from "@/lib/media/hero-selection";
 import type { MediaSourceType } from "@/lib/types/database";
 import { ROOT_LOCALE } from "@/lib/i18n/locales";
 
@@ -388,7 +388,13 @@ export async function attachHeroImages<T extends { id: string }>(
       });
     }
 
-    const resolved = await resolveArticleHeroes(supabase, await articleInputs(supabase, rows), assetByEntityId);
+    // "card": this path fills list cards, not the article lead slot.
+    const resolved = await resolveArticleHeroes(
+      supabase,
+      await articleInputs(supabase, rows),
+      assetByEntityId,
+      "card"
+    );
     return rows.map((r) => ({ ...r, heroImage: resolved.get(r.id) ?? null }));
   } catch (e) {
     console.error(`[query-error] attachHeroImages(${kind}) threw`, e);
@@ -457,7 +463,13 @@ async function articleInputs(
 export async function resolveArticleHeroes(
   supabase: Awaited<ReturnType<typeof createClient>>,
   articles: ArticleHeroInput[],
-  incumbentAssetByArticleId: Map<string, HeroAssetRow>
+  incumbentAssetByArticleId: Map<string, HeroAssetRow>,
+  /**
+   * Which frame the result will fill. "lead" (the default) keeps the article
+   * page behaving exactly as before; "card" applies the smaller minimum width,
+   * because a card is not a lead slot.
+   */
+  slot: HeroSlotKind = "lead"
 ): Promise<Map<string, HeroImage | null>> {
   const stored = new Map<string, HeroImage | null>(
     articles.map((a) => {
@@ -554,8 +566,22 @@ export async function resolveArticleHeroes(
         contentType: article.type,
         incumbent,
         candidates,
+        slot,
       });
-      resolved.set(article.id, decision.winner?.ref ?? null);
+
+      // A HUMAN'S ASSIGNMENT IS NOT DISCARDED BECAUSE NOTHING BEAT IT.
+      //
+      // This used to be `decision.winner?.ref ?? null`, which threw away the
+      // stored image whenever selection produced no winner -- and selection
+      // produces no winner whenever the incumbent fails eligibility and there
+      // are no product candidates to replace it. The card then rendered a
+      // placeholder while `stored` held a perfectly good, explicitly assigned
+      // image, and the article's own page showed it.
+      //
+      // Falling back to `stored` is safe because heroImageFromAsset() has
+      // already established the asset is published and has a public copy;
+      // there is no route here to a private master or an unpublished asset.
+      resolved.set(article.id, decision.winner?.ref ?? stored.get(article.id) ?? null);
     }
     return resolved;
   } catch (e) {
