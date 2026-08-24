@@ -48,6 +48,30 @@ async function totals() {
   return { assets: a.count ?? 0, pm: pm.count ?? 0, cm: cm.count ?? 0 };
 }
 
+
+/**
+ * Poll until a condition holds, rather than sleeping a fixed number of ms.
+ *
+ * The first version used waitForTimeout(3500) after every submit. That passed
+ * locally and timed out against production, where a round trip is slower — a
+ * test whose result depends on how fast the server answered is not evidence of
+ * anything. Every wait below is now a wait FOR SOMETHING.
+ */
+async function until(fn, { timeout = 45000, interval = 750 } = {}) {
+  const deadline = Date.now() + timeout;
+  let last = false;
+  while (Date.now() < deadline) {
+    try {
+      last = await fn();
+    } catch {
+      last = false;
+    }
+    if (last) return true;
+    await new Promise((r) => setTimeout(r, interval));
+  }
+  return false;
+}
+
 const created = { assets: [], content: [], products: [] };
 
 async function seedAsset(label, published) {
@@ -133,26 +157,26 @@ try {
     // 1. Set the first hero.
     await page.locator('select#pick-set_hero').selectOption(assetA);
     await page.getByRole("button", { name: /^Set hero$/ }).click();
-    await page.waitForTimeout(3500);
+    await until(async () => (await slots(kind, targetId)).some((r) => r.role === "hero" && r.media_id === assetA));
+    await page.waitForLoadState("networkidle").catch(() => {});
     let rows = await slots(kind, targetId);
     check(`${label}: hero set`, rows.filter((r) => r.role === "hero").length === 1 && rows.find((r) => r.role === "hero")?.media_id === assetA);
 
     // 2. Card image inherits the hero (no explicit thumbnail).
     check(`${label}: card image shows as inherited from the hero`,
-      /Inherited from the hero/i.test(await page.locator("body").innerText()));
+      await until(async () => /Inherited from the hero/i.test(await page.locator("body").innerText())));
 
     // 3. Replace the hero — must ask first.
     await page.locator('select#pick-set_hero').selectOption(assetB);
     await page.getByRole("button", { name: /^Replace hero with$/ }).click();
-    await page.waitForTimeout(3500);
     check(`${label}: replacing an occupied hero asks first`,
-      /already has a hero image/i.test(await page.locator("body").innerText()));
+      await until(async () => /already has a hero image/i.test(await page.locator("body").innerText())));
     rows = await slots(kind, targetId);
     check(`${label}: nothing written while the question is open`,
       rows.filter((r) => r.role === "hero").length === 1 && rows.find((r) => r.role === "hero")?.media_id === assetA);
 
     await page.getByRole("button", { name: /^Replace hero$/ }).click();
-    await page.waitForTimeout(4000);
+    await until(async () => (await slots(kind, targetId)).some((r) => r.role === "hero" && r.media_id === assetB));
     rows = await slots(kind, targetId);
     const heroes = rows.filter((r) => r.role === "hero");
     check(`${label}: exactly one hero after replace`, heroes.length === 1, `${heroes.length}`);
@@ -166,7 +190,7 @@ try {
     await page.goto(`${BASE}${adminPath}`, { waitUntil: "networkidle" });
     await page.locator('select#pick-set_thumbnail').selectOption(assetC);
     await page.getByRole("button", { name: /^Set an explicit card image$/ }).click();
-    await page.waitForTimeout(3500);
+    await until(async () => (await slots(kind, targetId)).some((r) => r.role === "thumbnail"));
     rows = await slots(kind, targetId);
     check(`${label}: explicit card image stored`,
       rows.some((r) => r.media_id === assetC && r.role === "thumbnail"));
@@ -177,7 +201,7 @@ try {
     await page.goto(`${BASE}${adminPath}`, { waitUntil: "networkidle" });
     await page.locator('select#pick-add_gallery').selectOption(assetC);
     await page.getByRole("button", { name: /^Add to gallery$/ }).click();
-    await page.waitForTimeout(3500);
+    await until(async () => (await slots(kind, targetId)).filter((r) => r.role === "gallery").length >= 2);
     rows = await slots(kind, targetId);
     const gallery = rows.filter((r) => r.role === "gallery");
     check(`${label}: gallery holds multiple images`, gallery.length === 2, `${gallery.length}`);
@@ -194,7 +218,7 @@ try {
 
     // 7. Clear the explicit card image -> back to inheritance.
     await page.getByRole("button", { name: /Clear explicit card image/ }).click();
-    await page.waitForTimeout(3500);
+    await until(async () => (await slots(kind, targetId)).every((r) => r.role !== "thumbnail"));
     rows = await slots(kind, targetId);
     check(`${label}: clearing the card image restores inheritance`,
       rows.filter((r) => r.role === "thumbnail").length === 0);
@@ -207,7 +231,7 @@ try {
     const removeCount = await removeButtons.count();
     if (removeCount > 0) {
       await removeButtons.last().click();
-      await page.waitForTimeout(3500);
+      await until(async () => (await slots(kind, targetId)).length < reopened.length);
       const after = await slots(kind, targetId);
       check(`${label}: an association was removed`, after.length < reopened.length, `${reopened.length} -> ${after.length}`);
       const stillThere = await db.from("media_assets").select("id").in("id", [assetA, assetB, assetC]);
