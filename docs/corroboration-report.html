@@ -1,0 +1,278 @@
+<title>The Corroboration Gap</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,500;1,400&display=swap">
+
+<style>
+:root{
+  --ground:#eef1f1; --panel:#f8fafa; --sunk:#e3e8e8;
+  --ink:#131a1c; --ink-soft:#3f4d50; --ink-faint:#6c7c80;
+  --rule:#cfd8d8; --rule-soft:#e0e7e7;
+  --accent:#0c666d; --accent-soft:#d3e6e7;
+  --ok:#2b6f4a; --ok-bg:#dcebe1;
+  --warn:#8f5a04; --warn-bg:#f2e6cd;
+  --stop:#9c3323; --stop-bg:#f1dcd8;
+  --shadow:0 1px 2px rgba(19,26,28,.06),0 8px 24px -16px rgba(19,26,28,.28);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ground:#0d1315; --panel:#141c1e; --sunk:#1b2426;
+  --ink:#e5eded; --ink-soft:#a9b8ba; --ink-faint:#7b8b8e;
+  --rule:#2b3739; --rule-soft:#212c2e;
+  --accent:#54c2c8; --accent-soft:#16383b;
+  --ok:#6ec18d; --ok-bg:#16301f;
+  --warn:#e0a94e; --warn-bg:#332612;
+  --stop:#e08d7d; --stop-bg:#341c17;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -16px rgba(0,0,0,.8);
+}}
+:root[data-theme="dark"]{
+  --ground:#0d1315; --panel:#141c1e; --sunk:#1b2426;
+  --ink:#e5eded; --ink-soft:#a9b8ba; --ink-faint:#7b8b8e;
+  --rule:#2b3739; --rule-soft:#212c2e;
+  --accent:#54c2c8; --accent-soft:#16383b;
+  --ok:#6ec18d; --ok-bg:#16301f;
+  --warn:#e0a94e; --warn-bg:#332612;
+  --stop:#e08d7d; --stop-bg:#341c17;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -16px rgba(0,0,0,.8);
+}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);
+  font-family:"IBM Plex Serif",Georgia,serif;font-size:17px;line-height:1.62;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px 96px}
+.col{max-width:68ch}
+h1,h2,h3,.sans{font-family:"IBM Plex Sans Condensed","Helvetica Neue",Arial,sans-serif;text-wrap:balance}
+h1{font-size:clamp(2.3rem,5.2vw,3.7rem);font-weight:700;line-height:1.04;letter-spacing:-.015em;margin:0 0 18px}
+h2{font-size:clamp(1.45rem,2.5vw,1.9rem);font-weight:600;line-height:1.15;margin:0}
+h3{font-size:1.05rem;font-weight:600;margin:0 0 6px}
+p{margin:0 0 1.05em}
+a{color:var(--accent)}
+strong{font-weight:600;color:var(--ink)}
+code,.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace}
+code{font-size:.85em;background:var(--sunk);padding:.11em .38em;border-radius:3px;word-break:break-word}
+
+.mast{padding:64px 0 40px;border-bottom:2px solid var(--ink)}
+.eyebrow{font-family:"IBM Plex Mono",monospace;font-size:.72rem;font-weight:500;text-transform:uppercase;
+  letter-spacing:.16em;color:var(--accent);margin:0 0 22px;display:flex;flex-wrap:wrap;gap:10px 18px}
+.standfirst{font-size:1.22rem;line-height:1.5;color:var(--ink-soft);margin:0;max-width:60ch}
+.standfirst b{color:var(--ink);font-weight:600}
+
+section{padding:54px 0 0}
+.shead{display:flex;gap:16px;align-items:baseline;border-top:1px solid var(--rule);padding-top:14px;margin-bottom:24px}
+.snum{font-family:"IBM Plex Mono",monospace;font-size:.76rem;font-weight:600;color:var(--accent);letter-spacing:.1em;padding-top:5px;white-space:nowrap}
+
+/* layered failure stack */
+.layers{margin:30px 0;border:1px solid var(--rule);border-radius:6px;overflow:hidden;box-shadow:var(--shadow)}
+.layer{display:grid;grid-template-columns:52px 1fr;gap:0 18px;padding:16px 20px;background:var(--panel);
+  border-bottom:1px solid var(--rule-soft);position:relative}
+.layer:last-child{border-bottom:0}
+.layer::before{content:"";position:absolute;left:33px;top:0;bottom:0;width:2px;background:var(--stop)}
+.layer .n{font-family:"IBM Plex Mono",monospace;font-size:1.2rem;font-weight:600;color:var(--stop);
+  position:relative;z-index:1;background:var(--panel);padding:2px 0}
+.layer h3{margin-bottom:4px}
+.layer p{margin:0;font-size:.93rem;color:var(--ink-soft)}
+.layer .fixed{display:inline-block;margin-top:6px;font-family:"IBM Plex Sans Condensed",sans-serif;
+  font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;padding:2px 8px;border-radius:3px;
+  background:var(--ok-bg);color:var(--ok)}
+.layer .open{background:var(--stop-bg);color:var(--stop)}
+
+.tw{overflow-x:auto;margin:24px 0;border:1px solid var(--rule);border-radius:6px;background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:.9rem;min-width:540px}
+th,td{text-align:left;padding:10px 16px;border-bottom:1px solid var(--rule-soft);vertical-align:top}
+thead th{font-family:"IBM Plex Sans Condensed",sans-serif;font-size:.72rem;text-transform:uppercase;letter-spacing:.09em;
+  color:var(--ink-faint);background:var(--sunk);border-bottom:1px solid var(--rule);font-weight:600}
+tbody tr:last-child td{border-bottom:0}
+td.n{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+td.mono{font-family:"IBM Plex Mono",monospace;font-size:.85rem}
+
+.tag{display:inline-block;font-family:"IBM Plex Sans Condensed",sans-serif;font-size:.7rem;font-weight:600;
+  text-transform:uppercase;letter-spacing:.07em;padding:2px 8px;border-radius:3px;white-space:nowrap}
+.t-ok{background:var(--ok-bg);color:var(--ok)}
+.t-warn{background:var(--warn-bg);color:var(--warn)}
+.t-stop{background:var(--stop-bg);color:var(--stop)}
+
+.call{border-left:3px solid var(--accent);background:var(--panel);padding:20px 24px;margin:26px 0;border-radius:0 5px 5px 0;box-shadow:var(--shadow)}
+.call.stop{border-left-color:var(--stop)} .call.warn{border-left-color:var(--warn)} .call.ok{border-left-color:var(--ok)}
+.call h3{font-size:.76rem;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);margin-bottom:10px;font-family:"IBM Plex Sans Condensed",sans-serif}
+.call.stop h3{color:var(--stop)} .call.warn h3{color:var(--warn)} .call.ok h3{color:var(--ok)}
+.call p:last-child{margin-bottom:0}
+
+ul.tight{margin:0 0 1.05em;padding-left:1.15em}
+ul.tight li{margin-bottom:.4em}
+ul.tight li::marker{color:var(--ink-faint)}
+
+footer{margin-top:64px;padding-top:20px;border-top:2px solid var(--ink);font-family:"IBM Plex Mono",monospace;
+  font-size:.75rem;color:var(--ink-faint);line-height:1.7}
+
+@media (max-width:640px){body{font-size:16px}.wrap{padding:0 18px 64px}
+  .layer{grid-template-columns:38px 1fr;gap:0 12px}.layer::before{left:26px}}
+</style>
+
+<div class="wrap">
+
+<header class="mast">
+  <div class="eyebrow"><span>TechCarvalho</span><span>/</span><span>Phase F–G</span><span>/</span><span>24 Aug 2026</span></div>
+  <h1>Nothing was ever<br>going to corroborate.</h1>
+  <p class="standfirst">Five separate failures sit between a discovery and a second source, and <b>each one alone is fatal</b>. The deepest is not code: 28 of your 29 sources are companies writing about themselves. Google's blog will never confirm an NVIDIA story.</p>
+</header>
+
+<section>
+  <div class="shead"><div class="snum">01</div><div><h2>Corroboration root cause</h2></div></div>
+  <div class="col">
+    <p>I traced the path from "a story is discovered" to "a second independent source is attached". It does not exist, and it fails in five places on the way.</p>
+  </div>
+
+  <div class="layers">
+    <div class="layer">
+      <div class="n">1</div>
+      <div>
+        <h3>There is no research stage</h3>
+        <p>The nightly tick has fourteen stages. None of them researches anything. <code>research_enabled</code> is a <em>flag</em> that gates other stages — briefs, drafts, product assembly, media acquisition — and performs no research itself. DISCOVER → RESEARCH → DECIDE → CREATE is missing its second step entirely.</p>
+        <span class="fixed open">Open</span>
+      </div>
+    </div>
+    <div class="layer">
+      <div class="n">2</div>
+      <div>
+        <h3>Exactly one evidence row is ever written</h3>
+        <p><code>engine_upsert_discovery</code> inserts the feed item's own URL. No code path anywhere — TypeScript or SQL — ever adds a second. The <code>on conflict do nothing</code> that would merge a second publisher never fires, because nothing ever offers one.</p>
+        <span class="fixed open">Open</span>
+      </div>
+    </div>
+    <div class="layer">
+      <div class="n">3</div>
+      <div>
+        <h3>The source registry cannot corroborate</h3>
+        <p>28 of 29 sources are first-party. Sixteen distinct publishers, every one writing about itself. Exactly one independent editorial source exists — DPReview. Even a working research stage would have had nothing to cross-reference against.</p>
+        <span class="fixed open">Needs your decision</span>
+      </div>
+    </div>
+    <div class="layer">
+      <div class="n">4</div>
+      <div>
+        <h3><code>manufacturer_id</code> is null on every discovery</h3>
+        <p>So the obvious route to "is this publisher the subject?" is dead. It was also the wrong shape: Mozilla, NASA, VESA, IETF, Arduino and the Bluetooth SIG all publish first-party announcements, and none of them is a manufacturer.</p>
+        <span class="fixed">Fixed</span>
+      </div>
+    </div>
+    <div class="layer">
+      <div class="n">5</div>
+      <div>
+        <h3>Fact extraction yields at most one fact</h3>
+        <p><code>brief-builder</code> derives facts from the single evidence row's <em>claim status</em>, not from the article's contents. Even a perfectly sourced discovery produces one fact — below the two-fact minimum for review.</p>
+        <span class="fixed open">Open</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><div class="snum">02</div><div><h2>The source-independence model</h2></div></div>
+  <div class="col">
+    <p>The evidence rule was wrong, and correcting it is not the same as relaxing it.</p>
+    <p>A single threshold for every claim is incoherent. <em>"Mozilla shipped a VPN in Firefox"</em>, sourced to Mozilla, is not weak evidence awaiting corroboration — Mozilla is the only body that can authoritatively say what Mozilla shipped. Demanding that a third party confirm it first is a category error, not rigour. Meanwhile <em>"the iPhone 18 has a 2nm chip"</em> from one outlet needs corroboration <strong>more</strong> than the old rule required, because nobody reporting it has any authority over it.</p>
+    <p>So the requirement is now a function of what is claimed and who claims it.</p>
+  </div>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Claim class</th><th>Independent sources</th><th>How it may be written</th></tr></thead>
+      <tbody>
+        <tr><td>First-party announcement</td><td class="n">1</td><td><span class="tag t-ok">Assertable</span></td></tr>
+        <tr><td>Third-party report</td><td class="n">2</td><td><span class="tag t-warn">Attributed</span></td></tr>
+        <tr><td>Unreleased-product claim</td><td class="n">3</td><td><span class="tag t-warn">Attributed</span></td></tr>
+        <tr><td>Rumour or leak</td><td class="n">1</td><td><span class="tag t-stop">Rumour-framed, never assertable</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="col">
+    <p>Note this <strong>raises</strong> the bar where it matters: unreleased-product claims — the class a technology site is most often wrong about, because the product eventually ships and contradicts you — now need three, where the old flat rule asked for two.</p>
+
+    <div class="call ok">
+      <h3>First-party authority is explicitly bounded</h3>
+      <p>This sentence travels on every first-party verdict, rather than living in a code comment: <em>"Authoritative for what was announced and that it was announced. NOT authoritative for performance claims, comparisons with competitors, or anything the announcement predicts. A vendor calling its own product twice as fast is evidence that it said so, not that it is."</em></p>
+    </div>
+
+    <p><strong>Where "who is the subject" comes from:</strong> <code>engine_sources.trust_level</code>, which already encoded this and was simply never consulted for it. 28 sources sit at <code>primary</code> — bodies that speak for themselves — and DPReview at <code>secondary</code>, because it reports on other people's products. Nothing is inferred from a name: guessing <code>apple.com</code> from the string "Apple" would hand self-authority to any unverified domain on a substring match. An unregistered domain, a failed read, or a secondary source all yield an empty subject set, which falls back to the strict rule.</p>
+    <p>Classification runs <strong>strictest-first</strong>, so first-party authority can never launder a claim a stricter rule already caught — a leak hosted on the vendor's own domain is still a leak.</p>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><div class="snum">03</div><div><h2>Measured effect on production</h2></div></div>
+  <div class="col">
+    <p>The 16 single-publisher briefs moved from <strong>Low confidence</strong> to <strong>Needs more research</strong>. The independence objection is correctly resolved — they are vendor announcements sourced to the vendor.</p>
+    <p>They still do not reach your queue, and the reason is now layer 5: <em>"1 independent publisher, but only 1 verified fact (minimum 2)."</em></p>
+
+    <div class="call">
+      <h3>A threshold I deliberately did not move</h3>
+      <p>I could have made the fact minimum claim-aware too, and 16 briefs would have gone green. I did not. One announcement fact produces a press-release rewrite — exactly what the promotional check already exists to prevent, and exactly what you said you did not want the site to become. The bar stays at two.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><div class="snum">04</div><div><h2>iPhone 18 — researched properly</h2></div></div>
+  <div class="col">
+    <p>I fetched <a href="https://www.apple.com/newsroom/rss-feed.rss">Apple's own newsroom feed</a> — the authoritative source for what Apple has announced. Most recent items are dated 18, 13, 11, 10 and 3 August 2026. <strong>None mentions an iPhone 18.</strong></p>
+    <p>That is a real finding, not an absence of effort. The only body that can confirm an iPhone 18 has not. It settles the claim class.</p>
+  </div>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Classification</th><th>Count</th><th>Basis</th></tr></thead>
+      <tbody>
+        <tr><td>Confirmed</td><td class="n">0</td><td>Apple's newsroom carries no iPhone 18 announcement</td></tr>
+        <tr><td>Reported</td><td class="n">0</td><td>No registered source carries any iPhone 18 reporting</td></tr>
+        <tr><td>Rumoured</td><td class="n">0</td><td>None recorded in this database</td></tr>
+        <tr><td>Unknown</td><td class="n">—</td><td>Everything else, and it stays unknown rather than inferred</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="col">
+    <p><strong>Verdict:</strong> unreleased-product claim · 0 of 3 independent publishers · insufficient evidence · does not enter your queue · <code>CAN BUILD: NO</code>.</p>
+    <p>No product page, no news article, no supporting explainer. There is nothing to write that would not be invented. Reproduce it with <code>npx tsx scripts/iphone-18-package.ts</code> — read-only.</p>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><div class="snum">05</div><div><h2>What you need to decide</h2></div></div>
+  <div class="col">
+    <p>Layer 3 is not a bug I can fix by writing code. It is a question about what TechCarvalho reads.</p>
+
+    <div class="call warn">
+      <h3>Your registry contains almost no journalism</h3>
+      <p>Fifteen manufacturer newsrooms, thirteen vendor and standards-body blogs, and one camera publication. That composition can only ever produce press-release coverage, because there is no second voice in it. It also explains the 16 briefs precisely: <em>"ubisys joins Works with Home Assistant"</em>, <em>"Designing Firefox for the future"</em>.</p>
+      <p>Corroboration becomes physically possible the moment independent editorial feeds are in the registry — and the merge mechanism already exists, so it starts working with no further code. RSS is free; this adds no cost.</p>
+    </div>
+
+    <p>I have not added any, because that is production data and a genuine editorial decision about whose reporting you trust. Tell me which publications you want and I will register and verify them.</p>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><div class="snum">06</div><div><h2>Status</h2></div></div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Phase</th><th>Status</th><th>Detail</th></tr></thead>
+      <tbody>
+        <tr><td>F — Research &amp; corroboration</td><td><span class="tag t-warn">Partial</span></td><td>Diagnosed fully; model built, tested and live; layers 1, 2, 3 and 5 remain</td></tr>
+        <tr><td>G — iPhone 18 end-to-end</td><td><span class="tag t-ok">Done</span></td><td>Researched against the primary source; engine correctly refuses</td></tr>
+        <tr><td>H — Media automation</td><td><span class="tag t-stop">Not started</span></td><td>Out of session budget. Half-built automation touching rights is worse than none</td></tr>
+        <tr><td>I — Homepage rotation</td><td><span class="tag t-stop">Not started</span></td><td>Ranking and decay already exist and were verified in Phase E</td></tr>
+        <tr><td>J — Owner-work audit</td><td><span class="tag t-warn">Partial</span></td><td>12 → 3 measured in Phase A–E; unchanged this phase</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="col">
+    <p><strong>1686 tests pass.</strong> Phase A 25/25 and Phase B 32/32 re-verified against a fresh build. Deployed build <code>671ddda</code>. Two migrations still pending your approval. <strong>No paid service added</strong> — the engine remains fully deterministic, and the only research call made was a free RSS fetch of a vendor's own feed.</p>
+  </div>
+</section>
+
+<footer>
+  Root cause traced through source, SQL and live production data. Nothing published, no migration applied, no production data edited.<br>
+  Search-volume data remains unavailable and is still reported as such rather than estimated.
+</footer>
+
+</div>
