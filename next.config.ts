@@ -14,6 +14,28 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_BUILD_COMMIT: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? "local",
   },
 
+  experimental: {
+    // Headroom for Server Action METADATA, not for file uploads.
+    //
+    // Next's default is 1 MB, and exceeding it throws "Body exceeded 1 MB
+    // limit" (413) — which React masks as #441. That is what broke every real
+    // photograph on /admin/media/new.
+    //
+    // Raising this does NOT enable large uploads, and it is important not to
+    // believe otherwise: Vercel independently caps a function request body at
+    // 4.5 MB on every plan and returns 413 FUNCTION_PAYLOAD_TOO_LARGE before
+    // the function even runs. No value here can exceed that. The 20 MB ceiling
+    // is reachable only because the binary now goes straight from the browser
+    // to Supabase Storage via a signed URL, so it never crosses a function at
+    // all — see createMediaUploadTicket / finaliseMediaUpload.
+    //
+    // 4 MB simply stops a large FORM (many fields, long attribution text) from
+    // hitting the old 1 MB cliff, while staying under Vercel's hard limit.
+    serverActions: {
+      bodySizeLimit: "4mb",
+    },
+  },
+
   images: {
     remotePatterns: [
       {

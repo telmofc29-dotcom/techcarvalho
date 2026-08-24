@@ -10,6 +10,7 @@ import { evaluatePublishEligibility } from "@/lib/media/rights";
 import { resolvePublicationSource } from "@/lib/media/publication-source";
 import type { MediaType, MediaRole, MediaSourceType, MediaRightsStatus, MediaBrandRole, MediaAssetRole, Insert } from "@/lib/types/database";
 import { explainProvenanceRequirement, stampModificationAssessment } from "@/lib/media/provenance-invariant";
+import { checkUploadCandidate, isIssuedStoragePath, sanitizeFileName } from "@/lib/media/upload-limits";
 import {
   ASSET_ROLES_PENDING_MIGRATION,
   EDITED_FIELDS_INPUT,
@@ -171,106 +172,150 @@ function isPendingMigrationRoleViolation(code: string | undefined, assetRole: Me
   return (ASSET_ROLES_PENDING_MIGRATION as readonly string[]).includes(assetRole);
 }
 
-function sanitizeFileName(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9.]+/g, "-").replace(/^-+|-+$/g, "");
-}
+// The two Server Actions that used to receive the file itself —
+// uploadMediaAsset and uploadMediaAssetBatchItem — have been REMOVED, not left
+// unused. Both took the binary as FormData, so both carried Next's 1 MB body
+// cap and, underneath it, Vercel's 4.5 MB function limit. Keeping a working
+// upload path with those ceilings still wired to it is how the same failure
+// comes back the next time someone reaches for "the upload action".
+//
+// Uploading now goes through createMediaUploadTicket + finaliseMediaUpload
+// below, which never carry the bytes.
 
-export async function uploadMediaAsset(_prev: FormState, formData: FormData): Promise<FormState> {
-  const admin = await requireAdmin();
+// ---------------------------------------------------------------------------
+// Direct-to-storage upload
+// ---------------------------------------------------------------------------
+//
+// WHY THE BINARY NO LONGER GOES THROUGH A SERVER ACTION
+// ----------------------------------------------------
+// uploadMediaAssetBatchItem above receives the whole file as FormData, which
+// means every byte crosses a Vercel function. Two ceilings sit in that path:
+//
+//   * Next caps a Server Action body at 1 MB by default. Exceeding it throws
+//     "Body exceeded 1 MB limit" (413), which React masks as #441 — the failure
+//     the owner hit on every real photograph.
+//   * Vercel caps a function request body at 4.5 MB, plan-independent, and
+//     returns 413 FUNCTION_PAYLOAD_TOO_LARGE. Raising Next's bodySizeLimit
+//     CANNOT get past this; the platform rejects the request before the
+//     function runs.
+//
+// So a 20 MB ceiling is unreachable while the bytes pass through Vercel, no
+// matter how the framework is configured. The binary now goes browser ->
+// Supabase Storage directly, using a short-lived signed URL that the server
+// mints. Vercel only ever sees small JSON.
+//
+// WHAT STAYS ENFORCED SERVER-SIDE
+//   * Admin authentication — the ticket is only issued to an admin.
+//   * The storage path is generated HERE, never accepted from the client.
+//   * Size and MIME are validated here as well as in the browser.
+//   * The row is only created after the object is confirmed to exist.
+//   * All rights/provenance validation is unchanged, and nothing is published.
 
-  const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) {
-    return { error: "Choose a file to upload." };
-  }
-
-  const meta = readMetadata(formData);
-  if ("error" in meta) return { error: meta.error };
-  // A modification judgement must carry its assessor — see
-  // media_assets_licence_modification_attributed.
-  const payload = stampModificationAssessment(meta.payload, admin.id, new Date().toISOString());
-
-  const path = `${meta.payload.media_type}/${crypto.randomUUID()}-${sanitizeFileName(file.name)}`;
-
-  const supabase = await createClient();
-  const { error: uploadError } = await supabase.storage.from(MEDIA_PRIVATE_BUCKET).upload(path, file, {
-    contentType: file.type || undefined,
-    upsert: false,
-  });
-
-  if (uploadError) {
-    return { error: `Upload failed: ${uploadError.message}` };
-  }
-
-  const { error: insertError } = await supabase
-    .from("media_assets")
-    .insert({ storage_path: path, ...payload });
-
-  if (insertError) {
-    await supabase.storage.from(MEDIA_PRIVATE_BUCKET).remove([path]);
-    return { error: insertError.message };
-  }
-
-  revalidatePath("/admin/media");
-  redirect("/admin/media");
-}
-
-// Batch-upload variant of uploadMediaAsset: same validation/storage/insert
-// logic, but never redirects — called directly (not via a <form action>)
-// once per file from the batch upload UI, so the client can show per-file
-// progress/success/error and decide for itself when the whole batch is
-// done, rather than the server bouncing away after the first file. Kept
-// separate from uploadMediaAsset (still form-action-based, still
-// redirects) rather than changing that function's behavior, since nothing
-// about the traditional single-file path needs to change.
+/** Result of recording an uploaded object in the library. */
 export type BatchUploadResult = { id: string; error: null } | { id: null; error: string };
 
-export async function uploadMediaAssetBatchItem(formData: FormData): Promise<BatchUploadResult> {
+export type UploadTicket =
+  | { path: string; token: string; error: null }
+  | { path: null; token: null; error: string };
+
+/**
+ * Authorise one direct upload into the private bucket.
+ *
+ * The returned token is scoped by Supabase to exactly the path issued here, so
+ * a client cannot redirect it at another object. The path embeds a fresh uuid,
+ * so it cannot collide with or overwrite an existing master.
+ */
+export async function createMediaUploadTicket(
+  fileName: string,
+  fileType: string,
+  fileSize: number
+): Promise<UploadTicket> {
+  await requireAdmin();
+
+  // Re-validated server-side. The browser checks the same rules first so the
+  // admin gets an instant message, but a client-side check is a courtesy and
+  // never a control.
+  const check = checkUploadCandidate({ name: fileName, type: fileType, size: fileSize });
+  if (!check.ok) return { path: null, token: null, error: check.error };
+
+  const safeName = sanitizeFileName(fileName) || "upload";
+  const path = `${check.mediaType}/${crypto.randomUUID()}-${safeName}`;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.storage.from(MEDIA_PRIVATE_BUCKET).createSignedUploadUrl(path);
+  if (error || !data) {
+    return { path: null, token: null, error: error?.message ?? "Could not authorise the upload." };
+  }
+
+  return { path, token: data.token, error: null };
+}
+
+/**
+ * Create the media_assets row for an object that has already been uploaded.
+ *
+ * Called only after the browser reports a successful direct upload — and it
+ * does not take that report on trust. The object is confirmed to exist in the
+ * private bucket before any row is written, so a record can never claim an
+ * upload that did not happen.
+ */
+export async function finaliseMediaUpload(formData: FormData): Promise<BatchUploadResult> {
   const admin = await requireAdmin();
 
-  const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) {
-    return { id: null, error: "No file provided." };
+  const path = String(formData.get("storage_path") ?? "").trim();
+
+  // The path must look like one this application issued. Combined with the
+  // duplicate check below, this stops a finalise call from attaching a new row
+  // to an existing master or to an arbitrary object elsewhere in the bucket.
+  if (!isIssuedStoragePath(path)) {
+    return { id: null, error: "Invalid storage path." };
+  }
+
+  const supabase = await createClient();
+
+  const { data: existingRow } = await supabase
+    .from("media_assets")
+    .select("id")
+    .eq("storage_path", path)
+    .maybeSingle();
+  if (existingRow) {
+    return { id: null, error: "This file has already been recorded in the library." };
+  }
+
+  // Confirm the object is really there. list() on the parent prefix with an
+  // exact name filter is the cheapest existence check the storage API offers.
+  const slash = path.indexOf("/");
+  const prefix = path.slice(0, slash);
+  const objectName = path.slice(slash + 1);
+  const { data: found, error: listError } = await supabase.storage
+    .from(MEDIA_PRIVATE_BUCKET)
+    .list(prefix, { search: objectName, limit: 1 });
+  if (listError) return { id: null, error: `Could not verify the upload: ${listError.message}` };
+  if (!found || !found.some((o) => o.name === objectName)) {
+    return { id: null, error: "The uploaded file could not be found in storage, so no record was created." };
   }
 
   const meta = readMetadata(formData);
   if ("error" in meta) return { id: null, error: meta.error };
   const payload = stampModificationAssessment(meta.payload, admin.id, new Date().toISOString());
 
-  const path = `${meta.payload.media_type}/${crypto.randomUUID()}-${sanitizeFileName(file.name)}`;
-
-  const supabase = await createClient();
-  const { error: uploadError } = await supabase.storage.from(MEDIA_PRIVATE_BUCKET).upload(path, file, {
-    contentType: file.type || undefined,
-    upsert: false,
-  });
-  if (uploadError) {
-    return { id: null, error: `Upload failed: ${uploadError.message}` };
-  }
-
   const { data, error: insertError } = await supabase
     .from("media_assets")
     .insert({ storage_path: path, ...payload })
     .select("id")
     .single();
-  // The CHECK rejects a role the code offers. That means
-  // 20260828_concept_render_role.sql has not been applied — say so, rather than
-  // surfacing a bare 23514 that reads as a bug in the upload.
-  //
-  // Matched on the SQLSTATE plus the role actually submitted, not on the text of
-  // the error message: Postgres is free to reword a constraint violation, and a
-  // diagnostic that depends on the wording is one upgrade away from silently
-  // falling back to the generic branch.
+
   if (insertError && isPendingMigrationRoleViolation(insertError.code, meta.payload.asset_role)) {
     await supabase.storage.from(MEDIA_PRIVATE_BUCKET).remove([path]);
     return {
       id: null,
       error:
-        "This editorial role is not yet accepted by the database. Apply " +
-        "supabase/migrations_pending/20260828_concept_render_role.sql, then upload again. " +
-        "The file was not kept.",
+        "This editorial role is not yet accepted by the database. Apply the pending migration for it, then upload " +
+        "again. The file was not kept.",
     };
   }
   if (insertError || !data) {
+    // No orphans: if the row cannot be written, the object it would have
+    // described is removed rather than left in the bucket unreferenced.
     await supabase.storage.from(MEDIA_PRIVATE_BUCKET).remove([path]);
     return { id: null, error: insertError?.message ?? "Insert failed." };
   }

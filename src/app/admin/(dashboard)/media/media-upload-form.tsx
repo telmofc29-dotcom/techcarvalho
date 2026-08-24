@@ -4,7 +4,17 @@ import { useRef, useState, useTransition, type DragEvent } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Field, TextInput, Textarea, Select, Checkbox } from "@/components/admin/ui";
-import { uploadMediaAssetBatchItem } from "./actions";
+import { createMediaUploadTicket, finaliseMediaUpload } from "./actions";
+import { createClient } from "@/lib/supabase/client";
+import { MEDIA_PRIVATE_BUCKET } from "@/lib/media/constants";
+import {
+  ACCEPTED_FORMATS_LABEL,
+  ACCEPTED_IMAGE_TYPES,
+  ACCEPTED_VIDEO_TYPES,
+  MAX_UPLOAD_BYTES,
+  checkUploadCandidate,
+  formatBytes,
+} from "@/lib/media/upload-limits";
 // Rendered from the same module the server action validates against, so a menu
 // entry the server would refuse cannot exist. See src/lib/media/form-options.ts.
 import {
@@ -14,12 +24,6 @@ import {
   RIGHTS_STATUS_OPTIONS,
   SOURCE_TYPE_OPTIONS,
 } from "@/lib/media/form-options";
-
-const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024; // 15MB — generous for photography/logo assets, well under
-// Supabase's own default upload limits, and small enough that a batch of a
-// dozen files doesn't strain the browser tab.
-const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"];
-const ACCEPTED_VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
 
 type FileStatus = "pending" | "reading" | "uploading" | "done" | "error";
 
@@ -37,12 +41,6 @@ type BatchFile = {
 
 function sanitizeCompare(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9.]+/g, "-").replace(/^-+|-+$/g, "");
-}
-
-function detectMediaType(file: File): "image" | "video" | null {
-  if (ACCEPTED_IMAGE_TYPES.includes(file.type)) return "image";
-  if (ACCEPTED_VIDEO_TYPES.includes(file.type)) return "video";
-  return null;
 }
 
 function readImageDimensions(file: File): Promise<{ width: number; height: number } | null> {
@@ -91,13 +89,18 @@ export function MediaUploadForm({ existingFileNames }: { existingFileNames: stri
     setFiles((prev) => [...prev, ...entries]);
 
     for (const entry of entries) {
-      const mediaType = detectMediaType(entry.file);
-      let error: string | null = null;
-      if (!mediaType) {
-        error = `Unsupported file type (${entry.file.type || "unknown"}). Use JPG, PNG, WebP, GIF, SVG, or a common video format.`;
-      } else if (entry.file.size > MAX_FILE_SIZE_BYTES) {
-        error = `File is ${(entry.file.size / 1024 / 1024).toFixed(1)}MB — over the ${MAX_FILE_SIZE_BYTES / 1024 / 1024}MB limit.`;
-      }
+      // Checked BEFORE anything leaves the browser. Previously an oversized
+      // file was sent anyway and died inside a Server Action as
+      // "Body exceeded 1 MB limit" (413), which React masked as #441 — an
+      // unexplained red box instead of a sentence naming the size and the
+      // limit. Same validator the server re-runs when issuing the ticket.
+      const verdict = checkUploadCandidate({
+        name: entry.file.name,
+        size: entry.file.size,
+        type: entry.file.type,
+      });
+      const mediaType = verdict.ok ? verdict.mediaType : null;
+      const error: string | null = verdict.ok ? null : verdict.error;
 
       let previewUrl: string | null = null;
       let dims: { width: number; height: number } | null = null;
@@ -137,21 +140,53 @@ export function MediaUploadForm({ existingFileNames }: { existingFileNames: stri
     if (e.dataTransfer.files.length > 0) void addFiles(e.dataTransfer.files);
   }
 
+  // THREE STEPS PER FILE, and the bytes never touch a Vercel function:
+  //
+  //   1. Ask the server to authorise ONE upload. It checks admin, re-validates
+  //      size and type, generates the storage path itself, and returns a signed
+  //      token scoped to that exact path.
+  //   2. Send the file straight from the browser to Supabase Storage. This is
+  //      what makes a 20 MB original possible at all — Vercel rejects any
+  //      function request body over 4.5 MB with a 413, so no framework setting
+  //      could have carried the file through a Server Action.
+  //   3. Ask the server to record it. The server confirms the object really
+  //      exists before writing a row, so a record can never claim an upload
+  //      that did not land.
   function uploadBatch(formEl: HTMLFormElement) {
     const sharedData = new FormData(formEl);
     const uploadable = files.filter((f) => f.status === "pending" || f.status === "error");
+    const storage = createClient().storage.from(MEDIA_PRIVATE_BUCKET);
 
     startTransition(async () => {
       for (const entry of uploadable) {
         setFiles((prev) => prev.map((f) => (f.key === entry.key ? { ...f, status: "uploading", error: null } : f)));
 
+        const fail = (message: string) =>
+          setFiles((prev) =>
+            prev.map((f) => (f.key === entry.key ? { ...f, status: "error", error: message } : f))
+          );
+
+        const ticket = await createMediaUploadTicket(entry.file.name, entry.file.type, entry.file.size);
+        if (ticket.error || !ticket.path || !ticket.token) {
+          fail(ticket.error ?? "Could not authorise the upload.");
+          continue;
+        }
+
+        const { error: uploadError } = await storage.uploadToSignedUrl(ticket.path, ticket.token, entry.file, {
+          contentType: entry.file.type || undefined,
+        });
+        if (uploadError) {
+          fail(`Upload failed: ${uploadError.message}`);
+          continue;
+        }
+
         const perFile = new FormData();
         for (const [key, value] of sharedData.entries()) perFile.append(key, value);
-        perFile.set("file", entry.file);
+        perFile.set("storage_path", ticket.path);
         if (entry.width) perFile.set("width", String(entry.width));
         if (entry.height) perFile.set("height", String(entry.height));
 
-        const result = await uploadMediaAssetBatchItem(perFile);
+        const result = await finaliseMediaUpload(perFile);
 
         setFiles((prev) =>
           prev.map((f) =>
@@ -169,7 +204,7 @@ export function MediaUploadForm({ existingFileNames }: { existingFileNames: stri
 
   const hasUploadableFiles = files.some((f) => f.status === "pending");
   const allDone = files.length > 0 && files.every((f) => f.status === "done");
-  const someFailed = files.some((f) => f.status === "error" && !f.error?.startsWith("Unsupported") && !f.error?.startsWith("File is"));
+  const someFailed = files.some((f) => f.status === "error" && !f.error?.startsWith("Unsupported") && !f.error?.startsWith("This file is"));
 
   return (
     <form
@@ -220,7 +255,10 @@ export function MediaUploadForm({ existingFileNames }: { existingFileNames: stri
           }}
           className="sr-only"
         />
-        <p className="text-xs text-neutral-400">JPG, PNG, WebP, GIF, SVG, or video — up to {MAX_FILE_SIZE_BYTES / 1024 / 1024}MB each</p>
+        <p className="text-xs text-neutral-500">Accepted formats: {ACCEPTED_FORMATS_LABEL}</p>
+        <p className="text-xs text-neutral-500">
+          Maximum original size: <strong className="font-semibold">{formatBytes(MAX_UPLOAD_BYTES)}</strong> per file
+        </p>
       </div>
 
       {/* Per-file list */}
@@ -237,7 +275,11 @@ export function MediaUploadForm({ existingFileNames }: { existingFileNames: stri
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm text-neutral-800">{f.file.name}</p>
-                <p className="text-xs text-neutral-500">{(f.file.size / 1024).toFixed(0)}KB</p>
+                <p className="text-xs text-neutral-500">
+                  {formatBytes(f.file.size)}
+                  {f.width != null && f.height != null ? ` · ${f.width} × ${f.height} px` : ""}
+                  {f.status === "reading" ? " · reading…" : ""}
+                </p>
                 {f.width != null && (f.status === "pending" || f.status === "error") && (
                   <div className="mt-1 flex items-center gap-1 text-xs text-neutral-500">
                     <span>Detected:</span>
@@ -473,10 +515,20 @@ export function MediaUploadForm({ existingFileNames }: { existingFileNames: stri
         )}
       </div>
 
-      <p className="text-xs text-neutral-500">
-        Uploads always land in the private bucket. Nothing here is publicly visible until you explicitly publish it
-        from the media detail page.
-      </p>
+      <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3 text-xs leading-relaxed text-neutral-600">
+        <p>
+          <strong className="font-semibold text-neutral-800">Your original is kept, untouched.</strong> The file you
+          upload is stored byte-for-byte as the private master. It is never resized, re-encoded or compressed.
+        </p>
+        <p className="mt-1">
+          Public, web-sized versions are separate derivatives generated later from that master — publishing one never
+          alters or replaces the original.
+        </p>
+        <p className="mt-1">
+          Uploads always land in the private bucket. Nothing here is publicly visible until you explicitly publish it
+          from the media detail page.
+        </p>
+      </div>
 
       {!batchDone ? (
         <div>
