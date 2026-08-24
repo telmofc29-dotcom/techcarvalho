@@ -228,10 +228,16 @@ check(
 );
 
 const mid = await fingerprint();
+// Checked against THIS test's own objects, not a global delta: a concurrent
+// upload by the owner would otherwise fail a check that is really about whether
+// each upload produced exactly one master and published nothing.
+const privNames = new Set(mid.priv.split(",").filter(Boolean));
+const pubNames = new Set(mid.pub.split(",").filter(Boolean));
+const ownMasters = rows.map((r) => r.storage_path.split("/").pop());
 check(
   "Exactly one private master per upload, nothing published",
-  mid.privCount === before.privCount + rows.length && mid.pubCount === before.pubCount,
-  "private " + before.privCount + "->" + mid.privCount + ", public " + before.pubCount + "->" + mid.pubCount
+  ownMasters.length > 0 && ownMasters.every((n) => privNames.has(n)) && ownMasters.every((n) => !pubNames.has(n)),
+  `${ownMasters.filter((n) => privNames.has(n)).length}/${ownMasters.length} masters present, ${ownMasters.filter((n) => pubNames.has(n)).length} leaked public`
 );
 
 // --- Cleanup ------------------------------------------------------------------
@@ -243,7 +249,23 @@ for (const r of rows) {
   await db.from("media_assets").delete().eq("id", r.id);
 }
 const after = await fingerprint();
-check("Cleanup restored the library to byte-identical baseline", after.rows === before.rows && after.priv === before.priv && after.pub === before.pub);
+// Two separate promises, neither of which depends on global totals:
+//   1. every record and object this test made is gone;
+//   2. every row that existed BEFORE and still exists is byte-identical, so
+//      nothing unrelated was modified. Rows the owner added meanwhile are
+//      ignored rather than treated as a failure.
+const ownIds = new Set(rows.map((r) => r.id));
+const ownFiles = new Set(rows.map((r) => r.storage_path.split("/").pop()));
+const afterRowsParsed = JSON.parse(after.rows);
+const beforeRowsParsed = JSON.parse(before.rows);
+const afterById = new Map(afterRowsParsed.map((r) => [r.id, JSON.stringify(r)]));
+const preserved = beforeRowsParsed.every((r) => !afterById.has(r.id) || afterById.get(r.id) === JSON.stringify(r));
+const noneLeft =
+  afterRowsParsed.every((r) => !ownIds.has(r.id)) &&
+  after.priv.split(",").every((n) => !ownFiles.has(n)) &&
+  after.pub.split(",").every((n) => !ownFiles.has(n));
+check("Cleanup removed every record and object this test created", noneLeft);
+check("No pre-existing media row was modified", preserved);
 
 console.log("\nDEPLOYMENTS THAT ANSWERED: " + ([...deployments].slice(0, 3).join(", ") || "(local)"));
 await ctx.storageState({ path: STATE });

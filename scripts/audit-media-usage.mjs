@@ -86,7 +86,7 @@ console.log(`  published articles without a hero: ${contNoHero.length}`);
 for (const c of contNoHero.slice(0, 10)) console.log(`      ${c.slug}`);
 
 // --- SAME ASSET IN MULTIPLE ROLES ON ONE TARGET -----------------------------
-section("SAME ASSET HOLDING MORE THAN ONE ROLE ON THE SAME TARGET");
+section("ONE ASSET SERVING SEVERAL SLOTS ON ONE TARGET (intended — informational)");
 let dupRole = 0;
 for (const [label, rows, keyName, lookup] of [
   ["product", pm, "product_id", productById],
@@ -102,10 +102,13 @@ for (const [label, rows, keyName, lookup] of [
     if (group.length <= 1) continue;
     dupRole++;
     const [targetId] = k.split("|");
-    console.log(`  ${label}: ${lookup.get(targetId)?.slug ?? targetId} — same asset as ${group.map((g) => g.role).join(" + ")}`);
+    console.log(`  ${label}: ${lookup.get(targetId)?.slug ?? targetId} — one asset serving ${group.map((g) => g.role).sort().join(" + ")}`);
   }
 }
 if (dupRole === 0) console.log("  none");
+console.log("  NOTE: intended since multi-slot support — one master may be hero, card AND gallery on one target.");
+console.log("  Listed so the spread is visible, not because it is a problem. The database prevents what WOULD be");
+console.log("  wrong: the same asset holding the same role twice.");
 
 // --- DUPLICATE GALLERY ENTRIES ----------------------------------------------
 section("GALLERIES CONTAINING THE SAME ASSET TWICE");
@@ -259,7 +262,7 @@ console.log("\n--- summary ---");
 console.log(`multiple-hero targets: ${multiHero}`);
 console.log(`published products without hero: ${prodNoHero.length}`);
 console.log(`published articles without hero: ${contNoHero.length}`);
-console.log(`same asset in two roles on one target: ${dupRole}`);
+console.log(`one asset serving several slots on one target (intended): ${dupRole}`);
 console.log(`duplicate gallery entries: ${dupGallery}`);
 console.log(`unused assets: ${unused.length}`);
 console.log(`hero associations that cannot render: ${cannotRender}`);

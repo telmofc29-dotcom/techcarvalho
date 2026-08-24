@@ -217,9 +217,24 @@ try {
   }
 }
 
+// Verify OUR OWN records are gone, rather than comparing global totals.
+//
+// Global counts are not a safe assertion here: the owner may be using the
+// admin at the same time, and this test would then fail because somebody else
+// attached an image — a false alarm that says nothing about whether this test
+// cleaned up after itself. It happened.
+const none = ["00000000-0000-0000-0000-000000000000"];
+const { data: strayAssets } = await db.from("media_assets").select("id").in("id", created.assets.length ? created.assets : none);
+const { data: strayContent } = await db.from("content_items").select("id").in("id", created.content.length ? created.content : none);
+const { data: strayLinks } = await db.from("content_media").select("id").in("media_id", created.assets.length ? created.assets : none);
+
 const final = await totals();
-console.log("\nbaseline", JSON.stringify(baseline), "\nfinal   ", JSON.stringify(final));
-check("cleanup returned counts to baseline", final.assets === baseline.assets && final.cm === baseline.cm);
+console.log("baseline", JSON.stringify(baseline), "| final", JSON.stringify(final), "(global totals informational only)");
+check(
+  "cleanup removed every record this test created",
+  (strayAssets ?? []).length === 0 && (strayContent ?? []).length === 0 && (strayLinks ?? []).length === 0,
+  `assets=${(strayAssets ?? []).length} articles=${(strayContent ?? []).length} links=${(strayLinks ?? []).length}`
+);
 
 const failed = results.filter((r) => !r.ok);
 console.log("\n" + (results.length - failed.length) + "/" + results.length + " checks passed");

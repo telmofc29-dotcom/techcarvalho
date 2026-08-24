@@ -266,10 +266,24 @@ try {
   }
 }
 
+// Assert OUR OWN records are gone rather than comparing global totals: the
+// owner may be editing media at the same time, and this test would then fail
+// because of somebody else's change, which says nothing about whether it
+// cleaned up. That false alarm happened.
+const none = ["00000000-0000-0000-0000-000000000000"];
+const leftAssets = (await db.from("media_assets").select("id").in("id", created.assets.length ? created.assets : none)).data ?? [];
+const leftContent = (await db.from("content_items").select("id").in("id", created.content.length ? created.content : none)).data ?? [];
+const leftProducts = (await db.from("products").select("id").in("id", created.products.length ? created.products : none)).data ?? [];
+const leftLinks = (await db.from("content_media").select("id").in("media_id", created.assets.length ? created.assets : none)).data ?? [];
+const leftPLinks = (await db.from("product_media").select("id").in("media_id", created.assets.length ? created.assets : none)).data ?? [];
+
 const final = await totals();
-console.log("\nbaseline", JSON.stringify(baseline), "\nfinal   ", JSON.stringify(final));
-check("cleanup returned every count to baseline",
-  final.assets === baseline.assets && final.pm === baseline.pm && final.cm === baseline.cm);
+console.log("baseline", JSON.stringify(baseline), "| final", JSON.stringify(final), "(global totals informational only)");
+check(
+  "cleanup removed every record this test created",
+  leftAssets.length === 0 && leftContent.length === 0 && leftProducts.length === 0 && leftLinks.length === 0 && leftPLinks.length === 0,
+  `assets=${leftAssets.length} articles=${leftContent.length} products=${leftProducts.length} links=${leftLinks.length + leftPLinks.length}`
+);
 
 const failed = results.filter((r) => !r.ok);
 console.log("\n" + (results.length - failed.length) + "/" + results.length + " checks passed");

@@ -113,16 +113,66 @@ try {
     pSecond.error?.message?.slice(0, 120)
   );
 
+  // --- THUMBNAIL: exclusive in exactly the same way -------------------------
+  const t1 = await db.from("content_media").insert({ content_id: article.id, media_id: a, role: "thumbnail", sort_order: 0 });
+  check("article accepts a FIRST explicit card image", !t1.error, t1.error?.message);
+
+  const t2 = await db.from("content_media").insert({ content_id: article.id, media_id: b, role: "thumbnail", sort_order: 0 });
+  check(
+    "article REFUSES a second card image (one-thumbnail constraint is live)",
+    Boolean(t2.error) && t2.error.code === "23505",
+    t2.error ? `${t2.error.code}: ${t2.error.message.slice(0, 90)}` : "INSERT SUCCEEDED - constraint missing"
+  );
+  check(
+    "the refusal names content_media_one_thumbnail_per_content",
+    Boolean(t2.error?.message?.includes("content_media_one_thumbnail_per_content")),
+    t2.error?.message?.slice(0, 120)
+  );
+
+  const pt1 = await db.from("product_media").insert({ product_id: product.id, media_id: a, role: "thumbnail", sort_order: 0 });
+  check("product accepts a FIRST explicit card image", !pt1.error, pt1.error?.message);
+  const pt2 = await db.from("product_media").insert({ product_id: product.id, media_id: b, role: "thumbnail", sort_order: 0 });
+  check(
+    "product REFUSES a second card image (one-thumbnail constraint is live)",
+    Boolean(pt2.error) && pt2.error.code === "23505",
+    pt2.error ? `${pt2.error.code}: ${pt2.error.message.slice(0, 90)}` : "INSERT SUCCEEDED - constraint missing"
+  );
+  check(
+    "the refusal names product_media_one_thumbnail_per_product",
+    Boolean(pt2.error?.message?.includes("product_media_one_thumbnail_per_product")),
+    pt2.error?.message?.slice(0, 120)
+  );
+
+  // --- AND THE SLOT CONSTRAINTS DID NOT BREAK MULTI-SLOT --------------------
+  // asset `a` now holds hero AND thumbnail on the same article. Adding gallery
+  // must still be accepted: the exclusivity is per SLOT, not per asset/target
+  // pairing.
+  const g0 = await db.from("content_media").insert({ content_id: article.id, media_id: a, role: "gallery", sort_order: 0 });
+  check("ONE asset can still hold hero + thumbnail + gallery on one target", !g0.error, g0.error?.message);
+  const { data: aSlots } = await db.from("content_media").select("role").eq("content_id", article.id).eq("media_id", a);
+  check("...confirmed: three slots held by a single asset",
+    (aSlots ?? []).length === 3,
+    (aSlots ?? []).map((r) => r.role).sort().join(", "));
+
   // --- GALLERIES REMAIN UNCONSTRAINED ---------------------------------------
   const g1 = await db.from("content_media").insert({ content_id: article.id, media_id: b, role: "gallery", sort_order: 1 });
   const g2 = await db.from("content_media").insert({ content_id: article.id, media_id: c, role: "gallery", sort_order: 2 });
   check("galleries still accept MULTIPLE assets", !g1.error && !g2.error, [g1.error?.message, g2.error?.message].filter(Boolean).join("; "));
 
   // --- A HERO CAN STILL CHANGE HANDS ----------------------------------------
-  const demote = await db.from("content_media").update({ role: "gallery" }).eq("content_id", article.id).eq("media_id", a).eq("role", "hero");
-  check("the incumbent hero can be demoted to gallery", !demote.error, demote.error?.message);
-  const promote = await db.from("content_media").update({ role: "hero" }).eq("content_id", article.id).eq("media_id", b).eq("role", "gallery");
-  check("another asset can then be promoted to hero", !promote.error, promote.error?.message);
+  // `a` already holds a gallery row from the multi-slot check above, so
+  // re-labelling its hero row as gallery would duplicate the triple key. That is
+  // correct, and it is exactly the case saveAssociations() handles: when the
+  // outgoing hero is already in the gallery, the hero ROW is dropped rather than
+  // renamed. Mirrored here so the test exercises the real rule.
+  const { data: alreadyGallery } = await db
+    .from("content_media").select("id").eq("content_id", article.id).eq("media_id", a).eq("role", "gallery").maybeSingle();
+  const demote = alreadyGallery
+    ? await db.from("content_media").delete().eq("content_id", article.id).eq("media_id", a).eq("role", "hero")
+    : await db.from("content_media").update({ role: "gallery" }).eq("content_id", article.id).eq("media_id", a).eq("role", "hero");
+  check("the incumbent hero vacates the slot without losing its gallery place", !demote.error, demote.error?.message);
+  const promote = await db.from("content_media").insert({ content_id: article.id, media_id: b, role: "hero", sort_order: 0 });
+  check("another asset can then take the vacated hero slot", !promote.error, promote.error?.message);
 
   const { data: finalRows } = await db.from("content_media").select("media_id, role").eq("content_id", article.id);
   const heroes = (finalRows ?? []).filter((r) => r.role === "hero");
