@@ -154,14 +154,21 @@ export const VALID_ASSET_ROLES: MediaAssetRole[] = valuesOf(ASSET_ROLE_OPTIONS);
 /**
  * Roles whose CHECK constraint is not yet applied in every environment.
  *
- * 'concept_render' is defined in the TypeScript union and accepted by this
- * validator, but the widened CHECK lives in
- * supabase/migrations_pending/20260828_concept_render_role.sql. Until that runs,
- * the insert fails with SQLSTATE 23514. The upload action turns that into a
- * message naming the migration instead of a bare constraint error — this
- * constant is what lets it say so without pattern-matching on error text.
+ * EMPTY, and that is the correct state. 'concept_render' lived here while
+ * supabase/migrations_pending/20260828_concept_render_role.sql was unapplied;
+ * that migration has since been run in production (verified behaviourally — the
+ * constraint accepts the value and reclassified nothing) and now lives in
+ * supabase/migrations/.
+ *
+ * Leaving a role listed here after its migration lands is not harmless. This
+ * constant only decides what an admin is TOLD when an insert fails with
+ * SQLSTATE 23514; a stale entry sends them off to run a migration that is
+ * already applied while their actual constraint failure goes unexplained.
+ *
+ * Repopulate it when a new role is added to the union ahead of its migration,
+ * and empty it again once that migration is applied.
  */
-export const ASSET_ROLES_PENDING_MIGRATION: readonly MediaAssetRole[] = ["concept_render"];
+export const ASSET_ROLES_PENDING_MIGRATION: readonly MediaAssetRole[] = [];
 
 // ---------------------------------------------------------------------------
 // Brand asset role

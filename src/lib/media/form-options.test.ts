@@ -219,7 +219,11 @@ test("the pending-migration list names concept_render and nothing already applie
   // The hint the upload action shows points at a migration in
   // migrations_pending/. Listing an already-applied role here would send an
   // admin to run a migration that is not their problem.
-  assert.deepEqual([...ASSET_ROLES_PENDING_MIGRATION], ["concept_render"]);
+  // Empty: 20260828_concept_render_role.sql is applied in production and has
+  // moved to supabase/migrations/. This assertion is the thing that will fail
+  // if a future role is added here and then left behind after its migration
+  // lands — which is the stale-hint bug this comment warns about.
+  assert.deepEqual([...ASSET_ROLES_PENDING_MIGRATION], []);
   for (const role of ASSET_ROLES_PENDING_MIGRATION) {
     assert.ok(
       VALID_ASSET_ROLES.includes(role),
