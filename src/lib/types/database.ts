@@ -1228,6 +1228,14 @@ export interface Database {
           autonomous_publishing_enabled: boolean;
           notes: string | null;
           updated_at: string;
+          // Added by supabase/migrations_pending/20260824_stage_modes.sql —
+          // NOT YET APPLIED. Optional on purpose: until the migration runs the
+          // key is simply absent from the row, and every reader resolves an
+          // absent value to ASSISTED via resolveAllStageModes(). Typed as
+          // `unknown` rather than a mode map because the database has no way to
+          // guarantee the shape; src/lib/engine/stage-modes.ts is what makes it
+          // safe, and it treats anything unrecognised as ASSISTED.
+          stage_modes?: unknown;
         };
         Insert: Partial<Database["public"]["Tables"]["engine_settings"]["Row"]>;
         Update: Partial<Database["public"]["Tables"]["engine_settings"]["Row"]>;

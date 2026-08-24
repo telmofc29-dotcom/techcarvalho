@@ -4,6 +4,7 @@ import { checkCronAuth, newCounters, recordJobRun } from "@/lib/engine/cron";
 import { beginRun, buildGuard, completeRun, loadTelemetry } from "@/lib/engine/guard";
 import { idempotencyKeyFor } from "@/lib/engine/concurrency";
 import { STAGE_JOB_NAMES, ENGINE_STAGE_NAMES, type EngineStageName } from "@/lib/engine/stages";
+import { resolveAllStageModes, tickShouldRun } from "@/lib/engine/stage-modes";
 import { runDiscovery } from "@/lib/engine/jobs/discovery";
 import { runRelevance } from "@/lib/engine/jobs/relevance-job";
 import { runBriefGeneration } from "@/lib/engine/jobs/brief-job";
@@ -141,6 +142,33 @@ export async function GET(request: NextRequest) {
   const telemetry = await loadTelemetry(supabase);
   const guard = buildGuard({ telemetry, lease, now });
 
+  // --- 2b. Per-stage operating modes ---------------------------------------
+  // MANUAL means a stage does not run on the schedule. This is the enforcement
+  // point that makes src/lib/engine/stage-modes.ts real rather than a display
+  // preference — without it, the setting would be exactly the dormant
+  // infrastructure it was written to replace.
+  //
+  // `select("*")` rather than naming the column: `stage_modes` ships in
+  // supabase/migrations_pending/20260824_stage_modes.sql and is NOT applied
+  // yet. Naming an absent column errors the whole read; selecting the row and
+  // reading an absent key resolves to ASSISTED, which is what the engine
+  // already does. So this is correct both before and after the migration, and
+  // applying it changes no behaviour on its own.
+  const { data: settingsRow, error: settingsError } = await supabase
+    .from("engine_settings")
+    .select("*")
+    .eq("id", true)
+    .maybeSingle();
+  if (settingsError) {
+    // Fail closed to the defaults rather than aborting the pass: an unreadable
+    // settings row must not stop the engine, but it must also not be treated
+    // as permission for anything beyond ASSISTED.
+    console.error(`[engine_tick] stage-mode read failed: ${settingsError.message}`);
+  }
+  const stageModes = resolveAllStageModes(
+    (settingsRow as Record<string, unknown> | null)?.stage_modes
+  );
+
   const stages: Record<string, unknown> = {};
   let anyFailed = false;
   let anySkipped = false;
@@ -161,6 +189,22 @@ export async function GET(request: NextRequest) {
         why:
           `Stage '${name}' has no entry in STAGE_JOB_NAMES, so no circuit breaker, budget or ` +
           `concurrency rule could be applied to it. An ungateable stage does not run.`,
+      };
+      continue;
+    }
+
+    // Mode is checked BEFORE the guard. A stage the owner switched off should
+    // report "you turned this off", not a circuit-breaker or budget reason —
+    // those describe the engine protecting itself, which is a different fact
+    // and sends whoever reads the run log somewhere unhelpful.
+    const modeState = stageModes[name];
+    if (modeState && !tickShouldRun(modeState.mode)) {
+      anySkipped = true;
+      stages[name] = {
+        status: "skipped",
+        job: jobName,
+        mode: modeState.mode,
+        why: `Stage mode is ${modeState.mode}, so it does not run on the scheduled tick.`,
       };
       continue;
     }

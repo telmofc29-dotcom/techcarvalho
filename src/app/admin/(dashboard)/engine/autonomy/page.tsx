@@ -6,6 +6,7 @@ import { evaluateAllProofs, REQUIRED_LEVEL, PROOF_TTL_DAYS, type ProofStatus } f
 import { resolveEffectiveMode, READINESS, modeMayPublish } from "@/lib/engine/modes";
 import { assessShadowReadiness } from "@/lib/engine/shadow-readiness";
 import { createClient } from "@/lib/supabase/server";
+import { StageModesPanel } from "./stage-modes-panel";
 
 /** Row shapes returned by the shadow RPCs. Declared here so the page does not
  *  silently accept a differently-shaped answer. */
@@ -139,6 +140,21 @@ export default async function AutonomyReadinessPage() {
   // that publishes — while 8 of 15 coverage dimensions were below their floor.
   const effective = resolveEffectiveMode("AUTONOMOUS", readiness);
 
+  // `select("*")` rather than naming the column: stage_modes ships in
+  // supabase/migrations_pending/20260824_stage_modes.sql and is not applied
+  // yet, and naming an absent column errors the entire read. Presence of the
+  // KEY is what tells us whether the column exists — which is also exactly what
+  // decides whether the panel is editable or read-only.
+  const supabaseSettings = await createClient();
+  const { data: settingsRow } = await supabaseSettings
+    .from("engine_settings")
+    .select("*")
+    .eq("id", true)
+    .maybeSingle();
+  const settingsObject = (settingsRow ?? null) as Record<string, unknown> | null;
+  const stageModesColumnExists = settingsObject !== null && "stage_modes" in settingsObject;
+  const storedStageModes = settingsObject?.stage_modes ?? null;
+
   return (
     <div>
       <EngineTabs current="/admin/engine/autonomy" />
@@ -146,6 +162,8 @@ export default async function AutonomyReadinessPage() {
         title="Autonomy readiness"
         description="What has been DEMONSTRATED, not what has been built. A passing unit test is not evidence about what happens when something breaks."
       />
+
+      <StageModesPanel storedModes={storedStageModes} columnExists={stageModesColumnExists} />
 
       <Card>
         <div className="flex flex-wrap items-center gap-3">

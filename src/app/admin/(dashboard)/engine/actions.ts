@@ -16,6 +16,8 @@ import type {
 import { loadApprovalPackage } from "@/lib/engine/package-service";
 import { assembleDraft, proposeSeo } from "@/lib/engine/draft-assembly";
 import { proposeSlug } from "@/lib/engine/entity-resolution";
+import { resolveAllStageModes } from "@/lib/engine/stage-modes";
+import { ENGINE_STAGE_NAMES } from "@/lib/engine/stages";
 
 type ReviewState = "pending" | "approved" | "rejected" | "snoozed" | "research_requested";
 type RelevanceVerdict = "relevant" | "rejected" | "uncertain";
@@ -655,4 +657,52 @@ export async function approveAndBuild(formData: FormData): Promise<void> {
   revalidatePath("/admin/engine/drafts");
   revalidatePath("/admin/content");
   revalidatePath("/admin");
+}
+
+/**
+ * Save per-stage operating modes.
+ *
+ * Writes the whole map rather than patching one key. The form always submits
+ * every stage, so a full write is the accurate representation of what the owner
+ * saw — a partial patch would leave a stage at a value that is no longer on
+ * screen anywhere.
+ *
+ * Values are resolved through `resolveAllStageModes` BEFORE the write, so an
+ * AUTOMATIC that the stage cannot honour is stored as the ASSISTED it actually
+ * resolves to. Storing the refused value and re-refusing it on every read would
+ * leave the database claiming an automation that never happens.
+ *
+ * If `stage_modes` does not exist yet (the migration in migrations_pending/ has
+ * not been applied), the update errors and this returns without writing. The
+ * page detects the same condition and renders read-only, so nothing silently
+ * appears to save.
+ */
+export async function updateStageModes(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  const requested: Record<string, unknown> = {};
+  for (const stage of ENGINE_STAGE_NAMES) {
+    const value = formData.get(`mode_${stage}`);
+    if (typeof value === "string") requested[stage] = value;
+  }
+
+  const resolved = resolveAllStageModes(requested);
+  const toStore: Record<string, string> = {};
+  for (const stage of ENGINE_STAGE_NAMES) {
+    toStore[stage] = resolved[stage].mode;
+  }
+
+  const { error } = await supabase
+    .from("engine_settings")
+    .update({ stage_modes: toStore, updated_at: new Date().toISOString() })
+    .eq("id", true);
+  if (error) {
+    console.error(`[updateStageModes] ${error.message}`);
+    return;
+  }
+
+  revalidatePath("/admin/engine/autonomy");
+  revalidatePath("/admin/engine/health");
+  revalidatePath("/admin/engine");
 }
