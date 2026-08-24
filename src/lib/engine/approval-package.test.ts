@@ -118,6 +118,104 @@ test("a clean package can build", () => {
 });
 
 // ---------------------------------------------------------------------------
+// The evidence gate — found by the iPhone 18 test
+// ---------------------------------------------------------------------------
+
+const NO_EVIDENCE = classifyBriefQuality(
+  {
+    title: "iPhone 18: what Apple has actually confirmed",
+    briefKind: "breaking",
+    contentType: "news",
+    verifiedFacts: [],
+    uncertainties: [],
+    sourceUrls: [],
+    freshnessSensitivity: "time_sensitive",
+    hasDiscovery: false,
+    hasOpportunity: false,
+    createdAt: "2026-08-24T00:00:00Z",
+  },
+  NOW
+);
+
+test("a brief with no evidence cannot be built, even reached directly by URL", () => {
+  // The package page is reachable by URL, so it cannot rely on the owner queue
+  // having filtered the brief out. Before this, CAN BUILD was YES here.
+  const p = pkg({ quality: NO_EVIDENCE });
+  assert.equal(p.canBuild, false);
+  assert.match(p.blockers.join(" "), /Evidence does not clear the bar/i);
+});
+
+test("the package can only build what the quality gate would admit", () => {
+  // The invariant, stated once: these two gates must never disagree.
+  const cases = [
+    { quality: NO_EVIDENCE },
+    { quality: GOOD_QUALITY },
+  ];
+  for (const c of cases) {
+    const p = pkg(c);
+    if (!c.quality.entersOwnerQueue) {
+      assert.equal(p.canBuild, false, `${c.quality.state} must not be buildable`);
+    }
+  }
+});
+
+test("zero counts are never rendered as passed checks", () => {
+  const p = pkg({ quality: NO_EVIDENCE });
+  const research = p.sections.find((s) => s.title === "Research");
+  const zeroFacts = research!.lines.find((l) => /^0 verified facts/.test(l.text));
+  const zeroSources = research!.lines.find((l) => /^0 sources/.test(l.text));
+  assert.ok(zeroFacts, "expected a facts line");
+  assert.ok(zeroSources, "expected a sources line");
+  assert.notEqual(zeroFacts.marker, "ok", "0 facts must not render as a passed check");
+  assert.notEqual(zeroSources.marker, "ok", "0 sources must not render as a passed check");
+});
+
+test("a single publisher is a warning on the count line, not a tick", () => {
+  const q = classifyBriefQuality(
+    {
+      title: "Something",
+      briefKind: "breaking",
+      contentType: "news",
+      verifiedFacts: ["a", "b"],
+      uncertainties: [],
+      sourceUrls: ["https://www.macrumors.com/a", "https://www.macrumors.com/b"],
+      freshnessSensitivity: null,
+      hasDiscovery: true,
+      hasOpportunity: false,
+      createdAt: "2026-08-23T00:00:00Z",
+    },
+    NOW
+  );
+  const p = pkg({ quality: q });
+  const research = p.sections.find((s) => s.title === "Research");
+  const sources = research!.lines.find((l) => /independent publisher/.test(l.text));
+  assert.equal(sources?.marker, "warn");
+  assert.equal(p.canBuild, false, "low confidence must not be buildable");
+});
+
+test("singular and plural read correctly", () => {
+  const q = classifyBriefQuality(
+    {
+      title: "Something",
+      briefKind: "breaking",
+      contentType: "news",
+      verifiedFacts: ["only one"],
+      uncertainties: [],
+      sourceUrls: ["https://www.reuters.com/a"],
+      freshnessSensitivity: null,
+      hasDiscovery: true,
+      hasOpportunity: false,
+      createdAt: "2026-08-23T00:00:00Z",
+    },
+    NOW
+  );
+  const research = pkg({ quality: q }).sections.find((s) => s.title === "Research");
+  const text = research!.lines.map((l) => l.text).join(" | ");
+  assert.match(text, /1 source across 1 independent publisher\b/);
+  assert.match(text, /1 verified fact\b/);
+});
+
+// ---------------------------------------------------------------------------
 // Media never blocks, and rights are never assumed
 // ---------------------------------------------------------------------------
 

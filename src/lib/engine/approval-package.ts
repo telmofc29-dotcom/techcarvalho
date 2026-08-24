@@ -130,13 +130,38 @@ export function buildApprovalPackage(input: PackageInput): ApprovalPackage {
 
 function researchSection(input: PackageInput): PackageSection {
   const q = input.quality;
-  const lines: PackageLine[] = [
-    {
-      marker: "ok",
-      text: `${q.sourceCount} sources across ${q.independentDomains} independent publishers`,
-    },
-    { marker: "ok", text: `${q.factCount} verified facts` },
-  ];
+  const lines: PackageLine[] = [];
+
+  // THE EVIDENCE GATE, restated here as a blocker.
+  //
+  // Found by the iPhone 18 test: the package previously reported CAN BUILD =
+  // YES for a brief with zero sources and zero verified facts, because the only
+  // blockers were duplication, re-assembly and a missing slug. The owner queue
+  // would never have SHOWN that brief — but the package page is reachable by
+  // URL, and "reachable by URL" is a real path a stale tab or a bookmark takes.
+  //
+  // So the rule is stated as an invariant rather than left to the queue: the
+  // package can only build what the quality gate would admit. One gate, checked
+  // in both places, with a test that pins them together.
+  if (!q.entersOwnerQueue) {
+    lines.push({
+      marker: "blocked",
+      text: `Evidence does not clear the bar — ${q.label.toLowerCase()}`,
+      detail: q.reasons[0],
+    });
+  }
+
+  // Counts are marked by what they ARE, not by the fact that they were counted.
+  // Rendering "0 verified facts" with a green tick was worse than saying
+  // nothing: it read as a passed check.
+  lines.push({
+    marker: q.independentDomains >= 2 ? "ok" : q.sourceCount > 0 ? "warn" : "blocked",
+    text: `${q.sourceCount} source${q.sourceCount === 1 ? "" : "s"} across ${q.independentDomains} independent publisher${q.independentDomains === 1 ? "" : "s"}`,
+  });
+  lines.push({
+    marker: q.factCount >= 2 ? "ok" : q.factCount > 0 ? "warn" : "blocked",
+    text: `${q.factCount} verified fact${q.factCount === 1 ? "" : "s"}`,
+  });
 
   // Uncertainties are reported as a STRENGTH, and the wording matters: they are
   // proof that confirmed and unconfirmed material were kept apart, which is
