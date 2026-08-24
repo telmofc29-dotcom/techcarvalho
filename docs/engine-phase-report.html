@@ -1,0 +1,370 @@
+<title>Engine Phases A–E</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,500;1,400&display=swap">
+
+<style>
+:root{
+  --ground:#eef1f1; --panel:#f8fafa; --sunk:#e3e8e8;
+  --ink:#131a1c; --ink-soft:#3f4d50; --ink-faint:#6c7c80;
+  --rule:#cfd8d8; --rule-soft:#e0e7e7;
+  --accent:#0c666d; --accent-soft:#d3e6e7;
+  --ok:#2b6f4a; --ok-bg:#dcebe1;
+  --warn:#8f5a04; --warn-bg:#f2e6cd;
+  --stop:#9c3323; --stop-bg:#f1dcd8;
+  --shadow:0 1px 2px rgba(19,26,28,.06),0 8px 24px -16px rgba(19,26,28,.28);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ground:#0d1315; --panel:#141c1e; --sunk:#1b2426;
+  --ink:#e5eded; --ink-soft:#a9b8ba; --ink-faint:#7b8b8e;
+  --rule:#2b3739; --rule-soft:#212c2e;
+  --accent:#54c2c8; --accent-soft:#16383b;
+  --ok:#6ec18d; --ok-bg:#16301f;
+  --warn:#e0a94e; --warn-bg:#332612;
+  --stop:#e08d7d; --stop-bg:#341c17;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -16px rgba(0,0,0,.8);
+}}
+:root[data-theme="dark"]{
+  --ground:#0d1315; --panel:#141c1e; --sunk:#1b2426;
+  --ink:#e5eded; --ink-soft:#a9b8ba; --ink-faint:#7b8b8e;
+  --rule:#2b3739; --rule-soft:#212c2e;
+  --accent:#54c2c8; --accent-soft:#16383b;
+  --ok:#6ec18d; --ok-bg:#16301f;
+  --warn:#e0a94e; --warn-bg:#332612;
+  --stop:#e08d7d; --stop-bg:#341c17;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -16px rgba(0,0,0,.8);
+}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);
+  font-family:"IBM Plex Serif",Georgia,serif;font-size:17px;line-height:1.62;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1100px;margin:0 auto;padding:0 24px 96px}
+.col{max-width:68ch}
+h1,h2,h3,.sans{font-family:"IBM Plex Sans Condensed","Helvetica Neue",Arial,sans-serif;text-wrap:balance}
+h1{font-size:clamp(2.3rem,5.2vw,3.7rem);font-weight:700;line-height:1.04;letter-spacing:-.015em;margin:0 0 18px}
+h2{font-size:clamp(1.45rem,2.5vw,1.9rem);font-weight:600;line-height:1.15;margin:0}
+h3{font-size:1.08rem;font-weight:600;margin:0 0 6px}
+p{margin:0 0 1.05em}
+a{color:var(--accent)}
+strong{font-weight:600;color:var(--ink)}
+code,.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace}
+code{font-size:.85em;background:var(--sunk);padding:.11em .38em;border-radius:3px;word-break:break-word}
+.num{font-variant-numeric:tabular-nums}
+
+.mast{padding:64px 0 40px;border-bottom:2px solid var(--ink)}
+.eyebrow{font-family:"IBM Plex Mono",monospace;font-size:.72rem;font-weight:500;text-transform:uppercase;
+  letter-spacing:.16em;color:var(--accent);margin:0 0 22px;display:flex;flex-wrap:wrap;gap:10px 18px}
+.standfirst{font-size:1.22rem;line-height:1.5;color:var(--ink-soft);margin:0;max-width:60ch}
+.standfirst b{color:var(--ink);font-weight:600}
+
+.verdict{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1px;background:var(--rule);
+  border:1px solid var(--rule);margin:40px 0 0;border-radius:5px;overflow:hidden}
+.vcell{background:var(--panel);padding:18px 20px}
+.vnum{font-family:"IBM Plex Mono",monospace;font-size:1.8rem;font-weight:600;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.vlab{font-family:"IBM Plex Sans Condensed",sans-serif;font-size:.78rem;line-height:1.32;color:var(--ink-faint);margin-top:8px;text-transform:uppercase;letter-spacing:.07em}
+.is-ok .vnum{color:var(--ok)} .is-warn .vnum{color:var(--warn)} .is-stop .vnum{color:var(--stop)}
+
+section{padding:54px 0 0}
+.shead{display:flex;gap:16px;align-items:baseline;border-top:1px solid var(--rule);padding-top:14px;margin-bottom:24px}
+.snum{font-family:"IBM Plex Mono",monospace;font-size:.76rem;font-weight:600;color:var(--accent);letter-spacing:.1em;padding-top:5px;white-space:nowrap}
+
+.tw{overflow-x:auto;margin:24px 0;border:1px solid var(--rule);border-radius:6px;background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:.9rem;min-width:540px}
+th,td{text-align:left;padding:10px 16px;border-bottom:1px solid var(--rule-soft);vertical-align:top}
+thead th{font-family:"IBM Plex Sans Condensed",sans-serif;font-size:.72rem;text-transform:uppercase;letter-spacing:.09em;
+  color:var(--ink-faint);background:var(--sunk);border-bottom:1px solid var(--rule);font-weight:600}
+tbody tr:last-child td{border-bottom:0}
+td.n{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+td.mono{font-family:"IBM Plex Mono",monospace;font-size:.85rem}
+
+.tag{display:inline-block;font-family:"IBM Plex Sans Condensed",sans-serif;font-size:.7rem;font-weight:600;
+  text-transform:uppercase;letter-spacing:.07em;padding:2px 8px;border-radius:3px;white-space:nowrap}
+.t-ok{background:var(--ok-bg);color:var(--ok)}
+.t-warn{background:var(--warn-bg);color:var(--warn)}
+.t-stop{background:var(--stop-bg);color:var(--stop)}
+.t-new{background:var(--accent-soft);color:var(--accent)}
+
+.call{border-left:3px solid var(--accent);background:var(--panel);padding:20px 24px;margin:26px 0;border-radius:0 5px 5px 0;box-shadow:var(--shadow)}
+.call.stop{border-left-color:var(--stop)} .call.warn{border-left-color:var(--warn)} .call.ok{border-left-color:var(--ok)}
+.call h3{font-size:.76rem;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);margin-bottom:10px;font-family:"IBM Plex Sans Condensed",sans-serif}
+.call.stop h3{color:var(--stop)} .call.warn h3{color:var(--warn)} .call.ok h3{color:var(--ok)}
+.call p:last-child{margin-bottom:0}
+
+.flows{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;margin:26px 0}
+.flow{border:1px solid var(--rule);border-radius:6px;background:var(--panel);overflow:hidden;box-shadow:var(--shadow)}
+.flow-h{padding:13px 20px;border-bottom:1px solid var(--rule);background:var(--sunk);font-family:"IBM Plex Sans Condensed",sans-serif;
+  font-weight:600;font-size:.95rem;display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.flow-h .cnt{font-family:"IBM Plex Mono",monospace;font-size:.76rem;font-weight:500}
+.flow.before .cnt{color:var(--stop)} .flow.after .cnt{color:var(--ok)}
+.flow ol{margin:0;padding:14px 20px 16px 38px;font-size:.93rem;line-height:1.5}
+.flow li{margin-bottom:7px} .flow li:last-child{margin-bottom:0}
+.flow li::marker{font-family:"IBM Plex Mono",monospace;font-size:.8rem;color:var(--ink-faint)}
+
+.bars{margin:20px 0}
+.bar{display:grid;grid-template-columns:220px 44px 1fr;gap:12px;align-items:center;padding:5px 0;font-size:.9rem}
+.bar .lab{color:var(--ink-soft);font-family:"IBM Plex Sans Condensed",sans-serif}
+.bar .val{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;text-align:right}
+.bar .track{height:12px;background:var(--sunk);border-radius:2px;overflow:hidden}
+.bar .fill{height:100%;background:var(--warn)}
+.bar.zero .fill{background:var(--ok)}
+.bar.zero .val{color:var(--ink-faint)}
+
+ul.tight{margin:0 0 1.05em;padding-left:1.15em}
+ul.tight li{margin-bottom:.4em}
+ul.tight li::marker{color:var(--ink-faint)}
+
+footer{margin-top:64px;padding-top:20px;border-top:2px solid var(--ink);font-family:"IBM Plex Mono",monospace;
+  font-size:.75rem;color:var(--ink-faint);line-height:1.7}
+
+@media (max-width:640px){
+  body{font-size:16px} .wrap{padding:0 18px 64px}
+  .bar{grid-template-columns:1fr 44px;row-gap:4px}
+  .bar .track{grid-column:1/-1}
+}
+</style>
+
+<div class="wrap">
+
+<header class="mast">
+  <div class="eyebrow"><span>TechCarvalho</span><span>/</span><span>Phases A–E delivered</span><span>/</span><span>24 Aug 2026</span></div>
+  <h1>The gate is open.<br>The queue is honest.</h1>
+  <p class="standfirst">Five phases shipped and live on <span class="mono">52c4976</span>. The pipeline that had never once passed its human gate now does, in three owner actions instead of twelve. And the iPhone 18 test found a real bug before you did — <b>the package would have built an article with zero sources</b>.</p>
+
+  <div class="verdict">
+    <div class="vcell is-ok"><div class="vnum">3</div><div class="vlab">Owner actions, was 12</div></div>
+    <div class="vcell is-ok"><div class="vnum">1667</div><div class="vlab">Tests passing</div></div>
+    <div class="vcell is-ok"><div class="vnum">57</div><div class="vlab">Live production checks</div></div>
+    <div class="vcell is-stop"><div class="vnum">0</div><div class="vlab">Discoveries with corroboration</div></div>
+    <div class="vcell is-ok"><div class="vnum">&pound;0</div><div class="vlab">Paid services added</div></div>
+  </div>
+</header>
+
+<section>
+  <div class="shead"><div class="snum">00</div><div><h2>Read this first</h2></div></div>
+  <div class="col">
+    <div class="call stop">
+      <h3>The finding that outranks everything I built</h3>
+      <p>All <strong>195 discoveries have exactly one evidence row from exactly one publisher. Zero have independent corroboration.</strong></p>
+      <p>That is the real reason no brief clears the evidence bar. It is not that my threshold is harsh — it is that <strong>the research stage has never gone back for a second source</strong>. Discovery works; corroboration has never run. Every brief in your backlog is one feed item, restated.</p>
+      <p>I did not work around this. Lowering the bar to two sources from one publisher would have manufactured exactly the false confidence the whole system is built to refuse. It needs fixing at the research stage, and it is the single highest-value thing left to do.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><div class="snum">01</div><div><h2>Owner queue</h2></div></div>
+  <div class="col">
+    <p><code>/admin/engine</code> is now <strong>Today</strong>: one ranked list of what needs a human, drawn from four tables, with the reason on the row and the action inline. The fourteen job views moved behind <em>Engine details</em> — consolidating the front door cost nobody the detail behind it.</p>
+    <p><code>/admin</code> now leads with engine status and a needs-attention count. Before this it showed eight tables of counts and <strong>did not link to <code>/admin/engine</code> at all</strong>, so you could open the dashboard daily and never learn anything was waiting.</p>
+    <p>Three things it deliberately refuses to do: surface all 130 pending records (that is an engine statistic, not a to-do list); show urgency as a number (there is no measured demand — a sort key dressed as a score is fake precision); and let a failed read look like an empty queue. <em>"Nothing needs your attention"</em> is the most reassuring thing this app can say, so it can never say it because a query broke.</p>
+    <p>Rights decisions rank above everything, not on editorial grounds — they are the only work here the engine is <em>structurally forbidden</em> to ever resolve, so they must not queue behind work merely waiting for a human today. Ties break oldest-first, so a repeatedly-skipped item cannot grow a permanent tail.</p>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><div class="snum">02</div><div><h2>Brief quality &amp; the 47-brief reclassification</h2></div></div>
+  <div class="col">
+    <p>Quality is <strong>derived, not stored</strong> — a pure function of fields <code>engine_briefs</code> already carries. No migration, no backfill, and all 47 are reclassified the instant the rules change. <code>review_state</code> stays the only persisted decision because it is the only one a human makes; the classifier never writes.</p>
+    <p>Nothing is deleted. A comparison with no evidence today becomes a real idea the moment either product is in the news, and deleting it only invites the next tick to regenerate it.</p>
+  </div>
+
+  <div class="bars">
+    <div class="bar zero"><span class="lab">Ready for review</span><span class="val">0</span><span class="track"><span class="fill" style="width:0%"></span></span></div>
+    <div class="bar zero"><span class="lab">Needs more research</span><span class="val">0</span><span class="track"><span class="fill" style="width:0%"></span></span></div>
+    <div class="bar"><span class="lab">Low confidence</span><span class="val">16</span><span class="track"><span class="fill" style="width:34%"></span></span></div>
+    <div class="bar zero"><span class="lab">Insufficient evidence</span><span class="val">0</span><span class="track"><span class="fill" style="width:0%"></span></span></div>
+    <div class="bar zero"><span class="lab">Duplicate / cannibalisation</span><span class="val">0</span><span class="track"><span class="fill" style="width:0%"></span></span></div>
+    <div class="bar"><span class="lab">Not worth pursuing</span><span class="val">31</span><span class="track"><span class="fill" style="width:66%"></span></span></div>
+  </div>
+
+  <div class="col">
+    <p><strong>All 31 "not worth pursuing" are catalogue combinatorics</strong> — "Canon EOS 5D Mark IV vs Canon EOS 90D", the Canon catalogue multiplied against itself, 31 for 31 matching the signature. <strong>All 16 "low confidence" are single-publisher vendor announcements</strong> ("ubisys joins Works with Home Assistant", "Designing Firefox for the future").</p>
+    <p>You were right not to have approved any of them. Re-run it yourself any time with <code>npx tsx scripts/reclassify-briefs.ts --verbose</code> — it is read-only.</p>
+
+    <div class="call warn">
+      <h3>A bug this caught before it shipped</h3>
+      <p><code>registrableDomain()</code> takes a <em>host</em>, not a URL. Passing a full URL silently yields junk — <code>https://news.bbc.co.uk/a</code> became <code>"co.uk/a"</code> — and because junk values differ from each other they counted as <em>separate publishers</em>. That fails <strong>open</strong>: inflated independence is exactly what lets an under-sourced brief reach "ready". Caught by the single-publisher test before it ever ran on your data.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><div class="snum">03</div><div><h2>One-click package</h2></div></div>
+  <div class="col">
+    <p>The package states every consequence on one screen and asks once. Approving then assembles immediately for that brief, rather than leaving it for a nightly tick you would have to remember to come back for.</p>
+    <p>It is the <strong>same path, not a parallel one</strong>: <code>assembleDraft</code>, <code>proposeSeo</code>, <code>proposeSlug</code> and the <code>engine_assemble_draft</code> RPC are each the exact function the nightly stage calls. Nothing is a second implementation that could drift.</p>
+    <p>The load-bearing distinction is <strong>"already true" versus "will be created"</strong>. "Apple exists" and "iPhone 18 will be created" look alike on a checklist and are opposite facts. A product your brief names but the catalogue lacks is reported as a <em>warning</em>, never as something approval creates — a product needs specs, and specs are never invented to fill a shell.</p>
+    <p>A clearance is only claimed when it was actually computed. If the published-content read fails, the package says <em>"could not be checked"</em>, never <em>"no overlap found"</em>. A false duplication clearance is how a site starts competing with itself.</p>
+
+    <div class="call ok">
+      <h3>The publishing boundary, proven rather than asserted</h3>
+      <p><code>engine_assemble_draft</code> is <code>SECURITY DEFINER</code> and hard-wires <code>status='draft'</code>. It cannot be made to publish from an admin session with any argument. The live production test <em>asserts the created row is a draft</em> rather than trusting it.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><div class="snum">04</div><div><h2>iPhone 18</h2></div></div>
+  <div class="col">
+    <p><strong>I could not research iPhone 18.</strong> My web-search budget for this session was exhausted before I reached it, and I will not invent facts to make a test pass. So I ran it against real production data and reported what the system genuinely does with a subject it cannot support.</p>
+    <p>The database holds <strong>zero discoveries and zero evidence rows</strong> about an iPhone 18. Apple exists; iPhone 17 Pro exists; nothing else. The verdict:</p>
+    <ul class="tight">
+      <li><strong>Insufficient evidence</strong> — does not enter your queue</li>
+      <li>No article is produced, and the gap is recorded so it keeps looking</li>
+      <li><strong>CAN BUILD: NO</strong></li>
+    </ul>
+    <p>That last line is new, because the test found a real defect.</p>
+
+    <div class="call stop">
+      <h3>What the test caught</h3>
+      <p>The package originally reported <strong>CAN BUILD: YES</strong> for a brief with zero sources and zero verified facts — the only blockers were duplication, re-assembly and a missing slug. Worse, <em>"0 sources"</em> and <em>"0 verified facts"</em> rendered with green ticks: counts marked by the fact that they had been counted rather than by what they said.</p>
+      <p>Your queue would never have shown that brief — but the package page is reachable by URL, and reachable-by-URL is a real path a stale tab takes. The rule is now an invariant inside the package itself: <strong>it can only build what the quality gate would admit</strong>, with a test pinning the two gates together.</p>
+    </div>
+    <p>Reproduce it any time: <code>npx tsx scripts/iphone-18-package.ts</code>. Read-only.</p>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><div class="snum">05</div><div><h2>Engine modes</h2></div></div>
+  <div class="col">
+    <p>MANUAL / ASSISTED / AUTOMATIC per stage, <strong>enforced in the tick</strong> — MANUAL stages do not run, and the run log says "you turned this off" rather than reporting a circuit-breaker reason that would send you somewhere unhelpful.</p>
+    <p>The decision that matters: <strong>AUTOMATIC is a capability declared per stage, not a setting accepted everywhere.</strong> "Automatic means skip the human" is wrong, because for most stages the human is not a rubber stamp — they supply a judgement the engine cannot make.</p>
+  </div>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Stage</th><th>Automatic</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">briefs</td><td><span class="tag t-ok">Available</span></td><td>Failed-gate briefs file to the backlog instead of waiting for you to dismiss them</td></tr>
+        <tr><td class="mono">media_acquisition</td><td><span class="tag t-ok">Available</span></td><td>Only candidates whose rights are <em>already</em> established. Anything unproven still stops and asks</td></tr>
+        <tr><td class="mono">internal_links</td><td><span class="tag t-ok">Available</span></td><td>Links between already-published pages</td></tr>
+        <tr><td class="mono">hero_media</td><td><span class="tag t-ok">Available</span></td><td>Only from assets already cleared and published</td></tr>
+        <tr><td class="mono">draft_assembly</td><td><span class="tag t-stop">Refused</span></td><td>Approval <em>is</em> the editorial decision. Automating it decides what you cover without asking</td></tr>
+        <tr><td class="mono">product_assembly</td><td><span class="tag t-stop">Refused</span></td><td>Creating a product means deciding what it is. Specs are never inferred</td></tr>
+        <tr><td class="mono">update_proposals</td><td><span class="tag t-stop">Refused</span></td><td>Whether a change warrants a rewrite is editorial</td></tr>
+        <tr><td class="mono">freshness</td><td><span class="tag t-stop">Refused</span></td><td>Update vs rewrite vs retire depends on <em>why</em> it aged</td></tr>
+        <tr><td class="mono">6 others</td><td><span class="tag t-warn">N/A</span></td><td>Already fully automatic — offering a mode that changes nothing is the display-only behaviour this replaces</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="col">
+    <p><code>AUTOMATIC_CAPABILITY</code> is a <em>total</em> record over the stage list: adding a stage without answering the automation question <strong>fails to compile</strong>. "Nobody thought about it" must not arrive in production as an enabled automation.</p>
+    <p>Resolution fails closed in every direction — garbage, absent, and unavailable-AUTOMATIC all become ASSISTED — and a test asserts nothing ever fails closed to MANUAL, which would look like the engine breaking. <strong>No mode can publish, in any combination.</strong></p>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><div class="snum">06</div><div><h2>Homepage, rotation, trending, overrides</h2></div></div>
+  <div class="col">
+    <p><strong>Most of this already existed and rebuilding it would have been the duplication you forbade.</strong> I verified it rather than replacing it.</p>
+    <p><code>trending.ts</code> ranks on recency with a <strong>per-type half-life</strong> — news 48h, comparisons 3 weeks, guides and troubleshooting ~6 weeks — plus cluster centrality and a small hero tie-breaker. So news already rotates and evergreen already decays differently, exactly as you asked.</p>
+    <p>It deliberately reads <strong>no analytics at all</strong>, and the reason is sharper than "sparse data": <code>analytics_daily_rollups</code> and <code>engine_trends</code> are admin-only under RLS, and <strong>RLS denies by returning zero rows, not an error</strong>. Querying them from the public path would look exactly like "nothing is popular" — forever, silently. That is the deterministic fallback you asked for, and it was already the design.</p>
+    <p><code>visual-variety.ts</code> and <code>homepage-sections.ts</code> already enforce media and category diversity. Nothing fabricates popularity.</p>
+
+    <div class="call">
+      <h3>What was genuinely missing: an override that ends</h3>
+      <p>Today a pin is permanent until you delete it. That <em>is</em> the "don't make me manage the homepage every day" problem — the natural use of a pin is temporary, the schema cannot express temporary, so every pin becomes a small permanent debt and the homepage rots around it.</p>
+      <p>The pending migration adds <code>starts_at</code>/<code>ends_at</code> and a <code>boost</code> mode (boost raises a score and lets ranking still decide; a pin forces a position), plus an <code>_active</code> view so an expired override becomes indistinguishable from no override, with no ranking code aware windows exist.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><div class="snum">07</div><div><h2>Owner actions: before and after</h2></div></div>
+  <div class="flows">
+    <div class="flow before">
+      <div class="flow-h"><span>Before</span><span class="cnt">~12 actions, 5 pages</span></div>
+      <ol>
+        <li>Open <code>/admin/engine</code>, read job health</li>
+        <li>Open <code>discoveries</code>, triage 83</li>
+        <li>Open <code>briefs</code>, read 47 with no evidence shown</li>
+        <li>Approve one</li>
+        <li>Wait up to 24h for the tick</li>
+        <li>Open <code>drafts</code>, find it</li>
+        <li>Open <code>media-acquisition</code>, decide rights</li>
+        <li>Open <code>/admin/media</code>, associate and publish</li>
+        <li>Open <code>/admin/content</code>, edit</li>
+        <li>Publish</li>
+        <li>Open <code>engine/homepage</code>, pin</li>
+        <li>No record of what changed or why</li>
+      </ol>
+    </div>
+    <div class="flow after">
+      <div class="flow-h"><span>Now</span><span class="cnt">3 actions, 1 entry point</span></div>
+      <ol>
+        <li><strong>Review package</strong> — from Today. Every consequence on one screen: evidence, database, content, media, SEO.</li>
+        <li><strong>Approve &amp; build</strong> — draft assembled immediately, linked back, SEO recorded, media gap logged.</li>
+        <li><strong>Edit &amp; publish</strong> — in the content editor, as a deliberate separate act.</li>
+      </ol>
+      <p style="padding:0 20px 16px;font-size:.88rem;color:var(--ink-faint);margin:0">Anything unsafe — unverified rights, thin sourcing, a possible duplicate — never enters this path. It is held with the reason stated.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><div class="snum">08</div><div><h2>What I did not do</h2></div></div>
+  <div class="col">
+    <p>Stated plainly rather than buried.</p>
+  </div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Item</th><th>Status</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Media automation (auto-classify, auto-associate hero/thumb/gallery)</td><td><span class="tag t-stop">Not done</span></td><td>Ran out of session budget. The rights safety it depends on is intact; the convenience layer is not built</td></tr>
+        <tr><td>Audit / rollback wiring</td><td><span class="tag t-stop">Not done</span></td><td><code>engine_change_log</code> requires a <code>run_id</code> foreign key to <code>engine_job_runs</code>. Wiring owner actions to it would mean fabricating a job-run row, which corrupts the table's meaning. Needs a deliberate design, not a shortcut</td></tr>
+        <tr><td>iPhone 18 research</td><td><span class="tag t-stop">Blocked</span></td><td>Web-search budget exhausted. Refused to invent facts</td></tr>
+        <tr><td>Homepage boost / windows in effect</td><td><span class="tag t-warn">Pending</span></td><td>Migration written, not applied. Needs your approval</td></tr>
+        <tr><td>Per-stage modes editable</td><td><span class="tag t-warn">Pending</span></td><td>Migration written, not applied. Panel renders read-only and says so</td></tr>
+        <tr><td>Research corroboration</td><td><span class="tag t-stop">Root cause</span></td><td>The 0-of-195 finding above. Not attempted — it is a research-stage change and deserves its own phase</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><div class="snum">09</div><div><h2>Verification &amp; deployment</h2></div></div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Check</th><th>Result</th><th>Where</th></tr></thead>
+      <tbody>
+        <tr><td>Unit tests</td><td class="mono">1667 / 1667</td><td>node --test</td></tr>
+        <tr><td>Owner queue end-to-end</td><td class="mono">25 / 25</td><td>Live production</td></tr>
+        <tr><td>Approval package end-to-end</td><td class="mono">32 / 32</td><td>Live production</td></tr>
+        <tr><td>Operating modes UI</td><td class="mono">10 / 10</td><td>Real build</td></tr>
+        <tr><td>Brief reclassification</td><td class="mono">47 examined</td><td>Real production data</td></tr>
+        <tr><td>Deployed build</td><td class="mono">52c4976</td><td>www.techcarvalho.com</td></tr>
+        <tr><td>Test residue in production</td><td class="mono">none</td><td>71 briefs, 84 content items, all byte-identical</td></tr>
+        <tr><td>Paid services added</td><td class="mono">NONE</td><td>Engine remains fully deterministic</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="col">
+    <p>Every seeded row was removed and every pre-existing brief and content item verified byte-identical afterwards — compared field by field, not by count, because you may be editing concurrently and a changed total is not evidence that I changed anything.</p>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><div class="snum">10</div><div><h2>Owner retest required</h2></div></div>
+  <div class="col">
+    <ol style="padding-left:1.2em">
+      <li style="margin-bottom:.5em">Open <code>/admin</code>. Confirm the engine banner is the first thing you see and that the count matches Today.</li>
+      <li style="margin-bottom:.5em">Open <code>/admin/engine</code>. You should see <strong>8 media-rights items</strong> awaiting you — real work, not test data — and the funnel reporting 47 briefs found, 0 worth review, 47 filtered.</li>
+      <li style="margin-bottom:.5em">Expand <em>"Why 47 were filtered"</em> and confirm the reasons read as true to you.</li>
+      <li style="margin-bottom:.5em">Open <code>/admin/engine/autonomy</code> and read the operating-modes panel. Decide whether to apply <code>20260824_stage_modes.sql</code>.</li>
+      <li style="margin-bottom:.5em">Decide on <code>20260824_homepage_override_windows.sql</code>.</li>
+      <li>Tell me whether to take on the research-corroboration problem next. It is the one that unblocks everything else.</li>
+    </ol>
+    <div class="call">
+      <h3>Two migrations await your decision</h3>
+      <p>Both are in <code>supabase/migrations_pending/</code> and neither has been applied. The stage-modes one changes <strong>no behaviour</strong> on its own — every stage resolves to ASSISTED before and after, which is what the engine already does.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  Phases A, C, B, D, E delivered in the order you approved. Commits 55b715f, 04c23dd, 4ee6027, 0d693cc, 52c4976.<br>
+  All verification run against real production data. Nothing published, no migration applied, no paid service added.
+</footer>
+
+</div>
