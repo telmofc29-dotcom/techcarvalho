@@ -49,13 +49,19 @@ export type QueueItemKind =
   /** Something already covered has changed — update rather than duplicate. */
   | "update_proposal"
   /** Published content that has gone stale enough to mislead. */
-  | "freshness";
+  | "freshness"
+  /**
+   * A topic the research stage corroborated across independent origins, with
+   * no TechCarvalho coverage yet. The package the owner actually wants.
+   */
+  | "research_topic";
 
 export const QUEUE_ITEM_KINDS: readonly QueueItemKind[] = [
   "brief",
   "media_rights",
   "update_proposal",
   "freshness",
+  "research_topic",
 ] as const;
 
 export const QUEUE_KIND_LABELS: Record<QueueItemKind, string> = {
@@ -63,6 +69,7 @@ export const QUEUE_KIND_LABELS: Record<QueueItemKind, string> = {
   media_rights: "Media rights",
   update_proposal: "Update existing page",
   freshness: "Ageing content",
+  research_topic: "Researched topic",
 };
 
 /**
@@ -78,6 +85,11 @@ export const QUEUE_KIND_LABELS: Record<QueueItemKind, string> = {
 const KIND_BASE_URGENCY: Record<QueueItemKind, number> = {
   media_rights: 400,
   update_proposal: 300,
+  // Above briefs: a researched topic carries corroborated evidence from named
+  // independent origins, which is strictly more than a brief has. It is also
+  // the item most likely to decay -- news the engine corroborated today is
+  // worth less every day it waits.
+  research_topic: 250,
   brief: 200,
   freshness: 100,
 };
@@ -291,6 +303,98 @@ export function freshnessQueueItem(input: FreshnessQueueInput): OwnerQueueItem |
     actions: ["review", "ignore", "details"],
     href: `/admin/engine/freshness#${input.id}`,
     urgency: KIND_BASE_URGENCY.freshness + 40,
+    since: input.detectedAt,
+  };
+}
+
+export type ResearchQueueInput = {
+  /** The discovery id. */
+  id: string;
+  title: string;
+  independentOrigins: number;
+  publishers: string[];
+  claimsTotal: number;
+  claimsAttributed: number;
+  claimsHedged: number;
+  /**
+   * How many sources were read as full articles rather than feed summaries.
+   * NULL means not recorded — the signal is then omitted entirely rather than
+   * shown as zero, because understating provenance is as misleading as
+   * overstating it.
+   */
+  fullTextSources: number | null;
+  totalSources: number;
+  framing: "confirmed" | "reported" | "rumoured" | "insufficient";
+  articleEligible: boolean;
+  productEligible: boolean;
+  suggestedTitle: string | null;
+  detectedAt: string;
+};
+
+/**
+ * Admission rule: the research decided an article is possible.
+ *
+ * `articleEligible` already encodes the evidence bar — framing is not
+ * `insufficient` and at least two claims were extractable. Re-deriving that
+ * here would be a second gate that could disagree with the first.
+ */
+export function researchQueueItem(input: ResearchQueueInput): OwnerQueueItem | null {
+  if (!input.articleEligible) return null;
+
+  const signals: QueueSignal[] = [
+    {
+      label: `${input.independentOrigins} independent origin${input.independentOrigins === 1 ? "" : "s"}`,
+      tone: input.independentOrigins >= 2 ? "good" : "warn",
+    },
+    { label: `${input.claimsTotal} claims extracted`, tone: "good" },
+  ];
+  if (input.claimsHedged > 0) {
+    // Reported as a strength: hedged claims that stayed hedged are the reason
+    // the draft cannot overstate anything.
+    signals.push({
+      label: `${input.claimsHedged} kept as unconfirmed`,
+      tone: "neutral",
+    });
+  }
+  // Provenance is on the row, not buried. An article built from headlines must
+  // never look like one built from articles — and when provenance was not
+  // recorded, say nothing rather than imply zero.
+  if (input.fullTextSources !== null) {
+    signals.push({
+      label:
+        input.fullTextSources === input.totalSources
+          ? `full text read from all ${input.totalSources}`
+          : `full text from ${input.fullTextSources} of ${input.totalSources}`,
+      tone: input.fullTextSources === input.totalSources ? "good" : "warn",
+    });
+  }
+
+  const gaps: string[] = [];
+  if (!input.productEligible) {
+    gaps.push("No product page proposed — evidence does not establish the product exists");
+  }
+
+  let urgency = KIND_BASE_URGENCY.research_topic;
+  urgency += Math.min(input.independentOrigins, 6) * 6;
+  if (input.framing === "confirmed") urgency += 30;
+
+  return {
+    key: `research_topic:${input.id}`,
+    kind: "research_topic",
+    id: input.id,
+    title: input.suggestedTitle ?? input.title,
+    headline:
+      input.framing === "confirmed"
+        ? "Confirmed by the subject"
+        : input.framing === "reported"
+          ? "Reported by independent outlets"
+          : "Reported, but unconfirmed",
+    why: `${input.publishers.slice(0, 4).join(", ")}${input.publishers.length > 4 ? " and others" : ""} are covering this and TechCarvalho is not.`,
+    signals,
+    gaps,
+    actions: ["review", "approve", "reject", "ignore", "details"],
+    href: `/admin/engine/topics/${input.id}`,
+    urgency,
     since: input.detectedAt,
   };
 }

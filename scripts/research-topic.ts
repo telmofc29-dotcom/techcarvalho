@@ -16,6 +16,7 @@ import { researchDiscovery } from "../src/lib/engine/research/research-pipeline.
 import { primarySubject, categoryForText, subjectDomainsForText } from "../src/lib/engine/research/entity-model.ts";
 import { renderClaim } from "../src/lib/engine/research/claim-extraction.ts";
 import { CLAIM_CLASS_LABELS } from "../src/lib/engine/corroboration.ts";
+import { fetchArticle, summariseFetches } from "../src/lib/engine/research/article-fetch.ts";
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
@@ -49,7 +50,9 @@ async function main(): Promise<void> {
   }
   console.log(`CORPUS INDEXED     : ${corpus.items.length} recent items`);
 
-  const result = researchDiscovery({
+  // First pass: find what is relevant. Then fetch only THOSE articles — a
+  // research pass must not hit every publisher for every topic.
+  const shortlist = researchDiscovery({
     title: topic,
     summary: null,
     subjectDomains: subjectDomainsForText(topic),
@@ -60,6 +63,29 @@ async function main(): Promise<void> {
     sourcesFailed: corpus.failed,
   });
 
+  const articleText = new Map<string, { text: string; contentSource: "full_text" | "feed_summary"; note: string | null }>();
+  const fetches = [];
+  for (const m of shortlist.matches) {
+    if (!m.item.link) continue;
+    const got = await fetchArticle(m.item.link, `${m.item.title}. ${m.item.summary ?? ""}`);
+    fetches.push(got);
+    articleText.set(m.item.link, { text: got.text, contentSource: got.contentSource, note: got.note });
+  }
+
+  const result = researchDiscovery({
+    title: topic,
+    summary: null,
+    subjectDomains: subjectDomainsForText(topic),
+    aboutUnreleasedProduct: unreleased,
+    corpus: corpus.items,
+    sourcesAttempted: corpus.attempted,
+    sourcesRead: corpus.read,
+    sourcesFailed: corpus.failed,
+    articleText,
+  });
+
+  const fetchSummary = summariseFetches(fetches);
+
   console.log("");
   console.log("RESEARCH QUERIES GENERATED");
   for (const q of result.queries) console.log(`    [${q.kind.padEnd(11)}] "${q.query}"`);
@@ -69,6 +95,20 @@ async function main(): Promise<void> {
   for (const m of result.matches) {
     console.log(`    [${m.strength.toFixed(2)}] ${m.item.source.organisation} — ${m.item.title.slice(0, 68)}`);
     console.log(`           ${m.item.link ?? "(no link)"}`);
+  }
+
+  console.log("");
+  console.log("CONTENT PROVENANCE");
+  console.log(`    full text          : ${fetchSummary.fullText} of ${fetchSummary.total}`);
+  console.log(`    feed summary only  : ${fetchSummary.feedSummary}`);
+  if (Object.keys(fetchSummary.reasons).length > 0) {
+    for (const [reason, n] of Object.entries(fetchSummary.reasons)) {
+      console.log(`        ${String(reason).padEnd(18)} ${n}`);
+    }
+  }
+  for (const f of fetches) {
+    console.log(`    [${f.contentSource === "full_text" ? "FULL" : "SUMM"}] ${String(f.charCount).padStart(6)}ch  ${f.url.slice(0, 60)}`);
+    if (f.note) console.log(`             ${f.failureReason}: ${f.note}`);
   }
 
   console.log("");

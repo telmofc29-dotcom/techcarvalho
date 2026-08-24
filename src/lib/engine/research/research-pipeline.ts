@@ -53,6 +53,12 @@ export type ResearchMatch = {
   matchedQuery: string;
   /** 0..1, how much of the query's distinctive terms the item carries. */
   strength: number;
+  /**
+   * Where this match's text came from. Absent when the caller did no article
+   * fetching — never assume full text from absence.
+   */
+  contentSource?: "full_text" | "feed_summary";
+  fetchNote?: string | null;
 };
 
 export type ResearchResult = {
@@ -269,6 +275,13 @@ export function researchDiscovery(input: {
   sourcesAttempted: string[];
   sourcesRead: string[];
   sourcesFailed: { organisation: string; reason: string }[];
+  /**
+   * Full article text by URL, when the caller fetched it. Claims are extracted
+   * from this where present and from the feed summary otherwise, and each match
+   * records WHICH — an article assembled from four headlines must never be
+   * reported as one assembled from four articles.
+   */
+  articleText?: ReadonlyMap<string, { text: string; contentSource: "full_text" | "feed_summary"; note: string | null }>;
 }): ResearchResult {
   const subject = primarySubject(`${input.title} ${input.summary ?? ""}`);
   const queries = researchQueries(input.title, subject);
@@ -301,7 +314,16 @@ export function researchDiscovery(input: {
   // Claims from everything matched, plus the discovery's own text.
   const claims = [
     ...extractClaims(`${input.title}. ${input.summary ?? ""}`, { max: 6 }),
-    ...matches.flatMap((m) => extractClaims(`${m.item.title}. ${m.item.summary ?? ""}`, { max: 4 })),
+    ...matches.flatMap((m) => {
+      const fetched = m.item.link ? input.articleText?.get(m.item.link) : undefined;
+      // Full text yields many more claims than a two-sentence summary, so the
+      // cap is higher — but only when the text is genuinely the article.
+      const body = fetched?.contentSource === "full_text"
+        ? fetched.text
+        : `${m.item.title}. ${m.item.summary ?? ""}`;
+      const max = fetched?.contentSource === "full_text" ? 10 : 4;
+      return extractClaims(body, { max });
+    }),
   ];
   const claimBreakdown = summariseClaims(claims);
 
@@ -325,13 +347,20 @@ export function researchDiscovery(input: {
     aboutUnreleasedProduct: input.aboutUnreleasedProduct ?? false,
   });
 
+  const annotatedMatches = matches.map((m) => {
+    const fetched = m.item.link ? input.articleText?.get(m.item.link) : undefined;
+    return fetched
+      ? { ...m, contentSource: fetched.contentSource, fetchNote: fetched.note }
+      : m;
+  });
+
   return {
     subject,
     queries,
     sourcesAttempted: input.sourcesAttempted,
     sourcesRead: input.sourcesRead,
     sourcesFailed: input.sourcesFailed,
-    matches,
+    matches: annotatedMatches,
     lineage,
     claims,
     claimBreakdown,

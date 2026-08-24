@@ -34,6 +34,7 @@ import { logQueryError } from "@/lib/log/query-error";
 import { classifyBriefQuality, summariseQuality, type BriefQualityVerdict } from "./brief-quality.ts";
 import {
   briefQueueItem,
+  researchQueueItem,
   mediaRightsQueueItem,
   updateProposalQueueItem,
   freshnessQueueItem,
@@ -44,6 +45,7 @@ import {
 } from "./owner-queue.ts";
 import type { QualityBreakdown } from "./brief-quality.ts";
 import { loadCorroborationContext } from "./corroboration-context.ts";
+import { loadResearchedTopics } from "./research-topic-service.ts";
 
 export type QueueFailure = { source: string; message: string };
 
@@ -274,6 +276,35 @@ export async function loadOwnerQueue(): Promise<OwnerQueueResult> {
       });
       if (item) items.push(item);
     }
+  }
+
+  // ---- researched topics -------------------------------------------------
+  // The package the owner actually wants: one corroborated subject, one
+  // decision. Reads persisted research only — rendering the queue must never
+  // trigger feed fetches.
+  const research = await loadResearchedTopics(20);
+  failures.push(...research.failures);
+  for (const t of research.topics) {
+    const item = researchQueueItem({
+      id: t.discoveryId,
+      title: t.title,
+      independentOrigins: t.independentOrigins,
+      publishers: t.publishers,
+      claimsTotal: t.claimsTotal,
+      claimsAttributed: t.claimsAttributed,
+      claimsHedged: t.claimsHedged,
+      // Provenance is not persisted per-evidence-row yet, so it is passed as
+      // NULL and the signal is omitted. Reporting 0 would understate, and
+      // reporting N would overstate; neither is knowable from stored data.
+      fullTextSources: null,
+      totalSources: t.evidence.length,
+      framing: t.framing,
+      articleEligible: t.articleEligible,
+      productEligible: t.productEligible,
+      suggestedTitle: t.suggestedTitle,
+      detectedAt: t.detectedAt,
+    });
+    if (item) items.push(item);
   }
 
   const ranked = rankOwnerQueue(items);

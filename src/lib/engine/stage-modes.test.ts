@@ -195,3 +195,56 @@ test("isStageMode accepts exactly the three modes", () => {
     assert.equal(isStageMode(junk), false);
   }
 });
+
+// ---------------------------------------------------------------------------
+// The migration's stage list must not drift from the code's
+// ---------------------------------------------------------------------------
+
+test("the SQL constraint's stage list matches ENGINE_STAGE_NAMES exactly", async () => {
+  // Validating keys in the database means adding a stage now needs a one-line
+  // CREATE OR REPLACE FUNCTION. This test is the price of that: the two lists
+  // cannot drift without failing here.
+  //
+  // Reads the pending migration rather than the applied one on purpose — that
+  // is where the function currently lives. When it is applied and moved, this
+  // path moves with it.
+  const { readFileSync, existsSync } = await import("node:fs");
+  const candidates = [
+    "supabase/migrations_pending/20260824_stage_modes.sql",
+    "supabase/migrations/20260824_stage_modes.sql",
+  ];
+  const path = candidates.find((p) => existsSync(p));
+  assert.ok(path, `stage-modes migration not found at any of: ${candidates.join(", ")}`);
+
+  const sql = readFileSync(path, "utf8");
+  const block = sql.match(/e\.key = any \(array\[([\s\S]*?)\]\)/);
+  assert.ok(block, "could not locate the stage-name array in the migration");
+
+  const sqlStages = [...block[1].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+  assert.deepEqual(
+    [...sqlStages].sort(),
+    [...ENGINE_STAGE_NAMES].sort(),
+    "the migration's stage list and ENGINE_STAGE_NAMES have drifted"
+  );
+});
+
+test("the corrected migration contains no subquery in a CHECK expression", async () => {
+  // The exact construction PostgreSQL rejected with 0A000. The constraint must
+  // be a bare function call; any `select` belongs inside the function body.
+  const { readFileSync, existsSync } = await import("node:fs");
+  const path = existsSync("supabase/migrations_pending/20260824_stage_modes.sql")
+    ? "supabase/migrations_pending/20260824_stage_modes.sql"
+    : "supabase/migrations/20260824_stage_modes.sql";
+  const sql = readFileSync(path, "utf8");
+
+  const checkExpr = sql.match(/add constraint engine_settings_stage_modes_valid\s*\n?\s*check \(([\s\S]*?)\);/);
+  assert.ok(checkExpr, "could not locate the CHECK constraint");
+  assert.ok(
+    !/\bselect\b/i.test(checkExpr[1]),
+    `CHECK expression must contain no subquery, found: ${checkExpr[1].trim()}`
+  );
+  assert.ok(
+    !/\bexists\b/i.test(checkExpr[1]),
+    "CHECK expression must not use EXISTS — that is what failed with 0A000"
+  );
+});

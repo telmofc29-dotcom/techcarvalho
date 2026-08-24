@@ -16,6 +16,7 @@ import type {
 import { loadApprovalPackage } from "@/lib/engine/package-service";
 import { assembleDraft, proposeSeo } from "@/lib/engine/draft-assembly";
 import { proposeSlug } from "@/lib/engine/entity-resolution";
+import { loadResearchedTopic } from "@/lib/engine/research-topic-service";
 import { resolveAllStageModes } from "@/lib/engine/stage-modes";
 import { ENGINE_STAGE_NAMES } from "@/lib/engine/stages";
 
@@ -705,4 +706,154 @@ export async function updateStageModes(formData: FormData): Promise<void> {
   revalidatePath("/admin/engine/autonomy");
   revalidatePath("/admin/engine/health");
   revalidatePath("/admin/engine");
+}
+
+// ---------------------------------------------------------------------------
+// Researched topics (Phase F/G) — one package, one decision
+// ---------------------------------------------------------------------------
+
+/**
+ * Approve a researched topic and assemble its draft.
+ *
+ * WHAT IT DOES, IN ONE OWNER ACTION
+ * ---------------------------------
+ *   1. creates a brief from the persisted research (facts, uncertainties,
+ *      source URLs, suggested title)
+ *   2. marks it approved, because the human just did that
+ *   3. calls the SAME engine_assemble_draft RPC the nightly stage calls
+ *
+ * Which is exactly the sequence the owner would otherwise perform across the
+ * briefs page, the drafts page and the content editor.
+ *
+ * HEDGING SURVIVES. Claims the research marked unconfirmed go into the brief's
+ * `uncertainties`, never its `verified_facts`. draft-assembly.ts renders those
+ * two lists differently and instructs the editor to keep unconfirmed material
+ * attributed. A hedged claim cannot become a verified fact by passing through
+ * this action.
+ *
+ * IT STILL CANNOT PUBLISH. engine_assemble_draft hard-wires `status='draft'`.
+ */
+export async function approveResearchedTopic(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const discoveryId = String(formData.get("discovery_id") ?? "");
+  if (!discoveryId) return;
+
+  // Re-derive server-side. The rendered page is a view, not an authorisation.
+  const topic = await loadResearchedTopic(discoveryId);
+  if (!topic || !topic.articleEligible) return;
+
+  const supabase = await createClient();
+
+  // Facts vs uncertainties, split by what the SOURCE said rather than by what
+  // would make a fuller article.
+  const verifiedFacts: string[] = [];
+  const uncertainties: string[] = [];
+  for (const claim of topic.sampleClaims) {
+    if (claim.hedges.length > 0) {
+      uncertainties.push(
+        `${claim.attributedTo ? `${claim.attributedTo}: ` : ""}${claim.text} [unconfirmed: ${claim.hedges.join(", ")}]`
+      );
+    } else {
+      verifiedFacts.push(claim.attributedTo ? `${claim.attributedTo}: ${claim.text}` : claim.text);
+    }
+  }
+
+  const title = topic.suggestedTitle ?? topic.title;
+  const { data: briefRow, error: briefError } = await supabase
+    .from("engine_briefs")
+    .insert({
+      discovery_id: discoveryId,
+      proposed_title: title,
+      rationale:
+        `${topic.independentOrigins} independent origin(s) are reporting this and TechCarvalho has ` +
+        `no coverage. Publishers: ${topic.publishers.join(", ")}.`,
+      content_type: "news",
+      category_slug: topic.categorySlug,
+      brief_kind: topic.framing === "confirmed" ? "breaking" : "explainer",
+      freshness_sensitivity: "time_sensitive",
+      verified_facts: verifiedFacts,
+      uncertainties,
+      source_urls: topic.evidence.map((e) => e.url),
+      review_state: "approved",
+      state: "planned",
+      reviewed_at: new Date().toISOString(),
+    })
+    .select("id")
+    .single();
+
+  if (briefError || !briefRow) {
+    console.error(`[approveResearchedTopic] brief insert: ${briefError?.message}`);
+    return;
+  }
+
+  const briefId = (briefRow as { id: string }).id;
+
+  const { data: contentRows } = await supabase.from("content_items").select("title, slug");
+  const takenSlugs = new Set(((contentRows ?? []) as { slug: string }[]).map((c) => c.slug));
+
+  const draft = assembleDraft({
+    title,
+    contentType: "news",
+    categorySlug: topic.categorySlug,
+    primaryQuestion: `What has actually been reported about ${topic.title}?`,
+    supportingQuestions: ["What is confirmed?", "What is still unknown?"],
+    verifiedFacts,
+    uncertainties,
+    sourceUrls: topic.evidence.map((e) => e.url),
+    suggestedStructure: ["What has been reported", "What is not confirmed", "What to watch"],
+    briefKind: topic.framing === "confirmed" ? "breaking" : "explainer",
+    freshnessSensitivity: "time_sensitive",
+    rationale: `Researched from ${topic.independentOrigins} independent origin(s).`,
+    relatedContent: [],
+    relatedProducts: [],
+  });
+
+  const seo = proposeSeo({ title, primaryQuestion: null });
+  const slug = proposeSlug(title, takenSlugs);
+  if (!slug) return;
+
+  await supabase.rpc("engine_assemble_draft", {
+    p_brief_id: briefId,
+    p_title: title,
+    p_slug: slug,
+    p_body: draft.body,
+    p_content_type: "news",
+    p_category_slug: topic.categorySlug,
+    p_search_intent: null,
+    p_primary_query: null,
+    p_source_urls: topic.evidence.map((e) => e.url),
+    p_meta_title: seo.metaTitle,
+    p_meta_description: seo.metaDescription,
+  });
+
+  revalidatePath("/admin/engine");
+  revalidatePath("/admin/engine/drafts");
+  revalidatePath("/admin/content");
+  revalidatePath("/admin");
+}
+
+/**
+ * Reject a researched topic.
+ *
+ * Retires the DISCOVERY rather than deleting anything: the evidence stays as a
+ * record of what was found and why it was declined, and the topic stops
+ * appearing in the queue.
+ */
+export async function rejectResearchedTopic(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const discoveryId = String(formData.get("discovery_id") ?? "");
+  if (!discoveryId) return;
+
+  const supabase = await createClient();
+  await supabase
+    .from("engine_discoveries")
+    .update({
+      state: "rejected",
+      state_reason: "Declined by the owner from the researched-topic queue.",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", discoveryId);
+
+  revalidatePath("/admin/engine");
+  revalidatePath("/admin");
 }
