@@ -34,6 +34,7 @@
 import type { Instrumentation } from "next";
 
 import { formatBuildInfo } from "@/lib/build-info";
+import { recordError } from "@/lib/log/recent-errors";
 
 /**
  * Structured, single-line-per-error report for a captured server error.
@@ -71,5 +72,29 @@ export const onRequestError: Instrumentation.onRequestError = (err, request, con
     console.error(
       `[request-error] digest=${digest} details=${JSON.stringify(pg.details ?? null)} hint=${JSON.stringify(pg.hint ?? null)}`
     );
+  }
+
+  // Also keep it in memory so an admin can read the exception back through the
+  // browser. Whoever is debugging may not have platform log access — that was
+  // the exact situation this hook was built for and could not resolve.
+  // Best-effort by definition: see the caveat in recent-errors.ts.
+  try {
+    recordError({
+      digest,
+      at: new Date().toISOString(),
+      path: request?.path ?? "?",
+      method: request?.method ?? "?",
+      routePath: context?.routePath ?? "?",
+      routeType: context?.routeType ?? "?",
+      renderSource: context?.renderSource ?? "?",
+      name: String(name),
+      message,
+      stack: error?.stack ?? null,
+      details: pg?.details == null ? null : String(pg.details),
+      hint: pg?.hint == null ? null : String(pg.hint),
+      code: error?.code ?? null,
+    });
+  } catch {
+    // Never let diagnostics break the error path itself.
   }
 };

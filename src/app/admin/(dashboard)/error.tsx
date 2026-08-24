@@ -50,8 +50,17 @@ export default function AdminError({
 
       {isMasked && (
         <p className="text-xs text-red-800 mb-4">
-          React hides the real message in production builds. The digest below identifies this exact failure in the
-          server log — search the logs for it.
+          React hides the real message in production builds. The digest below identifies this exact failure. Open{" "}
+          <a
+            className="underline font-mono"
+            href={`/api/admin/recent-errors${error.digest ? `?digest=${encodeURIComponent(error.digest)}` : ""}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            /api/admin/recent-errors
+          </a>{" "}
+          right now to read the real exception and stack — do it immediately, the capture is short-lived and
+          per-instance. It is also in the server log, prefixed <span className="font-mono">[request-error]</span>.
         </p>
       )}
 
