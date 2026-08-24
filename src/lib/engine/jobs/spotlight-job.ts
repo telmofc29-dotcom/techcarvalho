@@ -192,7 +192,7 @@ export async function runSpotlightRotation(
       p_rotation_date: rotationDate,
       p_content_id: slot.candidate.contentId,
       p_role: slot.role,
-      p_position: i,
+      p_slot_position: i,
       p_score: Number(slot.score.toFixed(2)),
       p_reasons: slot.reasons,
     });

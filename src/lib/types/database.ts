@@ -1607,7 +1607,9 @@ export interface Database {
           rotation_date: string;
           content_id: string;
           role: "lead" | "supporting";
-          position: number;
+          // `position` is a PostgreSQL col_name_keyword and cannot be used as a
+          // RETURNS TABLE field name -- the column is slot_position everywhere.
+          slot_position: number;
           score: number | null;
           reasons: string[];
           created_at: string;
@@ -2146,7 +2148,7 @@ export interface Database {
           p_rotation_date: string;
           p_content_id: string;
           p_role: string;
-          p_position?: number;
+          p_slot_position?: number;
           p_score?: number | null;
           p_reasons?: string[];
         };
@@ -2162,7 +2164,7 @@ export interface Database {
           category_slug: string | null;
           published_at: string;
           role: string;
-          position: number;
+          slot_position: number;
         }[];
       };
       engine_add_evidence: {

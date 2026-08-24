@@ -43,7 +43,12 @@ create table if not exists public.homepage_spotlight_log (
   content_id uuid not null references public.content_items(id) on delete cascade,
   role text not null check (role in ('lead', 'supporting')),
   -- Position within the role, so a rotation can be replayed in order.
-  position integer not null default 0,
+  -- NOT `position`: that is a col_name_keyword in PostgreSQL (the SQL-standard
+  -- position(substring IN string) function), and while CREATE TABLE tolerates
+  -- it, a RETURNS TABLE list does not -- the parser reads it as the start of a
+  -- function call and fails with 42601. Renamed here too so one name is used
+  -- everywhere rather than two that differ only where the parser forced it.
+  slot_position integer not null default 0,
   -- The rotation score at selection time. Kept for auditing why a day looked
   -- as it did; never read back into scoring.
   score numeric,
@@ -57,7 +62,7 @@ create table if not exists public.homepage_spotlight_log (
 );
 
 create index if not exists homepage_spotlight_log_date_idx
-  on public.homepage_spotlight_log (rotation_date desc, role, position);
+  on public.homepage_spotlight_log (rotation_date desc, role, slot_position);
 create index if not exists homepage_spotlight_log_content_idx
   on public.homepage_spotlight_log (content_id, rotation_date desc);
 
@@ -114,7 +119,7 @@ create or replace function public.homepage_record_spotlight(
   p_rotation_date date,
   p_content_id uuid,
   p_role text,
-  p_position integer default 0,
+  p_slot_position integer default 0,
   p_score numeric default null,
   p_reasons text[] default '{}'
 )
@@ -139,12 +144,12 @@ begin
   end if;
 
   insert into public.homepage_spotlight_log
-    (rotation_date, content_id, role, position, score, reasons)
+    (rotation_date, content_id, role, slot_position, score, reasons)
   values
-    (p_rotation_date, p_content_id, p_role, coalesce(p_position, 0), p_score, coalesce(p_reasons, '{}'))
+    (p_rotation_date, p_content_id, p_role, coalesce(p_slot_position, 0), p_score, coalesce(p_reasons, '{}'))
   on conflict (rotation_date, content_id) do update
     set role = excluded.role,
-        position = excluded.position,
+        slot_position = excluded.slot_position,
         score = excluded.score,
         reasons = excluded.reasons;
 
@@ -168,7 +173,7 @@ returns table (
   category_slug text,
   published_at timestamptz,
   role text,
-  position integer
+  slot_position integer
 )
 language sql
 stable
@@ -190,7 +195,7 @@ as $fn$
          tc.slug::text,
          ci.published_at,
          l.role::text,
-         l.position
+         l.slot_position
     from public.homepage_spotlight_log l
     join target t on l.rotation_date = t.d
     join public.content_items ci on ci.id = l.content_id
@@ -204,7 +209,7 @@ as $fn$
        select 1 from public.homepage_overrides_active o
         where o.content_id = l.content_id and o.mode = 'suppress'
      )
-   order by case l.role when 'lead' then 0 else 1 end, l.position, ci.published_at desc;
+   order by case l.role when 'lead' then 0 else 1 end, l.slot_position, ci.published_at desc;
 $fn$;
 
 revoke execute on function public.public_spotlight(date) from public;
