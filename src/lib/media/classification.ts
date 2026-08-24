@@ -154,6 +154,25 @@ export function requiredDisclosure(asset: ClassifiableMedia | null | undefined):
       return asset?.ai_generated
         ? "Illustration — AI-generated editorial artwork, not a photograph."
         : null;
+
+    // A MACHINE-MADE IMAGE WE CANNOT OTHERWISE CLASSIFY STILL HAS TO SAY SO.
+    //
+    // classifyMedia() returns 'unclassified' when source_type was never set,
+    // which is the normal state of a fresh upload. Until this case existed, an
+    // asset with ai_generated = true disclosed NOTHING whenever that one field
+    // happened to be blank — and two AI renders of unreleased hardware went
+    // live on articles that way, silently, while two sibling uploads that did
+    // carry a source_type disclosed correctly. The difference between
+    // disclosing and not disclosing must never be an unrelated blank field.
+    //
+    // Deliberately NOT applied to the photograph classifications above. An
+    // AI-upscaled photograph of real hardware is ai_generated = true and IS a
+    // photograph; telling a reader it is not would be its own falsehood.
+    // 'unclassified' carries no such claim, so the minimal true statement is
+    // that a machine made it.
+    case "unclassified":
+      return asset?.ai_generated === true ? "AI-generated image — not a photograph." : null;
+
     default:
       return null;
   }

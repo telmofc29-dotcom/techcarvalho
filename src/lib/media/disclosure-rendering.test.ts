@@ -95,3 +95,44 @@ test("a null/absent asset does not throw and discloses nothing", () => {
   assert.equal(requiredDisclosure(null), null);
   assert.equal(requiredDisclosure(undefined), null);
 });
+
+// --- the hole that let two AI renders go live saying nothing ----------------
+
+test("an AI image with NO source_type still discloses", () => {
+  // The exact state playstation-ps6-concept.png and nintendo-switch-2-render.png
+  // were in while published and attached to live articles: machine-made, owned,
+  // rights verified — and source_type never set, which made classifyMedia()
+  // return 'unclassified' and requiredDisclosure() return null.
+  const d = requiredDisclosure(
+    asset({ source_type: null, asset_role: null, owned: true, ai_generated: true, rights_status: "verified" })
+  );
+  assert.ok(d, "an AI-generated image must disclose even when source_type is blank");
+  assert.match(d, /AI-generated/i);
+});
+
+test("whether an AI image discloses does NOT depend on source_type being filled in", () => {
+  // Two sibling uploads differed only by that one field and only one of them
+  // disclosed. Both must now.
+  const withSource = requiredDisclosure(asset({ source_type: "tc_graphic", ai_generated: true }));
+  const withoutSource = requiredDisclosure(asset({ source_type: null, ai_generated: true }));
+  assert.ok(withSource);
+  assert.ok(withoutSource);
+});
+
+test("an unclassified asset that is NOT AI-generated still discloses nothing", () => {
+  assert.equal(requiredDisclosure(asset({ source_type: null, ai_generated: false })), null);
+  assert.equal(requiredDisclosure(asset({ source_type: null, ai_generated: null })), null);
+});
+
+test("an AI-UPSCALED photograph is never told it is not a photograph", () => {
+  // ai_generated = true does not mean "not a photograph". An upscaled shot of
+  // real hardware classifies as a photograph, and the blanket AI line would be
+  // false there — which is why the new case is scoped to 'unclassified'.
+  const upscaled = asset({
+    source_type: "staff_photograph",
+    owned: true,
+    rights_status: "verified",
+    ai_generated: true,
+  });
+  assert.equal(requiredDisclosure(upscaled), null);
+});
