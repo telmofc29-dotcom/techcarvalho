@@ -1,0 +1,477 @@
+<title>Engine Inspection</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,500;1,400&display=swap">
+
+<style>
+:root{
+  --ground:#eef1f1;
+  --panel:#f8fafa;
+  --sunk:#e3e8e8;
+  --ink:#131a1c;
+  --ink-soft:#3f4d50;
+  --ink-faint:#6c7c80;
+  --rule:#cfd8d8;
+  --rule-soft:#e0e7e7;
+  --accent:#0c666d;
+  --accent-soft:#d3e6e7;
+  --ok:#2b6f4a;
+  --ok-bg:#dcebe1;
+  --warn:#8f5a04;
+  --warn-bg:#f2e6cd;
+  --stop:#9c3323;
+  --stop-bg:#f1dcd8;
+  --shadow:0 1px 2px rgba(19,26,28,.06),0 8px 24px -16px rgba(19,26,28,.28);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0d1315;
+    --panel:#141c1e;
+    --sunk:#1b2426;
+    --ink:#e5eded;
+    --ink-soft:#a9b8ba;
+    --ink-faint:#7b8b8e;
+    --rule:#2b3739;
+    --rule-soft:#212c2e;
+    --accent:#54c2c8;
+    --accent-soft:#16383b;
+    --ok:#6ec18d;
+    --ok-bg:#16301f;
+    --warn:#e0a94e;
+    --warn-bg:#332612;
+    --stop:#e08d7d;
+    --stop-bg:#341c17;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -16px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0d1315;
+  --panel:#141c1e;
+  --sunk:#1b2426;
+  --ink:#e5eded;
+  --ink-soft:#a9b8ba;
+  --ink-faint:#7b8b8e;
+  --rule:#2b3739;
+  --rule-soft:#212c2e;
+  --accent:#54c2c8;
+  --accent-soft:#16383b;
+  --ok:#6ec18d;
+  --ok-bg:#16301f;
+  --warn:#e0a94e;
+  --warn-bg:#332612;
+  --stop:#e08d7d;
+  --stop-bg:#341c17;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -16px rgba(0,0,0,.8);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--ground);
+  color:var(--ink);
+  font-family:"IBM Plex Serif",Georgia,serif;
+  font-size:17px;
+  line-height:1.62;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1120px;margin:0 auto;padding:0 24px 96px}
+.col{max-width:68ch}
+
+h1,h2,h3,.mono-h{font-family:"IBM Plex Sans Condensed","Helvetica Neue",Arial,sans-serif;text-wrap:balance}
+h1{font-size:clamp(2.4rem,5.5vw,3.9rem);font-weight:700;line-height:1.03;letter-spacing:-.015em;margin:0 0 18px}
+h2{font-size:clamp(1.5rem,2.6vw,1.95rem);font-weight:600;line-height:1.14;letter-spacing:-.008em;margin:0}
+h3{font-size:1.12rem;font-weight:600;margin:0 0 8px;letter-spacing:.005em}
+p{margin:0 0 1.05em}
+a{color:var(--accent)}
+strong{font-weight:600;color:var(--ink)}
+em{font-style:italic}
+code,.num,.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace}
+code{font-size:.855em;background:var(--sunk);padding:.11em .38em;border-radius:3px;color:var(--ink);word-break:break-word}
+.num{font-variant-numeric:tabular-nums}
+
+/* ---- masthead ---- */
+.mast{padding:64px 0 40px;border-bottom:2px solid var(--ink)}
+.eyebrow{
+  font-family:"IBM Plex Mono",monospace;font-size:.72rem;font-weight:500;
+  text-transform:uppercase;letter-spacing:.16em;color:var(--accent);margin:0 0 22px;
+  display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;
+}
+.eyebrow span:not(:last-child)::after{content:"";display:inline-block;width:0}
+.standfirst{font-size:1.24rem;line-height:1.5;color:var(--ink-soft);margin:0;max-width:60ch}
+.standfirst b{color:var(--ink);font-weight:600}
+
+/* ---- verdict strip ---- */
+.verdict{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));
+  gap:1px;background:var(--rule);border:1px solid var(--rule);
+  margin:40px 0 0;border-radius:5px;overflow:hidden;
+}
+.vcell{background:var(--panel);padding:18px 20px}
+.vnum{font-family:"IBM Plex Mono",monospace;font-size:1.85rem;font-weight:600;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.vlab{font-family:"IBM Plex Sans Condensed",sans-serif;font-size:.79rem;line-height:1.32;color:var(--ink-faint);margin-top:8px;text-transform:uppercase;letter-spacing:.07em}
+.vcell.is-stop .vnum{color:var(--stop)}
+.vcell.is-warn .vnum{color:var(--warn)}
+.vcell.is-ok .vnum{color:var(--ok)}
+
+/* ---- sections ---- */
+section{padding:56px 0 0}
+.shead{display:flex;gap:16px;align-items:baseline;border-top:1px solid var(--rule);padding-top:14px;margin-bottom:26px}
+.snum{font-family:"IBM Plex Mono",monospace;font-size:.76rem;font-weight:600;color:var(--accent);letter-spacing:.1em;padding-top:5px;white-space:nowrap}
+.lede{font-size:1.06rem;color:var(--ink-soft)}
+
+/* ---- pipeline spine ---- */
+.spine{margin:34px 0 8px;border:1px solid var(--rule);border-radius:6px;background:var(--panel);box-shadow:var(--shadow);overflow:hidden}
+.spine-cap{
+  display:flex;justify-content:space-between;align-items:baseline;gap:14px;flex-wrap:wrap;
+  padding:14px 20px;border-bottom:1px solid var(--rule);background:var(--sunk);
+  font-family:"IBM Plex Sans Condensed",sans-serif;
+}
+.spine-cap b{font-size:.95rem;font-weight:600;letter-spacing:.01em}
+.spine-cap span{font-family:"IBM Plex Mono",monospace;font-size:.72rem;color:var(--ink-faint);letter-spacing:.05em}
+.stage{display:grid;grid-template-columns:44px 1fr auto;gap:0 16px;align-items:center;padding:9px 20px;border-bottom:1px solid var(--rule-soft);position:relative}
+.stage:last-child{border-bottom:0}
+.stage-n{font-family:"IBM Plex Mono",monospace;font-size:.78rem;color:var(--ink-faint);font-variant-numeric:tabular-nums;position:relative;z-index:1}
+.stage-name{font-family:"IBM Plex Mono",monospace;font-size:.88rem;font-weight:500;position:relative;z-index:1}
+.stage-note{font-family:"IBM Plex Sans Condensed",sans-serif;font-size:.83rem;color:var(--ink-faint);text-align:right;position:relative;z-index:1}
+.stage::before{content:"";position:absolute;left:30px;top:0;bottom:0;width:2px;background:var(--rule)}
+.stage.ran::before{background:var(--ok)}
+.stage.idle::before{background:var(--warn)}
+.stage.never::before{background:var(--stop)}
+.stage.ran .stage-n{color:var(--ok)}
+.stage.never .stage-n{color:var(--stop)}
+.stage.never .stage-name{color:var(--stop);font-weight:600}
+.stage.never .stage-note{color:var(--stop)}
+.stage.gate{background:var(--stop-bg)}
+.gatebar{
+  padding:12px 20px 12px 60px;background:var(--stop-bg);border-bottom:1px solid var(--rule-soft);
+  font-family:"IBM Plex Sans Condensed",sans-serif;font-size:.9rem;color:var(--stop);font-weight:600;
+  position:relative;
+}
+.gatebar::before{content:"";position:absolute;left:30px;top:0;bottom:0;width:2px;background:var(--stop)}
+.gatebar em{display:block;font-weight:500;font-style:normal;color:var(--ink-soft);font-size:.85rem;margin-top:3px}
+
+/* ---- tables ---- */
+.tw{overflow-x:auto;margin:26px 0;border:1px solid var(--rule);border-radius:6px;background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:.9rem;min-width:520px}
+th,td{text-align:left;padding:10px 16px;border-bottom:1px solid var(--rule-soft);vertical-align:top}
+thead th{
+  font-family:"IBM Plex Sans Condensed",sans-serif;font-size:.73rem;text-transform:uppercase;
+  letter-spacing:.09em;color:var(--ink-faint);background:var(--sunk);border-bottom:1px solid var(--rule);font-weight:600;
+}
+tbody tr:last-child td{border-bottom:0}
+td.n{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+td.mono{font-family:"IBM Plex Mono",monospace;font-size:.85rem}
+
+.tag{
+  display:inline-block;font-family:"IBM Plex Sans Condensed",sans-serif;font-size:.71rem;font-weight:600;
+  text-transform:uppercase;letter-spacing:.07em;padding:2px 8px;border-radius:3px;white-space:nowrap;
+}
+.t-ok{background:var(--ok-bg);color:var(--ok)}
+.t-warn{background:var(--warn-bg);color:var(--warn)}
+.t-stop{background:var(--stop-bg);color:var(--stop)}
+.t-new{background:var(--accent-soft);color:var(--accent)}
+
+/* ---- callout ---- */
+.call{
+  border-left:3px solid var(--accent);background:var(--panel);padding:20px 24px;margin:28px 0;
+  border-radius:0 5px 5px 0;box-shadow:var(--shadow);
+}
+.call.stop{border-left-color:var(--stop)}
+.call.warn{border-left-color:var(--warn)}
+.call h3{font-size:.78rem;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);margin-bottom:10px}
+.call.stop h3{color:var(--stop)}
+.call.warn h3{color:var(--warn)}
+.call p:last-child{margin-bottom:0}
+
+/* ---- workflow compare ---- */
+.flows{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;margin:28px 0}
+.flow{border:1px solid var(--rule);border-radius:6px;background:var(--panel);overflow:hidden;box-shadow:var(--shadow)}
+.flow-h{padding:13px 20px;border-bottom:1px solid var(--rule);background:var(--sunk);font-family:"IBM Plex Sans Condensed",sans-serif;font-weight:600;font-size:.95rem;display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.flow-h .cnt{font-family:"IBM Plex Mono",monospace;font-size:.76rem;font-weight:500}
+.flow.before .cnt{color:var(--stop)}
+.flow.after .cnt{color:var(--ok)}
+.flow ol{margin:0;padding:14px 20px 16px 38px;font-size:.93rem;line-height:1.5}
+.flow li{margin-bottom:7px;padding-left:2px}
+.flow li:last-child{margin-bottom:0}
+.flow li::marker{font-family:"IBM Plex Mono",monospace;font-size:.8rem;color:var(--ink-faint)}
+
+/* ---- phases ---- */
+.phase{display:grid;grid-template-columns:56px 1fr;gap:0 18px;padding:20px 0;border-top:1px solid var(--rule-soft)}
+.phase:first-of-type{border-top:1px solid var(--rule)}
+.pid{font-family:"IBM Plex Mono",monospace;font-size:1.5rem;font-weight:600;color:var(--accent);line-height:1.1}
+.phase h3{margin-bottom:6px}
+.phase p{font-size:.96rem;margin-bottom:8px;color:var(--ink-soft)}
+.phase p:last-child{margin-bottom:0}
+.pmeta{font-family:"IBM Plex Mono",monospace;font-size:.76rem;color:var(--ink-faint)}
+
+ul.tight{margin:0 0 1.05em;padding-left:1.15em}
+ul.tight li{margin-bottom:.4em}
+ul.tight li::marker{color:var(--ink-faint)}
+
+footer{margin-top:64px;padding-top:20px;border-top:2px solid var(--ink);font-family:"IBM Plex Mono",monospace;font-size:.75rem;color:var(--ink-faint);line-height:1.7}
+
+@media (max-width:640px){
+  body{font-size:16px}
+  .wrap{padding:0 18px 64px}
+  .stage{grid-template-columns:34px 1fr;gap:0 12px;padding:10px 16px}
+  .stage-note{grid-column:1/-1;text-align:left;padding-left:22px;margin-top:2px}
+  .stage::before,.gatebar::before{left:22px}
+  .gatebar{padding-left:44px}
+}
+</style>
+
+<div class="wrap">
+
+<header class="mast">
+  <div class="eyebrow">
+    <span>TechCarvalho</span><span>/</span><span>Pre-implementation inspection</span><span>/</span><span>24 Aug 2026</span>
+  </div>
+  <h1>The engine is built.<br>It is waiting on you.</h1>
+  <p class="standfirst">Almost everything in the 32-point brief already exists and runs nightly in production. The system is not under-built &mdash; it is <b>stalled at a single human gate</b> and scattered across sixteen admin pages with no consolidated queue. This is the architecture report required before any code is written.</p>
+
+  <div class="verdict">
+    <div class="vcell is-ok"><div class="vnum">14</div><div class="vlab">Pipeline stages running nightly</div></div>
+    <div class="vcell is-stop"><div class="vnum">0</div><div class="vlab">Briefs ever approved</div></div>
+    <div class="vcell is-warn"><div class="vnum">130</div><div class="vlab">Items awaiting your decision</div></div>
+    <div class="vcell is-stop"><div class="vnum">0</div><div class="vlab">Drafts ever assembled</div></div>
+    <div class="vcell is-ok"><div class="vnum">&pound;0</div><div class="vlab">New paid services required</div></div>
+  </div>
+</header>
+
+<section>
+  <div class="shead"><div class="snum">01</div><div><h2>Current architecture</h2></div></div>
+  <div class="col">
+    <p>The growth engine is a mature system, not a greenfield. <code>src/lib/engine/</code> holds roughly sixty modules and sixteen jobs; <code>src/app/admin/(dashboard)/engine/</code> holds sixteen admin subroutes. It has been running in production since 22 August.</p>
+    <p>Orchestration is deliberately minimal: Vercel's Hobby plan allows two cron entries, so there is <strong>one tick</strong> &mdash; <code>/api/engine/tick</code> at 04:30 daily &mdash; that runs fourteen stages sequentially in dependency order. Each stage is independently flag-gated, independently failure-isolated in its own try/catch, and writes its own <code>engine_job_runs</code> row. Capabilities are added as stages, never as new cron entries.</p>
+    <p>That stage order <em>is</em> the DISCOVER &rarr; RESEARCH &rarr; DECIDE &rarr; CREATE pipeline the brief asks for, already made literal. Below is the real production state of each stage, measured today.</p>
+  </div>
+
+  <div class="spine">
+    <div class="spine-cap"><b>Nightly tick &mdash; measured state</b><span>/api/engine/tick &middot; 30 4 * * *</span></div>
+
+    <div class="stage ran"><div class="stage-n">01</div><div class="stage-name">discovery</div><div class="stage-note">195 discoveries</div></div>
+    <div class="stage ran"><div class="stage-n">02</div><div class="stage-name">relevance</div><div class="stage-note">112 rejected, 83 kept</div></div>
+    <div class="stage idle"><div class="stage-n">03</div><div class="stage-name">update_proposals</div><div class="stage-note">0 pending</div></div>
+    <div class="stage idle"><div class="stage-n">04</div><div class="stage-name">product_assembly</div><div class="stage-note">unpublished shells only</div></div>
+    <div class="stage ran"><div class="stage-n">05</div><div class="stage-name">briefs</div><div class="stage-note">71 created</div></div>
+
+    <div class="gatebar">HUMAN GATE &mdash; brief must be marked <code>review_state = 'approved'</code><em>47 pending &middot; 24 rejected &middot; 0 approved. Nothing has ever passed this point.</em></div>
+
+    <div class="stage never gate"><div class="stage-n">06</div><div class="stage-name">draft_assembly</div><div class="stage-note">never produced anything</div></div>
+    <div class="stage idle"><div class="stage-n">07</div><div class="stage-name">search_intelligence</div><div class="stage-note">48 events total</div></div>
+    <div class="stage idle"><div class="stage-n">08</div><div class="stage-name">opportunities</div><div class="stage-note">12 rows, all unscored</div></div>
+    <div class="stage ran"><div class="stage-n">09</div><div class="stage-name">trends</div><div class="stage-note">12 active, 4 unscored</div></div>
+    <div class="stage idle"><div class="stage-n">10</div><div class="stage-name">media_acquisition</div><div class="stage-note">0 candidates pending</div></div>
+    <div class="stage ran"><div class="stage-n">11</div><div class="stage-name">freshness</div><div class="stage-note">running</div></div>
+    <div class="stage ran"><div class="stage-n">12</div><div class="stage-name">internal_links</div><div class="stage-note">running</div></div>
+    <div class="stage ran"><div class="stage-n">13</div><div class="stage-name">hero_media</div><div class="stage-note">running</div></div>
+    <div class="stage ran"><div class="stage-n">14</div><div class="stage-name">shadow_evaluation</div><div class="stage-note">195 decisions logged</div></div>
+  </div>
+
+  <div class="col">
+    <div class="call stop">
+      <h3>The single finding that matters</h3>
+      <p><code>runDraftAssembly</code> consumes <strong>only</strong> briefs with <code>review_state = 'approved'</code>. Production holds 47 pending and 24 rejected briefs and <strong>zero approved ones</strong>. Stage 6 has therefore never executed real work, and every capability downstream of an assembled draft has never been exercised in production.</p>
+      <p>The engine is not failing. It has been correctly producing work for three days that nobody has actioned, because actioning it currently means visiting sixteen separate admin pages and approving items one at a time.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><div class="snum">02</div><div><h2>Existing components we can reuse</h2></div></div>
+  <div class="col">
+    <p>Mapping the brief's 32 items against what is already on disk and running. The great majority is <strong>reuse, not build</strong>.</p>
+  </div>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Brief item</th><th>Status</th><th>Where it already lives</th></tr></thead>
+      <tbody>
+        <tr><td>Content opportunity engine</td><td><span class="tag t-ok">Exists</span></td><td class="mono">engine/opportunity.ts, jobs/opportunity-job.ts</td></tr>
+        <tr><td>DISCOVER&rarr;RESEARCH&rarr;DECIDE&rarr;CREATE</td><td><span class="tag t-ok">Exists</span></td><td class="mono">api/engine/tick &mdash; 14 ordered stages</td></tr>
+        <tr><td>Products without invented specs</td><td><span class="tag t-ok">Exists</span></td><td class="mono">engine_assemble_product &mdash; unpublished shells, no specs, no pricing</td></tr>
+        <tr><td>CONFIRMED / REPORTED / RUMOURED distinctions</td><td><span class="tag t-ok">Exists</span></td><td class="mono">confidence.ts, claim-coverage.ts, source-quality.ts</td></tr>
+        <tr><td>Update before duplicating</td><td><span class="tag t-ok">Exists</span></td><td class="mono">update_proposals runs <em>before</em> briefs, by design</td></tr>
+        <tr><td>Cannibalisation checks</td><td><span class="tag t-ok">Exists</span></td><td class="mono">dedupe.ts, publication-gate.ts (threshold 0.6)</td></tr>
+        <tr><td>Content clusters / internal links</td><td><span class="tag t-ok">Exists</span></td><td class="mono">link-suggestions.ts, jobs/link-job.ts</td></tr>
+        <tr><td>Media auto-matching &amp; enrichment</td><td><span class="tag t-ok">Exists</span></td><td class="mono">media/providers/ &mdash; pipeline, ranking, entity-match</td></tr>
+        <tr><td>Rights safety non-negotiable</td><td><span class="tag t-ok">Exists</span></td><td class="mono">rights-verification.ts + DB constraints + rights.ts</td></tr>
+        <tr><td>Homepage sections &amp; diversity</td><td><span class="tag t-ok">Exists</span></td><td class="mono">homepage-sections.ts (tested, pure)</td></tr>
+        <tr><td>News rotation with decay</td><td><span class="tag t-ok">Exists</span></td><td class="mono">trends.ts + SQL engine_expire_stale_trends (72h half-life)</td></tr>
+        <tr><td>Editorial overrides (pin)</td><td><span class="tag t-warn">Partial</span></td><td class="mono">homepage_overrides &mdash; pin only; no boost/suppress</td></tr>
+        <tr><td>Full auditability</td><td><span class="tag t-warn">Partial</span></td><td class="mono">engine_job_runs live; engine_change_log has zero callers</td></tr>
+        <tr><td>Zero paid APIs</td><td><span class="tag t-ok">Holds</span></td><td class="mono">Wikimedia Commons only; ai-provider is NullAiProvider</td></tr>
+        <tr><td>ONE owner review queue</td><td><span class="tag t-stop">Missing</span></td><td class="mono">16 fragmented pages instead</td></tr>
+        <tr><td>One-click approval package</td><td><span class="tag t-stop">Missing</span></td><td class="mono">&mdash;</td></tr>
+        <tr><td>MANUAL / ASSISTED / AUTOMATIC modes</td><td><span class="tag t-stop">Missing</span></td><td class="mono">no per-stage autonomy setting exists</td></tr>
+        <tr><td>10-second comprehension test</td><td><span class="tag t-stop">Missing</span></td><td class="mono">dashboard shows no engine state at all</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="col">
+    <p>Two safety properties are worth stating plainly because they change what is even possible to get wrong.</p>
+    <p><strong>Publishing is structurally impossible, not flag-gated.</strong> Engine jobs run as <code>anon</code> and reach the database only through narrow <code>SECURITY DEFINER</code> RPCs. <code>engine_assemble_draft</code> is hard-wired to <code>'draft'</code> and <code>engine_assemble_product</code> to <code>is_published = false</code>. As <code>anon</code>, a direct write setting published state is refused with <code>42501</code>. The engine cannot publish because <em>there is nothing for it to call</em>. The brief's "never auto-publish" requirement is already enforced by construction.</p>
+    <p><strong>Autonomy readiness is measured, and it is nowhere near.</strong> <code>READINESS</code> requires 500 shadow decisions across 30 distinct days with zero escapes. Production has <strong>195 decisions across 3 distinct days</strong>, with 0 human verdicts recorded against them. ASSISTED is the only defensible default, exactly as the brief instructs.</p>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><div class="snum">03</div><div><h2>Gaps</h2></div></div>
+  <div class="col">
+    <p>Four real gaps, in order of how much they cost you today.</p>
+
+    <p><strong>1. There is no single review queue, and no concept of "needs attention" anywhere in the codebase.</strong> A search across <code>src</code> for any attention/needs-attention concept returns one unrelated comment. The admin dashboard shows plain counts from eight tables and <em>links to nothing under <code>/admin/engine</code></em>. Work is spread across <code>briefs</code>, <code>discoveries</code>, <code>drafts</code>, <code>freshness</code>, <code>media-acquisition</code>, <code>media-blockers</code>, <code>update-proposals</code>, <code>entity-resolutions</code>, <code>opportunities</code>, <code>trending</code>, <code>searches</code> and <code>homepage</code>. This is the direct cause of the stalled gate.</p>
+
+    <p><strong>2. Brief quality is why the queue was ignored.</strong> The oldest pending briefs are titles like <em>"NIKKOR Z 50mm f/1.2 S vs NIKKOR Z 50mm f/1.4"</em> carrying <strong>0 verified facts, 0 uncertainties and 0 source URLs</strong>. These are combinatorial comparison briefs generated from the internal catalogue, not evidence-backed discoveries. They are correctly unapprovable &mdash; and they crowd out the briefs that <em>do</em> carry evidence. A queue whose contents are mostly noise trains its owner to ignore it.</p>
+
+    <p><strong>3. Measurement floor.</strong> With <strong>48 analytics events</strong> in total, demand signals are genuinely unavailable. The engine already handles this honestly: all 12 opportunities carry a <code>null</code> score with the explanation <em>"Not enough measured demand to score (0 combined searches/views, minimum 5)"</em>, and 4 of 12 trends report <em>"No measurable signals in this window"</em>. That is correct behaviour and must stay. Per your own instruction, it will be surfaced as explicitly unavailable rather than simulated.</p>
+
+    <p><strong>4. Dormant subsystems.</strong> The knowledge-graph migration created five tables (<code>technology_concepts</code>, <code>product_technologies</code>, <code>content_technologies</code>, <code>technology_relationships</code>, <code>product_claims</code>) that no page, route or action touches &mdash; scripts only. <code>engine_change_log</code> exists in SQL with zero TypeScript callers. <code>rollback.ts</code> and <code>modes.ts</code> are display-only. None of these are broken; they are unwired.</p>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><div class="snum">04</div><div><h2>Proposed engine</h2></div></div>
+  <div class="col">
+    <p>Given how much exists, the proposal is deliberately not a new engine. It is <strong>one new surface plus four wiring jobs</strong>, and it explicitly does not create parallel systems.</p>
+
+    <p>The new surface is <strong>Today</strong> &mdash; a single owner review queue at <code>/admin/engine</code> that reads the existing tables and presents every item awaiting a human decision as one ranked list, with the reason it needs you and the action inline. It replaces nothing: the sixteen specialist pages remain as the drill-down, and Today becomes the way in.</p>
+
+    <p>Each row is a decision, not a report. A brief row carries its verified facts, uncertainties and source count on its face, so approving is a judgement made from the queue rather than after three clicks. Rows with no evidence are ranked below rows with evidence, which fixes gap 2 without deleting anything.</p>
+
+    <p>The <strong>approval package</strong> turns one approval into the whole downstream sequence: approve brief &rarr; assemble draft &rarr; attach matched media &rarr; propose homepage placement, shown as a preview before you commit and reversible after. It calls the existing RPCs in the existing order; it does not bypass the structural publishing boundary, and the final publish stays a separate, human act.</p>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><div class="snum">05</div><div><h2>Data model changes</h2></div></div>
+  <div class="col"><p>Minimal, and that is the point &mdash; the schema already anticipated most of this.</p></div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Change</th><th>Kind</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">Today queue</td><td><span class="tag t-ok">No change</span></td><td>Reads existing engine tables; a view at most</td></tr>
+        <tr><td class="mono">engine_settings &mdash; per-stage mode</td><td><span class="tag t-new">Add column</span></td><td>MANUAL / ASSISTED / AUTOMATIC per stage, defaulting ASSISTED</td></tr>
+        <tr><td class="mono">engine_change_log</td><td><span class="tag t-warn">Wire only</span></td><td>Table and functions exist; add the TS callers for full auditability</td></tr>
+        <tr><td class="mono">homepage_overrides &mdash; modes</td><td><span class="tag t-new">Add values</span></td><td><code>boost</code> and <code>suppress</code> alongside existing pin modes</td></tr>
+        <tr><td class="mono">engine_briefs</td><td><span class="tag t-ok">No change</span></td><td>Already carries verified_facts, uncertainties, source_urls, review_state, priority, snoozed_until, assembled_content_id</td></tr>
+        <tr><td class="mono">engine_trends</td><td><span class="tag t-ok">No change</span></td><td>Already carries trend_score, velocity, why_trending, has_published_coverage</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="col">
+    <div class="call warn">
+      <h3>Migration discipline</h3>
+      <p>Any SQL drafted here lands in <code>supabase/migrations_pending/</code> and is <strong>not applied</strong>. Nothing gets run against production, and nothing gets pushed or deployed, without you asking for that specific action in that turn.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><div class="snum">06</div><div><h2>Owner workflow &mdash; before and after</h2></div></div>
+  <div class="flows">
+    <div class="flow before">
+      <div class="flow-h"><span>Today</span><span class="cnt">~12 actions, 5 pages</span></div>
+      <ol>
+        <li>Open <code>/admin/engine</code>, read job-run health</li>
+        <li>Open <code>discoveries</code>, triage 83 items</li>
+        <li>Open <code>briefs</code>, read 47 items with no evidence shown</li>
+        <li>Approve one brief</li>
+        <li>Wait up to 24h for the next tick to assemble it</li>
+        <li>Open <code>drafts</code>, find the assembled draft</li>
+        <li>Open <code>media-acquisition</code>, decide rights on candidates</li>
+        <li>Open <code>/admin/media</code>, associate and publish the asset</li>
+        <li>Open <code>/admin/content</code>, edit the draft</li>
+        <li>Publish</li>
+        <li>Open <code>engine/homepage</code>, pin if it should feature</li>
+        <li>No record of what changed or why</li>
+      </ol>
+    </div>
+    <div class="flow after">
+      <div class="flow-h"><span>Target</span><span class="cnt">2 actions, 1 page</span></div>
+      <ol>
+        <li><strong>Review</strong> &mdash; open Today. The queue is ranked, each row states why it needs you, evidence and rights status visible on the row.</li>
+        <li><strong>Approve &amp; Publish</strong> &mdash; one action runs the package: draft assembled, media attached, homepage placement proposed, change logged. Preview first, reversible after.</li>
+      </ol>
+      <p style="padding:0 20px 16px;font-size:.88rem;color:var(--ink-faint);margin:0">Anything unsafe &mdash; unverified rights, thin sourcing, a possible duplicate &mdash; does not enter this path. It is held with the specific reason stated, which is the only thing that should ever cost you more than two actions.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><div class="snum">07</div><div><h2>Cost impact</h2></div></div>
+  <div class="col">
+    <p><strong>No new paid service is required for anything proposed above.</strong> The engine is fully deterministic today &mdash; <code>ai-provider.ts</code> resolves to a <code>NullAiProvider</code> with no runtime importer, and the only external data source is Wikimedia Commons, rate-limited to one request per 2.5&nbsp;s. Hosting stays within the Hobby plan's two-cron limit because capabilities are added as tick stages, never as new schedules.</p>
+
+    <div class="call">
+      <h3>One place where the brief's own constraints collide</h3>
+      <p>Item 22 asks for a real demand-and-opportunity signal. Genuine search-volume data is only sold &mdash; Keyword Planner, Ahrefs, Semrush &mdash; and item 24 forbids paid services. These cannot both be satisfied.</p>
+      <p><strong>Recommendation: stay free, and stay honest.</strong> Keep first-party signal only, and let opportunity scores remain <code>null</code> with their stated reason until on-site volume can carry them. The engine already does exactly this. I am reporting the paid option here as required, and <strong>not enabling it</strong>.</p>
+    </div>
+
+    <p>The real cost today is your time, and it is being spent on navigation rather than judgement. Phase A targets that directly.</p>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><div class="snum">08</div><div><h2>Proposed phases</h2></div></div>
+  <div class="col"><p>Ordered by leverage. Each phase is shippable alone and none destroys or duplicates an existing system.</p></div>
+
+  <div class="phase">
+    <div class="pid">A</div>
+    <div>
+      <h3>One owner review queue</h3>
+      <p>Build <strong>Today</strong>: every pending decision in one ranked list, evidence and rights on the row, action inline. Add engine state and a needs-attention count to the admin dashboard, which currently shows neither.</p>
+      <p class="pmeta">Items 13, 25, 31 &middot; no schema change &middot; unblocks the stalled gate</p>
+    </div>
+  </div>
+  <div class="phase">
+    <div class="pid">B</div>
+    <div>
+      <h3>Approval package</h3>
+      <p>One approval runs assemble &rarr; media &rarr; homepage proposal, with a preview before and a reverse after. Publishing stays a separate human act on top of the existing structural boundary.</p>
+      <p class="pmeta">Item 12 &middot; reuses existing RPCs in existing order</p>
+    </div>
+  </div>
+  <div class="phase">
+    <div class="pid">C</div>
+    <div>
+      <h3>Brief quality</h3>
+      <p>Stop admitting evidence-free combinatorial briefs to the queue; require source-backed briefs to rank above them. Existing rows are re-ranked, not deleted.</p>
+      <p class="pmeta">Fixes the reason the queue was ignored &middot; no deletions</p>
+    </div>
+  </div>
+  <div class="phase">
+    <div class="pid">D</div>
+    <div>
+      <h3>Per-stage autonomy and audit</h3>
+      <p>MANUAL / ASSISTED / AUTOMATIC per stage, defaulting ASSISTED everywhere. Wire <code>engine_change_log</code>, which already exists in SQL with no callers, so every engine action has a record.</p>
+      <p class="pmeta">Items 23, 26 &middot; one added column &middot; migration stays pending until you apply it</p>
+    </div>
+  </div>
+  <div class="phase">
+    <div class="pid">E</div>
+    <div>
+      <h3>Homepage and freshness surfacing</h3>
+      <p>Add <code>boost</code>/<code>suppress</code> overrides, surface freshness and trend state on Today, and mark low-data signals explicitly unavailable rather than showing a confident-looking zero.</p>
+      <p class="pmeta">Items 14&ndash;22 &middot; extends homepage-sections.ts and trends.ts</p>
+    </div>
+  </div>
+  <div class="phase">
+    <div class="pid">&mdash;</div>
+    <div>
+      <h3>Then: iPhone 18 end-to-end</h3>
+      <p>Run the real production test from the brief &mdash; research genuine sources, assert nothing unsupported, and measure the actual owner action count against the two-action target.</p>
+      <p class="pmeta">Items 30, 31 &middot; against real production, not a mock</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  Inspection performed 24 Aug 2026 against live production data.<br>
+  Counts read directly from Supabase as an authenticated admin; stage behaviour read from source, not inferred.<br>
+  No code changed, no migration applied, nothing pushed or deployed.
+</footer>
+
+</div>
