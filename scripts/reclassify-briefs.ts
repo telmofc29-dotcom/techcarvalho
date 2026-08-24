@@ -65,7 +65,7 @@ async function main(): Promise<void> {
     process.exitCode = 1;
     return;
   }
-  const rows = (data ?? []) as Row[];
+  const rows = (data ?? []) as unknown as Row[];
 
   // Published titles for the cannibalisation check. Fetched once; the
   // classifier is pure and takes them as input.

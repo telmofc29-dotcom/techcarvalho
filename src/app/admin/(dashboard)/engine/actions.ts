@@ -306,7 +306,13 @@ export async function setBriefReviewState(formData: FormData): Promise<void> {
     })
     .eq("id", id);
 
+  // Three surfaces now show this row: the specialist page, the owner queue
+  // that ranks it, and the dashboard tile that counts it. Revalidating only
+  // the first would leave an owner who acted from Today looking at the item
+  // they just actioned, which reads as the action having failed.
   revalidatePath("/admin/engine/briefs");
+  revalidatePath("/admin/engine");
+  revalidatePath("/admin");
 }
 
 const VALID_RELEVANCE_VERDICTS: RelevanceVerdict[] = ["relevant", "rejected", "uncertain"];

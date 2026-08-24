@@ -9,14 +9,21 @@ export function SubmitButton({
 }: {
   children: React.ReactNode;
   pendingLabel?: string;
-  variant?: "primary" | "danger";
+  // `secondary` exists for actions that are neither the main path nor
+  // destructive — "Reject" and "Ignore for now" in the owner queue. Rendering
+  // those in danger red would overstate them: rejecting a brief is a normal
+  // editorial decision that deletes nothing, and colouring it like a delete
+  // makes an owner hesitate over the one action that keeps the queue clear.
+  variant?: "primary" | "secondary" | "danger";
 }) {
   const { pending } = useFormStatus();
 
   const classes =
     variant === "danger"
       ? "bg-red-600 hover:bg-red-700 text-white"
-      : "bg-neutral-900 hover:bg-neutral-700 text-white";
+      : variant === "secondary"
+        ? "bg-white hover:bg-neutral-50 text-neutral-700 ring-1 ring-inset ring-neutral-300"
+        : "bg-neutral-900 hover:bg-neutral-700 text-white";
 
   return (
     <button

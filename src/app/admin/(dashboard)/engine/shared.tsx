@@ -7,8 +7,14 @@ import { Badge } from "@/components/admin/ui";
 // wherever it appears — an admin shouldn't have to relearn the colour coding
 // per page.
 
+// Today comes first and is the ONLY entry an owner needs. The rest are the
+// specialist drill-downs behind it — deliberately still here, because Phase A
+// consolidated the front door rather than removing the detail. An engineer
+// debugging one stage still wants its own page; the owner should never have to
+// visit fourteen of them to find out what to do next.
 const ENGINE_TABS: { href: string; label: string }[] = [
-  { href: "/admin/engine", label: "Health" },
+  { href: "/admin/engine", label: "Today" },
+  { href: "/admin/engine/health", label: "Engine details" },
   { href: "/admin/engine/autonomy", label: "Autonomy readiness" },
   { href: "/admin/engine/sources", label: "Sources" },
   { href: "/admin/engine/discoveries", label: "Discoveries" },
