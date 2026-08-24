@@ -11,6 +11,7 @@ import { resolvePublicationSource } from "@/lib/media/publication-source";
 import type { MediaType, MediaRole, MediaSourceType, MediaRightsStatus, MediaBrandRole, MediaAssetRole, Insert } from "@/lib/types/database";
 import { explainProvenanceRequirement, stampModificationAssessment } from "@/lib/media/provenance-invariant";
 import { checkUploadCandidate, isIssuedStoragePath, sanitizeFileName } from "@/lib/media/upload-limits";
+import { getAdminPreviewUrl } from "@/lib/media/admin-preview-url";
 import {
   ASSET_ROLES_PENDING_MIGRATION,
   EDITED_FIELDS_INPUT,
@@ -668,6 +669,222 @@ export async function deleteMediaAsset(formData: FormData): Promise<void> {
   revalidatePath("/admin/media");
 }
 
+/**
+ * One target whose hero slot is already occupied by a DIFFERENT asset.
+ *
+ * Returned to the form so the admin can decide, instead of the server picking
+ * for them — which is what produced two hero rows on ps5-vs-ps5-pro-worth-it.
+ */
+export type HeroCollision = {
+  targetId: string;
+  targetLabel: string;
+  currentHeroMediaId: string;
+  currentHeroAlt: string | null;
+  currentHeroPreviewUrl: string | null;
+  currentHeroDescriptor: string;
+};
+
+export type AssociationState = {
+  error: string | null;
+  /** Present when the save stopped to ask. Nothing has been written yet. */
+  collisions?: HeroCollision[];
+  /**
+   * The roles the admin asked for, echoed back so the confirmation submit can
+   * resend them as hidden inputs.
+   *
+   * Needed because the role <select>s are server-rendered with a defaultValue
+   * taken from the database. When the collision panel re-renders the form, the
+   * newly chosen "hero" is not in that defaultValue, so relying on the DOM to
+   * still hold it made the second submit silently send the OLD roles — the
+   * decision was applied to an empty request and nothing changed.
+   */
+  pendingRoles?: { targetId: string; role: MediaRole }[];
+  /** Set after a save that actually changed something. */
+  savedAt?: string;
+};
+
+const HERO_DECISIONS = new Set(["replace", "add_to_gallery", "cancel"]);
+
+/**
+ * Save this asset's associations to products or articles.
+ *
+ * WHY THIS IS NOT A PLAIN DELETE-AND-REINSERT ANY MORE
+ * ----------------------------------------------------
+ * It used to delete every row for THIS ASSET and re-insert from the form. That
+ * is correct for the asset's own rows and completely blind to the slot: giving
+ * asset B the hero role never touched asset A's hero row, so the target ended
+ * up with two heroes and the public page picked one arbitrarily.
+ *
+ * Now, before writing anything, every target being given the hero role is
+ * checked for an existing hero held by a different asset. If any are found the
+ * whole save STOPS and returns them for a decision. Nothing is partially
+ * applied — a half-saved batch is worse than one that asked first.
+ */
+async function saveAssociations(input: {
+  kind: "product" | "content";
+  mediaId: string;
+  targetIds: string[];
+  formData: FormData;
+}): Promise<AssociationState> {
+  await requireAdmin();
+  const { kind, mediaId, targetIds, formData } = input;
+
+  const table = kind === "product" ? "product_media" : "content_media";
+  const targetColumn = kind === "product" ? "product_id" : "content_id";
+
+  const supabase = await createClient();
+
+  // What the form is asking for, per target.
+  const desired = new Map<string, MediaRole>();
+  for (const targetId of targetIds) {
+    const role = String(formData.get(`role_${targetId}`) ?? "");
+    if (VALID_ROLES.includes(role as MediaRole)) desired.set(targetId, role as MediaRole);
+  }
+  // Roles carried over from the collision step take precedence over whatever
+  // the (stale) selects submitted. See AssociationState.pendingRoles.
+  for (const [key, value] of formData.entries()) {
+    if (!key.startsWith("pending_role_")) continue;
+    const targetId = key.slice("pending_role_".length);
+    const role = String(value);
+    if (VALID_ROLES.includes(role as MediaRole)) desired.set(targetId, role as MediaRole);
+  }
+
+  const wantsHeroOn = [...desired.entries()].filter(([, role]) => role === "hero").map(([id]) => id);
+
+  const collisions: HeroCollision[] = [];
+  const decisions = new Map<string, string>();
+  const plannedDemotions: { targetId: string; mediaId: string }[] = [];
+
+  if (wantsHeroOn.length > 0) {
+    // Queried per kind rather than through the union, so the column names stay
+    // statically checked against each table instead of being cast.
+    const heroQuery =
+      kind === "product"
+        ? await supabase.from("product_media").select("product_id, media_id").in("product_id", wantsHeroOn).eq("role", "hero")
+        : await supabase.from("content_media").select("content_id, media_id").in("content_id", wantsHeroOn).eq("role", "hero");
+    if (heroQuery.error) return { error: heroQuery.error.message };
+
+    const rows = (heroQuery.data ?? []) as unknown as Record<string, string>[];
+    const foreignHeroes = rows.filter((r) => r.media_id !== mediaId);
+
+    if (foreignHeroes.length > 0) {
+      const heroAssetIds = [...new Set(foreignHeroes.map((r) => r.media_id))];
+      const { data: heroAssets } = await supabase.from("media_assets").select("*").in("id", heroAssetIds);
+      const assetById = new Map((heroAssets ?? []).map((a) => [a.id, a]));
+
+      const labels = await targetLabels(
+        supabase,
+        kind,
+        foreignHeroes.map((r) => r[targetColumn])
+      );
+
+      for (const row of foreignHeroes) {
+        const targetId = row[targetColumn];
+        const decision = String(formData.get("hero_decision_" + targetId) ?? "");
+
+        if (!HERO_DECISIONS.has(decision)) {
+          const asset = assetById.get(row.media_id);
+          collisions.push({
+            targetId,
+            targetLabel: labels.get(targetId) ?? targetId,
+            currentHeroMediaId: row.media_id,
+            currentHeroAlt: asset?.alt_text ?? null,
+            currentHeroPreviewUrl: asset ? await getAdminPreviewUrl(asset) : null,
+            currentHeroDescriptor: describeAsset(asset),
+          });
+          continue;
+        }
+
+        decisions.set(targetId, decision);
+        if (decision === "replace") plannedDemotions.push({ targetId, mediaId: row.media_id });
+      }
+    }
+  }
+
+  if (collisions.length > 0) {
+    // Nothing written. The admin has to choose first.
+    return {
+      error: null,
+      collisions,
+      pendingRoles: [...desired.entries()].map(([targetId, role]) => ({ targetId, role })),
+    };
+  }
+
+  // Apply decisions to the OTHER asset's rows before touching our own.
+  for (const demotion of plannedDemotions) {
+    // A displaced hero is DEMOTED, never deleted: the asset keeps its rights,
+    // its provenance and its attachment to the thing it illustrates. Losing the
+    // hero slot is not a reason to throw a picture away.
+    const demote =
+      kind === "product"
+        ? await supabase
+            .from("product_media")
+            .update({ role: "gallery" as MediaRole })
+            .eq("product_id", demotion.targetId)
+            .eq("media_id", demotion.mediaId)
+            .eq("role", "hero")
+        : await supabase
+            .from("content_media")
+            .update({ role: "gallery" as MediaRole })
+            .eq("content_id", demotion.targetId)
+            .eq("media_id", demotion.mediaId)
+            .eq("role", "hero");
+    if (demote.error) return { error: "Could not move the existing hero to the gallery: " + demote.error.message };
+  }
+
+  for (const [targetId, decision] of decisions) {
+    if (decision === "cancel") desired.delete(targetId);
+    if (decision === "add_to_gallery") desired.set(targetId, "gallery");
+  }
+
+  const { error: deleteError } = await supabase.from(table).delete().eq("media_id", mediaId);
+  if (deleteError) return { error: deleteError.message };
+
+  const links = [...desired.entries()].map(([targetId, role]) => ({
+    media_id: mediaId,
+    [targetColumn]: targetId,
+    role,
+  }));
+
+  if (links.length > 0) {
+    const { error: insertError } = await supabase.from(table).insert(links as never);
+    if (insertError) return { error: insertError.message };
+  }
+
+  revalidatePath("/admin/media/" + mediaId);
+  revalidatePath("/admin/media");
+  return { error: null, savedAt: new Date().toISOString() };
+}
+
+/** Human labels for the targets named in a collision. */
+async function targetLabels(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  kind: "product" | "content",
+  ids: string[]
+): Promise<Map<string, string>> {
+  const unique = [...new Set(ids)];
+  if (unique.length === 0) return new Map();
+  if (kind === "product") {
+    const { data } = await supabase.from("products").select("id, name").in("id", unique);
+    return new Map((data ?? []).map((r) => [r.id, r.name]));
+  }
+  const { data } = await supabase.from("content_items").select("id, title").in("id", unique);
+  return new Map((data ?? []).map((r) => [r.id, r.title]));
+}
+
+/** Short "what this asset is" line, so a collision panel is informative. */
+function describeAsset(
+  asset: { asset_role?: string | null; source_type?: string | null; publication_status?: string | null } | undefined
+): string {
+  if (!asset) return "unknown asset";
+  const parts = [
+    asset.asset_role ? asset.asset_role.replace(/_/g, " ") : "no editorial role",
+    asset.source_type ? asset.source_type.replace(/_/g, " ") : "no source type",
+  ];
+  if (asset.publication_status !== "published") parts.push("NOT PUBLISHED - cannot render");
+  return parts.join(" · ");
+}
+
 // Associations write ONLY to the join table. They never touch media_assets, so
 // an association edit cannot change source type, ownership, licence,
 // modification permission or verification state — the separation is structural,
@@ -679,59 +896,27 @@ export async function deleteMediaAsset(formData: FormData): Promise<void> {
 export async function updateMediaProductAssociations(
   mediaId: string,
   productIds: string[],
-  _prev: FormState,
+  _prev: AssociationState,
   formData: FormData
-): Promise<FormState> {
-  await requireAdmin();
-  const supabase = await createClient();
-
-  const { error: deleteError } = await supabase.from("product_media").delete().eq("media_id", mediaId);
-  if (deleteError) return { error: deleteError.message };
-
-  const links = productIds
-    .map((productId) => {
-      const role = String(formData.get(`role_${productId}`) ?? "");
-      return VALID_ROLES.includes(role as MediaRole)
-        ? { media_id: mediaId, product_id: productId, role: role as MediaRole }
-        : null;
-    })
-    .filter((v): v is { media_id: string; product_id: string; role: MediaRole } => v !== null);
-
-  if (links.length > 0) {
-    const { error: insertError } = await supabase.from("product_media").insert(links);
-    if (insertError) return { error: insertError.message };
-  }
-
-  revalidatePath(`/admin/media/${mediaId}`);
-  return { error: null };
+): Promise<AssociationState> {
+  return saveAssociations({
+    kind: "product",
+    mediaId,
+    targetIds: productIds,
+    formData,
+  });
 }
 
 export async function updateMediaContentAssociations(
   mediaId: string,
   contentIds: string[],
-  _prev: FormState,
+  _prev: AssociationState,
   formData: FormData
-): Promise<FormState> {
-  await requireAdmin();
-  const supabase = await createClient();
-
-  const { error: deleteError } = await supabase.from("content_media").delete().eq("media_id", mediaId);
-  if (deleteError) return { error: deleteError.message };
-
-  const links = contentIds
-    .map((contentId) => {
-      const role = String(formData.get(`role_${contentId}`) ?? "");
-      return VALID_ROLES.includes(role as MediaRole)
-        ? { media_id: mediaId, content_id: contentId, role: role as MediaRole }
-        : null;
-    })
-    .filter((v): v is { media_id: string; content_id: string; role: MediaRole } => v !== null);
-
-  if (links.length > 0) {
-    const { error: insertError } = await supabase.from("content_media").insert(links);
-    if (insertError) return { error: insertError.message };
-  }
-
-  revalidatePath(`/admin/media/${mediaId}`);
-  return { error: null };
+): Promise<AssociationState> {
+  return saveAssociations({
+    kind: "content",
+    mediaId,
+    targetIds: contentIds,
+    formData,
+  });
 }

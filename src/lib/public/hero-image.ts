@@ -2,6 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { mediaPublicUrl } from "@/lib/media/public-url";
 import { logQueryError } from "@/lib/log/query-error";
+import { chooseActiveHero } from "@/lib/media/hero-slot";
 import { selectArticleHero, type HeroCandidate, type ProductLinkRole } from "@/lib/media/hero-selection";
 import type { MediaSourceType } from "@/lib/types/database";
 import { ROOT_LOCALE } from "@/lib/i18n/locales";
@@ -111,22 +112,58 @@ export async function getPublishedHeroImage(
   const supabase = await createClient();
 
   try {
-    const { data: link, error: linkError } =
+    // ALL hero rows, not the first one the database happens to hand back.
+    //
+    // The schema's unique constraint is on (target, media, role), which permits
+    // several DIFFERENT assets to hold 'hero' on one target. This query used to
+    // be .limit(1) with no ORDER BY, so when that happened the winner was
+    // effectively arbitrary — and in production, on ps5-vs-ps5-pro-worth-it, it
+    // picked the older graphic over the newly assigned image. Worse, had it
+    // picked the newer one, that asset was still private and the page would
+    // have rendered NO hero at all.
+    //
+    // chooseActiveHero() prefers a hero that can actually be displayed, then
+    // orders deterministically. This is a safety net for data that already
+    // exists; the real fix is the one-hero index in
+    // supabase/migrations_pending/20260824_one_hero_per_target.sql.
+    const { data: links, error: linkError } =
       kind === "product"
-        ? await supabase.from("product_media").select("media_id").eq("product_id", id).eq("role", "hero").limit(1).maybeSingle()
-        : await supabase.from("content_media").select("media_id").eq("content_id", id).eq("role", "hero").limit(1).maybeSingle();
+        ? await supabase.from("product_media").select("id, media_id, sort_order").eq("product_id", id).eq("role", "hero")
+        : await supabase.from("content_media").select("id, media_id, sort_order").eq("content_id", id).eq("role", "hero");
     if (linkError) logQueryError(`getPublishedHeroImage(${kind}, ${id}) link`, linkError);
-    if (linkError || !link) return null;
+    if (linkError || !links || links.length === 0) return null;
 
-    const { data: asset, error: assetError } = await supabase
+    const { data: candidates, error: assetError } = await supabase
       .from("media_assets")
       .select(
-        "alt_text, caption, publication_status, storage_path, public_storage_path, source_type, asset_role, owned, ai_generated, attribution, attribution_required, creator, source_url, license, width, height"
+        "id, alt_text, caption, publication_status, storage_path, public_storage_path, source_type, asset_role, owned, ai_generated, attribution, attribution_required, creator, source_url, license, width, height"
       )
-      .eq("id", link.media_id)
-      .maybeSingle();
+      .in("id", links.map((l) => l.media_id));
     if (assetError) logQueryError(`getPublishedHeroImage(${kind}, ${id}) asset`, assetError);
-    if (assetError || !asset) return null;
+    if (assetError || !candidates || candidates.length === 0) return null;
+
+    if (links.length > 1) {
+      // Not fatal, but it is a contradiction an admin should know about, and it
+      // is invisible from the page itself.
+      logQueryError(`getPublishedHeroImage(${kind}, ${id})`, {
+        message: `${links.length} hero associations exist for this target; expected exactly one. Run scripts/audit-media-usage.mjs.`,
+      });
+    }
+
+    const byId = new Map(candidates.map((a) => [a.id, a]));
+    const chosen = chooseActiveHero(
+      links.map((l) => {
+        const a = byId.get(l.media_id);
+        return {
+          mediaId: l.media_id,
+          rowId: l.id,
+          sortOrder: l.sort_order ?? 0,
+          renderable: a?.publication_status === "published" && Boolean(a?.public_storage_path),
+        };
+      })
+    );
+    const asset = chosen ? byId.get(chosen.mediaId) : null;
+    if (!asset) return null;
     if (asset.publication_status !== "published" || !asset.public_storage_path) return null;
 
     return {

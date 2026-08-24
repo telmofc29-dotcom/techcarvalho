@@ -9,6 +9,8 @@ import { PageHeader, Card, Select, Checkbox, Textarea, Field, TextInput, Badge }
 import { ConfirmDeleteButton } from "@/components/admin/submit-button";
 import { ReferenceForm, type ReferenceFieldConfig } from "@/components/admin/reference-form";
 import { ActionForm } from "@/components/admin/action-form";
+import { MediaAssociationForm } from "../association-form";
+import { MediaUsage } from "./media-usage";
 import { ASSET_ROLE_OPTIONS, BRAND_ROLE_OPTIONS, SOURCE_TYPE_OPTIONS, RIGHTS_STATUS_OPTIONS, EDITED_FIELDS_INPUT } from "@/lib/media/form-options";
 import { PublishToggle } from "../publish-toggle";
 import {
@@ -138,6 +140,8 @@ export default async function EditMediaPage({
         />
       </div>
 
+      <MediaUsage mediaId={id} />
+
       <Card className="p-5">
         <h2 className="text-sm font-semibold text-neutral-900 mb-3">Source, licensing &amp; provenance</h2>
         <ActionForm action={updateMediaProvenance.bind(null, id)} submitLabel="Save provenance">
@@ -257,10 +261,11 @@ export default async function EditMediaPage({
         {(allProducts ?? []).length === 0 ? (
           <p className="text-sm text-neutral-500">No products exist yet.</p>
         ) : (
-          <ActionForm
+          <MediaAssociationForm
             action={updateMediaProductAssociations.bind(null, id, productIds)}
             submitLabel="Save product associations"
-            className="flex flex-col gap-3"
+            newAssetAlt={asset.alt_text}
+            newAssetPreviewUrl={previewUrl}
           >
             <div className="flex flex-col gap-2">
               {(allProducts ?? []).map((product) => (
@@ -275,7 +280,7 @@ export default async function EditMediaPage({
                 </div>
               ))}
             </div>
-          </ActionForm>
+          </MediaAssociationForm>
         )}
       </Card>
 
@@ -284,10 +289,11 @@ export default async function EditMediaPage({
         {(allContent ?? []).length === 0 ? (
           <p className="text-sm text-neutral-500">No content items exist yet.</p>
         ) : (
-          <ActionForm
+          <MediaAssociationForm
             action={updateMediaContentAssociations.bind(null, id, contentIds)}
             submitLabel="Save content associations"
-            className="flex flex-col gap-3"
+            newAssetAlt={asset.alt_text}
+            newAssetPreviewUrl={previewUrl}
           >
             <div className="flex flex-col gap-2">
               {(allContent ?? []).map((item) => (
@@ -302,7 +308,7 @@ export default async function EditMediaPage({
                 </div>
               ))}
             </div>
-          </ActionForm>
+          </MediaAssociationForm>
         )}
       </Card>
     </div>
