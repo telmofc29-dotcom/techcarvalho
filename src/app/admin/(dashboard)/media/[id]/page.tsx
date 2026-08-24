@@ -6,8 +6,10 @@ import { getRowById } from "@/lib/admin/reference-service";
 import { getAdminPreviewUrl } from "@/lib/media/admin-preview-url";
 import { evaluatePublishEligibility } from "@/lib/media/rights";
 import { PageHeader, Card, Select, Checkbox, Textarea, Field, TextInput, Badge } from "@/components/admin/ui";
-import { SubmitButton, ConfirmDeleteButton } from "@/components/admin/submit-button";
+import { ConfirmDeleteButton } from "@/components/admin/submit-button";
 import { ReferenceForm, type ReferenceFieldConfig } from "@/components/admin/reference-form";
+import { ActionForm } from "@/components/admin/action-form";
+import { ASSET_ROLE_OPTIONS, BRAND_ROLE_OPTIONS, SOURCE_TYPE_OPTIONS, RIGHTS_STATUS_OPTIONS, EDITED_FIELDS_INPUT } from "@/lib/media/form-options";
 import { PublishToggle } from "../publish-toggle";
 import {
   updateMediaAsset,
@@ -16,6 +18,24 @@ import {
   updateMediaProductAssociations,
   updateMediaContentAssociations,
 } from "../actions";
+
+// Exactly the provenance fields this form renders an input for. The action
+// writes these and nothing else, so a field absent from the form keeps its
+// stored value instead of being overwritten with the empty default it would
+// otherwise read back as.
+const PROVENANCE_FIELDS_EDITED_HERE = [
+  "caption",
+  "source_type",
+  "source_url",
+  "attribution",
+  "attribution_required",
+  "ai_generated",
+  "owned",
+  "rights_status",
+  "brand_role",
+  "asset_role",
+  "licence_permits_modification",
+].join(",");
 
 export default async function EditMediaPage({
   params,
@@ -120,21 +140,60 @@ export default async function EditMediaPage({
 
       <Card className="p-5">
         <h2 className="text-sm font-semibold text-neutral-900 mb-3">Source, licensing &amp; provenance</h2>
-        <form action={updateMediaProvenance.bind(null, id)} className="flex flex-col gap-4">
+        <ActionForm action={updateMediaProvenance.bind(null, id)} submitLabel="Save provenance">
+          <input type="hidden" name={EDITED_FIELDS_INPUT} value={PROVENANCE_FIELDS_EDITED_HERE} />
+          <p className="text-xs text-neutral-500">
+            An externally-sourced asset marked Verified needs a source URL, a licence, and either a creator or
+            attribution text. License and Creator are edited in the form above.
+          </p>
           <Field label="Caption" htmlFor="caption">
             <TextInput id="caption" name="caption" defaultValue={asset.caption ?? ""} />
           </Field>
           <Field label="Source type" htmlFor="source_type">
             <Select id="source_type" name="source_type" defaultValue={asset.source_type ?? ""}>
               <option value="">Not specified</option>
-              <option value="manufacturer">Manufacturer</option>
-              <option value="staff_photograph">Staff photograph</option>
-              <option value="stock_licensed">Stock (licensed)</option>
-              <option value="user_submitted">User submitted</option>
-              <option value="press_kit">Press kit</option>
-              <option value="public_domain_or_cc">Public domain / Creative Commons</option>
-              <option value="tc_graphic">TechCarvalho-created graphic/diagram</option>
-              <option value="other">Other</option>
+              {SOURCE_TYPE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          {/* Previously absent from this form while the action still wrote it,
+              so every save nulled it — on production, 114 of 116 assets were one
+              click from losing the classification that separates a product
+              photograph from a concept render. */}
+          <Field
+            label="Editorial role"
+            htmlFor="asset_role"
+            hint="What this image IS. A concept render can never be product photography."
+          >
+            <Select id="asset_role" name="asset_role" defaultValue={asset.asset_role ?? ""}>
+              <option value="">— not set —</option>
+              {ASSET_ROLE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field
+            label="Modification permitted?"
+            htmlFor="licence_permits_modification"
+            hint="Reuse permission is NOT modification permission. Leave unassessed unless the licence actually says."
+          >
+            <Select
+              id="licence_permits_modification"
+              name="licence_permits_modification"
+              defaultValue={
+                asset.licence_permits_modification === null || asset.licence_permits_modification === undefined
+                  ? ""
+                  : String(asset.licence_permits_modification)
+              }
+            >
+              <option value="">Not assessed</option>
+              <option value="true">Yes — the licence permits modification</option>
+              <option value="false">No — no-derivatives licence</option>
             </Select>
           </Field>
           <Field label="Source URL" htmlFor="source_url">
@@ -169,10 +228,11 @@ export default async function EditMediaPage({
             hint="Only Verified assets — or ones marked Owned, or a staff photograph — can be published."
           >
             <Select id="rights_status" name="rights_status" defaultValue={asset.rights_status ?? "unknown"}>
-              <option value="unknown">Unknown</option>
-              <option value="pending_verification">Pending verification</option>
-              <option value="verified">Verified</option>
-              <option value="restricted">Restricted (never publish)</option>
+              {RIGHTS_STATUS_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
             </Select>
           </Field>
           <Field
@@ -182,19 +242,14 @@ export default async function EditMediaPage({
           >
             <Select id="brand_role" name="brand_role" defaultValue={asset.brand_role ?? ""}>
               <option value="">Not a brand asset</option>
-              <option value="logo_full">Full logo (mark + wordmark)</option>
-              <option value="logo_full_tagline">Full logo + tagline</option>
-              <option value="wordmark">Wordmark only</option>
-              <option value="wordmark_tagline">Wordmark + tagline</option>
-              <option value="mark">Mark / monogram only</option>
-              <option value="favicon">Favicon candidate</option>
-              <option value="og_image">Social / OG image candidate</option>
+              {BRAND_ROLE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
             </Select>
           </Field>
-          <div>
-            <SubmitButton pendingLabel="Saving...">Save provenance</SubmitButton>
-          </div>
-        </form>
+        </ActionForm>
       </Card>
 
       <Card className="p-5">
@@ -202,7 +257,11 @@ export default async function EditMediaPage({
         {(allProducts ?? []).length === 0 ? (
           <p className="text-sm text-neutral-500">No products exist yet.</p>
         ) : (
-          <form action={updateMediaProductAssociations.bind(null, id, productIds)} className="flex flex-col gap-3">
+          <ActionForm
+            action={updateMediaProductAssociations.bind(null, id, productIds)}
+            submitLabel="Save product associations"
+            className="flex flex-col gap-3"
+          >
             <div className="flex flex-col gap-2">
               {(allProducts ?? []).map((product) => (
                 <div key={product.id} className="flex items-center gap-3">
@@ -216,10 +275,7 @@ export default async function EditMediaPage({
                 </div>
               ))}
             </div>
-            <div>
-              <SubmitButton pendingLabel="Saving...">Save product associations</SubmitButton>
-            </div>
-          </form>
+          </ActionForm>
         )}
       </Card>
 
@@ -228,7 +284,11 @@ export default async function EditMediaPage({
         {(allContent ?? []).length === 0 ? (
           <p className="text-sm text-neutral-500">No content items exist yet.</p>
         ) : (
-          <form action={updateMediaContentAssociations.bind(null, id, contentIds)} className="flex flex-col gap-3">
+          <ActionForm
+            action={updateMediaContentAssociations.bind(null, id, contentIds)}
+            submitLabel="Save content associations"
+            className="flex flex-col gap-3"
+          >
             <div className="flex flex-col gap-2">
               {(allContent ?? []).map((item) => (
                 <div key={item.id} className="flex items-center gap-3">
@@ -242,10 +302,7 @@ export default async function EditMediaPage({
                 </div>
               ))}
             </div>
-            <div>
-              <SubmitButton pendingLabel="Saving...">Save content associations</SubmitButton>
-            </div>
-          </form>
+          </ActionForm>
         )}
       </Card>
     </div>

@@ -246,3 +246,17 @@ export function isValidBrandRole(v: string): v is MediaBrandRole {
 export function isValidRightsStatus(v: string): v is MediaRightsStatus {
   return (VALID_RIGHTS_STATUSES as string[]).includes(v);
 }
+
+/**
+ * Name of the hidden input that declares which provenance fields a form edits.
+ *
+ * Lives here rather than beside the Server Action because a "use server" module
+ * may only export async functions — exporting a constant from one breaks every
+ * import of that module, which is how a one-line addition took the whole media
+ * admin down at build time.
+ *
+ * Present in a submission => only the named fields are written (PATCH).
+ * Absent => the whole provenance block is written, which is what creating a row
+ * needs. See readProvenanceFields in the media actions.
+ */
+export const EDITED_FIELDS_INPUT = "__provenance_edited_fields";

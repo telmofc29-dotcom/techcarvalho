@@ -180,7 +180,7 @@ check("Empty submission cannot crash (submit disabled with no file)", await page
 consoleErrors = [];
 
 // --- Uploads, one per rights-sensitive combination ----------------------------
-async function uploadOnce(label, assetRole, sourceType) {
+async function uploadOnce(label, assetRole, sourceType, tickOwned) {
   await page.goto(BASE + "/admin/media/new", { waitUntil: "networkidle" });
   await page.setInputFiles("input[type=file]", TEST_FILE);
   await page.waitForTimeout(1200);
@@ -188,7 +188,8 @@ async function uploadOnce(label, assetRole, sourceType) {
   if (assetRole) await page.selectOption("#asset_role", assetRole);
   await page.click("button[aria-expanded]");
   await page.waitForTimeout(300);
-  if (sourceType) await page.selectOption("#source_type", sourceType);
+  if (tickOwned) await page.check("#owned");
+  else if (sourceType) await page.selectOption("#source_type", sourceType);
   await page.getByRole("button", { name: /^Upload/ }).click();
   await page.waitForTimeout(9000);
   const text = await page.locator("body").innerText();
@@ -200,6 +201,9 @@ async function uploadOnce(label, assetRole, sourceType) {
 await uploadOnce("source_type=tc_graphic", "screenshot", "tc_graphic");
 await uploadOnce("source_type=public_domain_or_cc", "screenshot", "public_domain_or_cc");
 await uploadOnce("asset_role=concept_render", "concept_render", "");
+// The Owned tickbox submits a hidden licence_permits_modification=true, which
+// the database refused until the assessor columns were recorded.
+await uploadOnce("owned photograph (ticks Owned)", "product_photo", "", true);
 
 check("Zero browser console errors during the upload flow", consoleErrors.length === 0, consoleErrors.slice(0, 2).join(" | "));
 
@@ -209,7 +213,7 @@ const { data: created } = await db
   .select("id, storage_path, public_storage_path, publication_status, source_type, asset_role, ai_generated")
   .eq("alt_text", TEST_ALT);
 const rows = created ?? [];
-check("One media_assets record per upload", rows.length === 3, "created " + rows.length);
+check("One media_assets record per upload", rows.length === 4, "created " + rows.length);
 check(
   "Every upload landed PRIVATE (rights safeguard intact)",
   rows.length > 0 && rows.every((r) => r.publication_status === "private" && !r.public_storage_path)

@@ -9,8 +9,10 @@ import { MEDIA_PRIVATE_BUCKET, MEDIA_PUBLIC_BUCKET } from "@/lib/media/constants
 import { evaluatePublishEligibility } from "@/lib/media/rights";
 import { resolvePublicationSource } from "@/lib/media/publication-source";
 import type { MediaType, MediaRole, MediaSourceType, MediaRightsStatus, MediaBrandRole, MediaAssetRole, Insert } from "@/lib/types/database";
+import { explainProvenanceRequirement, stampModificationAssessment } from "@/lib/media/provenance-invariant";
 import {
   ASSET_ROLES_PENDING_MIGRATION,
+  EDITED_FIELDS_INPUT,
   isValidAssetRole,
   isValidBrandRole,
   isValidMediaType,
@@ -107,26 +109,53 @@ function readProvenanceFields(formData: FormData): ValidationResult<ProvenanceFi
     return { error: "Choose a valid brand asset role." };
   }
 
-  return {
-    payload: {
-      caption: caption || null,
-      source_type: (sourceType as MediaSourceType) || null,
-      source_url: sourceUrl || null,
-      attribution: attribution || null,
-      attribution_required: attributionRequired,
-      owned,
-      rights_status: rightsStatus as MediaRightsStatus,
-      brand_role: (brandRole as MediaBrandRole) || null,
-      asset_role: (assetRole as MediaAssetRole) || null,
-      // Tri-state on purpose. "" means NOBODY ASSESSED IT and is stored as
-      // NULL, which the watermark gate treats as a refusal — unknown is never
-      // permission. Collapsing it to false would claim we checked and found no.
-      licence_permits_modification: modificationRaw === "" ? null : modificationRaw === "true",
-      // A concept render is machine-made speculation by definition. Recording
-      // it any other way would let it slip past the AI checks downstream.
-      ai_generated: assetRole === "concept_render" ? true : aiGenerated,
-    },
+  const full: ProvenanceFields = {
+    caption: caption || null,
+    source_type: (sourceType as MediaSourceType) || null,
+    source_url: sourceUrl || null,
+    attribution: attribution || null,
+    attribution_required: attributionRequired,
+    owned,
+    rights_status: rightsStatus as MediaRightsStatus,
+    brand_role: (brandRole as MediaBrandRole) || null,
+    asset_role: (assetRole as MediaAssetRole) || null,
+    // Tri-state on purpose. "" means NOBODY ASSESSED IT and is stored as
+    // NULL, which the watermark gate treats as a refusal — unknown is never
+    // permission. Collapsing it to false would claim we checked and found no.
+    licence_permits_modification: modificationRaw === "" ? null : modificationRaw === "true",
+    // A concept render is machine-made speculation by definition. Recording
+    // it any other way would let it slip past the AI checks downstream.
+    ai_generated: assetRole === "concept_render" ? true : aiGenerated,
   };
+
+  // PATCH, not full-row overwrite.
+  //
+  // Every field above is reconstructed from the form, and a field the form does
+  // not contain reads back as "" or false — which then OVERWRITES the stored
+  // value. The edit page's provenance form carries no asset_role and no
+  // licence_permits_modification input, so saving it wrote null over both. On
+  // production that was 114 of 116 assets one click away from losing the
+  // classification that distinguishes a product photograph from a concept
+  // render. An unchecked checkbox is indistinguishable from an absent one in
+  // FormData, so presence cannot be inferred — the form has to declare what it
+  // edits, which is what EDITED_FIELDS_INPUT carries.
+  //
+  // Absent marker means "this form owns every field", which is correct for the
+  // upload form, where the row is being created rather than patched.
+  const declared = formData.get(EDITED_FIELDS_INPUT);
+  if (typeof declared !== "string") return { payload: full };
+
+  const editable = new Set(declared.split(",").map((s) => s.trim()).filter(Boolean));
+  const patch: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(full)) {
+    if (editable.has(key)) patch[key] = value;
+  }
+  // ai_generated is derived from asset_role rather than typed, so it has to
+  // follow asset_role into the patch even when the form has no checkbox for it.
+  if (editable.has("asset_role") && assetRole === "concept_render") {
+    patch.ai_generated = true;
+  }
+  return { payload: patch as ProvenanceFields };
 }
 
 /**
@@ -147,7 +176,7 @@ function sanitizeFileName(name: string): string {
 }
 
 export async function uploadMediaAsset(_prev: FormState, formData: FormData): Promise<FormState> {
-  await requireAdmin();
+  const admin = await requireAdmin();
 
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {
@@ -156,6 +185,9 @@ export async function uploadMediaAsset(_prev: FormState, formData: FormData): Pr
 
   const meta = readMetadata(formData);
   if ("error" in meta) return { error: meta.error };
+  // A modification judgement must carry its assessor — see
+  // media_assets_licence_modification_attributed.
+  const payload = stampModificationAssessment(meta.payload, admin.id, new Date().toISOString());
 
   const path = `${meta.payload.media_type}/${crypto.randomUUID()}-${sanitizeFileName(file.name)}`;
 
@@ -171,7 +203,7 @@ export async function uploadMediaAsset(_prev: FormState, formData: FormData): Pr
 
   const { error: insertError } = await supabase
     .from("media_assets")
-    .insert({ storage_path: path, ...meta.payload });
+    .insert({ storage_path: path, ...payload });
 
   if (insertError) {
     await supabase.storage.from(MEDIA_PRIVATE_BUCKET).remove([path]);
@@ -193,7 +225,7 @@ export async function uploadMediaAsset(_prev: FormState, formData: FormData): Pr
 export type BatchUploadResult = { id: string; error: null } | { id: null; error: string };
 
 export async function uploadMediaAssetBatchItem(formData: FormData): Promise<BatchUploadResult> {
-  await requireAdmin();
+  const admin = await requireAdmin();
 
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {
@@ -202,6 +234,7 @@ export async function uploadMediaAssetBatchItem(formData: FormData): Promise<Bat
 
   const meta = readMetadata(formData);
   if ("error" in meta) return { id: null, error: meta.error };
+  const payload = stampModificationAssessment(meta.payload, admin.id, new Date().toISOString());
 
   const path = `${meta.payload.media_type}/${crypto.randomUUID()}-${sanitizeFileName(file.name)}`;
 
@@ -216,7 +249,7 @@ export async function uploadMediaAssetBatchItem(formData: FormData): Promise<Bat
 
   const { data, error: insertError } = await supabase
     .from("media_assets")
-    .insert({ storage_path: path, ...meta.payload })
+    .insert({ storage_path: path, ...payload })
     .select("id")
     .single();
   // The CHECK rejects a role the code offers. That means
@@ -355,20 +388,58 @@ export async function bulkSetRightsStatus(ids: string[], rightsStatus: MediaRigh
   if (ids.length === 0 || !isValidRightsStatus(rightsStatus)) return { succeeded: 0, skipped: [] };
 
   const supabase = await createClient();
-  const { error, count } = await supabase
+
+  // Per-row, not one blanket UPDATE. Marking a batch "verified" where some rows
+  // lack the provenance the invariant requires used to fail the ENTIRE
+  // statement on the first offender, so a selection of twenty assets changed
+  // nothing and reported one constraint error. Now each ineligible row is
+  // skipped with a reason and the rest go through — the same posture
+  // bulkPublishMediaAssets already takes.
+  const { data: assets, error: readError } = await supabase
     .from("media_assets")
-    .update({ rights_status: rightsStatus }, { count: "exact" })
+    .select("id, rights_status, owned, source_type, source_url, license, creator, attribution")
     .in("id", ids);
+  if (readError) return { succeeded: 0, skipped: ids.map((id) => ({ id, reason: readError.message })) };
+
+  const summary: BulkActionSummary = { succeeded: 0, skipped: [] };
+  const eligible: string[] = [];
+  for (const asset of assets ?? []) {
+    const problem = explainProvenanceRequirement({ ...asset, rights_status: rightsStatus });
+    if (problem) summary.skipped.push({ id: asset.id, reason: problem });
+    else eligible.push(asset.id);
+  }
+
+  if (eligible.length > 0) {
+    const { error, count } = await supabase
+      .from("media_assets")
+      .update({ rights_status: rightsStatus }, { count: "exact" })
+      .in("id", eligible);
+    if (error) {
+      summary.skipped.push(...eligible.map((id) => ({ id, reason: error.message })));
+    } else {
+      summary.succeeded = count ?? eligible.length;
+    }
+  }
 
   revalidatePath("/admin/media");
-  if (error) return { succeeded: 0, skipped: ids.map((id) => ({ id, reason: error.message })) };
-  return { succeeded: count ?? ids.length, skipped: [] };
+  return summary;
 }
 
 export async function updateMediaAsset(id: string, _prev: FormState, formData: FormData): Promise<FormState> {
   await requireAdmin();
   const meta = readPrimaryFields(formData);
   if ("error" in meta) return { error: meta.error };
+
+  // This form owns License and Creator, which are two thirds of what the
+  // provenance invariant requires. Blanking either on an externally-sourced
+  // verified asset takes the row below the threshold — on production, 39 assets
+  // are verified on the strength of exactly these two fields. Checked against
+  // the merged row so the reason names the field rather than arriving as a
+  // constraint violation.
+  const existing = await getRowById("media_assets", id);
+  if (!existing) return { error: "This media asset no longer exists." };
+  const problem = explainProvenanceRequirement({ ...existing, ...meta.payload });
+  if (problem) return { error: problem };
 
   try {
     await updateRow("media_assets", id, meta.payload);
@@ -381,14 +452,43 @@ export async function updateMediaAsset(id: string, _prev: FormState, formData: F
   redirect(`/admin/media/${id}`);
 }
 
-export async function updateMediaProvenance(id: string, formData: FormData): Promise<void> {
-  await requireAdmin();
+export async function updateMediaProvenance(
+  id: string,
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const admin = await requireAdmin();
   const meta = readProvenanceFields(formData);
-  if ("error" in meta) throw new Error(meta.error);
+  if ("error" in meta) return { error: meta.error };
 
-  await updateRow("media_assets", id, meta.payload);
+  // Check the provenance invariant BEFORE writing, against the row as it would
+  // be AFTER the patch — the patch alone cannot be judged, because whether
+  // "verified" is allowed depends on stored fields the form may not carry.
+  //
+  // This used to go straight to the database, which refused it with
+  // media_assets_external_verified_needs_provenance, and the refusal was thrown
+  // out of a Server Action — reaching the admin as a masked React #441 that
+  // named neither the rule nor the missing field. Production digest 994149443.
+  const existing = await getRowById("media_assets", id);
+  if (!existing) return { error: "This media asset no longer exists." };
+
+  const patch = stampModificationAssessment(meta.payload, admin.id, new Date().toISOString());
+  const merged = { ...existing, ...patch };
+  const problem = explainProvenanceRequirement(merged);
+  if (problem) return { error: problem };
+
+  try {
+    await updateRow("media_assets", id, patch);
+  } catch (e) {
+    // The database keeps the final say. If it still refuses, say so plainly
+    // rather than throwing — a constraint name is not a user-facing message,
+    // but it is far better than a crash with no information at all.
+    return { error: e instanceof Error ? e.message : "Failed to save provenance." };
+  }
+
   revalidatePath("/admin/media");
   revalidatePath(`/admin/media/${id}`);
+  return { error: null };
 }
 
 // Copies the private original into the public bucket and flips the row to
@@ -523,16 +623,25 @@ export async function deleteMediaAsset(formData: FormData): Promise<void> {
   revalidatePath("/admin/media");
 }
 
+// Associations write ONLY to the join table. They never touch media_assets, so
+// an association edit cannot change source type, ownership, licence,
+// modification permission or verification state — the separation is structural,
+// not a convention to remember.
+//
+// They return FormState rather than throwing for the same reason
+// updateMediaProvenance now does: a thrown Server Action reaches the admin as a
+// masked React #441 with no message.
 export async function updateMediaProductAssociations(
   mediaId: string,
   productIds: string[],
+  _prev: FormState,
   formData: FormData
-): Promise<void> {
+): Promise<FormState> {
   await requireAdmin();
   const supabase = await createClient();
 
   const { error: deleteError } = await supabase.from("product_media").delete().eq("media_id", mediaId);
-  if (deleteError) throw new Error(deleteError.message);
+  if (deleteError) return { error: deleteError.message };
 
   const links = productIds
     .map((productId) => {
@@ -545,22 +654,24 @@ export async function updateMediaProductAssociations(
 
   if (links.length > 0) {
     const { error: insertError } = await supabase.from("product_media").insert(links);
-    if (insertError) throw new Error(insertError.message);
+    if (insertError) return { error: insertError.message };
   }
 
   revalidatePath(`/admin/media/${mediaId}`);
+  return { error: null };
 }
 
 export async function updateMediaContentAssociations(
   mediaId: string,
   contentIds: string[],
+  _prev: FormState,
   formData: FormData
-): Promise<void> {
+): Promise<FormState> {
   await requireAdmin();
   const supabase = await createClient();
 
   const { error: deleteError } = await supabase.from("content_media").delete().eq("media_id", mediaId);
-  if (deleteError) throw new Error(deleteError.message);
+  if (deleteError) return { error: deleteError.message };
 
   const links = contentIds
     .map((contentId) => {
@@ -573,8 +684,9 @@ export async function updateMediaContentAssociations(
 
   if (links.length > 0) {
     const { error: insertError } = await supabase.from("content_media").insert(links);
-    if (insertError) throw new Error(insertError.message);
+    if (insertError) return { error: insertError.message };
   }
 
   revalidatePath(`/admin/media/${mediaId}`);
+  return { error: null };
 }
