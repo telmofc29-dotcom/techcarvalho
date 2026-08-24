@@ -1,0 +1,294 @@
+<title>The Research Stage</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,500;1,400&display=swap">
+
+<style>
+:root{
+  --ground:#eef1f1; --panel:#f8fafa; --sunk:#e3e8e8;
+  --ink:#131a1c; --ink-soft:#3f4d50; --ink-faint:#6c7c80;
+  --rule:#cfd8d8; --rule-soft:#e0e7e7;
+  --accent:#0c666d; --accent-soft:#d3e6e7;
+  --ok:#2b6f4a; --ok-bg:#dcebe1;
+  --warn:#8f5a04; --warn-bg:#f2e6cd;
+  --stop:#9c3323; --stop-bg:#f1dcd8;
+  --shadow:0 1px 2px rgba(19,26,28,.06),0 8px 24px -16px rgba(19,26,28,.28);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ground:#0d1315; --panel:#141c1e; --sunk:#1b2426;
+  --ink:#e5eded; --ink-soft:#a9b8ba; --ink-faint:#7b8b8e;
+  --rule:#2b3739; --rule-soft:#212c2e;
+  --accent:#54c2c8; --accent-soft:#16383b;
+  --ok:#6ec18d; --ok-bg:#16301f;
+  --warn:#e0a94e; --warn-bg:#332612;
+  --stop:#e08d7d; --stop-bg:#341c17;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -16px rgba(0,0,0,.8);
+}}
+:root[data-theme="dark"]{
+  --ground:#0d1315; --panel:#141c1e; --sunk:#1b2426;
+  --ink:#e5eded; --ink-soft:#a9b8ba; --ink-faint:#7b8b8e;
+  --rule:#2b3739; --rule-soft:#212c2e;
+  --accent:#54c2c8; --accent-soft:#16383b;
+  --ok:#6ec18d; --ok-bg:#16301f;
+  --warn:#e0a94e; --warn-bg:#332612;
+  --stop:#e08d7d; --stop-bg:#341c17;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -16px rgba(0,0,0,.8);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);
+  font-family:"IBM Plex Serif",Georgia,serif;font-size:17px;line-height:1.62;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px 96px}
+.col{max-width:68ch}
+h1,h2,h3,.sans{font-family:"IBM Plex Sans Condensed","Helvetica Neue",Arial,sans-serif;text-wrap:balance}
+h1{font-size:clamp(2.3rem,5.2vw,3.7rem);font-weight:700;line-height:1.04;letter-spacing:-.015em;margin:0 0 18px}
+h2{font-size:clamp(1.45rem,2.5vw,1.9rem);font-weight:600;line-height:1.15;margin:0}
+h3{font-size:1.05rem;font-weight:600;margin:0 0 6px}
+p{margin:0 0 1.05em}
+a{color:var(--accent)}
+strong{font-weight:600;color:var(--ink)}
+code,.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace}
+code{font-size:.85em;background:var(--sunk);padding:.11em .38em;border-radius:3px;word-break:break-word}
+
+.mast{padding:64px 0 40px;border-bottom:2px solid var(--ink)}
+.eyebrow{font-family:"IBM Plex Mono",monospace;font-size:.72rem;font-weight:500;text-transform:uppercase;
+  letter-spacing:.16em;color:var(--accent);margin:0 0 22px;display:flex;flex-wrap:wrap;gap:10px 18px}
+.standfirst{font-size:1.22rem;line-height:1.5;color:var(--ink-soft);margin:0;max-width:60ch}
+.standfirst b{color:var(--ink);font-weight:600}
+.verdict{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--rule);
+  border:1px solid var(--rule);margin:40px 0 0;border-radius:5px;overflow:hidden}
+.vcell{background:var(--panel);padding:18px 20px}
+.vnum{font-family:"IBM Plex Mono",monospace;font-size:1.8rem;font-weight:600;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.vlab{font-family:"IBM Plex Sans Condensed",sans-serif;font-size:.78rem;line-height:1.32;color:var(--ink-faint);margin-top:8px;text-transform:uppercase;letter-spacing:.07em}
+.is-ok .vnum{color:var(--ok)} .is-warn .vnum{color:var(--warn)} .is-stop .vnum{color:var(--stop)}
+
+section{padding:54px 0 0}
+.shead{display:flex;gap:16px;align-items:baseline;border-top:1px solid var(--rule);padding-top:14px;margin-bottom:24px}
+.snum{font-family:"IBM Plex Mono",monospace;font-size:.76rem;font-weight:600;color:var(--accent);letter-spacing:.1em;padding-top:5px;white-space:nowrap}
+
+.tw{overflow-x:auto;margin:24px 0;border:1px solid var(--rule);border-radius:6px;background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:.9rem;min-width:560px}
+th,td{text-align:left;padding:10px 16px;border-bottom:1px solid var(--rule-soft);vertical-align:top}
+thead th{font-family:"IBM Plex Sans Condensed",sans-serif;font-size:.72rem;text-transform:uppercase;letter-spacing:.09em;
+  color:var(--ink-faint);background:var(--sunk);border-bottom:1px solid var(--rule);font-weight:600}
+tbody tr:last-child td{border-bottom:0}
+td.n{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+td.mono{font-family:"IBM Plex Mono",monospace;font-size:.85rem}
+.tag{display:inline-block;font-family:"IBM Plex Sans Condensed",sans-serif;font-size:.7rem;font-weight:600;
+  text-transform:uppercase;letter-spacing:.07em;padding:2px 8px;border-radius:3px;white-space:nowrap}
+.t-ok{background:var(--ok-bg);color:var(--ok)} .t-warn{background:var(--warn-bg);color:var(--warn)}
+.t-stop{background:var(--stop-bg);color:var(--stop)} .t-new{background:var(--accent-soft);color:var(--accent)}
+
+.call{border-left:3px solid var(--accent);background:var(--panel);padding:20px 24px;margin:26px 0;border-radius:0 5px 5px 0;box-shadow:var(--shadow)}
+.call.stop{border-left-color:var(--stop)} .call.warn{border-left-color:var(--warn)} .call.ok{border-left-color:var(--ok)}
+.call h3{font-size:.76rem;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);margin-bottom:10px;font-family:"IBM Plex Sans Condensed",sans-serif}
+.call.stop h3{color:var(--stop)} .call.warn h3{color:var(--warn)} .call.ok h3{color:var(--ok)}
+.call p:last-child{margin-bottom:0}
+
+.pipe{display:flex;flex-wrap:wrap;gap:8px;margin:26px 0;align-items:center}
+.step{font-family:"IBM Plex Mono",monospace;font-size:.78rem;padding:6px 11px;border-radius:4px;
+  background:var(--panel);border:1px solid var(--rule);white-space:nowrap}
+.step.new{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
+.arrow{color:var(--ink-faint);font-family:"IBM Plex Mono",monospace;font-size:.78rem}
+
+ul.tight{margin:0 0 1.05em;padding-left:1.15em}
+ul.tight li{margin-bottom:.4em}
+ul.tight li::marker{color:var(--ink-faint)}
+footer{margin-top:64px;padding-top:20px;border-top:2px solid var(--ink);font-family:"IBM Plex Mono",monospace;
+  font-size:.75rem;color:var(--ink-faint);line-height:1.7}
+@media (max-width:640px){body{font-size:16px}.wrap{padding:0 18px 64px}}
+</style>
+
+<div class="wrap">
+
+<header class="mast">
+  <div class="eyebrow"><span>TechCarvalho</span><span>/</span><span>Research stage built</span><span>/</span><span>24 Aug 2026</span></div>
+  <h1>It goes and looks now.</h1>
+  <p class="standfirst">The engine could only learn about a story if a feed it already polled happened to mention it. That is coincidence, not research. It now searches <b>23 independent publications</b> for what else has been said — and it caught four of my own bugs that would each have manufactured corroboration.</p>
+
+  <div class="verdict">
+    <div class="vcell is-ok"><div class="vnum">52</div><div class="vlab">Sources, was 29</div></div>
+    <div class="vcell is-ok"><div class="vnum">24</div><div class="vlab">Independent editorial, was 1</div></div>
+    <div class="vcell is-ok"><div class="vnum">3/3</div><div class="vlab">Acceptance topics pass</div></div>
+    <div class="vcell is-ok"><div class="vnum">1720</div><div class="vlab">Tests passing</div></div>
+    <div class="vcell is-ok"><div class="vnum">&pound;0</div><div class="vlab">Cost</div></div>
+  </div>
+</header>
+
+<section>
+  <div class="shead"><div class="snum">01</div><div><h2>The pipeline, with its missing step</h2></div></div>
+  <div class="pipe">
+    <span class="step">discovery</span><span class="arrow">&rarr;</span>
+    <span class="step">relevance</span><span class="arrow">&rarr;</span>
+    <span class="step new">research</span><span class="arrow">&rarr;</span>
+    <span class="step">update proposals</span><span class="arrow">&rarr;</span>
+    <span class="step">product assembly</span><span class="arrow">&rarr;</span>
+    <span class="step">briefs</span><span class="arrow">&rarr;</span>
+    <span class="step">draft assembly</span><span class="arrow">&rarr;</span>
+    <span class="step">…</span>
+  </div>
+  <div class="col">
+    <p>Research runs immediately after relevance — so it only spends fetches on stories already judged worth covering — and <em>before</em> briefs, so a brief is built from whatever corroboration research found rather than from the single feed item that created the discovery.</p>
+    <p><strong>How it researches without a search API:</strong> it fetches the registry's feeds, indexes them in memory, and searches that corpus for the subject. Twenty-three publications' recent output is a real corpus and this is a real search over it — one the project owns rather than rents. Every run records the honest limit: only stories inside those feed windows can be found, and <em>"we found nothing"</em> is distinguished from <em>"we could not have found it"</em>.</p>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><div class="snum">02</div><div><h2>The registry</h2></div></div>
+  <div class="col">
+    <p>32 candidate feeds probed with plain <code>fetch()</code> — the same call the deployed engine makes. 23 answered and are registered; 9 declined and are recorded rather than worked around.</p>
+  </div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Kind</th><th>Count</th><th>Trust</th><th>What it means</th></tr></thead>
+      <tbody>
+        <tr><td>Manufacturer newsrooms</td><td class="n">15</td><td><span class="tag t-new">primary</span></td><td>Authoritative about themselves only</td></tr>
+        <tr><td>Vendor &amp; standards feeds</td><td class="n">13</td><td><span class="tag t-new">primary</span></td><td>Mozilla, NASA, VESA, IETF, Arduino…</td></tr>
+        <tr><td>Independent editorial</td><td class="n">24</td><td><span class="tag t-ok">secondary</span></td><td>Report on other people's products — the voices that can corroborate</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="col">
+    <div class="call ok">
+      <h3>Why every new source is <code>secondary</code></h3>
+      <p>That word is load-bearing. <code>primary</code> is what grants first-party single-source sufficiency — Mozilla speaking about Mozilla. An outlet reporting on someone <em>else's</em> product is exactly the case that still needs corroboration, so registering any of these as primary would quietly hand them authority they do not have.</p>
+    </div>
+    <p><strong>Independence groups</strong>, because counting publishers is not counting voices: The Verge and Polygon are both Vox Media. Wired and Ars Technica are both Condé Nast. Tom's Hardware, PC Gamer and Digital Camera World are all Future plc. Three "independent confirmations" that are three Future titles is one voice in three hats.</p>
+    <p><strong>Declined (not bypassed):</strong> VideoCardz, VGC, All3DP, FCC (403 — refused automated access); Ofcom, Wi-Fi Alliance, Photography Blog (404 — feed URLs no longer valid); 3D Printing Industry (415); Notebookcheck (200, no parseable items). A 403 is the publisher saying no, and this project does not rotate user agents around it.</p>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><div class="snum">03</div><div><h2>Four bugs the live runs caught</h2></div></div>
+  <div class="col">
+    <p>Every one of these was mine, and every one would have manufactured corroboration — the single worst thing this pipeline can do.</p>
+  </div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Bug</th><th>What it produced</th><th>Fix</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>One-word queries score 1.00</td>
+          <td>Researching "iPhone 18" matched <em>"Apple's four-pack of AirTags is $20 off"</em> and reported <strong>six independent origins</strong></td>
+          <td>Queries typed <code>identifying</code>/<code>topical</code>; only identifying ones carry evidence</td>
+        </tr>
+        <tr>
+          <td>Query drops its subject anchor</td>
+          <td>"ultra foldable" matched Galaxy S27 <strong>Ultra</strong> and Xiaomi 18 Fold</td>
+          <td>Identifying queries must retain the subject term</td>
+        </tr>
+        <tr>
+          <td>Bag-of-words with no proximity</td>
+          <td>"iPhone" in a download note plus "Ultra" in a watch model = a match</td>
+          <td>Terms must occur within three words of each other</td>
+        </tr>
+        <tr>
+          <td><strong>Short tokens discarded</strong></td>
+          <td>"The Witcher <strong>4</strong>" became "witcher"; "iPhone <strong>18</strong>" became "iphone". Both fell below the query floor and matched nothing — so the pipeline reported <em>"no coverage exists"</em> for stories sitting in the corpus it had just downloaded</td>
+          <td>Numbers kept at any length</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="col">
+    <div class="call stop">
+      <h3>The one that worried me most</h3>
+      <p>The fourth. A wrong answer that looks like a principled refusal is worse than a crash, because nothing about it looks broken — and I had already reported "no iPhone 18 coverage exists" on the strength of it. It was only caught because The Witcher 4 was visibly in two feeds I had just read.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><div class="snum">04</div><div><h2>Acceptance: three real topics</h2></div></div>
+  <div class="tw">
+    <table>
+      <thead><tr><th></th><th>iPhone 18</th><th>The Witcher 4</th><th>Robotaxis</th></tr></thead>
+      <tbody>
+        <tr><td>Sources read</td><td class="n">9</td><td class="n">7</td><td class="n">6</td></tr>
+        <tr><td>Corpus indexed</td><td class="n">275</td><td class="n">185</td><td class="n">155</td></tr>
+        <tr><td>Matches</td><td class="n">4</td><td class="n">5</td><td class="n">1</td></tr>
+        <tr><td>Independent origins</td><td class="n">4</td><td class="n">5</td><td class="n">1</td></tr>
+        <tr><td>Atomic claims</td><td class="n">14</td><td class="n">15</td><td class="n">4</td></tr>
+        <tr><td>Attributed / hedged</td><td class="n">11 / 3</td><td class="n">14 / 1</td><td class="n">4 / 0</td></tr>
+        <tr><td>Framing</td><td><span class="tag t-warn">Reported</span></td><td><span class="tag t-warn">Reported</span></td><td><span class="tag t-warn">Reported</span></td></tr>
+        <tr><td>Article eligible</td><td><span class="tag t-ok">Yes</span></td><td><span class="tag t-ok">Yes</span></td><td><span class="tag t-ok">Yes</span></td></tr>
+        <tr><td>Product eligible</td><td><span class="tag t-stop">No</span></td><td><span class="tag t-stop">No</span></td><td><span class="tag t-stop">No</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="col">
+    <p>Suggested titles are derived from the <em>framing</em>, not from the source headline, so a rumour cannot produce a headline that reads as confirmation: <em>"iPhone 18: what has been reported so far"</em>.</p>
+    <p><strong>Product eligible is No on all three, and that is the point.</strong> An article and a catalogue entry have different bars. Rumours about an unreleased phone can justify a well-framed article long before they justify a product page, because a product page asserts that a thing exists with an identity — and specifications are never invented to fill one.</p>
+    <p>Lineage worked on live data: GSMArena's iPhone story credited Bloomberg and was <strong>collapsed</strong>, dropping the count from 5 URLs to 4 origins. The Witcher 4 got five genuinely separate newsrooms — The Verge, Engadget, Eurogamer, GameSpot, PC Gamer — with no shared owner between them.</p>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><div class="snum">05</div><div><h2>Evidence rules, by claim</h2></div></div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Claim class</th><th>Origins</th><th>How it may be written</th></tr></thead>
+      <tbody>
+        <tr><td>First-party announcement</td><td class="n">1</td><td><span class="tag t-ok">Assertable</span></td></tr>
+        <tr><td>Third-party report</td><td class="n">2</td><td><span class="tag t-warn">Attributed</span></td></tr>
+        <tr><td>Unreleased-product claim</td><td class="n">3</td><td><span class="tag t-warn">Attributed</span></td></tr>
+        <tr><td>Rumour or leak</td><td class="n">1</td><td><span class="tag t-stop">Rumour-framed, never assertable</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="col">
+    <p><strong>One origin is not automatically a rumour.</strong> A reputable outlet reporting its own work is single-source <em>reporting</em>; calling it rumoured misdescribes it and trains a reader to discount the word when it matters. Framing now turns on the language of the claims — a majority of hedged claims makes it rumour coverage whatever the outlet.</p>
+    <p><strong>Hedging survives extraction.</strong> "Apple is <em>reportedly</em> developing a camera system that <em>could</em> arrive in 2027" keeps both hedges. Strip them and you get a fabrication produced entirely by tidying — nobody decided to lie, the hedge just did not survive the pipeline. Hedge beats attribution, and an unrecognised construction defaults to attributed, because failing toward certainty is the dangerous direction.</p>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><div class="snum">06</div><div><h2>Pending migrations</h2></div></div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>File</th><th>Purpose</th><th>Risk</th><th>Needed now?</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="mono">20260824_research_evidence.sql</td>
+          <td>Adds <code>engine_add_evidence</code> so the nightly stage (running as <code>anon</code>) can attach corroborating sources</td>
+          <td>Low — one narrow function; cannot publish, cannot create discoveries, cannot alter claim status</td>
+          <td><span class="tag t-warn">Yes, to persist</span></td>
+        </tr>
+        <tr>
+          <td class="mono">20260824_stage_modes.sql</td>
+          <td>Per-stage MANUAL/ASSISTED/AUTOMATIC</td>
+          <td>None — every stage resolves to ASSISTED before and after</td>
+          <td><span class="tag t-new">Optional</span></td>
+        </tr>
+        <tr>
+          <td class="mono">20260824_homepage_override_windows.sql</td>
+          <td>Self-expiring pins and a <code>boost</code> mode</td>
+          <td>Low — nullable columns, existing overrides unchanged</td>
+          <td><span class="tag t-new">Optional</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="col">
+    <p>None applied. Until the first one is, the research stage <strong>runs and reports what it found, and reports that it could not persist</strong> — rather than a clean pass over silence.</p>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><div class="snum">07</div><div><h2>Remaining blockers</h2></div></div>
+  <div class="col">
+    <ul class="tight">
+      <li><strong>Evidence cannot persist yet</strong> — the migration above. Everything else works.</li>
+      <li><strong>Article body still comes from feed summaries</strong>, not full article text. Fetching article pages is the next real gain in claim quality, and needs per-publisher care about what is permitted.</li>
+      <li><strong>Uncited lifts are invisible.</strong> If an outlet reproduces another's reporting without saying so, it counts as a second origin. Stated on every assessment rather than papered over.</li>
+      <li><strong>Media automation (Phase H)</strong> and the <strong>one-package owner view for researched topics</strong> are not built. The research output is not yet wired into the approval package.</li>
+      <li><strong>Feed windows are short.</strong> A story older than a publication's recent window cannot be found at all.</li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  Deployed build 3293809 · 1720 tests · 52 sources registered · zero paid services · RSS over plain fetch()<br>
+  Three acceptance topics run against live feeds and real production data. No migration applied.
+</footer>
+
+</div>
