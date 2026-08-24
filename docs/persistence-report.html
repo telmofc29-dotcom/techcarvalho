@@ -1,0 +1,203 @@
+<title>Persistence & Packages</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,500;1,400&display=swap">
+<style>
+:root{--ground:#eef1f1;--panel:#f8fafa;--sunk:#e3e8e8;--ink:#131a1c;--ink-soft:#3f4d50;--ink-faint:#6c7c80;
+--rule:#cfd8d8;--rule-soft:#e0e7e7;--accent:#0c666d;--accent-soft:#d3e6e7;--ok:#2b6f4a;--ok-bg:#dcebe1;
+--warn:#8f5a04;--warn-bg:#f2e6cd;--stop:#9c3323;--stop-bg:#f1dcd8;
+--shadow:0 1px 2px rgba(19,26,28,.06),0 8px 24px -16px rgba(19,26,28,.28);}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--ground:#0d1315;--panel:#141c1e;--sunk:#1b2426;
+--ink:#e5eded;--ink-soft:#a9b8ba;--ink-faint:#7b8b8e;--rule:#2b3739;--rule-soft:#212c2e;--accent:#54c2c8;
+--accent-soft:#16383b;--ok:#6ec18d;--ok-bg:#16301f;--warn:#e0a94e;--warn-bg:#332612;--stop:#e08d7d;--stop-bg:#341c17;
+--shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -16px rgba(0,0,0,.8);}}
+:root[data-theme="dark"]{--ground:#0d1315;--panel:#141c1e;--sunk:#1b2426;--ink:#e5eded;--ink-soft:#a9b8ba;
+--ink-faint:#7b8b8e;--rule:#2b3739;--rule-soft:#212c2e;--accent:#54c2c8;--accent-soft:#16383b;--ok:#6ec18d;
+--ok-bg:#16301f;--warn:#e0a94e;--warn-bg:#332612;--stop:#e08d7d;--stop-bg:#341c17;
+--shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -16px rgba(0,0,0,.8);}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:"IBM Plex Serif",Georgia,serif;
+font-size:17px;line-height:1.62;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1060px;margin:0 auto;padding:0 24px 96px}
+.col{max-width:68ch}
+h1,h2,h3,.sans{font-family:"IBM Plex Sans Condensed","Helvetica Neue",Arial,sans-serif;text-wrap:balance}
+h1{font-size:clamp(2.2rem,5vw,3.5rem);font-weight:700;line-height:1.05;letter-spacing:-.015em;margin:0 0 18px}
+h2{font-size:clamp(1.4rem,2.4vw,1.85rem);font-weight:600;line-height:1.15;margin:0}
+p{margin:0 0 1.05em}
+a{color:var(--accent)}
+strong{font-weight:600;color:var(--ink)}
+code,.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace}
+code{font-size:.85em;background:var(--sunk);padding:.11em .38em;border-radius:3px;word-break:break-word}
+pre{background:var(--sunk);border:1px solid var(--rule);border-radius:6px;padding:14px 16px;overflow-x:auto;
+font-family:"IBM Plex Mono",monospace;font-size:.8rem;line-height:1.55;margin:16px 0}
+.mast{padding:64px 0 40px;border-bottom:2px solid var(--ink)}
+.eyebrow{font-family:"IBM Plex Mono",monospace;font-size:.72rem;font-weight:500;text-transform:uppercase;
+letter-spacing:.16em;color:var(--accent);margin:0 0 22px;display:flex;flex-wrap:wrap;gap:10px 18px}
+.standfirst{font-size:1.2rem;line-height:1.5;color:var(--ink-soft);margin:0;max-width:60ch}
+.standfirst b{color:var(--ink);font-weight:600}
+.verdict{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--rule);
+border:1px solid var(--rule);margin:40px 0 0;border-radius:5px;overflow:hidden}
+.vcell{background:var(--panel);padding:18px 20px}
+.vnum{font-family:"IBM Plex Mono",monospace;font-size:1.75rem;font-weight:600;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.vlab{font-family:"IBM Plex Sans Condensed",sans-serif;font-size:.77rem;line-height:1.32;color:var(--ink-faint);margin-top:8px;text-transform:uppercase;letter-spacing:.07em}
+.is-ok .vnum{color:var(--ok)}.is-warn .vnum{color:var(--warn)}.is-stop .vnum{color:var(--stop)}
+section{padding:52px 0 0}
+.shead{display:flex;gap:16px;align-items:baseline;border-top:1px solid var(--rule);padding-top:14px;margin-bottom:22px}
+.snum{font-family:"IBM Plex Mono",monospace;font-size:.76rem;font-weight:600;color:var(--accent);letter-spacing:.1em;padding-top:5px;white-space:nowrap}
+.tw{overflow-x:auto;margin:22px 0;border:1px solid var(--rule);border-radius:6px;background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:.89rem;min-width:520px}
+th,td{text-align:left;padding:10px 16px;border-bottom:1px solid var(--rule-soft);vertical-align:top}
+thead th{font-family:"IBM Plex Sans Condensed",sans-serif;font-size:.72rem;text-transform:uppercase;letter-spacing:.09em;
+color:var(--ink-faint);background:var(--sunk);border-bottom:1px solid var(--rule);font-weight:600}
+tbody tr:last-child td{border-bottom:0}
+td.n{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+td.mono{font-family:"IBM Plex Mono",monospace;font-size:.84rem}
+.tag{display:inline-block;font-family:"IBM Plex Sans Condensed",sans-serif;font-size:.7rem;font-weight:600;
+text-transform:uppercase;letter-spacing:.07em;padding:2px 8px;border-radius:3px;white-space:nowrap}
+.t-ok{background:var(--ok-bg);color:var(--ok)}.t-warn{background:var(--warn-bg);color:var(--warn)}
+.t-stop{background:var(--stop-bg);color:var(--stop)}.t-new{background:var(--accent-soft);color:var(--accent)}
+.call{border-left:3px solid var(--accent);background:var(--panel);padding:20px 24px;margin:24px 0;border-radius:0 5px 5px 0;box-shadow:var(--shadow)}
+.call.stop{border-left-color:var(--stop)}.call.warn{border-left-color:var(--warn)}.call.ok{border-left-color:var(--ok)}
+.call h3{font-size:.76rem;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);margin-bottom:10px;font-family:"IBM Plex Sans Condensed",sans-serif}
+.call.stop h3{color:var(--stop)}.call.warn h3{color:var(--warn)}.call.ok h3{color:var(--ok)}
+.call p:last-child{margin-bottom:0}
+ul.tight{margin:0 0 1.05em;padding-left:1.15em}
+ul.tight li{margin-bottom:.4em}
+ul.tight li::marker{color:var(--ink-faint)}
+footer{margin-top:60px;padding-top:20px;border-top:2px solid var(--ink);font-family:"IBM Plex Mono",monospace;
+font-size:.75rem;color:var(--ink-faint);line-height:1.7}
+@media (max-width:640px){body{font-size:16px}.wrap{padding:0 18px 64px}}
+</style>
+
+<div class="wrap">
+
+<header class="mast">
+  <div class="eyebrow"><span>TechCarvalho</span><span>/</span><span>Persistence &amp; packages</span><span>/</span><span>24 Aug 2026</span></div>
+  <h1>It remembers what<br>it found.</h1>
+  <p class="standfirst">Research now persists, proven idempotent against production. Full-text fetching took iPhone 18 from <b>14 claims to 39</b>. And one corroborated topic is now one queue row and one decision — not fifteen admin pages.</p>
+  <div class="verdict">
+    <div class="vcell is-ok"><div class="vnum">4→0</div><div class="vlab">Rows created, run 1 → run 2</div></div>
+    <div class="vcell is-ok"><div class="vnum">39</div><div class="vlab">Claims, was 14</div></div>
+    <div class="vcell is-ok"><div class="vnum">18</div><div class="vlab">Migration self-assertions</div></div>
+    <div class="vcell is-ok"><div class="vnum">1722</div><div class="vlab">Tests passing</div></div>
+    <div class="vcell is-ok"><div class="vnum">&pound;0</div><div class="vlab">Cost</div></div>
+  </div>
+</header>
+
+<section>
+  <div class="shead"><div class="snum">01</div><div><h2>Stage modes: root cause &amp; fix</h2></div></div>
+  <div class="col">
+    <p>v1 wrote this:</p>
+    <pre>check (... and not exists (
+  select 1 from jsonb_each_text(stage_modes) as m(key, value)
+  where m.value not in ('MANUAL','ASSISTED','AUTOMATIC')
+))</pre>
+    <p>PostgreSQL rejects it with <code>0A000</code>. A CHECK expression must be a <strong>scalar expression over the row</strong> — no subqueries, no set-returning functions in a FROM clause — because it is evaluated row-by-row without a query plan. The mistake was reaching for relational syntax to express a per-element rule over a JSON value.</p>
+    <p><strong>The fix:</strong> the whole rule moves into one <code>IMMUTABLE</code> function and the constraint becomes a single call. A CHECK <em>may</em> call a function; the prohibition is on subqueries in the constraint expression, not inside the function it calls.</p>
+
+    <div class="call warn">
+      <h3>A cleverer version I deliberately threw away</h3>
+      <p>I first rewrote it with jsonpath predicates (<code>stage_modes @? '$.* ? (…)'</code>), which are operators and therefore also legal in CHECK. I abandoned it: jsonpath defaults to <strong>LAX mode, which auto-unwraps arrays inside filters</strong>, so <code>{"briefs": ["MANUAL"]}</code> plausibly slips through a per-value check. Getting it right needs <code>strict</code> mode plus knowing how <code>@?</code> suppresses structural errors — and <strong>there is no PostgreSQL in this environment to test against</strong>. I am not willing to ship a constraint whose correctness rests on semantics I cannot execute. Plain SQL over <code>jsonb_each_text</code> is duller and I can be sure of it by reading it.</p>
+    </div>
+
+    <p><strong>Because I cannot execute it, the migration proves itself.</strong> It carries 18 assertions in a <code>DO</code> block that run at apply time. If my reasoning is wrong the transaction raises and rolls back, so a broken constraint cannot be left installed.</p>
+  </div>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Case</th><th>Expected</th><th>Asserted</th></tr></thead>
+      <tbody>
+        <tr><td>valid stage + MANUAL / ASSISTED / AUTOMATIC</td><td>accept</td><td><span class="tag t-ok">yes</span></td></tr>
+        <tr><td>empty object <code>{}</code></td><td>accept</td><td><span class="tag t-ok">yes</span></td></tr>
+        <tr><td>unknown mode, lowercase mode, empty mode</td><td>refuse</td><td><span class="tag t-ok">yes</span></td></tr>
+        <tr><td>unknown stage name</td><td>refuse</td><td><span class="tag t-ok">yes</span></td></tr>
+        <tr><td>number, boolean, JSON null, array, nested object</td><td>refuse</td><td><span class="tag t-ok">yes</span></td></tr>
+        <tr><td>array / scalar / number as root</td><td>refuse</td><td><span class="tag t-ok">yes</span></td></tr>
+        <tr><td>existing settings row survives at <code>{}</code></td><td>unchanged</td><td><span class="tag t-ok">yes</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="col">
+    <p>The <code>{"briefs": null}</code> case is worth calling out: <code>jsonb_each_text</code> turns a JSON null into SQL NULL, <code>NULL = any(...)</code> is NULL, and <code>bool_and</code> would swallow that into a NULL result that <code>coalesce</code> then turns into TRUE. An explicit <code>is not null</code> guard closes it.</p>
+    <div class="call ok">
+      <h3>SAFE TO APPLY: YES</h3>
+      <p>The 0A000 cause is removed, and the migration validates itself on the way in. Applying it changes <strong>no behaviour</strong> — every stage resolves to ASSISTED before and after, which is what the engine already does.</p>
+    </div>
+    <p>Validating keys in the database means adding a stage now needs a one-line <code>CREATE OR REPLACE FUNCTION</code>. A test parses the stage array out of the SQL file and asserts it matches <code>ENGINE_STAGE_NAMES</code>, so the two cannot drift silently.</p>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><div class="snum">02</div><div><h2>Persistence &amp; idempotency</h2></div></div>
+  <div class="tw">
+    <table>
+      <thead><tr><th></th><th>Matches</th><th>Created</th><th>Unchanged</th><th>Rows before → after</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Run 1</strong></td><td class="n">4</td><td class="n">4</td><td class="n">0</td><td class="n">0 → 4</td></tr>
+        <tr><td><strong>Run 2</strong></td><td class="n">4</td><td class="n">0</td><td class="n">4</td><td class="n">4 → 4</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="col">
+    <p>Publisher, trust level and <code>origin_examined</code> all persist. <strong>IDEMPOTENT: YES.</strong> This is not cosmetic — an engine that re-attached the same URLs every night would inflate every corroboration count it later read, so proving run 2 creates nothing is proving the evidence model stays honest over time.</p>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><div class="snum">03</div><div><h2>Full text, and admitting when it isn't</h2></div></div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Topic</th><th>Full text</th><th>Summary only</th><th>Reason</th><th>Claims</th></tr></thead>
+      <tbody>
+        <tr><td>iPhone 18</td><td class="n">4 / 4</td><td class="n">0</td><td>—</td><td class="n">39</td></tr>
+        <tr><td>The Witcher 4</td><td class="n">3 / 5</td><td class="n">2</td><td><code>blocked</code>, <code>summary_only</code> (1123 &lt; 1200 chars)</td><td class="n">36</td></tr>
+        <tr><td>Robotaxis</td><td class="n">1 / 1</td><td class="n">0</td><td>—</td><td class="n">10</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="col">
+    <p>iPhone 18 went from 14 claims to 39, carrying real figures — a $100 increase, $1,199 pricing, RAM and NAND cost pressure — instead of headline fragments.</p>
+    <p><strong>Nothing is bypassed.</strong> robots.txt is checked <em>before</em> the request, and a disallow means the article is never fetched at all — asking and then ignoring the answer would be worse than not asking. 403s, paywalls, consent walls and anti-bot challenges are each recorded as a refusal and left alone. There is no user-agent rotation, and there must not be one added.</p>
+    <p>An extraction yielding under 1200 characters is reported as <code>summary_only</code>, not as full text. A page that returns 300 characters is navigation and a consent banner, and calling that "fully researched" is the exact dishonesty this records against.</p>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><div class="snum">04</div><div><h2>The owner package</h2></div></div>
+  <div class="col">
+    <p>A corroborated topic with no TechCarvalho coverage is now <strong>one queue row and one decision page</strong> at <code>/admin/engine/topics/[id]</code>: why now, research, recommendation, sources, and what was actually claimed.</p>
+    <p>Two things it refuses to blur:</p>
+    <ul class="tight">
+      <li><strong>Origins versus URLs.</strong> Collapsed sources are listed with the reason, so "4 sources" can never quietly mean one story repeated four times.</li>
+      <li><strong>Article versus product.</strong> Separate verdicts, different bars. Rumours can justify a well-framed article long before they justify a catalogue page asserting a product exists.</li>
+    </ul>
+    <p>Approving creates the brief, marks it approved, and calls the same assembly RPC the nightly stage calls. <strong>Hedged claims go to <code>uncertainties</code>, never <code>verified_facts</code></strong> — a hedge cannot become a fact by passing through the action. Assembly still hard-wires <code>status='draft'</code>, so approving never publishes.</p>
+    <div class="call">
+      <h3>One honest omission on the queue row</h3>
+      <p>Content provenance is passed as <code>null</code>, not <code>0</code>, because it is not yet persisted per evidence row — so the signal is omitted rather than shown. Understating provenance is as misleading as overstating it.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><div class="snum">05</div><div><h2>Not done</h2></div></div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Priority</th><th>Status</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>P6 — Media intelligence</td><td><span class="tag t-stop">Not started</span></td><td>Out of session budget. Ranked media suggestions, alt-text assistance and slot proposals are not built</td></tr>
+        <tr><td>P7 — Homepage connection</td><td><span class="tag t-stop">Not started</span></td><td>Override windows are applied and ranking already exists; wiring researched content into it is not done</td></tr>
+        <tr><td>Per-evidence provenance</td><td><span class="tag t-warn">Partial</span></td><td>Full-text status is computed but not stored, so the queue omits it</td></tr>
+        <tr><td>Backlog research</td><td><span class="tag t-warn">Pending</span></td><td>195 older discoveries still have one source each until the nightly stage works through them</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<footer>
+  Deployed build 6d1d398 · 1722 tests · 52 sources · 196 discoveries · 199 evidence rows · zero paid services<br>
+  Stage-modes migration corrected and NOT applied — it is yours to run. Nothing else awaits you.
+</footer>
+
+</div>
