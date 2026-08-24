@@ -1582,6 +1582,44 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["homepage_overrides"]["Row"]>;
         Relationships: [];
       };
+      // Created by supabase/migrations_pending/20260824_homepage_override_windows.sql,
+      // APPLIED in production. A view over homepage_overrides showing only the
+      // overrides currently within their start/end window.
+      homepage_overrides_active: {
+        Row: {
+          id: string;
+          content_id: string;
+          mode: "pin_lead" | "pin_supporting" | "boost" | "suppress";
+          note: string | null;
+          created_at: string;
+          starts_at: string | null;
+          ends_at: string | null;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      // Added by supabase/migrations_pending/20260824_spotlight_rotation.sql —
+      // NOT YET APPLIED. Reads degrade to an empty rotation until it is.
+      homepage_spotlight_log: {
+        Row: {
+          id: string;
+          rotation_date: string;
+          content_id: string;
+          role: "lead" | "supporting";
+          position: number;
+          score: number | null;
+          reasons: string[];
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["homepage_spotlight_log"]["Row"]> & {
+          rotation_date: string;
+          content_id: string;
+          role: "lead" | "supporting";
+        };
+        Update: Partial<Database["public"]["Tables"]["homepage_spotlight_log"]["Row"]>;
+        Relationships: [];
+      };
       search_intelligence: {
         Row: {
           id: string;
@@ -2092,6 +2130,41 @@ export interface Database {
       // NOT YET APPLIED. Declared so the research stage compiles; calling it
       // before the migration runs returns PGRST202, which the stage detects and
       // reports as "not deployed" rather than as a failure.
+      // Added by supabase/migrations_pending/20260824_spotlight_rotation.sql —
+      // NOT YET APPLIED. The spotlight stage detects PGRST202 and reports that
+      // it computed a rotation it could not persist.
+      homepage_rotation_memory: {
+        Args: Record<string, never>;
+        Returns: {
+          content_id: string;
+          last_spotlighted_at: string | null;
+          spotlight_count: number;
+        }[];
+      };
+      homepage_record_spotlight: {
+        Args: {
+          p_rotation_date: string;
+          p_content_id: string;
+          p_role: string;
+          p_position?: number;
+          p_score?: number | null;
+          p_reasons?: string[];
+        };
+        Returns: string;
+      };
+      public_spotlight: {
+        Args: { p_rotation_date?: string | null };
+        Returns: {
+          content_id: string;
+          slug: string;
+          title: string;
+          content_type: string;
+          category_slug: string | null;
+          published_at: string;
+          role: string;
+          position: number;
+        }[];
+      };
       engine_add_evidence: {
         Args: {
           p_discovery_id: string;

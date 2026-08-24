@@ -19,6 +19,7 @@ import { runDraftAssembly } from "@/lib/engine/jobs/draft-job";
 import { runProductAssembly } from "@/lib/engine/jobs/product-job";
 import { runInternalLinks } from "@/lib/engine/jobs/link-job";
 import { runHeroMediaAudit } from "@/lib/engine/jobs/hero-media-job";
+import { runSpotlightRotation } from "@/lib/engine/jobs/spotlight-job";
 import { runShadowEvaluation } from "@/lib/engine/jobs/shadow-job";
 import type { StageResult } from "@/lib/engine/jobs/discovery";
 
@@ -105,6 +106,10 @@ const STAGES: readonly (readonly [EngineStageName, (c: EngineClient) => Promise<
   // It is also the only stage whose output is evidence rather than work: every
   // decision it records is a row in the ledger that READINESS is measured
   // against. It cannot publish — see src/lib/engine/jobs/shadow-job.ts.
+  // The day's front page. Runs after hero_media so it sees the current state of
+  // published imagery, and before shadow evaluation so the shadow ledger
+  // records decisions against the site as it will actually look.
+  ["spotlight", runSpotlightRotation],
   ["shadow_evaluation", runShadowEvaluation],
 ] as const;
 

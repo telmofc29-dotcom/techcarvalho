@@ -81,6 +81,18 @@ export const ENGINE_JOBS: readonly JobIdempotency[] = [
       "thing a pass does is spend HTTP fetches, which cost nothing and change no state.",
   },
   {
+    job: "engine_spotlight",
+    capability: "maintenance",
+    idempotent: true,
+    concurrencySafe: true,
+    mechanism: "unique_constraint",
+    note:
+      "homepage_record_spotlight upserts on (rotation_date, content_id), so re-running a rotation " +
+      "updates the day's row rather than adding a second appearance. That matters more than usual " +
+      "here: duplicate rows would turn 'how many times has this been spotlighted' into 'how many " +
+      "times did the job run', and corrupt the fairness the rotation depends on.",
+  },
+  {
     job: "engine_relevance",
     capability: "classification",
     idempotent: true,

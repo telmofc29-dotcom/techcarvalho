@@ -97,6 +97,9 @@ export const AUTOMATIC_CAPABILITY: Record<EngineStageName, string | null> = {
   internal_links:
     "Suggested internal links between published pages are applied, rather than queued as " +
     "suggestions.",
+  spotlight:
+    "Selects and records the day's front page automatically. This is the whole point of the " +
+    "rotation engine — it must not require a daily owner action.",
   hero_media:
     "A published page with no hero image is given one from assets already cleared and " +
     "published. Never from anything unpublished or unverified.",

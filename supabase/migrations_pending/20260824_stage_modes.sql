@@ -125,6 +125,7 @@ as $fn$
             'freshness',
             'internal_links',
             'hero_media',
+            'spotlight',
             'shadow_evaluation'
           ])
           -- jsonb_each_text renders every value as text, so a number, an

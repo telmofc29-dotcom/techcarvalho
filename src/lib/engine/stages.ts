@@ -50,6 +50,7 @@ export const ENGINE_STAGE_NAMES = [
   "freshness",
   "internal_links",
   "hero_media",
+  "spotlight",
   "shadow_evaluation",
 ] as const;
 
@@ -78,6 +79,7 @@ export const STAGE_JOB_NAMES: Record<EngineStageName, string> = {
   freshness: "engine_freshness",
   internal_links: "engine_internal_links",
   hero_media: "engine_hero_media",
+  spotlight: "engine_spotlight",
   // "engine_shadow", NOT "engine_shadow_evaluation" — see the note above.
   shadow_evaluation: "engine_shadow",
 };
