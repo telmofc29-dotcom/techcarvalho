@@ -81,6 +81,7 @@ export const AUTOMATIC_CAPABILITY: Record<EngineStageName, string | null> = {
   // and a label is what this file exists to refuse.
   discovery: null,
   relevance: null,
+  research: null,
   search_intelligence: null,
   opportunities: null,
   trends: null,
@@ -112,6 +113,9 @@ export const AUTOMATIC_CAPABILITY: Record<EngineStageName, string | null> = {
 export const AUTOMATIC_REFUSAL: Partial<Record<EngineStageName, string>> = {
   discovery: "Already fully automatic — there is no human decision inside this stage.",
   relevance: "Already fully automatic — there is no human decision inside this stage.",
+  research:
+    "Already fully automatic — it fetches and matches published sources. It attaches evidence, " +
+    "never a conclusion, and the judgement about what the evidence supports stays downstream.",
   search_intelligence: "Already fully automatic — it only aggregates first-party signals.",
   opportunities: "Already fully automatic — it only scores, and refuses to score without data.",
   trends: "Already fully automatic — it only measures.",

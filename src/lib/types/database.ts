@@ -2088,6 +2088,23 @@ export interface Database {
         };
         Returns: string;
       };
+      // Added by supabase/migrations_pending/20260824_research_evidence.sql —
+      // NOT YET APPLIED. Declared so the research stage compiles; calling it
+      // before the migration runs returns PGRST202, which the stage detects and
+      // reports as "not deployed" rather than as a failure.
+      engine_add_evidence: {
+        Args: {
+          p_discovery_id: string;
+          p_url: string;
+          p_publisher?: string | null;
+          p_claim_status?: string | null;
+          p_trust_level?: string | null;
+          p_excerpt?: string | null;
+          p_originates_from_url?: string | null;
+          p_origin_examined?: boolean | null;
+        };
+        Returns: string;
+      };
       engine_existing_entities: {
         Args: Record<string, never>;
         Returns: {

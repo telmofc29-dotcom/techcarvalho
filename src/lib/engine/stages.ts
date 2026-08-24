@@ -38,6 +38,7 @@
 export const ENGINE_STAGE_NAMES = [
   "discovery",
   "relevance",
+  "research",
   "update_proposals",
   "product_assembly",
   "briefs",
@@ -65,6 +66,7 @@ export type EngineStageName = (typeof ENGINE_STAGE_NAMES)[number];
 export const STAGE_JOB_NAMES: Record<EngineStageName, string> = {
   discovery: "engine_discover",
   relevance: "engine_relevance",
+  research: "engine_research",
   update_proposals: "engine_update_proposals",
   product_assembly: "engine_product_assembly",
   briefs: "engine_briefs",

@@ -7,6 +7,7 @@ import { STAGE_JOB_NAMES, ENGINE_STAGE_NAMES, type EngineStageName } from "@/lib
 import { resolveAllStageModes, tickShouldRun } from "@/lib/engine/stage-modes";
 import { runDiscovery } from "@/lib/engine/jobs/discovery";
 import { runRelevance } from "@/lib/engine/jobs/relevance-job";
+import { runResearch } from "@/lib/engine/jobs/research-job";
 import { runBriefGeneration } from "@/lib/engine/jobs/brief-job";
 import { runOpportunityScoring } from "@/lib/engine/jobs/opportunity-job";
 import { runSearchIntelligence } from "@/lib/engine/jobs/search-job";
@@ -61,6 +62,11 @@ const JOB = "engine_tick";
 const STAGES: readonly (readonly [EngineStageName, (c: EngineClient) => Promise<StageResult>])[] = [
   ["discovery", runDiscovery],
   ["relevance", runRelevance],
+  // RESEARCH. Runs immediately after relevance so it only spends fetches on
+  // discoveries already judged worth covering, and BEFORE briefs so a brief is
+  // built from whatever corroboration research found rather than from the
+  // single feed item that created the discovery.
+  ["research", runResearch],
   // Update proposals run BEFORE briefs so a discovery describing a change to
   // something already covered is recorded against the existing page. An editor
   // then decides update-vs-new-article with both options visible.

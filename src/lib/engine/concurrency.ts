@@ -67,6 +67,20 @@ export const ENGINE_JOBS: readonly JobIdempotency[] = [
       "engine-safety migration converts it to `on conflict ... do update`.",
   },
   {
+    job: "engine_research",
+    // `discovery` rather than `creation`: research mints no artefact. It reads
+    // public feeds and attaches evidence to a discovery that already exists.
+    capability: "discovery",
+    idempotent: true,
+    concurrencySafe: true,
+    mechanism: "unique_constraint",
+    note:
+      "engine_add_evidence inserts into engine_discovery_evidence with " +
+      "`on conflict (discovery_id, url) do nothing`, so re-researching a discovery re-attaches " +
+      "nothing and two workers finding the same article produce one row. The only non-idempotent " +
+      "thing a pass does is spend HTTP fetches, which cost nothing and change no state.",
+  },
+  {
     job: "engine_relevance",
     capability: "classification",
     idempotent: true,
