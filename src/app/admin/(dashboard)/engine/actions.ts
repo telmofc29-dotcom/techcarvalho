@@ -13,6 +13,9 @@ import type {
   EnginePipelineState,
   EngineUpdateProposalState,
 } from "@/lib/types/database";
+import { loadApprovalPackage } from "@/lib/engine/package-service";
+import { assembleDraft, proposeSeo } from "@/lib/engine/draft-assembly";
+import { proposeSlug } from "@/lib/engine/entity-resolution";
 
 type ReviewState = "pending" | "approved" | "rejected" | "snoozed" | "research_requested";
 type RelevanceVerdict = "relevant" | "rejected" | "uncertain";
@@ -500,4 +503,156 @@ export async function setUpdateProposalState(formData: FormData): Promise<void> 
     .eq("id", id);
 
   revalidatePath("/admin/engine/update-proposals");
+}
+
+// ---------------------------------------------------------------------------
+// Approve & build — the one-click package (Phase B)
+// ---------------------------------------------------------------------------
+
+/**
+ * Approve a brief and immediately assemble its draft.
+ *
+ * WHAT THIS REPLACES
+ * ------------------
+ * Approving used to set `review_state` and stop. Assembly then happened on the
+ * next nightly tick, which meant the owner approved something on Monday and
+ * looked for it on Tuesday — and in practice never did, because nothing told
+ * them it had appeared. This runs the same stage immediately for the one brief
+ * the owner just approved.
+ *
+ * IT IS THE SAME PATH, NOT A PARALLEL ONE
+ * ---------------------------------------
+ * Body composition uses `assembleDraft`, SEO uses `proposeSeo`, the slug uses
+ * `proposeSlug`, and the write goes through the `engine_assemble_draft` RPC —
+ * every one of them the same function the nightly `draft_assembly` stage calls.
+ * Nothing here is a second implementation that could drift from the engine's.
+ *
+ * THE PUBLISHING BOUNDARY IS UNCHANGED
+ * ------------------------------------
+ * `engine_assemble_draft` is SECURITY DEFINER and hard-wires `status='draft'`.
+ * It cannot be made to publish by calling it from here, from an admin session,
+ * or with any argument. "Approve & build" therefore means "create the draft and
+ * everything around it"; publishing remains a separate human action on the
+ * content editor, exactly as before.
+ *
+ * ORDER MATTERS: the RPC refuses a brief whose `review_state` is not
+ * 'approved' (returning 'rejected_brief_not_approved'), so approval is written
+ * first and its failure aborts before anything is assembled.
+ */
+export async function approveAndBuild(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  // Re-derive the package server-side. The client's view of `canBuild` is a
+  // rendering, not an authorisation — a stale tab, a concurrent edit, or a
+  // hand-made POST must not be able to build something the rules now block.
+  const load = await loadApprovalPackage(id);
+  if (!load.ok || !load.package.canBuild) return;
+
+  const supabase = await createClient();
+
+  const { data: brief, error: briefError } = await supabase
+    .from("engine_briefs")
+    .select(
+      "id, proposed_title, proposed_slug, content_type, category_slug, search_intent, primary_query, " +
+        "rationale, primary_question, supporting_questions, verified_facts, uncertainties, source_urls, " +
+        "suggested_structure, brief_kind, freshness_sensitivity, related_product_slugs, related_content_slugs"
+    )
+    .eq("id", id)
+    .maybeSingle();
+  if (briefError || !brief) return;
+
+  const b = brief as unknown as {
+    id: string;
+    proposed_title: string;
+    proposed_slug: string | null;
+    content_type: string | null;
+    category_slug: string | null;
+    search_intent: string | null;
+    primary_query: string | null;
+    rationale: string;
+    primary_question: string | null;
+    supporting_questions: string[] | null;
+    verified_facts: string[] | null;
+    uncertainties: string[] | null;
+    source_urls: string[] | null;
+    suggested_structure: string[] | null;
+    brief_kind: string | null;
+    freshness_sensitivity: string | null;
+    related_product_slugs: string[] | null;
+    related_content_slugs: string[] | null;
+  };
+
+  const now = new Date().toISOString();
+  const { error: approveError } = await supabase
+    .from("engine_briefs")
+    .update({ review_state: "approved", reviewed_at: now, updated_at: now })
+    .eq("id", id);
+  // Abort rather than continue: assembling a draft for a brief whose approval
+  // did not persist would produce an article nobody approved.
+  if (approveError) return;
+
+  // Context for the body — the same joins the nightly stage performs.
+  const [{ data: contentRows }, { data: productRows }] = await Promise.all([
+    supabase.from("content_items").select("title, slug"),
+    (b.related_product_slugs ?? []).length > 0
+      ? supabase
+          .from("products")
+          .select("name, slug, is_published")
+          .in("slug", b.related_product_slugs ?? [])
+      : Promise.resolve({ data: [] as { name: string; slug: string; is_published: boolean }[] }),
+  ]);
+
+  const contentList = (contentRows ?? []) as { title: string; slug: string }[];
+  const takenSlugs = new Set(contentList.map((c) => c.slug));
+  const relatedContent = contentList.filter((c) =>
+    (b.related_content_slugs ?? []).includes(c.slug)
+  );
+
+  const draft = assembleDraft({
+    title: b.proposed_title,
+    contentType: b.content_type ?? "news",
+    categorySlug: b.category_slug,
+    primaryQuestion: b.primary_question,
+    supportingQuestions: b.supporting_questions ?? [],
+    verifiedFacts: b.verified_facts ?? [],
+    uncertainties: b.uncertainties ?? [],
+    sourceUrls: b.source_urls ?? [],
+    suggestedStructure: b.suggested_structure ?? [],
+    briefKind: b.brief_kind,
+    freshnessSensitivity: b.freshness_sensitivity,
+    rationale: b.rationale,
+    relatedContent: relatedContent.map((c) => ({ title: c.title, slug: c.slug })),
+    relatedProducts: (
+      (productRows ?? []) as { name: string; slug: string; is_published: boolean }[]
+    ).map((p) => ({ name: p.name, slug: p.slug, isPublished: p.is_published })),
+  });
+
+  const seo = proposeSeo({ title: b.proposed_title, primaryQuestion: b.primary_question });
+  const slug =
+    b.proposed_slug && !takenSlugs.has(b.proposed_slug)
+      ? b.proposed_slug
+      : proposeSlug(b.proposed_title, takenSlugs);
+  if (!slug) return;
+
+  await supabase.rpc("engine_assemble_draft", {
+    p_brief_id: b.id,
+    p_title: b.proposed_title,
+    p_slug: slug,
+    p_body: draft.body,
+    p_content_type: b.content_type ?? "news",
+    p_category_slug: b.category_slug,
+    p_search_intent: b.search_intent,
+    p_primary_query: b.primary_query,
+    p_source_urls: b.source_urls ?? [],
+    p_meta_title: seo.metaTitle,
+    p_meta_description: seo.metaDescription,
+  });
+
+  revalidatePath("/admin/engine");
+  revalidatePath("/admin/engine/briefs");
+  revalidatePath("/admin/engine/drafts");
+  revalidatePath("/admin/content");
+  revalidatePath("/admin");
 }

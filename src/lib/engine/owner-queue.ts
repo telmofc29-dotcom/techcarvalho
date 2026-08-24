@@ -185,7 +185,11 @@ export function briefQueueItem(input: BriefQueueInput): OwnerQueueItem | null {
     signals,
     gaps,
     actions: ["review", "approve", "reject", "ignore", "details"],
-    href: `/admin/engine/briefs#${input.id}`,
+    // The package, not the briefs list. A brief that cleared the evidence bar
+    // is one decision away from being an article, and the package is where that
+    // decision is actually made — sending the owner to a filtered table instead
+    // is the fragmentation this queue exists to remove.
+    href: `/admin/engine/packages/${input.id}`,
     urgency,
     since: input.createdAt,
   };

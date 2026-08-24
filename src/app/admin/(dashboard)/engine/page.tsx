@@ -306,7 +306,7 @@ function QueueRow({ item }: { item: OwnerQueueItem }) {
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <QueueActions item={item} />
         <Link
-          href={item.href}
+          href={item.kind === "brief" ? "/admin/engine/briefs" : item.href}
           className="text-sm font-medium text-neutral-600 underline underline-offset-4 hover:text-neutral-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
         >
           View details
@@ -337,12 +337,23 @@ function QueueActions({ item }: { item: OwnerQueueItem }) {
     );
   }
 
+  // "Review package" is the primary path: it shows every consequence before
+  // asking. Bare "Approve" stays alongside it for an owner who already knows
+  // this one and does not want the round trip — but it is the secondary
+  // control, because approving without seeing the consequences is exactly the
+  // habit this phase is trying to end.
   return (
     <>
+      <Link
+        href={item.href}
+        className="inline-flex items-center rounded-md bg-neutral-900 px-3 py-2 text-sm font-medium text-white hover:bg-neutral-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
+      >
+        Review package
+      </Link>
       <form action={setBriefReviewState}>
         <input type="hidden" name="id" value={item.id} />
         <input type="hidden" name="review_state" value="approved" />
-        <SubmitButton>Approve</SubmitButton>
+        <SubmitButton variant="secondary">Approve</SubmitButton>
       </form>
       <form action={setBriefReviewState}>
         <input type="hidden" name="id" value={item.id} />
