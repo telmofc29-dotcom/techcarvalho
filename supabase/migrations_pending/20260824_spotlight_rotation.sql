@@ -322,19 +322,45 @@ grant execute on function public.public_homepage_selection(integer) to anon, aut
 -- 6. Self-check
 -- ---------------------------------------------------------------------------
 
+-- RAISE EXCEPTION, NOT ASSERT.
+--
+-- ASSERT is compiled out when plpgsql.check_asserts is off, so a migration that
+-- verifies itself with ASSERT can be applied with its verification silently
+-- skipped. Every other migration in this repo raises, and this one now matches:
+-- if the reasoning here is wrong the transaction rolls back rather than leaving
+-- a half-correct homepage installed.
 do $verify$
-declare v_count integer;
+declare
+  v_count integer;
 begin
-  assert public.homepage_record_spotlight(current_date, '00000000-0000-0000-0000-000000000000'::uuid, 'lead')
-         = 'rejected_not_published',
-         'unknown content must be refused';
+  if public.homepage_record_spotlight(current_date, '00000000-0000-0000-0000-000000000000'::uuid, 'lead')
+     <> 'rejected_not_published' then
+    raise exception 'ROLLED BACK: unknown content was not refused by homepage_record_spotlight.';
+  end if;
 
-  assert (select count(*) from public.homepage_overrides_active) >= 0,
-         'homepage_overrides_active must exist -- apply 20260824_homepage_override_windows.sql first';
+  -- Presence, not a count. `count(*) >= 0` is true of every table that exists
+  -- AND of every empty one, so it proved only that the name resolved.
+  if to_regclass('public.homepage_overrides_active') is null then
+    raise exception 'ROLLED BACK: homepage_overrides_active is missing. Apply 20260824_homepage_override_windows.sql first.';
+  end if;
 
   select count(*) into v_count from public.public_homepage_selection(4);
-  assert v_count >= 0, 'public_homepage_selection must still run after the repoint';
 
-  raise notice 'spotlight rotation: assertions passed, selection returned % rows', v_count;
+  -- THE ASSERTION THAT MATTERS, AND THE ONE THAT WAS VACUOUS.
+  --
+  -- It read `v_count >= 0`. A count is always >= 0, so it could not fail. Had
+  -- the repoint onto homepage_overrides_active broken selection so it returned
+  -- NOTHING, that check would have passed and this migration would have
+  -- committed an empty homepage -- the precise failure this project's error
+  -- handling exists to prevent: an empty result that is indistinguishable from
+  -- a working one.
+  --
+  -- The site has 81 published articles, all within the 30-day window, so the
+  -- homepage must produce rows. Zero means the repoint broke it.
+  if v_count = 0 then
+    raise exception 'ROLLED BACK: public_homepage_selection returned 0 rows after the repoint. The homepage would be empty.';
+  end if;
+
+  raise notice 'spotlight rotation: verified, selection returned % rows', v_count;
 end
 $verify$;
