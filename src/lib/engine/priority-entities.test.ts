@@ -8,8 +8,7 @@ import {
   watchlist,
   PRIORITY_ENTITIES,
   TIER_LABELS,
-  IMPORTANCE_LABELS,
-} from "./priority-entities.ts";
+  IMPORTANCE_LABELS, scaleToStoredRange, PRIORITY_SCORE_MIN, PRIORITY_SCORE_MAX} from "./priority-entities.ts";
 
 // ---------------------------------------------------------------------------
 // Tiers are configuration, not measurement
@@ -243,4 +242,35 @@ test("product launches still read as major after the corporate filters", () => {
   ]) {
     assert.equal(classifyImportance(h).importance, "major", h);
   }
+});
+
+test("the stored score preserves ranking instead of flattening it", () => {
+  // Clamping to the column's 0..100 CHECK tied 22 of 34 opportunities at
+  // exactly 100. An opportunity list whose best items are indistinguishable is
+  // not a ranking.
+  const high = assessPriority({ headline: "Apple Announces New Mac Studio With M5 Ultra Chip", ageDays: 1, independentOrigins: 4, alreadyCovered: false });
+  const mid = assessPriority({ headline: "Elegoo launches a new filament", ageDays: 5, independentOrigins: 1, alreadyCovered: false });
+  const low = assessPriority({ headline: "Save $200 on the new flagship", ageDays: 40, independentOrigins: 1, alreadyCovered: true });
+
+  const [h, m, l] = [high, mid, low].map((x) => scaleToStoredRange(x.score));
+  assert.ok(h > m, `${h} !> ${m}`);
+  assert.ok(m > l, `${m} !> ${l}`);
+});
+
+test("every stored score satisfies the column's 0..100 constraint", () => {
+  // The first run wrote nothing: all 40 upserts violated this CHECK.
+  for (const raw of [PRIORITY_SCORE_MIN, PRIORITY_SCORE_MAX, 0, 110, 134, -90, 1000, -1000]) {
+    const s = scaleToStoredRange(raw);
+    assert.ok(s >= 0 && s <= 100, `${raw} -> ${s}`);
+    // numeric(5,2): at most two decimal places.
+    assert.equal(Math.round(s * 100) / 100, s);
+  }
+});
+
+test("the score bounds are derived, so a weight change cannot invalidate them", () => {
+  // Hardcoding 110 was already wrong: the real maximum is 134.
+  const best = assessPriority({ headline: "Apple Announces New Mac Studio", ageDays: 0, independentOrigins: 9, alreadyCovered: false });
+  assert.ok(best.score <= PRIORITY_SCORE_MAX, `${best.score} exceeds declared max ${PRIORITY_SCORE_MAX}`);
+  assert.equal(scaleToStoredRange(PRIORITY_SCORE_MAX), 100);
+  assert.equal(scaleToStoredRange(PRIORITY_SCORE_MIN), 0);
 });

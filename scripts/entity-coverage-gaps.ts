@@ -303,7 +303,12 @@ async function main(): Promise<void> {
     // A subject that cannot be a headline must never reach research. Checking
     // this only in queue triage meant the same broken subject was removed and
     // then recreated by the very next scan.
-    const quality = assessSubject(subjectNoun(gap.headline, null));
+    // Check the FULL headline as well as the trimmed subject: subjectNoun caps
+    // at nine words, which cut "...that I'm very excited about" off the end and
+    // let a first-person column through the screen into the queue.
+    const quality = assessSubject(gap.headline).usable
+      ? assessSubject(subjectNoun(gap.headline, null))
+      : assessSubject(gap.headline);
     if (!quality.usable) {
       console.log(`  SKIP (${quality.flaw})  ${gap.headline.slice(0, 50)}`);
       continue;

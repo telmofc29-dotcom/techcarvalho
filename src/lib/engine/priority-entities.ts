@@ -277,6 +277,13 @@ export function highestTier(text: string): PriorityTier {
 // ---------------------------------------------------------------------------
 
 const TIER_WEIGHT: Record<PriorityTier, number> = { 1: 40, 2: 20, 3: 0 };
+
+/** Best and worst reachable scores, DERIVED so they cannot drift from the weights. */
+const RECENCY_BEST = 20;
+const RECENCY_WORST = -15;
+const ORIGINS_BEST = 4 * 6;
+const COVERAGE_BEST = 15;
+const COVERAGE_WORST = -30;
 const IMPORTANCE_WEIGHT: Record<EventImportance, number> = {
   major: 35,
   notable: 15,
@@ -285,6 +292,36 @@ const IMPORTANCE_WEIGHT: Record<EventImportance, number> = {
   // development from a Tier 3 one. Priority buys attention, not indulgence.
   trivial: -45,
 };
+
+/**
+ * The reachable score range.
+ *
+ * Exported because engine_opportunities.score is constrained to 0..100 and a
+ * priority score is not. The first write of every opportunity was REJECTED by
+ * that CHECK; clamping fixed the rejection and destroyed the ranking, tying 22
+ * of 34 opportunities at exactly 100. Scaling needs the true bounds, and
+ * deriving them from the weights means changing a weight cannot silently
+ * invalidate the mapping.
+ */
+export const PRIORITY_SCORE_MAX =
+  TIER_WEIGHT[1] + IMPORTANCE_WEIGHT.major + RECENCY_BEST + ORIGINS_BEST + COVERAGE_BEST;
+export const PRIORITY_SCORE_MIN =
+  TIER_WEIGHT[3] + IMPORTANCE_WEIGHT.trivial + RECENCY_WORST + COVERAGE_WORST;
+
+/**
+ * Map a priority score onto the 0..100 range engine_opportunities stores.
+ *
+ * Order-preserving across the whole range, which is the property clamping lost.
+ * The raw score is recorded separately in the opportunity's inputs, so the
+ * stored value is never mistaken for the priority score itself.
+ */
+export function scaleToStoredRange(score: number): number {
+  const span = PRIORITY_SCORE_MAX - PRIORITY_SCORE_MIN;
+  const scaled = ((score - PRIORITY_SCORE_MIN) / span) * 100;
+  // Rounded to 2dp because the column is numeric(5,2); an unrounded value
+  // would be rounded by PostgreSQL anyway, just less predictably.
+  return Math.round(Math.max(0, Math.min(100, scaled)) * 100) / 100;
+}
 
 export type PriorityAssessment = {
   entities: PriorityEntity[];

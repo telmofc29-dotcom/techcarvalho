@@ -2,7 +2,7 @@ import "server-only";
 import { newCounters } from "@/lib/engine/cron";
 import { buildCorpus } from "@/lib/engine/research/feed-index";
 import { consolidateOpportunities } from "@/lib/engine/coverage-decision";
-import { PRIORITY_ENTITIES, assessPriority } from "@/lib/engine/priority-entities";
+import { PRIORITY_ENTITIES, assessPriority, scaleToStoredRange } from "@/lib/engine/priority-entities";
 import { assessSubject } from "@/lib/engine/subject-quality";
 import { subjectNoun } from "@/lib/engine/research/research-pipeline";
 import { titleSimilarity } from "@/lib/engine/dedupe";
@@ -149,6 +149,13 @@ export async function runEntityCoverage(supabase: Client): Promise<StageResult> 
       // A subject that cannot be a headline must never enter the queue. This
       // check lived only in queue triage, so a broken subject was removed and
       // recreated by the next pass.
+      //
+      // BOTH the full headline and the trimmed subject are checked. subjectNoun
+      // caps at nine words, which cut the tell off the end: "Apple is about to
+      // launch five new products that I'm very excited about" trimmed to
+      // "Apple is about to launch five new products", and the first-person
+      // screen saw nothing to object to. The column reached the queue anyway.
+      if (!assessSubject(headline).usable) continue;
       if (!assessSubject(subjectNoun(headline, null)).usable) continue;
 
       const covered = existingTitles.some((t) => titleSimilarity(headline, t) >= ALREADY_COVERED);
@@ -181,12 +188,21 @@ export async function runEntityCoverage(supabase: Client): Promise<StageResult> 
       p_subject_type: "topic",
       p_subject_key: `watchlist:${keyOf(gap.headline)}`,
       p_label: gap.headline.slice(0, 300),
+      // SCALED, NOT CLAMPED.
+      //
       // engine_opportunities.score is numeric(5,2) CHECK 0..100, and priority
-      // scores reach 110 (tier 1 + major + uncovered + recent). Every write in
-      // the first run was rejected by that constraint. Clamped for storage, and
-      // the unclamped value is kept in inputs so nothing is lost and the two
-      // can never be confused for each other.
-      p_score: Math.max(0, Math.min(100, gap.score)),
+      // scores reach PRIORITY_SCORE_MAX. Every write in the first run was
+      // rejected by that constraint.
+      //
+      // Clamping fixed the rejection and broke the ranking: everything at or
+      // above 100 became exactly 100, and 22 of the first 34 opportunities
+      // tied at the top with no way to order them. An opportunity list whose
+      // best items are indistinguishable is not a ranking.
+      //
+      // Scaling preserves the order across the whole range. The raw value is
+      // still recorded in inputs.priorityScore, so nothing is lost and the
+      // stored score is never mistaken for the priority score.
+      p_score: scaleToStoredRange(gap.score),
       p_inputs: {
         entity: gap.entity,
         tier: gap.tier,

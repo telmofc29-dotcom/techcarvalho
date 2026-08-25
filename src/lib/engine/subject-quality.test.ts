@@ -53,3 +53,14 @@ test("a verdict always explains itself", () => {
   assert.equal(v.usable, false);
   assert.ok(v.reason.length > 5);
 });
+
+test("a first-person tell at the END of a headline is still caught", () => {
+  // subjectNoun caps at nine words, so "Apple is about to launch five new
+  // products that I'm very excited about" trimmed to "Apple is about to launch
+  // five new products" — and the first-person screen, seeing only the trimmed
+  // subject, passed it. The column reached the opportunity queue.
+  const full = "Apple is about to launch five new products that I’m very excited about";
+  assert.equal(assessSubject(full).usable, false, "the full headline must be rejected");
+  // The trimmed form is legitimately fine, which is exactly why BOTH are checked.
+  assert.equal(assessSubject("Apple is about to launch five new products").usable, true);
+});
