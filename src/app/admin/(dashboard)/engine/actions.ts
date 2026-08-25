@@ -610,6 +610,7 @@ export async function approveAndBuild(formData: FormData): Promise<void> {
       review_state: "approved",
       reviewed_at: now,
       updated_at: now,
+      reviewed_by: admin.id,
       review_note: `Approved by ${admin.email ?? admin.id} via the admin queue.`,
     })
     .eq("id", id);
@@ -806,6 +807,7 @@ export async function approveResearchedTopic(formData: FormData): Promise<void> 
       review_state: "approved",
       state: "planned",
       reviewed_at: new Date().toISOString(),
+      reviewed_by: admin.id,
       review_note: `Approved by ${admin.email ?? admin.id} via researched topics.`,
     })
     .select("id")

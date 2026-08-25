@@ -1425,15 +1425,14 @@ export interface Database {
           review_note: string | null;
           snoozed_until: string | null;
           reviewed_at: string | null;
-          // 20260825_brief_review_actor.sql — NOT YET APPLIED. The signed-in
-          // admin who approved this brief; NULL means no human reviewer, which
-          // is what a script write looks like.
+          // 20260825_brief_review_actor.sql — APPLIED, and verified 11/11 by
+          // scripts/verify-review-actor.ts against production.
           //
-          // VERIFIED, not assumed: PostgREST answers PGRST204 ("could not find
-          // the column in the schema cache") for an unknown column — it does
-          // NOT drop it silently. So nothing may write this field until the
-          // migration is applied; doing so breaks the admin approve button. The
-          // admin actions record the approver in review_note meanwhile.
+          // The signed-in admin who approved this brief. A CHECK constraint
+          // makes review_state='approved' with a NULL reviewed_by impossible to
+          // store, on INSERT and on UPDATE, so an approval always names
+          // someone. NULL stays valid for pending and rejected, which is why
+          // every pre-existing row remains valid.
           reviewed_by: string | null;
           // Phase 6 — 20260822_phase6_draft_assembly.sql. Links a brief to the
           // draft it produced. `assembled_content_id` is null for every brief

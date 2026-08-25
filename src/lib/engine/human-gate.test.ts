@@ -31,7 +31,15 @@ import { join } from "node:path";
  * assembly path end to end, and remove it afterwards. Allowed by name so the
  * exemption is explicit rather than a hole anyone can wander into.
  */
-const ALLOWED = ["verify-engine-assemble.ts", "verify-production-state.ts"];
+const ALLOWED = [
+  "verify-engine-assemble.ts",
+  "verify-production-state.ts",
+  // Exercises the CHECK constraint that refuses an approval with no actor.
+  // Proving that approved-without-reviewed_by is REFUSED requires attempting
+  // it, and proving approved-with-an-actor still works requires performing
+  // one. It removes every row it creates and asserts the count is unchanged.
+  "verify-review-actor.ts",
+];
 
 /** The write this test forbids, in either quote style. */
 const APPROVES = /review_state\s*:\s*["']approved["']/;

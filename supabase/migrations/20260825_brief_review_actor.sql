@@ -32,8 +32,27 @@
 -- this migration: it changes the write path for a live admin screen, and this
 -- one only adds a column and a constraint. Ship the audit first.
 --
--- NOT YET APPLIED. Run in production, verify, then move into
--- supabase/migrations/.
+-- APPLIED IN PRODUCTION 2026-08-25, and verified SEMANTICALLY rather than
+-- taken on trust — "Success. No rows returned." only says the SQL parsed.
+--
+-- scripts/verify-review-actor.ts exercises the behaviour against production and
+-- passes 11/11: the column exists and is writable; approved WITHOUT
+-- reviewed_by is refused by this named constraint, on INSERT and on UPDATE;
+-- approved WITH an actor is accepted; pending and rejected may still have NULL
+-- so every pre-existing row stays valid; the FK refuses an invented user id;
+-- and no existing approved brief lacks an actor.
+--
+-- WHAT THIS DOES NOT STOP, STATED PLAINLY
+-- ---------------------------------------
+-- An agent holding admin credentials can still write review_state='approved'
+-- with reviewed_by set to that admin's own id. The constraint cannot tell an
+-- admin clicking approve from a script using the admin's session.
+--
+-- What it changes is that the approval now NAMES someone. A machine approval
+-- is no longer indistinguishable from a human one — it is attributable, and
+-- an approval the owner does not recognise is visible as such. Detection, not
+-- prevention. Prevention would need a separate credential the engine does not
+-- hold, which is a larger change than this.
 
 alter table public.engine_briefs
   add column if not exists reviewed_by uuid references auth.users(id) on delete set null;
