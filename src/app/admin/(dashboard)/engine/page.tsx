@@ -14,6 +14,7 @@ import { BRIEF_QUALITY_LABELS, BRIEF_QUALITY_STATES } from "@/lib/engine/brief-q
 import { setBriefReviewState } from "./actions";
 import { EngineTabs, formatDateTime } from "./shared";
 import { RotationPanel } from "./rotation-panel";
+import { WorkPanel } from "./work-panel";
 
 // TODAY — the engine's front door.
 //
@@ -60,6 +61,7 @@ export default async function EngineTodayPage() {
 
       <EngineStatusLine health={health} />
       <Funnel queue={queue} />
+      <WorkPanel />
       <RotationPanel />
       <AttentionList queue={queue} />
     </div>
