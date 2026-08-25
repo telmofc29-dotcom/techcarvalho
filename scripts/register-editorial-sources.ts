@@ -77,10 +77,18 @@ async function main(): Promise<void> {
     const row = {
       organisation: s.organisation,
       url: s.feedUrl,
-      source_type: "trusted_editorial" as const,
+      // A vendor blog is a manufacturer newsroom, not editorial, and its trust
+      // level is what grants first-party single-source sufficiency. Getting
+      // this wrong in either direction breaks the evidence model.
+      source_type: (s.publisherType === "first_party"
+        ? "manufacturer_newsroom"
+        : "trusted_editorial") as "manufacturer_newsroom" | "trusted_editorial",
       categories: s.categories,
       // See the header: secondary is what keeps first-party authority honest.
-      trust_level: "secondary" as const,
+      // A vendor speaking about itself is genuinely primary.
+      trust_level: (s.publisherType === "first_party" ? "primary" : "secondary") as
+        | "primary"
+        | "secondary",
       is_active: true,
       discovery_permitted: true,
       media_republication_permitted: false,

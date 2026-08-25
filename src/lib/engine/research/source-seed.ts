@@ -303,6 +303,56 @@ export const SEED_SOURCES: readonly SeedSource[] = [
     verifiedItems: 113,
   },
 
+  // ---- 3D printing -------------------------------------------------------
+  //
+  // Added after the research engine returned INSUFFICIENT for every 3D-printing
+  // topic. The cause was not the engine: the category had exactly ONE source
+  // (Tom's Hardware's general feed), and the three dedicated outlets probed
+  // earlier all refused automated access. These four answered.
+  {
+    organisation: "Tom's Hardware 3D Printing",
+    domain: "tomshardware.com",
+    feedUrl: "https://www.tomshardware.com/feeds/tag/3d-printing",
+    publisherType: "editorial",
+    useTier: "B",
+    // Same owner as the main Tom's Hardware feed, so the two are ONE voice.
+    independenceGroup: "Future plc",
+    categories: ["3d-printing"],
+    verifiedItems: 50,
+  },
+  {
+    organisation: "3DPrint.com",
+    domain: "3dprint.com",
+    feedUrl: "https://3dprint.com/feed/",
+    publisherType: "editorial",
+    useTier: "B",
+    independenceGroup: "3DPrint.com",
+    categories: ["3d-printing"],
+    verifiedItems: 10,
+  },
+  {
+    organisation: "Prusa Research",
+    domain: "prusa3d.com",
+    feedUrl: "https://blog.prusa3d.com/feed/",
+    // A vendor writing about its own printers: authoritative for what Prusa
+    // announced, and for nothing else.
+    publisherType: "first_party",
+    useTier: "A",
+    independenceGroup: "Prusa Research",
+    categories: ["3d-printing"],
+    verifiedItems: 10,
+  },
+  {
+    organisation: "Bambu Lab",
+    domain: "bambulab.com",
+    feedUrl: "https://blog.bambulab.com/rss/",
+    publisherType: "first_party",
+    useTier: "A",
+    independenceGroup: "Bambu Lab",
+    categories: ["3d-printing"],
+    verifiedItems: 15,
+  },
+
   // ---- Robotics ----------------------------------------------------------
   {
     organisation: "IEEE Spectrum",
@@ -331,7 +381,9 @@ export const BLOCKED_SOURCES: readonly {
 }[] = [
   { organisation: "VideoCardz", feedUrl: "https://videocardz.com/feed", status: 403, note: "Refused automated access." },
   { organisation: "VGC", feedUrl: "https://www.videogameschronicle.com/feed/", status: 403, note: "Refused automated access." },
-  { organisation: "All3DP", feedUrl: "https://all3dp.com/feed/", status: 403, note: "Refused automated access." },
+  { organisation: "All3DP", feedUrl: "https://all3dp.com/feed/", status: 403, note: "Refused automated access; the /feed/rss/ variant refuses too." },
+  { organisation: "Fabbaloo", feedUrl: "https://www.fabbaloo.com/blog?format=rss", status: 403, note: "Refused automated access." },
+  { organisation: "Creality", feedUrl: "https://www.creality.com/blog?format=rss", status: 200, note: "Responded 200 but served no parseable feed items." },
   { organisation: "3D Printing Industry", feedUrl: "https://3dprintingindustry.com/feed/", status: 415, note: "Rejected the request media type." },
   { organisation: "FCC", feedUrl: "https://www.fcc.gov/news-events/rss", status: 403, note: "Refused automated access." },
   { organisation: "Ofcom", feedUrl: "https://www.ofcom.org.uk/rss/news", status: 404, note: "Feed URL no longer valid; needs a replacement." },
