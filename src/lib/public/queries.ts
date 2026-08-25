@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { logQueryError } from "@/lib/log/query-error";
+import { descendantScope } from "./taxonomy-tree";
 import { attachExcerpts } from "./excerpt";
 import { attachHeroImages } from "./hero-image";
 import { ROOT_LOCALE } from "@/lib/i18n/locales";
@@ -50,6 +51,61 @@ export const getCategorySeo = cache(async (categoryId: string) => {
   return data ?? null;
 });
 
+
+/**
+ * Every category id a page for `categoryId` should draw content from: itself,
+ * plus its descendants.
+ *
+ * WHY THIS EXISTS. taxonomy_categories has always had a parent_id column and
+ * nothing populated it, so every subject page matched category_id EXACTLY.
+ * With the hierarchy now set, an exact match would mean /cameras-photography
+ * showed nothing about lenses while /camera-lenses held the only lens article
+ * -- a parent that is emptier than its own child.
+ *
+ * Walking DOWN only is deliberate. A child must not inherit its parent's
+ * content, or /camera-lenses becomes a copy of /cameras-photography wearing a
+ * narrower name, which is worse than an empty page because it looks intended.
+ *
+ * Cached per request: a category page calls it several times.
+ */
+/** Every category as a tree node. Cached per request; used for breadcrumbs and scoping. */
+export const getAllCategoryNodes = cache(async () => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("taxonomy_categories")
+    .select("id, slug, name, parent_id, sort_order");
+  logQueryError("getAllCategoryNodes", error);
+  return (data ?? []).map((c) => ({
+    id: c.id,
+    slug: c.slug,
+    name: c.name,
+    parentId: c.parent_id,
+    sortOrder: c.sort_order,
+  }));
+});
+
+export const getCategoryScopeIds = cache(async (categoryId: string): Promise<string[]> => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("taxonomy_categories")
+    .select("id, slug, name, parent_id, sort_order");
+  logQueryError(`getCategoryScopeIds(${categoryId})`, error);
+  // A failed read degrades to the category itself: narrower than intended, but
+  // correct as far as it goes. Never wider -- guessing a scope would surface
+  // content on a page it does not belong to.
+  if (error || !data) return [categoryId];
+  return descendantScope(
+    categoryId,
+    data.map((c) => ({
+      id: c.id,
+      slug: c.slug,
+      name: c.name,
+      parentId: c.parent_id,
+      sortOrder: c.sort_order,
+    }))
+  );
+});
+
 // Whether a category hub has anything published behind it.
 //
 // PLANNED_CATEGORIES renders a route for all ten subject areas whether or not
@@ -59,17 +115,18 @@ export const getCategorySeo = cache(async (categoryId: string) => {
 // counts: no rows are transferred, just the totals.
 export const getCategoryPublishedCounts = cache(async (categoryId: string) => {
   const supabase = await createClient();
+  const scope = await getCategoryScopeIds(categoryId);
   const [{ count: productCount, error: productError }, { count: directContentCount, error: contentError }] =
     await Promise.all([
       supabase
         .from("products")
         .select("id", { count: "exact", head: true })
-        .eq("category_id", categoryId)
+        .in("category_id", scope)
         .eq("is_published", true),
       supabase
         .from("content_items")
         .select("id", { count: "exact", head: true })
-        .eq("category_id", categoryId)
+        .in("category_id", scope)
         .eq("locale", ROOT_LOCALE)
         .eq("status", "published")
         .lte("published_at", new Date().toISOString()),
@@ -105,10 +162,11 @@ export async function getSubcategories(categoryId: string) {
 
 export async function getPublishedProductsForCategory(categoryId: string) {
   const supabase = await createClient();
+  const scope = await getCategoryScopeIds(categoryId);
   const { data, error } = await supabase
     .from("products")
     .select("id, name, slug, summary, status")
-    .eq("category_id", categoryId)
+    .in("category_id", scope)
     .eq("is_published", true)
     .order("name");
   logQueryError(`getPublishedProductsForCategory(${categoryId})`, error);
@@ -121,10 +179,11 @@ export async function getPublishedProductsForCategory(categoryId: string) {
 // even as the catalogue grows.
 export async function getManufacturersForCategory(categoryId: string) {
   const supabase = await createClient();
+  const scope = await getCategoryScopeIds(categoryId);
   const { data: productRows, error: productsError } = await supabase
     .from("products")
     .select("manufacturer_id")
-    .eq("category_id", categoryId)
+    .in("category_id", scope)
     .eq("is_published", true);
   logQueryError(`getManufacturersForCategory(${categoryId}) products`, productsError);
 
@@ -147,17 +206,18 @@ export async function getManufacturersForCategory(categoryId: string) {
 // any product association at all).
 export async function getPublishedContentForCategory(categoryId: string) {
   const supabase = await createClient();
+  const scope = await getCategoryScopeIds(categoryId);
 
   const [{ data: directContent, error: directError }, { data: productsInCategory, error: productsError }] =
     await Promise.all([
       supabase
         .from("content_items")
         .select("id, title, slug, type, published_at")
-        .eq("category_id", categoryId)
+        .in("category_id", scope)
         .eq("locale", ROOT_LOCALE)
         .eq("status", "published")
         .lte("published_at", new Date().toISOString()),
-      supabase.from("products").select("id").eq("category_id", categoryId),
+      supabase.from("products").select("id").in("category_id", scope),
     ]);
   logQueryError(`getPublishedContentForCategory(${categoryId}) direct`, directError);
   logQueryError(`getPublishedContentForCategory(${categoryId}) products`, productsError);

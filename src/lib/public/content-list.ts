@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { logQueryError } from "@/lib/log/query-error";
+import { getCategoryScopeIds } from "./queries";
 import { attachExcerpts } from "./excerpt";
 import { attachHeroImages, type HeroImage } from "./hero-image";
 import type { ContentType } from "@/lib/types/database";
@@ -73,6 +74,7 @@ export type CategoryContentRow = {
 
 /** Every published article on a category hub, in render order. Unenriched — see enrichContentCards. */
 export async function getCategoryContentRows(categoryId: string): Promise<CategoryContentRow[]> {
+  const scope = await getCategoryScopeIds(categoryId);
   const supabase = await createClient();
   const now = new Date().toISOString();
 
@@ -81,11 +83,14 @@ export async function getCategoryContentRows(categoryId: string): Promise<Catego
       supabase
         .from("content_items")
         .select("id, title, slug, type, published_at")
-        .eq("category_id", categoryId)
+        // Scope, not exact match: a parent category aggregates its
+        // descendants, so /cameras-photography surfaces lens coverage. A child
+        // never inherits upward -- see descendantScope().
+        .in("category_id", scope)
         .eq("locale", ROOT_LOCALE)
         .eq("status", "published")
         .lte("published_at", now),
-      supabase.from("products").select("id").eq("category_id", categoryId),
+      supabase.from("products").select("id").in("category_id", scope),
     ]);
   logQueryError(`getCategoryContentRows(${categoryId}) direct`, directError);
   logQueryError(`getCategoryContentRows(${categoryId}) products`, productsError);

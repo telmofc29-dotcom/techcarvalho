@@ -2,6 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { logQueryError } from "@/lib/log/query-error";
 import { attachHeroImages, type HeroImage } from "./hero-image";
+import { getCategoryScopeIds } from "./queries";
 
 const PAGE_SIZE = 24;
 
@@ -119,10 +120,11 @@ export type HubProductRow = {
 /** Every published product in a category, in the hub's render order (by name). Unenriched. */
 export async function getCategoryProductRows(categoryId: string): Promise<HubProductRow[]> {
   const supabase = await createClient();
+  const scope = await getCategoryScopeIds(categoryId);
   const { data, error } = await supabase
     .from("products")
     .select("id, name, slug, summary, status")
-    .eq("category_id", categoryId)
+    .in("category_id", scope)
     .eq("is_published", true)
     .order("name");
   logQueryError(`getCategoryProductRows(${categoryId})`, error);

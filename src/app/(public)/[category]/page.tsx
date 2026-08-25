@@ -11,6 +11,7 @@ import {
   getCategoryPublishedCounts,
   getSubcategories,
   getManufacturersForCategory,
+  getAllCategoryNodes,
 } from "@/lib/public/queries";
 import { getCategoryContentRows, enrichContentCards } from "@/lib/public/content-list";
 import { getCategoryProductRows, enrichProductCards } from "@/lib/public/product-list";
@@ -19,6 +20,7 @@ import { itemListJsonLd, safeJsonLdString } from "@/lib/seo/jsonld";
 import { getTrendingContent } from "@/lib/public/trending";
 import { getCategoryHeroImage, categoryGradient } from "@/lib/public/category-hero";
 import { Breadcrumbs } from "@/components/public/breadcrumbs";
+import { breadcrumbTrail } from "@/lib/public/taxonomy-tree";
 import { mediaFit } from "@/lib/media/presentation";
 import { classifiable } from "@/lib/public/hero-image";
 import { ContentCard, ProductCard, SectionHeading } from "@/components/public/cards";
@@ -99,6 +101,7 @@ export async function generateMetadata({
   if (!planned && !dbCategory) notFound();
 
   const label = dbCategory?.name ?? planned?.label ?? slug;
+
   const [seo, counts, bannerImage, hub] = dbCategory
     ? await Promise.all([
         getCategorySeo(dbCategory.id),
@@ -161,6 +164,15 @@ export default async function CategoryPage({
   if (!planned && !dbCategory) notFound();
 
   const label = dbCategory?.name ?? planned?.label ?? slug;
+
+  // Ancestor trail, ending with this category. Built from
+  // taxonomy_categories.parent_id so a child names the subject it belongs to
+  // rather than presenting itself as a top-level topic. A category with no
+  // parent yields a single crumb, which is the previous behaviour exactly.
+  const categoryNodes = dbCategory ? await getAllCategoryNodes() : [];
+  const ancestorCrumbs = dbCategory
+    ? breadcrumbTrail(dbCategory.id, categoryNodes)
+    : [{ slug, name: label }];
 
   const [hub, subcategories, manufacturers, bannerImage] = dbCategory
     ? await Promise.all([
@@ -266,7 +278,16 @@ export default async function CategoryPage({
           />
         )}
         <div className="relative mx-auto max-w-6xl px-6 py-14 sm:py-20">
-          <Breadcrumbs items={[{ name: "Home", path: "/" }, { name: label, path: `/${slug}` }]} />
+          {/* Home > parent > this. Built from taxonomy_categories.parent_id, so a
+              child category names the subject it belongs to instead of
+              presenting itself as a top-level topic. Falls back to the flat
+              two-item trail when the category has no parent. */}
+          <Breadcrumbs
+            items={[
+              { name: "Home", path: "/" },
+              ...ancestorCrumbs.map((c) => ({ name: c.name, path: `/${c.slug}` })),
+            ]}
+          />
           <h1 className="font-display text-3xl sm:text-5xl font-bold tracking-tight text-zinc-900">{label}</h1>
           {(planned?.blurb || dbCategory?.description) && (
             <p className="mt-4 max-w-xl text-lg text-zinc-700">{planned?.blurb ?? dbCategory?.description}</p>
