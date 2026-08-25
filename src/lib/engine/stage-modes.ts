@@ -81,6 +81,11 @@ export const AUTOMATIC_CAPABILITY: Record<EngineStageName, string | null> = {
   // and a label is what this file exists to refuse.
   discovery: null,
   relevance: null,
+  // Measures which watched companies have developments we are not covering,
+  // and records them as opportunities. It creates no drafts and publishes
+  // nothing, so there is no human decision inside it for AUTOMATIC to take —
+  // the editorial judgement happens downstream, on the opportunities it files.
+  entity_coverage: null,
   research: null,
   search_intelligence: null,
   opportunities: null,
@@ -116,6 +121,10 @@ export const AUTOMATIC_CAPABILITY: Record<EngineStageName, string | null> = {
 export const AUTOMATIC_REFUSAL: Partial<Record<EngineStageName, string>> = {
   discovery: "Already fully automatic — there is no human decision inside this stage.",
   relevance: "Already fully automatic — there is no human decision inside this stage.",
+  entity_coverage:
+    "Already fully automatic — it measures which watched companies have developments we do not " +
+    "cover and files them as opportunities. It creates no drafts and publishes nothing, so there " +
+    "is no human decision inside it to hand over.",
   research:
     "Already fully automatic — it fetches and matches published sources. It attaches evidence, " +
     "never a conclusion, and the judgement about what the evidence supports stays downstream.",

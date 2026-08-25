@@ -64,9 +64,9 @@ export const PRIORITY_ENTITIES: readonly PriorityEntity[] = [
   { name: "Intel", tier: 1, aliases: ["intel", "core ultra", "xeon", "arc"], categories: ["computing"] },
   { name: "Canon", tier: 1, aliases: ["canon", "eos", "powershot"], categories: ["cameras-photography", "camera-lenses"] },
   { name: "Nikon", tier: 1, aliases: ["nikon", "nikkor", "coolpix"], categories: ["cameras-photography", "camera-lenses"] },
-  { name: "Sony", tier: 1, aliases: ["sony", "playstation", "dualsense", "bravia"], categories: ["cameras-photography", "gaming"] },
+  { name: "Sony", tier: 1, aliases: ["sony", "playstation", "ps5", "dualsense", "bravia", "alpha a7", "xperia"], categories: ["cameras-photography", "gaming"] },
   { name: "Nintendo", tier: 1, aliases: ["nintendo", "switch 2", "zelda", "mario"], categories: ["gaming"] },
-  { name: "Valve", tier: 1, aliases: ["valve", "steam deck", "steamos"], categories: ["gaming"] },
+  { name: "Valve", tier: 1, aliases: ["valve", "steam deck", "steamos", "steam machine", "half-life"], categories: ["gaming"] },
   { name: "DJI", tier: 1, aliases: ["dji", "mavic", "osmo", "avata"], categories: ["drones-fpv", "action-cameras"] },
   { name: "Tesla", tier: 1, aliases: ["tesla", "optimus"], categories: ["smart-home-robots"] },
   { name: "Bambu Lab", tier: 1, aliases: ["bambu lab", "bambulab", "x1 carbon", "ams"], categories: ["3d-printing"] },
@@ -75,32 +75,44 @@ export const PRIORITY_ENTITIES: readonly PriorityEntity[] = [
 
   // ---- Tier 2: regular meaningful developments ---------------------------
   { name: "Qualcomm", tier: 2, aliases: ["qualcomm", "snapdragon"], categories: ["smartphones", "computing"] },
-  { name: "ARM", tier: 2, aliases: ["arm holdings", "arm cortex"], categories: ["computing"] },
+  // "arm" alone cannot be an alias: it would match "robotic arm" in every
+  // robotics story and silently attribute them to the chip designer. These
+  // multi-word forms cover how the company actually appears in headlines
+  // ("Arm and UNICEF launch...", "Arm's next core") without that collision.
+  { name: "ARM", tier: 2, aliases: ["arm holdings", "arm cortex", "arm ltd", "armv9", "neoverse", "cortex-x", "arm and", "arm's", "arm announces", "arm unveils", "arm launches", "arm reveals", "arm-based", "arm architecture", "arm chip", "arm cpu"], categories: ["computing", "ai-hardware"] },
   { name: "ASUS", tier: 2, aliases: ["asus", "rog"], categories: ["computing", "networking"] },
   { name: "MSI", tier: 2, aliases: ["msi"], categories: ["computing"] },
   { name: "Gigabyte", tier: 2, aliases: ["gigabyte", "aorus"], categories: ["computing"] },
-  { name: "Corsair", tier: 2, aliases: ["corsair"], categories: ["computing"] },
-  { name: "Western Digital", tier: 2, aliases: ["western digital", "sandisk"], categories: ["computing"] },
-  { name: "Seagate", tier: 2, aliases: ["seagate"], categories: ["computing"] },
+  { name: "Corsair", tier: 2, aliases: ["corsair", "icue", "elgato", "vengeance"], categories: ["computing", "gaming"] },
+  { name: "Western Digital", tier: 2, aliases: ["western digital", "sandisk", "wd_black", "wd black", "ultrastar"], categories: ["computing"] },
+  { name: "Seagate", tier: 2, aliases: ["seagate", "ironwolf", "barracuda", "exos"], categories: ["computing"] },
   { name: "Fujifilm", tier: 2, aliases: ["fujifilm", "fujinon"], categories: ["cameras-photography"] },
   { name: "Panasonic", tier: 2, aliases: ["panasonic", "lumix"], categories: ["cameras-photography"] },
   { name: "Sigma", tier: 2, aliases: ["sigma"], categories: ["camera-lenses"] },
   { name: "Tamron", tier: 2, aliases: ["tamron"], categories: ["camera-lenses"] },
-  { name: "GoPro", tier: 2, aliases: ["gopro", "hero13"], categories: ["action-cameras"] },
-  { name: "Insta360", tier: 2, aliases: ["insta360"], categories: ["action-cameras"] },
+  { name: "GoPro", tier: 2, aliases: ["gopro", "hero13", "hero 13", "hero14", "max 2"], categories: ["action-cameras"] },
+  { name: "Insta360", tier: 2, aliases: ["insta360", "insta 360", "ace pro", "x5"], categories: ["action-cameras", "drones-fpv"] },
   { name: "Meta", tier: 2, aliases: ["meta platforms", "quest 3", "ray-ban meta"], categories: ["ai-hardware", "smart-home-robots"] },
+  // Added 2026-08-25. Named on the owner's watchlist but absent from this
+  // table, so their developments were never even measured as gaps.
+  { name: "Xiaomi", tier: 2, aliases: ["xiaomi", "redmi", "poco", "hyperos"], categories: ["smartphones"] },
+  { name: "OnePlus", tier: 2, aliases: ["oneplus", "oxygenos"], categories: ["smartphones"] },
+  { name: "Nothing", tier: 2, aliases: ["nothing phone", "nothing ear", "nothing os", "cmf by nothing"], categories: ["smartphones"] },
+  { name: "Dell", tier: 2, aliases: ["dell", "alienware", "xps laptop"], categories: ["computing"] },
+  { name: "HP", tier: 2, aliases: ["hp inc", "omen", "hp spectre", "hp envy"], categories: ["computing"] },
+  { name: "Lenovo", tier: 2, aliases: ["lenovo", "thinkpad", "legion go", "yoga laptop"], categories: ["computing"] },
   { name: "Anthropic", tier: 2, aliases: ["anthropic", "claude"], categories: ["ai-hardware"] },
   { name: "Boston Dynamics", tier: 2, aliases: ["boston dynamics", "atlas robot", "spot robot"], categories: ["smart-home-robots"] },
-  { name: "Figure", tier: 2, aliases: ["figure ai"], categories: ["smart-home-robots"] },
+  { name: "Figure", tier: 2, aliases: ["figure ai", "figure 03", "figure robot", "helix"], categories: ["smart-home-robots"] },
   { name: "Amazon", tier: 2, aliases: ["amazon devices", "alexa", "echo show", "kindle"], categories: ["smart-home-robots"] },
-  { name: "TP-Link", tier: 2, aliases: ["tp-link", "deco"], categories: ["networking"] },
-  { name: "Netgear", tier: 2, aliases: ["netgear", "orbi", "nighthawk"], categories: ["networking"] },
-  { name: "Ubiquiti", tier: 2, aliases: ["ubiquiti", "unifi"], categories: ["networking"] },
+  { name: "TP-Link", tier: 2, aliases: ["tp-link", "tplink", "deco", "omada", "tapo"], categories: ["networking", "computing"] },
+  { name: "Netgear", tier: 2, aliases: ["netgear", "orbi", "nighthawk"], categories: ["networking", "computing"] },
+  { name: "Ubiquiti", tier: 2, aliases: ["ubiquiti", "unifi", "ui.com", "amplifi"], categories: ["networking", "computing"] },
   { name: "Prusa", tier: 2, aliases: ["prusa"], categories: ["3d-printing"] },
   { name: "Anycubic", tier: 2, aliases: ["anycubic"], categories: ["3d-printing"] },
   { name: "Elegoo", tier: 2, aliases: ["elegoo", "neptune"], categories: ["3d-printing"] },
-  { name: "UltiMaker", tier: 2, aliases: ["ultimaker"], categories: ["3d-printing"] },
-  { name: "Autel", tier: 2, aliases: ["autel robotics"], categories: ["drones-fpv"] },
+  { name: "UltiMaker", tier: 2, aliases: ["ultimaker", "cura", "makerbot", "method xl"], categories: ["3d-printing"] },
+  { name: "Autel", tier: 2, aliases: ["autel robotics", "autel", "evo lite", "evo max"], categories: ["drones-fpv"] },
 ] as const;
 
 // ---------------------------------------------------------------------------
@@ -127,7 +139,9 @@ export const IMPORTANCE_LABELS: Record<EventImportance, string> = {
 const MAJOR_SIGNALS: readonly RegExp[] = [
   /\b(launch(es|ed)?|unveil(s|ed)?|announc(e|es|ed)|introduc(e|es|ed)|reveal(s|ed))\b/i,
   /\b(next[- ]gen(eration)?|new generation|flagship|successor)\b/i,
-  /\b(release date|now available|goes on sale|ships?)\b/i,
+  // "arrives" and "hits shelves" are how availability is usually phrased in a
+  // headline, and their absence classified a console launch as routine.
+  /\b(release date|now available|goes on sale|ships?|arrives?|hits shelves|out now)\b/i,
   /\b(discontinu(e|es|ed)|end of (life|support)|recall)\b/i,
   /\b(acquisition|acquires|merger)\b/i,
 ];
@@ -139,8 +153,45 @@ const NOTABLE_SIGNALS: readonly RegExp[] = [
   /\b(support|compatibility|adds?)\b/i,
 ];
 
+// A COMPANY'S NEWSROOM IS NOT ONLY PRODUCT NEWS.
+//
+// Registering first-party newsrooms made a company's own announcements
+// publishable on one source, which is correct. It also let in everything ELSE
+// those newsrooms publish. One run produced "Samsung Electronics Announces
+// Second Quarter 2026 Results", "Intel Announces Leadership Appointment" and
+// "Samsung Announces Addition of Louvre Collection to Samsung Art Store" as
+// technology drafts.
+//
+// These are real, corroborated announcements. They are simply not the kind of
+// development this publication covers, so they are classified ROUTINE: still
+// visible in reports, never drafted unattended.
+const CORPORATE_SIGNALS: readonly RegExp[] = [
+  /\b(quarterly|full[- ]year|first|second|third|fourth) (quarter|half)\b/i,
+  /\b(q[1-4] \d{4}|earnings|revenue|dividend|shareholder|stock offering|share buyback|fiscal year|financial results)\b/i,
+  /\b(appoints?|appointment|names? .{0,24}\b(ceo|cfo|cto|president)|board of directors|steps down|resigns)\b/i,
+  /\b(lawsuit|settlement|antitrust|files? suit|court ruling)\b/i,
+];
+
+// SUBJECTS OUTSIDE WHAT THIS PUBLICATION COVERS.
+//
+// Samsung and LG announce large-appliance and television products through the
+// same newsroom as their phones. A microwave is a genuine Samsung launch and
+// still has no place here.
+const OFF_TOPIC_SIGNALS: readonly RegExp[] = [
+  /\b(microwave|refrigerator|fridge|washing machine|dishwasher|oven|air conditioner|vacuum cleaner|dryer)\b/i,
+  /\b(art store|collection to|gallery|fashion|apparel|cookware|furniture)\b/i,
+];
+
 const TRIVIAL_SIGNALS: readonly RegExp[] = [
   /\b(deal|deals|discount|sale|save \$|% off|coupon|bundle)\b/i,
+  // Retail-promotion phrasing that names no price and so escaped the rule
+  // above. "Stock up on Seagate hard drives" became a draft: it is shopping
+  // advice, not a development, whatever company it names.
+  // "on sale" is deliberately NOT here. It means both "discounted" and
+  // "available to buy", and the launch rule below already claims the second
+  // sense with "goes on sale" — listing it as a promotion would reclassify
+  // genuine availability announcements as shopping posts.
+  /\b(stock up|lowest price|best price|price drop|prime day|black friday|cyber monday|shop |buy now|grab )\b/i,
   /\b(giveaway|sweepstake|contest)\b/i,
   /\b(rumou?r roundup|week in review|best of|top \d+)\b/i,
   /\b(sponsored|partnership|celebrates)\b/i,
@@ -172,6 +223,19 @@ export function classifyImportance(headline: string): {
   for (const p of TRIVIAL_SIGNALS) {
     if (p.test(headline)) {
       return { importance: "trivial", reason: "Reads as a deal, promotion or roundup rather than a development." };
+    }
+  }
+  for (const p of OFF_TOPIC_SIGNALS) {
+    if (p.test(headline)) {
+      return { importance: "trivial", reason: "A real announcement, but outside the subjects this publication covers." };
+    }
+  }
+  // Checked before MAJOR_SIGNALS: "Samsung Electronics Announces Second
+  // Quarter 2026 Results" contains "announces" and would otherwise read as a
+  // major product development.
+  for (const p of CORPORATE_SIGNALS) {
+    if (p.test(headline)) {
+      return { importance: "routine", reason: "Corporate, financial or personnel news rather than a product development." };
     }
   }
   for (const p of MAJOR_SIGNALS) {

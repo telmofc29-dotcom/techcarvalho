@@ -81,6 +81,19 @@ export const ENGINE_JOBS: readonly JobIdempotency[] = [
       "thing a pass does is spend HTTP fetches, which cost nothing and change no state.",
   },
   {
+    job: "engine_entity_coverage",
+    capability: "classification",
+    idempotent: true,
+    concurrencySafe: true,
+    mechanism: "idempotent_upsert",
+    note:
+      "engine_upsert_opportunity upserts on (subject_type, subject_key), and the key is derived " +
+      "from the headline rather than from a timestamp, so re-running the watchlist updates each " +
+      "development's row instead of adding a second copy. The stage creates no drafts and " +
+      "publishes nothing — its only write is the opportunity row, and draft assembly still has to " +
+      "clear the corroboration model before anything is built from it.",
+  },
+  {
     job: "engine_spotlight",
     capability: "maintenance",
     idempotent: true,

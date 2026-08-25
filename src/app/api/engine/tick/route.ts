@@ -7,6 +7,7 @@ import { STAGE_JOB_NAMES, ENGINE_STAGE_NAMES, type EngineStageName } from "@/lib
 import { resolveAllStageModes, tickShouldRun } from "@/lib/engine/stage-modes";
 import { runDiscovery } from "@/lib/engine/jobs/discovery";
 import { runRelevance } from "@/lib/engine/jobs/relevance-job";
+import { runEntityCoverage } from "@/lib/engine/jobs/entity-coverage-job";
 import { runResearch } from "@/lib/engine/jobs/research-job";
 import { runBriefGeneration } from "@/lib/engine/jobs/brief-job";
 import { runOpportunityScoring } from "@/lib/engine/jobs/opportunity-job";
@@ -63,6 +64,14 @@ const JOB = "engine_tick";
 const STAGES: readonly (readonly [EngineStageName, (c: EngineClient) => Promise<StageResult>])[] = [
   ["discovery", runDiscovery],
   ["relevance", runRelevance],
+  // WATCHLIST COVERAGE. Runs after relevance so it can see what this pass
+  // already judged, and before research so the gaps it finds are researched in
+  // the same tick rather than a full cycle later.
+  //
+  // This is what stops a Samsung or NVIDIA launch depending on someone
+  // noticing it: discovery reports what the feeds contain, and this asks, per
+  // watched company, what is being said that we are NOT covering.
+  ["entity_coverage", runEntityCoverage],
   // RESEARCH. Runs immediately after relevance so it only spends fetches on
   // discoveries already judged worth covering, and BEFORE briefs so a brief is
   // built from whatever corroboration research found rather than from the

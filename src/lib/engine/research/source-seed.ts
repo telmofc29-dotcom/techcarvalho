@@ -364,6 +364,335 @@ export const SEED_SOURCES: readonly SeedSource[] = [
     categories: ["smart-home-robots", "ai-hardware", "networking"],
     verifiedItems: 30,
   },
+
+  // =========================================================================
+  // Added 2026-08-25, all probed live before being written down.
+  //
+  // A coverage-health audit found ten watched companies returning ZERO corpus
+  // items. The cause was not that nothing was happening at them — it was that
+  // no registered feed covered their subject at all. Two categories the
+  // watchlist actively uses, `drones-fpv` and `action-cameras`, had NO tagged
+  // source whatsoever, which is why tier 1 DJI surfaced four items and Autel
+  // surfaced none. Storage, networking hardware and semiconductors had no
+  // specialist source either.
+  //
+  // First-party newsrooms are the most valuable addition here. They are the
+  // only `assertable` claim class in the corroboration model, so a launch can
+  // be reported as confirmed rather than as somebody's account of it.
+  // =========================================================================
+
+  // ---- Storage -----------------------------------------------------------
+  {
+    organisation: "Blocks & Files",
+    domain: "blocksandfiles.com",
+    feedUrl: "https://blocksandfiles.com/feed/",
+    publisherType: "editorial",
+    useTier: "B",
+    independenceGroup: "Blocks & Files",
+    categories: ["computing"],
+    verifiedItems: 70,
+  },
+  {
+    organisation: "StorageReview",
+    domain: "storagereview.com",
+    feedUrl: "https://www.storagereview.com/feed",
+    publisherType: "editorial",
+    useTier: "C",
+    independenceGroup: "StorageReview",
+    categories: ["computing"],
+    verifiedItems: 30,
+  },
+  {
+    organisation: "Western Digital",
+    domain: "westerndigital.com",
+    feedUrl: "https://blog.westerndigital.com/feed/",
+    publisherType: "first_party",
+    useTier: "A",
+    independenceGroup: "Western Digital",
+    categories: ["computing"],
+    verifiedItems: 10,
+  },
+
+  // ---- Components and semiconductors -------------------------------------
+  {
+    organisation: "KitGuru",
+    domain: "kitguru.net",
+    feedUrl: "https://www.kitguru.net/feed/",
+    publisherType: "editorial",
+    useTier: "C",
+    independenceGroup: "KitGuru",
+    categories: ["computing", "gaming"],
+    verifiedItems: 30,
+  },
+  {
+    organisation: "EE Times",
+    domain: "eetimes.com",
+    feedUrl: "https://www.eetimes.com/feed/",
+    publisherType: "editorial",
+    useTier: "B",
+    independenceGroup: "AspenCore",
+    categories: ["computing", "ai-hardware"],
+    verifiedItems: 10,
+  },
+  {
+    organisation: "Arm",
+    domain: "arm.com",
+    feedUrl: "https://newsroom.arm.com/rss",
+    publisherType: "first_party",
+    useTier: "A",
+    independenceGroup: "Arm",
+    categories: ["computing", "ai-hardware"],
+    verifiedItems: 6,
+  },
+  {
+    organisation: "Intel Newsroom",
+    domain: "intel.com",
+    feedUrl: "https://newsroom.intel.com/feed",
+    publisherType: "first_party",
+    useTier: "A",
+    independenceGroup: "Intel",
+    categories: ["computing", "ai-hardware"],
+    verifiedItems: 10,
+  },
+  {
+    organisation: "Lenovo",
+    domain: "lenovo.com",
+    feedUrl: "https://news.lenovo.com/feed/",
+    publisherType: "first_party",
+    useTier: "A",
+    independenceGroup: "Lenovo",
+    categories: ["computing"],
+    verifiedItems: 42,
+  },
+
+  // ---- Networking and infrastructure -------------------------------------
+  {
+    organisation: "ServeTheHome",
+    domain: "servethehome.com",
+    feedUrl: "https://www.servethehome.com/feed/",
+    publisherType: "editorial",
+    useTier: "B",
+    independenceGroup: "ServeTheHome",
+    categories: ["networking", "computing"],
+    verifiedItems: 6,
+  },
+
+  // ---- Drones and action cameras -----------------------------------------
+  //
+  // Both categories previously had zero sources despite the watchlist naming
+  // them. DroneDJ shares an owner with 9to5Mac and 9to5Google, so the three
+  // must never be counted as independent corroboration of one another.
+  {
+    organisation: "DroneDJ",
+    domain: "dronedj.com",
+    feedUrl: "https://dronedj.com/feed/",
+    publisherType: "editorial",
+    useTier: "C",
+    independenceGroup: "9to5 Network",
+    categories: ["drones-fpv", "action-cameras"],
+    verifiedItems: 25,
+  },
+  {
+    organisation: "DroneLife",
+    domain: "dronelife.com",
+    feedUrl: "https://dronelife.com/feed/",
+    publisherType: "editorial",
+    useTier: "C",
+    independenceGroup: "DroneLife",
+    categories: ["drones-fpv"],
+    verifiedItems: 10,
+  },
+
+  // ---- Robotics ----------------------------------------------------------
+  {
+    organisation: "The Robot Report",
+    domain: "therobotreport.com",
+    feedUrl: "https://www.therobotreport.com/feed/",
+    publisherType: "editorial",
+    useTier: "B",
+    independenceGroup: "WTWH Media",
+    categories: ["smart-home-robots", "ai-hardware"],
+    verifiedItems: 15,
+  },
+
+  // ---- First-party newsrooms ---------------------------------------------
+  {
+    organisation: "Apple Developer News",
+    domain: "apple.com",
+    feedUrl: "https://developer.apple.com/news/rss/news.rss",
+    publisherType: "first_party",
+    useTier: "A",
+    independenceGroup: "Apple",
+    categories: ["smartphones", "computing"],
+    verifiedItems: 142,
+  },
+  {
+    organisation: "Samsung Newsroom",
+    domain: "samsung.com",
+    feedUrl: "https://news.samsung.com/global/feed",
+    publisherType: "first_party",
+    useTier: "A",
+    independenceGroup: "Samsung",
+    categories: ["smartphones", "computing"],
+    verifiedItems: 50,
+  },
+  {
+    organisation: "Google Blog",
+    domain: "blog.google",
+    feedUrl: "https://blog.google/rss/",
+    publisherType: "first_party",
+    useTier: "A",
+    independenceGroup: "Google",
+    categories: ["smartphones", "ai-hardware", "computing"],
+    verifiedItems: 20,
+  },
+  {
+    organisation: "NVIDIA Blog",
+    domain: "nvidia.com",
+    feedUrl: "https://blogs.nvidia.com/feed/",
+    publisherType: "first_party",
+    useTier: "A",
+    independenceGroup: "NVIDIA",
+    categories: ["computing", "ai-hardware", "gaming"],
+    verifiedItems: 18,
+  },
+  {
+    organisation: "Meta Newsroom",
+    domain: "fb.com",
+    feedUrl: "https://about.fb.com/news/feed/",
+    publisherType: "first_party",
+    useTier: "A",
+    independenceGroup: "Meta",
+    categories: ["ai-hardware", "smart-home-robots"],
+    verifiedItems: 10,
+  },
+
+  // ---- First-party gaming ------------------------------------------------
+  {
+    organisation: "PlayStation Blog",
+    domain: "playstation.com",
+    feedUrl: "https://blog.playstation.com/feed/",
+    publisherType: "first_party",
+    useTier: "A",
+    independenceGroup: "Sony",
+    categories: ["gaming"],
+    verifiedItems: 10,
+  },
+  {
+    organisation: "Xbox Wire",
+    domain: "xbox.com",
+    feedUrl: "https://news.xbox.com/en-us/feed/",
+    publisherType: "first_party",
+    useTier: "A",
+    independenceGroup: "Microsoft",
+    categories: ["gaming"],
+    verifiedItems: 10,
+  },
+  {
+    organisation: "Steam News",
+    domain: "steampowered.com",
+    feedUrl: "https://store.steampowered.com/feeds/news.xml",
+    publisherType: "first_party",
+    useTier: "A",
+    independenceGroup: "Valve",
+    categories: ["gaming"],
+    verifiedItems: 21,
+  },
+
+  // ---- Additional editorial breadth --------------------------------------
+  //
+  // XDA shares an owner with Android Police, and 9to5Google with 9to5Mac and
+  // DroneDJ. Registered for reach, grouped so they never inflate independence.
+  {
+    organisation: "XDA Developers",
+    domain: "xda-developers.com",
+    feedUrl: "https://www.xda-developers.com/feed/",
+    publisherType: "editorial",
+    useTier: "C",
+    independenceGroup: "Valnet",
+    categories: ["smartphones", "computing"],
+    verifiedItems: 10,
+  },
+  {
+    organisation: "9to5Google",
+    domain: "9to5google.com",
+    feedUrl: "https://9to5google.com/feed/",
+    publisherType: "editorial",
+    useTier: "C",
+    independenceGroup: "9to5 Network",
+    categories: ["smartphones", "ai-hardware"],
+    verifiedItems: 100,
+  },
+  {
+    organisation: "DPReview",
+    domain: "dpreview.com",
+    feedUrl: "https://www.dpreview.com/feeds/news.xml",
+    publisherType: "editorial",
+    useTier: "B",
+    independenceGroup: "DPReview",
+    categories: ["cameras-photography", "camera-lenses"],
+    verifiedItems: 30,
+  },
+  {
+    organisation: "Hackaday",
+    domain: "hackaday.com",
+    feedUrl: "https://hackaday.com/blog/feed/",
+    publisherType: "editorial",
+    useTier: "C",
+    independenceGroup: "Supplyframe",
+    categories: ["3d-printing", "computing"],
+    verifiedItems: 7,
+  },
+
+  // ---- 3D printing manufacturers -----------------------------------------
+  {
+    organisation: "Anycubic",
+    domain: "anycubic.com",
+    feedUrl: "https://www.anycubic.com/blogs/news.atom",
+    publisherType: "first_party",
+    useTier: "A",
+    independenceGroup: "Anycubic",
+    categories: ["3d-printing"],
+    verifiedItems: 30,
+  },
+  {
+    organisation: "Elegoo",
+    domain: "elegoo.com",
+    feedUrl: "https://www.elegoo.com/blogs/news.atom",
+    publisherType: "first_party",
+    useTier: "A",
+    independenceGroup: "Elegoo",
+    categories: ["3d-printing"],
+    verifiedItems: 30,
+  },
+] as const;
+
+/**
+ * Feeds that respond but have stopped publishing.
+ *
+ * A dead feed is worse than a missing one: it answers 200, contributes zero
+ * recent items, and makes a coverage gap look like an absence of news. These
+ * are deliberately NOT registered, and are listed so nobody re-adds them
+ * believing they work.
+ */
+export const STALE_SOURCES: readonly {
+  organisation: string;
+  feedUrl: string;
+  newestItem: string;
+  note: string;
+}[] = [
+  {
+    organisation: "Microsoft News",
+    feedUrl: "https://news.microsoft.com/feed/",
+    newestItem: "2025-05-07",
+    note: "Responds 200 with 10 items, none newer than May 2025. Xbox Wire covers Microsoft's gaming announcements instead.",
+  },
+  {
+    organisation: "SmallNetBuilder",
+    feedUrl: "https://www.smallnetbuilder.com/feed/",
+    newestItem: "2023-09-05",
+    note: "Networking specialist, but publishing stopped in 2023. ServeTheHome registered in its place.",
+  },
 ] as const;
 
 /**
@@ -390,6 +719,27 @@ export const BLOCKED_SOURCES: readonly {
   { organisation: "Wi-Fi Alliance", feedUrl: "https://www.wi-fi.org/news-events/newsroom/rss", status: 404, note: "Feed URL no longer valid; needs a replacement." },
   { organisation: "Photography Blog", feedUrl: "https://www.photographyblog.com/feed", status: 404, note: "Feed URL no longer valid." },
   { organisation: "Notebookcheck", feedUrl: "https://www.notebookcheck.net/News.152.0.html?type=9", status: 200, note: "Responded 200 but contained no parseable feed items." },
+
+  // ---- Probed 2026-08-25 while closing the ten zero-coverage entities -----
+  //
+  // Corsair, Netgear, TP-Link, Ubiquiti and Seagate have NO usable first-party
+  // feed between them. Those five are now covered only through editorial
+  // sources, which is a real limitation: their own announcements reach this
+  // system second-hand or not at all.
+  { organisation: "The Register", feedUrl: "https://www.theregister.com/headlines.atom", status: 403, note: "Refused automated access; section feeds refuse too." },
+  { organisation: "Network World", feedUrl: "https://www.networkworld.com/index.rss", status: 404, note: "Feed URL no longer valid." },
+  { organisation: "Guru3D", feedUrl: "https://www.guru3d.com/rss/news", status: 404, note: "Feed URL no longer valid." },
+  { organisation: "Ubiquiti", feedUrl: "https://blog.ui.com/feed/", status: 200, note: "Responded 200 but served no parseable feed items. No first-party feed found." },
+  { organisation: "Seagate", feedUrl: "https://blog.seagate.com/feed/", status: 429, note: "Rate-limited on every attempt. Not a refusal in principle — worth retrying later." },
+  { organisation: "Netgear", feedUrl: "https://www.netgear.com/about/press-releases/feed/", status: 404, note: "No press feed found at the documented path." },
+  { organisation: "TP-Link", feedUrl: "https://www.tp-link.com/us/press/rss/", status: 404, note: "No press feed found." },
+  { organisation: "Corsair", feedUrl: "https://www.corsair.com/newsroom/rss", status: 403, note: "Refused automated access." },
+  { organisation: "AMD Newsroom", feedUrl: "https://www.amd.com/en/newsroom/rss.xml", status: 0, note: "Connection failed; no feed served at this path." },
+  { organisation: "Qualcomm", feedUrl: "https://www.qualcomm.com/news/releases.rss", status: 404, note: "Feed URL no longer valid." },
+  { organisation: "DJI", feedUrl: "https://blog.dji.com/feed", status: 0, note: "Connection failed. DroneDJ registered as the editorial route to DJI news." },
+  { organisation: "Figure", feedUrl: "https://www.figure.ai/news/rss.xml", status: 404, note: "No feed. The Robot Report registered as the editorial route." },
+  { organisation: "UltiMaker", feedUrl: "https://ultimaker.com/blog/feed/", status: 200, note: "Responded 200 but served no parseable feed items." },
+  { organisation: "Apple Newsroom", feedUrl: "https://www.apple.com/newsroom/rss/newsroom.rss", status: 404, note: "Retired. developer.apple.com/news/rss/news.rss is registered instead." },
 ] as const;
 
 /** Distinct independent voices available, which is the number that matters. */

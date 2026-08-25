@@ -24,20 +24,19 @@
 
 import { loadEnvLocal, createAdminClient } from "./_shared.ts";
 import { buildCorpus } from "../src/lib/engine/research/feed-index.ts";
-import { researchDiscovery } from "../src/lib/engine/research/research-pipeline.ts";
+import { researchDiscovery, subjectNoun } from "../src/lib/engine/research/research-pipeline.ts";
 import { fetchArticle } from "../src/lib/engine/research/article-fetch.ts";
 import { subjectDomainsForText } from "../src/lib/engine/research/entity-model.ts";
 import { assembleDraft, proposeSeo } from "../src/lib/engine/draft-assembly.ts";
 import { proposeSlug } from "../src/lib/engine/entity-resolution.ts";
 import { decideCoverage, consolidateOpportunities, type ExistingPiece } from "../src/lib/engine/coverage-decision.ts";
+import { assessSubject } from "../src/lib/engine/subject-quality.ts";
+import { assessCorroboration } from "../src/lib/engine/corroboration.ts";
 import {
   PRIORITY_ENTITIES, assessPriority, classifyImportance, TIER_LABELS,
   type PriorityEntity,
 } from "../src/lib/engine/priority-entities.ts";
 import { titleSimilarity } from "../src/lib/engine/dedupe.ts";
-
-/** Independent origins required before an unattended run creates anything. */
-const MIN_ORIGINS = 2;
 
 type Gap = {
   entity: string;
@@ -257,9 +256,33 @@ async function main(): Promise<void> {
   let created = 0;
   const byCat = new Map<string, number>();
 
-  for (const gap of uncovered.slice(0, 30)) {
+  // SPREAD THE RUN ACROSS THE WATCHLIST.
+  //
+  // Gaps are processed strongest-first, and Apple alone accounts for 32 of
+  // them. Without a cap one company consumes the entire run: the previous pass
+  // produced seven drafts, all Apple, all smartphones, while 3D printing and
+  // networking gaps sat untouched at the bottom of the same list.
+  //
+  // These caps do not lower the evidence bar. A capped entity's remaining gaps
+  // stay in the report and are picked up by the next run.
+  const MAX_PER_ENTITY = 3;
+  const MAX_PER_CATEGORY = 6;
+  const perEntityCreated = new Map<string, number>();
+
+  for (const gap of uncovered.slice(0, 90)) {
     const entity = PRIORITY_ENTITIES.find((e) => e.name === gap.entity)!;
     const category = entity.categories[0];
+
+    // A subject that cannot be a headline must never reach research. Checking
+    // this only in queue triage meant the same broken subject was removed and
+    // then recreated by the very next scan.
+    const quality = assessSubject(subjectNoun(gap.headline, null));
+    if (!quality.usable) {
+      console.log(`  SKIP (${quality.flaw})  ${gap.headline.slice(0, 50)}`);
+      continue;
+    }
+    if ((perEntityCreated.get(gap.entity) ?? 0) >= MAX_PER_ENTITY) continue;
+    if ((byCat.get(category) ?? 0) >= MAX_PER_CATEGORY) continue;
     if (!corpusCache.has(category)) corpusCache.set(category, await buildCorpus(category));
     const corpus = corpusCache.get(category)!;
 
@@ -292,8 +315,40 @@ async function main(): Promise<void> {
         console.log(`  ${verdict.decision.padEnd(16)} ${gap.headline.slice(0, 56)}`);
         continue;
       }
-      if (origins < MIN_ORIGINS) {
-        console.log(`  HELD (${origins}org)      ${gap.headline.slice(0, 56)}`);
+      // USE THE ENGINE'S OWN CORROBORATION RULE, NOT A FLAT NUMBER.
+      //
+      // `MIN_ORIGINS = 2` was a blanket threshold that contradicted the
+      // corroboration model it sits on top of. That model is claim-class
+      // aware: a company announcing its own product needs ONE first-party
+      // source, a third-party report needs two, and a claim about an
+      // unreleased product from anyone but the maker needs three.
+      //
+      // The flat 2 held every 3D-printing story in the corpus — including
+      // "Bambu Lab launches PLA Pure filament" published by Bambu Lab, which
+      // is the single clearest first-party announcement there is. It also
+      // silently ACCEPTED two-source claims about unreleased products that
+      // the real rule requires three for. Deferring to the model is stricter
+      // where it matters and correct where the flat number was simply wrong.
+      const evidenceUrls = result.matches
+        .map((m) => m.item.link)
+        .filter((l): l is string => !!l);
+      const corroboration = assessCorroboration({
+        sourceUrls: evidenceUrls,
+        subjectDomains: subjectDomainsForText(gap.headline),
+        // The research stage's framing maps onto the claim status the
+        // corroboration model expects. "rumoured" must stay a rumour here:
+        // downgrading it would let a leak through on a single source with the
+        // confidence of a report.
+        claimStatus:
+          result.decision.framing === "rumoured" ? "rumour"
+            : result.decision.framing === "confirmed" ? "confirmed_primary"
+              : "reported_secondary",
+        aboutUnreleasedProduct: result.decision.framing === "rumoured",
+      });
+      if (!corroboration.sufficient) {
+        console.log(
+          `  HELD (${corroboration.independentPublishers}/${corroboration.required} ${corroboration.claimClass})  ${gap.headline.slice(0, 44)}`
+        );
         continue;
       }
 
@@ -359,6 +414,7 @@ async function main(): Promise<void> {
       if (typeof out === "string" && /^[0-9a-f-]{36}$/i.test(out)) {
         created++;
         byCat.set(category, (byCat.get(category) ?? 0) + 1);
+        perEntityCreated.set(gap.entity, (perEntityCreated.get(gap.entity) ?? 0) + 1);
         const catId = catIdBySlug.get(category);
         if (catId) await db.from("content_items").update({ category_id: catId }).eq("id", out);
         existing.push({ id: out, title: gap.headline, slug, status: "draft", categorySlug: category, publishedAt: null });

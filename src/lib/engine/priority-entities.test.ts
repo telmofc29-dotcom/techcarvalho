@@ -202,3 +202,45 @@ test("another outlet's review is not a development", () => {
 test("a launch is still coverable even when reviews exist", () => {
   assert.equal(classifyImportance("Elegoo launches the Centauri 2 Combo").importance, "major");
 });
+
+test("retail promotion is not a development even without a price", () => {
+  // "Stock up on Seagate hard drives" was drafted as a Seagate development.
+  for (const h of [
+    "Stock up on Seagate hard drives",
+    "The Insta360 Ace Pro 2 just hit its lowest price this year",
+    "Shop the best Prime Day monitor deals",
+  ]) {
+    assert.equal(classifyImportance(h).importance, "trivial", h);
+  }
+});
+
+test("corporate and financial announcements are routine, not developments", () => {
+  // Registering first-party newsrooms let these through as technology drafts.
+  for (const h of [
+    "Samsung Electronics Announces Second Quarter 2026 Results",
+    "Intel Announces Leadership Appointment to Strengthen Customer Focus",
+    "Intel Announces Proposed $15 Billion Common Stock Offering",
+  ]) {
+    assert.equal(classifyImportance(h).importance, "routine", h);
+  }
+});
+
+test("a real announcement outside our subjects is not drafted", () => {
+  for (const h of [
+    "Samsung Introduces New Over-the-Range Microwave With DualVent",
+    "Samsung Announces Addition of Louvre Collection to Samsung Art Store",
+  ]) {
+    assert.equal(classifyImportance(h).importance, "trivial", h);
+  }
+});
+
+test("product launches still read as major after the corporate filters", () => {
+  // The filters must not swallow the announcements they sit next to.
+  for (const h of [
+    "Apple Announces New Mac Studio With M5 Ultra Chip",
+    "Elegoo Launches Fiber-Reinforced Filament Series",
+    "Xbox Series X25 Limited Edition Console Arrives",
+  ]) {
+    assert.equal(classifyImportance(h).importance, "major", h);
+  }
+});

@@ -202,6 +202,70 @@ export const ORGANISATIONS: readonly Organisation[] = [
     aliases: ["amazon devices", "echo show", "alexa", "kindle"],
     categories: ["smart-home-robots"],
   },
+
+  // =========================================================================
+  // Added 2026-08-25 — companies the watchlist names but this registry did not.
+  //
+  // THIS GAP HAD A REAL COST. An organisation missing here has no known
+  // domains, so `isFirstParty` can never be true for it, so its OWN
+  // announcement is classified `third_party_report` and required two
+  // independent sources instead of one.
+  //
+  // That is why every 3D-printing story was held: "Elegoo Launches Nexprint",
+  // published by Elegoo on elegoo.com, was treated as somebody's report about
+  // Elegoo. The evidence bar was never the problem — the engine simply could
+  // not tell that the maker was the one talking.
+  //
+  // Domains are taken from each company's own verified feed, never guessed.
+  // =========================================================================
+
+  // ---- 3D printing -------------------------------------------------------
+  { name: "Bambu Lab", domains: ["bambulab.com"], aliases: ["bambu lab", "bambulab", "x1 carbon", "p1s", "ams"], categories: ["3d-printing"] },
+  { name: "Prusa Research", domains: ["prusa3d.com", "prusaresearch.com"], aliases: ["prusa", "prusa research", "core one", "prusa xl"], categories: ["3d-printing"] },
+  { name: "Elegoo", domains: ["elegoo.com"], aliases: ["elegoo", "neptune", "centauri", "saturn"], categories: ["3d-printing"] },
+  { name: "Anycubic", domains: ["anycubic.com"], aliases: ["anycubic", "kobra", "photon"], categories: ["3d-printing"] },
+  { name: "Creality", domains: ["creality.com"], aliases: ["creality", "ender", "k1 max"], categories: ["3d-printing"] },
+  { name: "UltiMaker", domains: ["ultimaker.com"], aliases: ["ultimaker", "cura", "makerbot"], categories: ["3d-printing"] },
+
+  // ---- Storage and components --------------------------------------------
+  { name: "Seagate", domains: ["seagate.com"], aliases: ["seagate", "ironwolf", "barracuda", "exos"], categories: ["computing"] },
+  { name: "Western Digital", domains: ["westerndigital.com", "sandisk.com"], aliases: ["western digital", "sandisk", "wd black", "ultrastar"], categories: ["computing"] },
+  { name: "Corsair", domains: ["corsair.com", "elgato.com"], aliases: ["corsair", "icue", "elgato", "vengeance"], categories: ["computing"] },
+  { name: "Arm", domains: ["arm.com"], aliases: ["arm holdings", "arm cortex", "armv9", "neoverse", "cortex-x"], categories: ["computing", "ai-hardware"] },
+
+  // ---- Computers ---------------------------------------------------------
+  { name: "Lenovo", domains: ["lenovo.com"], aliases: ["lenovo", "thinkpad", "legion go", "yoga"], categories: ["computing"] },
+  { name: "Dell", domains: ["dell.com"], aliases: ["dell", "alienware"], categories: ["computing"] },
+  { name: "HP", domains: ["hp.com"], aliases: ["hp inc", "omen", "hp spectre"], categories: ["computing"] },
+  { name: "ASUS", domains: ["asus.com"], aliases: ["asus", "rog", "zenbook"], categories: ["computing", "networking"] },
+  { name: "MSI", domains: ["msi.com"], aliases: ["msi"], categories: ["computing"] },
+  { name: "Gigabyte", domains: ["gigabyte.com"], aliases: ["gigabyte", "aorus"], categories: ["computing"] },
+
+  // ---- Networking --------------------------------------------------------
+  { name: "Netgear", domains: ["netgear.com"], aliases: ["netgear", "orbi", "nighthawk"], categories: ["networking"] },
+  { name: "Ubiquiti", domains: ["ui.com", "ubnt.com"], aliases: ["ubiquiti", "unifi", "amplifi"], categories: ["networking"] },
+
+  // ---- Phones ------------------------------------------------------------
+  { name: "Xiaomi", domains: ["mi.com", "xiaomi.com"], aliases: ["xiaomi", "redmi", "poco", "hyperos"], categories: ["smartphones"] },
+  { name: "OnePlus", domains: ["oneplus.com"], aliases: ["oneplus", "oxygenos"], categories: ["smartphones"] },
+  { name: "Nothing", domains: ["nothing.tech"], aliases: ["nothing phone", "nothing ear", "nothing os"], categories: ["smartphones"] },
+
+  // ---- Cameras, drones, robotics -----------------------------------------
+  { name: "Insta360", domains: ["insta360.com"], aliases: ["insta360", "ace pro"], categories: ["action-cameras", "drones-fpv"] },
+  { name: "Autel Robotics", domains: ["autelrobotics.com"], aliases: ["autel robotics", "evo lite", "evo max"], categories: ["drones-fpv"] },
+  { name: "Figure", domains: ["figure.ai"], aliases: ["figure ai", "figure 03"], categories: ["smart-home-robots"] },
+  { name: "Fujifilm", domains: ["fujifilm.com"], aliases: ["fujifilm", "fujinon", "instax"], categories: ["cameras-photography"] },
+  { name: "Panasonic", domains: ["panasonic.com"], aliases: ["panasonic", "lumix"], categories: ["cameras-photography"] },
+  { name: "Sigma", domains: ["sigma-global.com"], aliases: ["sigma corporation", "sigma art", "sigma"], categories: ["camera-lenses"] },
+  { name: "Tamron", domains: ["tamron.com"], aliases: ["tamron"], categories: ["camera-lenses"] },
+  { name: "Boston Dynamics", domains: ["bostondynamics.com"], aliases: ["boston dynamics", "atlas robot", "spot robot"], categories: ["smart-home-robots"] },
+
+  // ---- Platforms ---------------------------------------------------------
+  { name: "Valve", domains: ["valvesoftware.com", "steampowered.com"], aliases: ["valve", "steam deck", "steamos"], categories: ["gaming"] },
+  { name: "Meta", domains: ["meta.com", "fb.com"], aliases: ["meta platforms", "quest 3", "ray-ban meta"], categories: ["ai-hardware", "smart-home-robots"] },
+  { name: "OpenAI", domains: ["openai.com"], aliases: ["openai", "chatgpt", "sora"], categories: ["ai-hardware"] },
+  { name: "Anthropic", domains: ["anthropic.com"], aliases: ["anthropic", "claude"], categories: ["ai-hardware"] },
+  { name: "Tesla", domains: ["tesla.com"], aliases: ["tesla", "optimus"], categories: ["smart-home-robots"] },
 ] as const;
 
 export type SubjectMatch = {

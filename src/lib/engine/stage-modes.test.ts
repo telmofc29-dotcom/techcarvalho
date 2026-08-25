@@ -209,7 +209,12 @@ test("the SQL constraint's stage list matches ENGINE_STAGE_NAMES exactly", async
   // is where the function currently lives. When it is applied and moved, this
   // path moves with it.
   const { readFileSync, existsSync } = await import("node:fs");
+  // Newest definition first. `entity_coverage` was added to the stage list on
+  // 2026-08-25, so the pending migration — not the applied 2026-08-24 one — is
+  // the authoritative version of this function until it is run in production.
   const candidates = [
+    "supabase/migrations_pending/20260825_entity_coverage_stage.sql",
+    "supabase/migrations/20260825_entity_coverage_stage.sql",
     "supabase/migrations_pending/20260824_stage_modes.sql",
     "supabase/migrations/20260824_stage_modes.sql",
   ];

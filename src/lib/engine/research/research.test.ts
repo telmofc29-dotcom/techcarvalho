@@ -20,7 +20,8 @@ import {
 } from "./claim-extraction.ts";
 import { assessLineage, citedOrigin } from "./lineage.ts";
 import { findMatches, subjectNoun } from "./research-pipeline.ts";
-import { SEED_SOURCES, BLOCKED_SOURCES, independenceGroups, sourcesForCategory } from "./source-seed.ts";
+import { PRIORITY_ENTITIES } from "../priority-entities.ts";
+import { SEED_SOURCES, BLOCKED_SOURCES, STALE_SOURCES, independenceGroups, sourcesForCategory } from "./source-seed.ts";
 
 // ===========================================================================
 // Entity model
@@ -308,7 +309,18 @@ test("blocked sources are recorded rather than silently dropped", () => {
   assert.ok(BLOCKED_SOURCES.length > 0);
   for (const b of BLOCKED_SOURCES) {
     assert.ok(b.note.length > 10, `${b.organisation} has no explanation`);
-    assert.ok(b.status > 0);
+    // status 0 means the connection never completed, so there IS no HTTP
+    // status to record. That is a distinct fact from a server answering with a
+    // refusal, and it must say so rather than borrowing a code it never got.
+    if (b.status === 0) {
+      assert.match(
+        b.note,
+        /connection failed/i,
+        `${b.organisation} records status 0 without explaining the connection failure`
+      );
+    } else {
+      assert.ok(b.status >= 100, `${b.organisation} has an implausible status ${b.status}`);
+    }
   }
   // The ones that refused us are recorded as refusals, not as failures of ours.
   assert.ok(BLOCKED_SOURCES.some((b) => b.status === 403));
@@ -362,4 +374,78 @@ test("hedging words are stripped from the subject phrase", () => {
     subjectNoun("Apple Reportedly Will Announce iPhone 18 Pro Event Date", null),
     "Apple Will Announce iPhone 18 Pro Event Date"
   );
+});
+
+// ---------------------------------------------------------------------------
+// Source coverage — a watched category with no source can never produce news
+// ---------------------------------------------------------------------------
+
+test("every category the watchlist uses has at least one registered source", () => {
+  // `drones-fpv` and `action-cameras` were named by the watchlist and tagged on
+  // NO source at all, so tier 1 DJI surfaced four items and Autel surfaced
+  // none. A category with no feed behind it reports "no news" forever, which
+  // is indistinguishable from a company that genuinely went quiet.
+  const watched = new Set(PRIORITY_ENTITIES.flatMap((e) => e.categories));
+  const covered = new Set(SEED_SOURCES.flatMap((s) => s.categories));
+  const uncovered = [...watched].filter((c) => !covered.has(c)).sort();
+  assert.deepEqual(uncovered, [], `watched categories with no source: ${uncovered.join(", ")}`);
+});
+
+test("first-party newsrooms are typed so they earn primary trust", () => {
+  // Only publisherType 'first_party' maps to trust_level 'primary', which is
+  // what lets a company's own announcement count as an assertable claim rather
+  // than somebody's report of one. Mistyping a newsroom silently demotes it.
+  const newsrooms = ["Samsung Newsroom", "Google Blog", "NVIDIA Blog", "Arm", "Xbox Wire", "PlayStation Blog"];
+  for (const name of newsrooms) {
+    const s = SEED_SOURCES.find((x) => x.organisation === name);
+    assert.ok(s, `${name} is not registered`);
+    assert.equal(s.publisherType, "first_party", `${name} must be first_party`);
+  }
+});
+
+test("sources sharing a corporate owner share an independence group", () => {
+  // DroneDJ, 9to5Mac and 9to5Google are one owner. Counting them as three
+  // confirmations is the exact failure the independence model exists to stop.
+  const group = (n: string) => SEED_SOURCES.find((s) => s.organisation === n)?.independenceGroup;
+  assert.equal(group("DroneDJ"), group("9to5Mac"));
+  assert.equal(group("9to5Google"), group("9to5Mac"));
+  assert.equal(group("XDA Developers"), group("Android Police"));
+});
+
+test("a stale feed is recorded, not registered", () => {
+  // A feed that answers 200 but stopped publishing makes a coverage gap look
+  // like an absence of news, which is the worst of both.
+  assert.ok(STALE_SOURCES.length > 0);
+  const registered = new Set(SEED_SOURCES.map((s) => s.feedUrl));
+  for (const s of STALE_SOURCES) {
+    assert.ok(!registered.has(s.feedUrl), `${s.organisation} is both stale and registered`);
+    assert.match(s.newestItem, /^\d{4}-\d{2}-\d{2}$/);
+  }
+});
+
+test("a watched company's own domain is known, or it can never be first-party", () => {
+  // THE 3D-PRINTING BLOCK. An organisation missing from this registry has no
+  // known domains, so isFirstParty() is always false, so its OWN announcement
+  // is classified `third_party_report` and needs two independent sources
+  // instead of one. "Elegoo Launches Nexprint", published by Elegoo on
+  // elegoo.com, was treated as somebody's report about Elegoo — and every
+  // 3D-printing story in the corpus was held for want of a second source that
+  // was never going to exist.
+  //
+  // The evidence bar was never the problem. The engine could not tell that the
+  // maker was the one talking.
+  const known = new Set(ORGANISATIONS.flatMap((o) => o.aliases.map((a) => a.toLowerCase())));
+  const missing = PRIORITY_ENTITIES.filter(
+    (e) => !e.aliases.some((a) => known.has(a.toLowerCase()))
+  ).map((e) => e.name);
+  assert.deepEqual(missing, [], `watched entities with no subject-domain entry: ${missing.join(", ")}`);
+});
+
+test("every organisation that is a company declares at least one domain", () => {
+  for (const o of ORGANISATIONS) {
+    assert.ok(o.domains.length > 0, `${o.name} has no domain, so it can never be first-party`);
+    for (const d of o.domains) {
+      assert.match(d, /^[a-z0-9.-]+\.[a-z]{2,}$/, `${o.name} has an implausible domain ${d}`);
+    }
+  }
 });
