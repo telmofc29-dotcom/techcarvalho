@@ -41,6 +41,7 @@ import {
   type ResearchQuery,
 } from "./entity-model.ts";
 import { assessCorroboration, type CorroborationVerdict } from "../corroboration.ts";
+import { isProductEligible } from "../product-eligibility.ts";
 import type { SeedSource } from "./source-seed.ts";
 
 export type IndexedItem = FeedItem & {
@@ -275,6 +276,8 @@ export function researchDiscovery(input: {
   sourcesAttempted: string[];
   sourcesRead: string[];
   sourcesFailed: { organisation: string; reason: string }[];
+  /** Manufacturer names from the catalogue, for product identity. */
+  knownMakers?: readonly string[];
   /**
    * Full article text by URL, when the caller fetched it. Claims are extracted
    * from this where present and from the feed summary otherwise, and each match
@@ -372,6 +375,7 @@ export function researchDiscovery(input: {
       claimBreakdown,
       corroboration,
       aboutUnreleasedProduct: input.aboutUnreleasedProduct ?? false,
+      knownMakers: input.knownMakers,
     }),
   };
 }
@@ -392,6 +396,9 @@ export function decide(input: {
   claimBreakdown: ClaimBreakdown;
   corroboration: CorroborationVerdict;
   aboutUnreleasedProduct: boolean;
+  /** Manufacturer names from the catalogue. Product identity is grounded in
+   *  what TechCarvalho actually has, not in a guess about brand names. */
+  knownMakers?: readonly string[];
 }): ResearchDecision {
   const origins = input.lineage.independentOrigins;
   const reasons: string[] = [];
@@ -451,19 +458,24 @@ export function decide(input: {
   }
 
   // ---- product --------------------------------------------------------
-  // Strictly higher. A catalogue entry asserts identity, so it needs the
-  // subject's own confirmation or several independent origins — and never a
-  // rumour alone.
-  const productEligible =
-    framing === "confirmed" ||
-    (framing === "reported" && origins >= 3 && !input.aboutUnreleasedProduct);
-  if (!productEligible) {
-    reasons.push(
-      input.aboutUnreleasedProduct
-        ? "No catalogue product: the maker has not confirmed this exists, and a product page asserts that it does."
-        : "No catalogue product: identity is not established firmly enough, and specifications are never invented to fill one."
-    );
-  }
+  //
+  // TWO SEPARATE QUESTIONS, and conflating them was the bug. Evidence strength
+  // answers "may we write about this?"; it cannot answer "is this one
+  // purchasable object?". Judged on evidence alone, the subject "filament"
+  // came back product-eligible with five origins behind it.
+  //
+  // A catalogue row asserts that a specific identifiable thing exists, so the
+  // SUBJECT must name one — a maker plus a designation — before sourcing is
+  // even considered.
+  const productVerdict = isProductEligible({
+    subject: input.title,
+    knownMakers: input.knownMakers ?? [],
+    independentOrigins: origins,
+    framing,
+    aboutUnreleasedProduct: input.aboutUnreleasedProduct,
+  });
+  const productEligible = productVerdict.eligible;
+  reasons.push(...productVerdict.reasons);
 
   return {
     articleEligible,

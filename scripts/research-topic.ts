@@ -12,6 +12,7 @@
 //   npx tsx scripts/research-topic.ts "RTX 5090" --category computing
 
 import { buildCorpus } from "../src/lib/engine/research/feed-index.ts";
+import { loadEnvLocal, createAdminClient } from "./_shared.ts";
 import { researchDiscovery } from "../src/lib/engine/research/research-pipeline.ts";
 import { primarySubject, categoryForText, subjectDomainsForText } from "../src/lib/engine/research/entity-model.ts";
 import { renderClaim } from "../src/lib/engine/research/claim-extraction.ts";
@@ -39,6 +40,18 @@ async function main(): Promise<void> {
   console.log(`Subject resolved   : ${subject ? `${subject.organisation.name} (matched "${subject.matchedAlias}")` : "NONE"}`);
   console.log(`Category           : ${category ?? "unmapped"}`);
   console.log(`Treated as unreleased: ${unreleased ? "YES" : "no"}`);
+
+  // Manufacturer names from the catalogue: product identity is grounded in
+  // what TechCarvalho actually has, never guessed from the title.
+  let knownMakers: string[] = [];
+  try {
+    loadEnvLocal();
+    const db = await createAdminClient();
+    const { data } = await db.from("manufacturers").select("name");
+    knownMakers = ((data ?? []) as { name: string }[]).map((m) => m.name);
+  } catch {
+    // Research still works without it; product eligibility just fails closed.
+  }
 
   const corpus = await buildCorpus(category);
   console.log("");
@@ -81,6 +94,7 @@ async function main(): Promise<void> {
     sourcesAttempted: corpus.attempted,
     sourcesRead: corpus.read,
     sourcesFailed: corpus.failed,
+    knownMakers,
     articleText,
   });
 
