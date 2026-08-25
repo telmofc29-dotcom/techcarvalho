@@ -33,7 +33,24 @@
 -- are never touched — a broad "delete anything stale" would have silently
 -- emptied them.
 --
--- NOT YET APPLIED.
+-- APPLIED IN PRODUCTION 2026-08-25, and verified by behaviour rather than by
+-- the "Success" message.
+--
+-- scripts/verify-opportunity-prune.ts, 6/6 against production: the function
+-- exists; an ancient cutoff deletes nothing, proving it is time-scoped; a
+-- FUTURE cutoff and a NULL cutoff are both refused with -1 rather than treated
+-- as "everything is stale"; nothing was removed by the refused calls; and
+-- category opportunities were untouched.
+--
+-- Then the real run, through the entity_coverage stage:
+--
+--   BEFORE  total 66  watchlist 54  category 12  stale 16
+--   AFTER   total 50  watchlist 38  category 12  stale  0
+--
+-- 22 removed. The stale rows carrying old-model scores of 100 and 94.64 no
+-- longer sit above correctly-ranked ones: the top is now 95.3, Apple's M6 and
+-- M5 Ultra silicon. Category opportunities are unchanged at 12, which is the
+-- scoping guarantee holding on live data.
 
 create or replace function public.engine_prune_watchlist_opportunities(p_before timestamptz)
 returns integer
