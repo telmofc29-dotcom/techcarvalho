@@ -17,8 +17,16 @@
 -- opportunities. It creates no drafts, changes no content, and publishes
 -- nothing. Its only write is engine_upsert_opportunity.
 --
--- NOT YET APPLIED. Run this in production, then move it into
--- supabase/migrations/.
+-- APPLIED IN PRODUCTION 2026-08-25.
+--
+-- Verified after the fact rather than trusted: engine_stage_modes_valid was
+-- called against the live database and confirmed to accept 'entity_coverage'
+-- and every other name in ENGINE_STAGE_NAMES, while still refusing an unknown
+-- stage and an invalid mode. The constraint was widened by exactly one name,
+-- not loosened.
+--
+-- CREATE OR REPLACE FUNCTION, so re-running it is harmless — but it lives in
+-- migrations/ now precisely so nothing treats it as outstanding work.
 
 create or replace function public.engine_stage_modes_valid(p_modes jsonb)
 returns boolean

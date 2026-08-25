@@ -115,11 +115,15 @@ export async function runEntityCoverage(supabase: Client): Promise<StageResult> 
       if (!corpus) continue;
 
       for (const item of corpus.items) {
-        const hay = `${item.title} ${item.summary ?? ""}`;
-        const mentions = entity.aliases.some((a) =>
-          new RegExp(`(^|[^a-z0-9])${a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z0-9]|$)`, "i").test(hay)
+        // ATTRIBUTION COMES FROM THE HEADLINE, NOT THE BODY. Matching on
+        // title + summary attributed "Nikon has ended their relationship with
+        // Pro Distributors" to Sony, because Sony appeared somewhere in the
+        // summary. Aliases already include product names, so a headline naming
+        // the product without the maker still matches.
+        const namesEntity = entity.aliases.some((a) =>
+          new RegExp(`(^|[^a-z0-9])${a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z0-9]|$)`, "i").test(item.title)
         );
-        if (mentions) {
+        if (namesEntity) {
           items.push({
             title: item.title, summary: item.summary, link: item.link,
             publisher: item.source.organisation, publishedAt: item.publishedAt ?? null,
@@ -177,10 +181,16 @@ export async function runEntityCoverage(supabase: Client): Promise<StageResult> 
       p_subject_type: "topic",
       p_subject_key: `watchlist:${keyOf(gap.headline)}`,
       p_label: gap.headline.slice(0, 300),
-      p_score: gap.score,
+      // engine_opportunities.score is numeric(5,2) CHECK 0..100, and priority
+      // scores reach 110 (tier 1 + major + uncovered + recent). Every write in
+      // the first run was rejected by that constraint. Clamped for storage, and
+      // the unclamped value is kept in inputs so nothing is lost and the two
+      // can never be confused for each other.
+      p_score: Math.max(0, Math.min(100, gap.score)),
       p_inputs: {
         entity: gap.entity,
         tier: gap.tier,
+        priorityScore: gap.score,
         independentOrigins: gap.origins,
         urgent: gap.urgent,
         publisher: gap.publisher,

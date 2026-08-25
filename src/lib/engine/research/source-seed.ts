@@ -644,6 +644,102 @@ export const SEED_SOURCES: readonly SeedSource[] = [
     verifiedItems: 7,
   },
 
+  // ---- Added 2026-08-25 (second pass) ------------------------------------
+  //
+  // Gaming and camera developments were being HELD at one independent origin:
+  // the news was real, but only one registered outlet carried each story, and
+  // a third-party report requires two. The answer is more independent voices,
+  // not a lower bar.
+  //
+  // Rock Paper Shotgun shares an owner with Eurogamer and is grouped with it
+  // accordingly — adding it widens coverage without adding a second "voice"
+  // for corroboration purposes.
+  {
+    organisation: "Rock Paper Shotgun",
+    domain: "rockpapershotgun.com",
+    feedUrl: "https://www.rockpapershotgun.com/feed",
+    publisherType: "editorial",
+    useTier: "B",
+    independenceGroup: "IGN Entertainment",
+    categories: ["gaming", "computing"],
+    verifiedItems: 100,
+  },
+  {
+    organisation: "Kotaku",
+    domain: "kotaku.com",
+    feedUrl: "https://kotaku.com/rss",
+    publisherType: "editorial",
+    useTier: "B",
+    independenceGroup: "Keleops",
+    categories: ["gaming"],
+    verifiedItems: 20,
+  },
+  {
+    organisation: "Fstoppers",
+    domain: "fstoppers.com",
+    feedUrl: "https://fstoppers.com/rss.xml",
+    publisherType: "editorial",
+    useTier: "C",
+    independenceGroup: "Fstoppers",
+    categories: ["cameras-photography", "camera-lenses"],
+    verifiedItems: 30,
+  },
+  {
+    organisation: "DIY Photography",
+    domain: "diyphotography.net",
+    feedUrl: "https://www.diyphotography.net/feed/",
+    publisherType: "editorial",
+    useTier: "C",
+    independenceGroup: "DIY Photography",
+    categories: ["cameras-photography", "camera-lenses", "astrophotography"],
+    verifiedItems: 10,
+  },
+
+  // Rumour sites, registered as tier C on purpose. They are useful for knowing
+  // that something is being said, never for stating that it is true — the
+  // corroboration model classes their claims as rumour_or_leak, which stays
+  // hedged however many outlets repeat it.
+  {
+    organisation: "Canon Rumors",
+    domain: "canonrumors.com",
+    feedUrl: "https://www.canonrumors.com/feed/",
+    publisherType: "editorial",
+    useTier: "C",
+    independenceGroup: "Canon Rumors",
+    categories: ["cameras-photography", "camera-lenses"],
+    verifiedItems: 10,
+  },
+  {
+    organisation: "Nikon Rumors",
+    domain: "nikonrumors.com",
+    feedUrl: "https://www.nikonrumors.com/feed/",
+    publisherType: "editorial",
+    useTier: "C",
+    independenceGroup: "Nikon Rumors",
+    categories: ["cameras-photography", "camera-lenses"],
+    verifiedItems: 20,
+  },
+  {
+    organisation: "Sony Alpha Rumors",
+    domain: "sonyalpharumors.com",
+    feedUrl: "https://www.sonyalpharumors.com/feed/",
+    publisherType: "editorial",
+    useTier: "C",
+    independenceGroup: "Sony Alpha Rumors",
+    categories: ["cameras-photography", "camera-lenses"],
+    verifiedItems: 7,
+  },
+  {
+    organisation: "3Dnatives",
+    domain: "3dnatives.com",
+    feedUrl: "https://www.3dnatives.com/en/feed/",
+    publisherType: "editorial",
+    useTier: "B",
+    independenceGroup: "3Dnatives",
+    categories: ["3d-printing"],
+    verifiedItems: 12,
+  },
+
   // ---- 3D printing manufacturers -----------------------------------------
   {
     organisation: "Anycubic",
@@ -739,7 +835,12 @@ export const BLOCKED_SOURCES: readonly {
   { organisation: "DJI", feedUrl: "https://blog.dji.com/feed", status: 0, note: "Connection failed. DroneDJ registered as the editorial route to DJI news." },
   { organisation: "Figure", feedUrl: "https://www.figure.ai/news/rss.xml", status: 404, note: "No feed. The Robot Report registered as the editorial route." },
   { organisation: "UltiMaker", feedUrl: "https://ultimaker.com/blog/feed/", status: 200, note: "Responded 200 but served no parseable feed items." },
-  { organisation: "Apple Newsroom", feedUrl: "https://www.apple.com/newsroom/rss/newsroom.rss", status: 404, note: "Retired. developer.apple.com/news/rss/news.rss is registered instead." },
+  { organisation: "Apple Newsroom", feedUrl: "https://www.apple.com/newsroom/rss/newsroom.rss", status: 404, note: "Retired. developer.apple.com/news/rss/news.rss is registered instead." },
+
+  // ---- Second pass, 2026-08-25 -------------------------------------------
+  { organisation: "Nintendo Life", feedUrl: "https://www.nintendolife.com/feeds/latest", status: 403, note: "Refused automated access; Push Square and Pure Xbox (same publisher) refuse too." },
+  { organisation: "Photography Blog", feedUrl: "https://www.photographyblog.com/rss/news", status: 404, note: "Second URL tried; still no valid feed." },
+  { organisation: "Seagate", feedUrl: "https://blog.seagate.com/feed/", status: 429, note: "Rate-limited again on a later retry. Seagate news reaches us only via Blocks & Files and StorageReview." },
 ] as const;
 
 /** Distinct independent voices available, which is the number that matters. */

@@ -31,6 +31,7 @@ import { assembleDraft, proposeSeo } from "../src/lib/engine/draft-assembly.ts";
 import { proposeSlug } from "../src/lib/engine/entity-resolution.ts";
 import { decideCoverage, consolidateOpportunities, type ExistingPiece } from "../src/lib/engine/coverage-decision.ts";
 import { assessSubject } from "../src/lib/engine/subject-quality.ts";
+import { categoryForSubject } from "../src/lib/engine/subject-category.ts";
 import { assessCorroboration } from "../src/lib/engine/corroboration.ts";
 import {
   PRIORITY_ENTITIES, assessPriority, classifyImportance, TIER_LABELS,
@@ -50,6 +51,19 @@ type Gap = {
   urgent: boolean;
   covered: boolean;
 };
+
+/**
+ * Confidence to record on an update proposal, from independent origins.
+ *
+ * Deliberately conservative and capped below certainty: this is "how sure are
+ * we that there is something new here", not "how sure are we that it is true".
+ * The claim's truth is the corroboration model's job, not this number's.
+ */
+function corroborationConfidence(origins: number): number {
+  if (origins >= 3) return 0.8;
+  if (origins === 2) return 0.6;
+  return 0.4;
+}
 
 async function main(): Promise<void> {
   loadEnvLocal();
@@ -115,14 +129,22 @@ async function main(): Promise<void> {
     for (const category of entity.categories) {
       if (!corpusCache.has(category)) corpusCache.set(category, await buildCorpus(category));
       for (const item of corpusCache.get(category)!.items) {
-        const hay = `${item.title} ${item.summary ?? ""}`;
-        // The ENTITY is the filter. Every story it appears in becomes a
-        // candidate, and the story keeps its own identity.
-        const mentions = entity.aliases.some((a) => {
-          const p = new RegExp(`(^|[^a-z0-9])${a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z0-9]|$)`, "i");
-          return p.test(hay);
-        });
-        if (mentions) {
+        // ATTRIBUTION COMES FROM THE HEADLINE, NOT THE BODY.
+        //
+        // Matching on title + summary attributed "Nikon has ended their
+        // relationship with Pro Distributors" to SONY, because Sony was
+        // mentioned somewhere in the summary. The story was then drafted as a
+        // Sony coverage gap, which is simply false.
+        //
+        // A development belongs to the company its HEADLINE is about. Aliases
+        // already include product names ("iphone", "ender", "neptune"), so a
+        // headline that names the product without the maker still matches.
+        const matches = (text: string) =>
+          entity.aliases.some((a) => {
+            const p = new RegExp(`(^|[^a-z0-9])${a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z0-9]|$)`, "i");
+            return p.test(text);
+          });
+        if (matches(item.title)) {
           items.push({
             title: item.title, summary: item.summary, link: item.link,
             publisher: item.source.organisation, group: item.source.independenceGroup,
@@ -254,6 +276,7 @@ async function main(): Promise<void> {
 
   console.log(`\n${"=".repeat(80)}\nRESEARCHING AND DRAFTING\n${"=".repeat(80)}`);
   let created = 0;
+  let updatesProposed = 0;
   const byCat = new Map<string, number>();
 
   // SPREAD THE RUN ACROSS THE WATCHLIST.
@@ -271,7 +294,11 @@ async function main(): Promise<void> {
 
   for (const gap of uncovered.slice(0, 90)) {
     const entity = PRIORITY_ENTITIES.find((e) => e.name === gap.entity)!;
-    const category = entity.categories[0];
+    // The SUBJECT decides the section, not the company. Reading
+    // entity.categories[0] filed every Mac, Mac mini, MacBook and iPad story
+    // under smartphones, because that is Apple's first listed category.
+    const chosen = categoryForSubject(subjectNoun(gap.headline, null), entity.categories);
+    const category = chosen.category;
 
     // A subject that cannot be a headline must never reach research. Checking
     // this only in queue triage meant the same broken subject was removed and
@@ -310,6 +337,58 @@ async function main(): Promise<void> {
         independentOrigins: origins, framing: result.decision.framing,
         claimCount: result.claimBreakdown.total, existing,
       });
+
+      // UPDATE_EXISTING MUST PRODUCE SOMETHING.
+      //
+      // The decision was previously logged and thrown away, so the engine
+      // correctly recognised "we already cover this, enrich it instead of
+      // publishing a second page" and then did neither. The story was dropped.
+      //
+      // It files an update PROPOSAL, not an edit. The existing article is not
+      // touched: overwriting a page that a human wrote, from feed evidence, on
+      // an unattended run, is exactly the blind overwrite that must never
+      // happen. The proposal carries the new evidence and the owner decides.
+      if (verdict.decision === "UPDATE_EXISTING" && verdict.target) {
+        const targetId = verdict.target.id;
+        // A brief has no row to update — its id is a synthetic "brief:" key.
+        if (targetId.startsWith("brief:")) {
+          console.log(`  UPDATE (brief)   ${gap.headline.slice(0, 52)}`);
+          continue;
+        }
+        const evidence = result.matches
+          .map((m) => m.item.link)
+          .filter((l): l is string => !!l)
+          .slice(0, 8);
+        const newFacts = result.claims
+          .filter((c) => c.hedges.length === 0)
+          .slice(0, 6)
+          .map((c) => (c.attributedTo ? `${c.attributedTo}: ${c.text}` : c.text));
+
+        const { data: status, error: upErr } = await db.rpc("engine_upsert_update_proposal", {
+          p_content_id: targetId,
+          p_product_id: null,
+          p_discovery_id: null,
+          // 'newer_evidence' is the reason this is: newer reporting about a
+          // development the page already covers.
+          p_reason: "newer_evidence",
+          p_summary:
+            `${gap.headline}\n\nNewer reporting on a development this page already covers ` +
+            `(${Math.round(verdict.similarity * 100)}% subject match). ${verdict.reasons[0] ?? ""}`,
+          p_changes: newFacts.length > 0 ? newFacts : ["Review the new reporting and update if it adds anything."],
+          p_evidence: evidence,
+          p_confidence: Math.min(0.9, corroborationConfidence(origins)),
+        });
+        if (upErr) {
+          console.log(`  UPDATE FAILED    ${upErr.message.slice(0, 60)}`);
+        } else if (status !== "created" && status !== "refreshed") {
+          // A refusal is a real outcome and must not read as success.
+          console.log(`  UPDATE REFUSED   ${String(status)}  ${gap.headline.slice(0, 40)}`);
+        } else {
+          updatesProposed++;
+          console.log(`  UPDATE (${String(status)}) ${verdict.target.title.slice(0, 46)}`);
+        }
+        continue;
+      }
 
       if (verdict.decision !== "NEW_ARTICLE" && verdict.decision !== "SUPPORTING") {
         console.log(`  ${verdict.decision.padEnd(16)} ${gap.headline.slice(0, 56)}`);
@@ -426,6 +505,7 @@ async function main(): Promise<void> {
   }
 
   console.log(`\n  drafts created: ${created}`);
+  console.log(`  update proposals filed: ${updatesProposed}`);
   for (const [c, n] of [...byCat].sort((a, b) => b[1] - a[1])) console.log(`    ${String(n).padStart(2)}  ${c}`);
 }
 

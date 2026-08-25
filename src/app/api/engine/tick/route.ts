@@ -131,6 +131,25 @@ export async function GET(request: NextRequest) {
   const unauthorized = checkCronAuth(request);
   if (unauthorized) return unauthorized;
 
+  // Parsed before the run lease is claimed: a typo'd stage name should cost
+  // nothing and leave no lease behind.
+  const requested = request.nextUrl.searchParams.getAll("stage").flatMap((s) => s.split(","))
+    .map((s) => s.trim()).filter(Boolean);
+  const unknown = requested.filter((s) => !ENGINE_STAGE_NAMES.includes(s as EngineStageName));
+  if (unknown.length > 0) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "unknown_stage",
+        unknown,
+        known: ENGINE_STAGE_NAMES,
+        detail: "An unrecognised stage name is refused rather than matching nothing and running the whole pass.",
+      },
+      { status: 400 }
+    );
+  }
+  const onlyStages = requested.length > 0 ? new Set(requested as EngineStageName[]) : null;
+
   const supabase = await createClient();
   const now = new Date();
   const startedAt = Date.now();
@@ -199,6 +218,22 @@ export async function GET(request: NextRequest) {
   let anyPartial = false;
 
   for (const [name, run] of STAGES) {
+    // OPTIONAL STAGE FILTER, for operating the engine deliberately.
+    //
+    // `?stage=entity_coverage` runs that stage and skips the rest. It exists
+    // because verifying or re-running ONE capability previously meant running
+    // all seventeen, which is a heavy, side-effectful way to answer a narrow
+    // question.
+    //
+    // It can only ever run FEWER stages than the schedule would, never
+    // different ones or in a different order, and it is behind the same
+    // CRON_SECRET as everything else here. An unrecognised name is rejected
+    // before this loop rather than silently matching nothing.
+    if (onlyStages && !onlyStages.has(name)) {
+      stages[name] = { status: "skipped", why: "not selected by the ?stage= filter" };
+      continue;
+    }
+
     const jobName = STAGE_JOB_NAMES[name];
     // An unmapped stage is not quietly waved through. A stage nobody can gate
     // is exactly the thing this file must not have.

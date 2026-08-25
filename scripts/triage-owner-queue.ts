@@ -29,6 +29,7 @@ import { loadEnvLocal, createAdminClient } from "./_shared.ts";
 import { classifyImportance } from "../src/lib/engine/priority-entities.ts";
 import { titleSimilarity } from "../src/lib/engine/dedupe.ts";
 import { assessSubject } from "../src/lib/engine/subject-quality.ts";
+import { sameDevelopment } from "../src/lib/engine/same-development.ts";
 
 const apply = process.argv.includes("--apply");
 
@@ -83,7 +84,13 @@ function sameStory(a: string, b: string): boolean {
   if (sa && sb) {
     return sa.length === sb.length && sa.every((v, i) => v === sb[i]);
   }
-  return titleSimilarity(a, b) >= DUPLICATE_THRESHOLD;
+  // Word overlap catches near-identical wording. It cannot catch four outlets
+  // describing one announcement in four different vocabularies — the Mac mini
+  // cluster shared only "Mac mini" and sat far below any safe threshold.
+  // sameDevelopment answers that by product and kind of development instead,
+  // and keeps the comparison protection above intact.
+  if (titleSimilarity(a, b) >= DUPLICATE_THRESHOLD) return true;
+  return sameDevelopment(a, b).same;
 }
 
 function classify(subject: string): { verdict: Verdict; detail: string } {
