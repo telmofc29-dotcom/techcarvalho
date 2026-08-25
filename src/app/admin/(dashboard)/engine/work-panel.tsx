@@ -4,6 +4,7 @@ import { Badge } from "@/components/shared/ui";
 import { createClient } from "@/lib/supabase/server";
 import { logQueryError } from "@/lib/log/query-error";
 import { loadAssetSuggestions, loadMediaNeeds } from "@/lib/media/suggestion-service";
+import { assessPriority } from "@/lib/engine/priority-entities";
 
 // EDITORIAL WORK, GROUPED — the one screen the owner actually operates from.
 //
@@ -32,6 +33,12 @@ type Group = {
   href: string;
   hint: string;
   examples: string[];
+  /**
+   * Why each example is where it is, positionally aligned with `examples`.
+   * Optional: most groups have no ordering worth explaining, and inventing a
+   * justification for a plain list would be worse than showing none.
+   */
+  notes?: string[];
   tone: "green" | "amber" | "blue" | "neutral";
   failed?: string;
 };
@@ -65,7 +72,31 @@ export async function WorkPanel() {
   if (briefsRes.error) logQueryError("WorkPanel briefs", briefsRes.error);
   if (proposalsRes.error) logQueryError("WorkPanel proposals", proposalsRes.error);
 
-  const drafts = (draftsRes.data ?? []) as { id: string; title: string }[];
+  const rawDrafts = (draftsRes.data ?? []) as { id: string; title: string; updated_at: string }[];
+
+  // PRIORITY DECIDES WHAT THE OWNER SEES FIRST.
+  //
+  // Newest-first is not an editorial order: it puts an Elegoo filament note
+  // above an Apple launch purely because it arrived later. Ranking the queue by
+  // the same watchlist assessment used to find these stories means the three
+  // examples on this card are the three most worth opening.
+  //
+  // The score is an ordering key and is deliberately never shown. It is not a
+  // measurement of anything, and printing a number invites reading it as one.
+  // The REASON is shown instead, because that is the part that is true.
+  // Ties are common and must not be resolved arbitrarily: most tier 1 launches
+  // score identically, and Array.sort on equal keys leaves whatever order the
+  // query happened to return. That made the top of this card change between
+  // reloads. Recency is the tiebreak, so the order is stable and explainable.
+  const drafts = rawDrafts
+    .map((d) => ({ ...d, priority: assessPriority({ headline: d.title, alreadyCovered: false }) }))
+    .sort(
+      (a, b) =>
+        b.priority.score - a.priority.score ||
+        Date.parse(b.updated_at) - Date.parse(a.updated_at)
+    );
+
+  const tierOneDrafts = drafts.filter((d) => d.priority.tier === 1).length;
   const approvedUnbuilt = (briefsRes.data ?? []) as { proposed_title: string }[];
   const proposals = (proposalsRes.data ?? []) as { summary: string | null; reason: string }[];
 
@@ -82,8 +113,12 @@ export async function WorkPanel() {
       title: "Drafts ready for review",
       count: drafts.length,
       href: "/admin/content?status=draft",
-      hint: "Assembled from research. Each needs editing and a publish decision.",
+      hint:
+        tierOneDrafts > 0
+          ? `Assembled from research, highest priority first. ${tierOneDrafts} involve${tierOneDrafts === 1 ? "s" : ""} a top-tier watchlist entity.`
+          : "Assembled from research. Each needs editing and a publish decision.",
       examples: drafts.slice(0, 3).map((d) => d.title),
+      notes: drafts.slice(0, 3).map((d) => d.priority.reason),
       tone: drafts.length > 0 ? "green" : "neutral",
       failed: draftsRes.error?.message,
     },
@@ -167,8 +202,13 @@ export async function WorkPanel() {
                 {g.examples.length > 0 && (
                   <ul className="mt-2 space-y-0.5">
                     {g.examples.map((e, i) => (
-                      <li key={i} className="truncate text-xs text-neutral-600">
-                        {e}
+                      <li key={i} className="text-xs text-neutral-600">
+                        <span className="block truncate">{e}</span>
+                        {g.notes?.[i] && (
+                          <span className="block truncate text-[11px] text-neutral-400">
+                            {g.notes[i]}
+                          </span>
+                        )}
                       </li>
                     ))}
                   </ul>

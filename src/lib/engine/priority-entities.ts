@@ -152,6 +152,14 @@ const TRIVIAL_SIGNALS: readonly RegExp[] = [
   /(^|\s)(i|i'?ve|i'?m|my|me|we)(\s|$|[,.!?])/i,
   /^(why|how) i\b/i,
   /\b(opinion|editorial|column|rant|hands[- ]on)\b/i,
+  // ANOTHER OUTLET'S REVIEW IS NOT A DEVELOPMENT TECHCARVALHO CAN COVER.
+  //
+  // A review is the outlet's own testing. TechCarvalho has not handled the
+  // hardware, so there is nothing here it can honestly say — and drafting from
+  // one would put someone else's measured results behind our byline, which the
+  // no-fabricated-testing rule forbids outright. The product's LAUNCH is a
+  // development; the review of it is not.
+  /\b(review|reviewed|unboxing|teardown|benchmarked|we tested|tested it)\b/i,
 ];
 
 export function classifyImportance(headline: string): {

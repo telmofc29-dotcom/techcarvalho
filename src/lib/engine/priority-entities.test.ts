@@ -185,3 +185,20 @@ test("a genuine development is not mistaken for an opinion piece", () => {
   assert.equal(classifyImportance("Samsung unveils the Galaxy S26 Ultra").importance, "major");
   assert.equal(classifyImportance("Intel launches Core Ultra X7").importance, "major");
 });
+
+test("another outlet's review is not a development", () => {
+  // Drafting from a review would put someone else's measured results behind
+  // a TechCarvalho byline. The launch is coverable; the review is not.
+  for (const h of [
+    "Elegoo Centauri 2 Combo review: A budget-friendly printer",
+    "Asus ROG Strix soundbar review: It looks better than it sounds",
+    "Anycubic Kobra 4 Combo 3D printer review: Evolution, not revolution",
+    "We tested the new Galaxy camera for two weeks",
+  ]) {
+    assert.equal(classifyImportance(h).importance, "trivial", h);
+  }
+});
+
+test("a launch is still coverable even when reviews exist", () => {
+  assert.equal(classifyImportance("Elegoo launches the Centauri 2 Combo").importance, "major");
+});

@@ -105,10 +105,13 @@ async function main(): Promise<void> {
   // One corpus per category, shared across every entity in it.
   const corpusCache = new Map<string, Awaited<ReturnType<typeof buildCorpus>>>();
   const allGaps: Gap[] = [];
-  const perEntity = new Map<string, { found: number; gaps: number; latestCoverage: string | null }>();
+  const perEntity = new Map<
+    string,
+    { tier: number; found: number; developments: number; gaps: number; urgent: number; latestCoverage: string | null; latestDevelopment: string | null }
+  >();
 
   for (const entity of entities) {
-    const items: { title: string; summary: string | null; link: string | null; publisher: string; group: string }[] = [];
+    const items: { title: string; summary: string | null; link: string | null; publisher: string; group: string; publishedAt: string | null }[] = [];
 
     for (const category of entity.categories) {
       if (!corpusCache.has(category)) corpusCache.set(category, await buildCorpus(category));
@@ -124,6 +127,7 @@ async function main(): Promise<void> {
           items.push({
             title: item.title, summary: item.summary, link: item.link,
             publisher: item.source.organisation, group: item.source.independenceGroup,
+            publishedAt: item.publishedAt ?? null,
           });
         }
       }
@@ -167,9 +171,14 @@ async function main(): Promise<void> {
 
     entityGaps.sort((x, y) => y.score - x.score);
     perEntity.set(entity.name, {
+      tier: entity.tier,
       found: items.length,
+      developments: entityGaps.length,
       gaps: entityGaps.filter((x) => !x.covered).length,
+      urgent: entityGaps.filter((x) => !x.covered && x.urgent).length,
       latestCoverage: latest,
+      latestDevelopment:
+        items.map((i) => i.publishedAt).filter((d): d is string => !!d).sort().pop() ?? null,
     });
     allGaps.push(...entityGaps);
 
@@ -194,6 +203,49 @@ async function main(): Promise<void> {
     console.log(`      ${g.reason.slice(0, 100)}`);
   }
   console.log(`\n  ${uncovered.length} uncovered developments; ${uncovered.filter((g) => g.urgent).length} urgent.`);
+
+  // ---- coverage health, per entity ---------------------------------------
+  //
+  // Three dates side by side answer the question the gap list cannot: is this
+  // company being covered at all, and how far behind are we? "Last article"
+  // older than "last development" with a non-zero gap count is a beat going
+  // cold, which is invisible when only totals are reported.
+  //
+  // A blank is a blank. Feeds frequently omit a publication date and this
+  // prints "unknown" rather than substituting today, because a fabricated
+  // recency reading is worse than an absent one.
+  console.log(`\n${"=".repeat(80)}\nCOVERAGE HEALTH BY ENTITY\n${"=".repeat(80)}`);
+  console.log(
+    `\n  ${"entity".padEnd(18)} ${"tier".padEnd(5)} ${"seen".padStart(5)} ${"devs".padStart(5)} ` +
+    `${"gaps".padStart(5)} ${"urgent".padStart(6)}  ${"last development".padEnd(18)} last article`
+  );
+  console.log(`  ${"-".repeat(94)}`);
+
+  const health = [...perEntity.entries()].sort(
+    (a, b) => a[1].tier - b[1].tier || b[1].gaps - a[1].gaps || a[0].localeCompare(b[0])
+  );
+  for (const [name, h] of health) {
+    const dev = h.latestDevelopment ? h.latestDevelopment.slice(0, 10) : "unknown";
+    const art = h.latestCoverage ? h.latestCoverage.slice(0, 10) : "never";
+    // Behind = there is something uncovered AND we have never published, or
+    // our newest piece predates the newest development.
+    const behind =
+      h.gaps > 0 && (!h.latestCoverage || (h.latestDevelopment !== null && h.latestCoverage < h.latestDevelopment));
+    console.log(
+      `  ${name.padEnd(18)} T${String(h.tier).padEnd(4)} ${String(h.found).padStart(5)} ` +
+      `${String(h.developments).padStart(5)} ${String(h.gaps).padStart(5)} ${String(h.urgent).padStart(6)}  ` +
+      `${dev.padEnd(18)} ${art}${behind ? "   BEHIND" : ""}`
+    );
+  }
+
+  const behindCount = health.filter(
+    ([, h]) => h.gaps > 0 && (!h.latestCoverage || (h.latestDevelopment !== null && h.latestCoverage < h.latestDevelopment))
+  ).length;
+  const neverCovered = health.filter(([, h]) => !h.latestCoverage).map(([n]) => n);
+  console.log(`\n  ${behindCount} of ${health.length} entities are behind their own newest development.`);
+  if (neverCovered.length > 0) {
+    console.log(`  never covered at all: ${neverCovered.join(", ")}`);
+  }
 
   // ---- create drafts for the strongest gaps ------------------------------
   if (!apply) {
