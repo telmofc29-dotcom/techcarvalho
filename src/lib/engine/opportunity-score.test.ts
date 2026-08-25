@@ -180,3 +180,23 @@ test("nothing in an explanation implies demand data we do not have", () => {
     for (const c of r.components) assert.ok(!banned.test(c.why), c.why);
   }
 });
+
+test("naming a flagship product does not make a pricing story a launch", () => {
+  // Both ranked as flagship_hardware in the live output, above genuine
+  // launches, because they name a flagship product. The product is what the
+  // story is ABOUT; it is not what kind of story it is.
+  assert.equal(classifySignificance("Apple price hikes continue as Mac mini with 16GB RAM is now $899").kind, "commerce");
+  assert.equal(classifySignificance("Here's Your Last Chance to Get a Nintendo Switch 2 Console for $399.99").kind, "commerce");
+});
+
+test("a pricing story ranks below the launch of the same product", () => {
+  const launch = rankOpportunity({
+    headline: "Apple unveils new Mac Studio with M5 Max and M5 Ultra",
+    ageDays: 1, independentOrigins: 2, alreadyCovered: false,
+  }).score;
+  const pricing = rankOpportunity({
+    headline: "Apple price hikes continue as Mac mini with 16GB RAM is now $899",
+    ageDays: 1, independentOrigins: 2, alreadyCovered: false,
+  }).score;
+  assert.ok(launch > pricing, `${launch} !> ${pricing}`);
+});

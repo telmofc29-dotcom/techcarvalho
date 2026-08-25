@@ -145,8 +145,12 @@ const SIGNIFICANCE_RULES: readonly { kind: Significance; pattern: RegExp; why: s
   // "Updated Apple Developer Program License Agreement now available"
   { kind: "corporate_admin", pattern: /\b(licen[cs]e agreement|terms (of service|and conditions)|program agreement|privacy policy|earnings|quarterly results|appoints?|board of directors)\b/i,
     why: "Administrative or corporate paperwork, not a product development." },
-  // "iPhone Trade-In Values Slide", "$300 Price Premium"
-  { kind: "commerce", pattern: /\b(trade[- ]in|price premium|discount|deal|sale price|cheaper|resale|voucher)\b/i,
+  // "iPhone Trade-In Values Slide", "$300 Price Premium", and — found in the
+  // ranked output — "Apple price hikes continue as Mac mini ... is now $899"
+  // and "Here's Your Last Chance to Get a Nintendo Switch 2 for $399.99".
+  // Both had ranked as flagship_hardware because they name a flagship product;
+  // the product is what the story is ABOUT, not what kind of story it is.
+  { kind: "commerce", pattern: /\b(trade[- ]in|price (premium|hike|hikes|rise|rises|cut|cuts|drop|drops|increase|increases)|discount|deal|sale price|cheaper|resale|voucher|last chance|now \$\d|for \$\d)\b/i,
     why: "A commerce or pricing story rather than a product development." },
   // "Apple's Emergency SOS Live Video is now available in Brazil"
   { kind: "regional_rollout", pattern: /\b(now available in|rolls? out (to|in)|expands? to|launches? in) (the )?[A-Z][a-z]+/,

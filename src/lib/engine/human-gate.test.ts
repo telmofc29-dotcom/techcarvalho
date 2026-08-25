@@ -39,6 +39,10 @@ const ALLOWED = [
   // it, and proving approved-with-an-actor still works requires performing
   // one. It removes every row it creates and asserts the count is unchanged.
   "verify-review-actor.ts",
+  // The adversarial pass. It ATTEMPTS to approve a brief as an attacker would,
+  // and asserts the attempt is refused — the write is the test. It targets
+  // rows that cannot exist, so a hole would be proven without leaving one.
+  "attack-surface.ts",
 ];
 
 /** The write this test forbids, in either quote style. */

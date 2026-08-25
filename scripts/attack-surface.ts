@@ -40,7 +40,11 @@ async function main(): Promise<void> {
   // 1. Editorial intent must not be readable by the public.
   // -----------------------------------------------------------------------
   console.log("  -- reading things a stranger should not see --");
-  for (const table of ["engine_briefs", "engine_opportunities", "engine_discoveries", "engine_sources"]) {
+  // `as const` so each name is a literal the typed client accepts. Without it
+  // the loop variable widens to `string`, which npm test tolerates (types are
+  // stripped) and `tsc` in the build does not — the build caught it.
+  const PRIVATE_TABLES = ["engine_briefs", "engine_opportunities", "engine_discoveries", "engine_sources"] as const;
+  for (const table of PRIVATE_TABLES) {
     const { data, error } = await anon.from(table).select("*").limit(1);
     // RLS denies by returning ZERO ROWS, not an error. Both are a refusal;
     // rows coming back is the failure.
