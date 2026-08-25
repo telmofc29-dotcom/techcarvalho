@@ -193,13 +193,37 @@ export function assetVocabulary(asset: MatchAsset): {
     .replace(/\.(png|jpe?g|webp|avif|gif)$/i, "")
     .replace(/[_-]+/g, " ");
 
-  const fromFilename = identityTokens(cleaned);
-  const fromDescription = identityTokens(`${asset.altText ?? ""} ${asset.caption ?? ""}`);
+  const fromFilename = withHyphenVariants(identityTokens(cleaned));
+  const fromDescription = withHyphenVariants(
+    identityTokens(`${asset.altText ?? ""} ${asset.caption ?? ""}`)
+  );
   return {
     all: new Set([...fromFilename, ...fromDescription]),
     fromFilename,
     fromDescription,
   };
+}
+
+/**
+ * Add a de-hyphenated form of every hyphenated token.
+ *
+ * "wi-fi" and "wifi" are the same word, and a filename almost never spells it
+ * the way an article title does. Without this a router photograph named
+ * "wifi-7-router.jpg" missed "Wi-Fi 7 explained" entirely -- found by the
+ * acceptance run, not by reasoning about it. The same gap affects "e-mount"
+ * versus "emount" and "24-70mm" versus "2470mm".
+ *
+ * Both forms are kept rather than normalising to one, so a token that is only
+ * ever written hyphenated still matches itself.
+ */
+function withHyphenVariants(tokens: Set<string>): Set<string> {
+  const out = new Set(tokens);
+  for (const t of tokens) {
+    if (!t.includes("-")) continue;
+    const flat = t.replace(/-/g, "");
+    if (flat.length >= 2) out.add(flat);
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -255,10 +279,10 @@ export function scoreMatch(asset: MatchAsset, target: MatchTarget): MediaMatch {
   const reasons: string[] = [];
   const withheld: string[] = [];
 
-  const targetIdentity = identityTokens(
-    `${target.title} ${target.manufacturerName ?? ""}`
+  const targetIdentity = withHyphenVariants(
+    identityTokens(`${target.title} ${target.manufacturerName ?? ""}`)
   );
-  const targetModels = modelTokens(target.title);
+  const targetModels = withHyphenVariants(modelTokens(target.title));
 
   // Bare single digits ("the 9 in Ryzen 9", "the 4 in Mini 4") are series
   // designators, not designations. They are neither required nor sufficient:

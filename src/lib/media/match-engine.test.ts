@@ -355,3 +355,21 @@ test("a series digit is not required for a genuine model match", () => {
   );
   assert.equal(m.specificity, "exact_model");
 });
+
+test("hyphenated and flat spellings of the same word unify", () => {
+  // Found by the acceptance run: "wifi-7-router.jpg" missed "Wi-Fi 7
+  // explained" entirely, because a filename almost never spells it the way a
+  // title does.
+  const m = scoreMatch(
+    asset({ storagePath: "image/wifi-7-router.jpg" }),
+    target({ title: "Wi-Fi 7 explained" })
+  );
+  assert.ok(m.proposedSlots.includes("hero"), JSON.stringify(m.withheld));
+
+  // And the reverse spelling.
+  const m2 = scoreMatch(
+    asset({ storagePath: "image/wi-fi-mesh-node.jpg" }),
+    target({ title: "Wifi mesh explained" })
+  );
+  assert.ok(m2.proposedSlots.length > 0);
+});
