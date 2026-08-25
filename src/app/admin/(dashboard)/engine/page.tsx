@@ -96,6 +96,12 @@ function EngineStatusLine({ health }: { health: Awaited<ReturnType<typeof loadEn
           Next run <span className="text-neutral-900">{nextRunLabel()}</span>
         </p>
         <Link
+          href="/admin/media/suggestions"
+          className="text-sm font-medium text-neutral-900 underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
+        >
+          Media suggestions
+        </Link>
+        <Link
           href="/admin/engine/health"
           className="text-sm font-medium text-neutral-900 underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
         >

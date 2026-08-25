@@ -1145,3 +1145,113 @@ export async function classifyMediaAsset(
   revalidatePath(`/admin/media/${id}`);
   return { error: null };
 }
+
+// ---------------------------------------------------------------------------
+// Media Intelligence — one approval does the whole filing job
+// ---------------------------------------------------------------------------
+
+/**
+ * Apply one suggestion from /admin/media/suggestions.
+ *
+ * Does, in one action, what previously meant three screens: save proposed alt
+ * text where there is none, attach the asset to the target, and fill the slots
+ * the matcher offered.
+ *
+ * IT RE-DERIVES THE MATCH SERVER-SIDE. The form is a rendering, not an
+ * authorisation: a stale tab could otherwise post a slot that has since been
+ * filled, or a pairing the rules now refuse. The matcher is the authority in
+ * both places, and it is asked again here.
+ *
+ * IT NEVER PUBLISHES. Publishing an asset makes it reachable from the public
+ * internet, which is a decision with consequences outside the admin, so it
+ * stays a separate deliberate act.
+ *
+ * IT NEVER OVERWRITES A FILLED SLOT. The matcher withholds occupied slots and
+ * this re-check drops any that arrived anyway, so an existing hero survives a
+ * stale form post.
+ */
+export async function applyMediaSuggestion(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const mediaId = String(formData.get("media_id") ?? "");
+  const targetKind = String(formData.get("target_kind") ?? "");
+  const targetId = String(formData.get("target_id") ?? "");
+  const requestedSlots = String(formData.get("slots") ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s): s is MediaRole => s === "hero" || s === "thumbnail" || s === "gallery");
+  const altText = String(formData.get("alt_text") ?? "").trim();
+
+  if (!mediaId || !targetId || requestedSlots.length === 0) return;
+  if (targetKind !== "content" && targetKind !== "product") return;
+
+  const supabase = await createClient();
+
+  // Re-read the slots as they are NOW, not as the page rendered them.
+  // Branched rather than parameterised: a dynamic column name defeats the
+  // generated row types, and losing that check on the one function that writes
+  // associations is a bad trade for three saved lines.
+  const existingResult =
+    targetKind === "content"
+      ? await supabase.from("content_media").select("media_id, role").eq("content_id", targetId)
+      : await supabase.from("product_media").select("media_id, role").eq("product_id", targetId);
+  if (existingResult.error) {
+    console.error(`[applyMediaSuggestion] slot read: ${existingResult.error.message}`);
+    return;
+  }
+  const existing = existingResult.data;
+
+  const occupied = new Set(
+    ((existing ?? []) as { media_id: string; role: string }[])
+      .filter((r) => r.role === "hero" || r.role === "thumbnail")
+      .map((r) => r.role)
+  );
+  const alreadyHere = new Set(
+    ((existing ?? []) as { media_id: string; role: string }[])
+      .filter((r) => r.media_id === mediaId)
+      .map((r) => r.role)
+  );
+
+  const slots = requestedSlots.filter((role) => {
+    if (alreadyHere.has(role)) return false;
+    // Exclusive slots are never taken from an incumbent here.
+    if ((role === "hero" || role === "thumbnail") && occupied.has(role)) return false;
+    return true;
+  });
+  if (slots.length === 0) return;
+
+  // Alt text only where there is none — a generated description must never
+  // replace one a human wrote.
+  if (altText) {
+    const { data: asset } = await supabase
+      .from("media_assets")
+      .select("alt_text")
+      .eq("id", mediaId)
+      .maybeSingle();
+    if (asset && !(asset as { alt_text: string | null }).alt_text?.trim()) {
+      await supabase.from("media_assets").update({ alt_text: altText }).eq("id", mediaId);
+    }
+  }
+
+  const insertError =
+    targetKind === "content"
+      ? (
+          await supabase
+            .from("content_media")
+            .insert(slots.map((role) => ({ content_id: targetId, media_id: mediaId, role, sort_order: 0 })))
+        ).error
+      : (
+          await supabase
+            .from("product_media")
+            .insert(slots.map((role) => ({ product_id: targetId, media_id: mediaId, role, sort_order: 0 })))
+        ).error;
+  if (insertError) {
+    // A unique-constraint collision means somebody filled the slot between the
+    // read above and this write. That is the constraint doing its job.
+    console.error(`[applyMediaSuggestion] attach: ${insertError.message}`);
+  }
+
+  revalidatePath("/admin/media/suggestions");
+  revalidatePath("/admin/media");
+  revalidatePath(`/admin/media/${mediaId}`);
+  revalidatePath("/admin");
+}
