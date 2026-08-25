@@ -512,12 +512,17 @@ export function suggestTitle(
 }
 
 function subjectNoun(title: string, subject: SubjectMatch | null): string {
-  if (!subject) return title.split(/[:—-]/)[0].trim();
-  // Prefer the specific alias as it appears in the title, capitalised as found.
+  // KEEP THE WHOLE NAME. Reducing "Canon EOS R5 Mark II" to the matched brand
+  // alias produced the headline "Canon: what has been reported so far", which
+  // names a company rather than the thing the piece is about. A short subject
+  // line IS the noun; there is nothing to extract from it.
+  const head = title.split(/[:—]/)[0].trim();
+  if (head.length > 0 && head.split(/\s+/).length <= 8) return head;
+  if (!subject) return head;
+
   const idx = title.toLowerCase().indexOf(subject.matchedAlias);
   if (idx >= 0) {
     const found = title.slice(idx, idx + subject.matchedAlias.length);
-    // Extend to include a trailing model number when present.
     const after = title.slice(idx + subject.matchedAlias.length).match(/^\s+\d+[A-Za-z]*/);
     return (found + (after ? after[0] : "")).trim();
   }
