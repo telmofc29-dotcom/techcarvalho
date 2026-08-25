@@ -712,12 +712,12 @@ export function getMostClickedElements(data: FpRangeData, limit = 10): FpClicked
     const destination = typeof e.metadata?.destination === "string" ? e.metadata.destination : null;
     const linkPosition = typeof e.metadata?.link_position === "string" ? e.metadata.link_position : "unknown";
     if (!destination) continue;
-    const key = `${destination} ${linkPosition}`;
+    const key = `${destination}\0${linkPosition}`;
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
   return [...counts.entries()]
     .map(([key, count]) => {
-      const [destination, linkPosition] = key.split(" ");
+      const [destination, linkPosition] = key.split("\0");
       return { destination, linkPosition, count };
     })
     .sort((a, b) => b.count - a.count)

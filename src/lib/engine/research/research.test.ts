@@ -19,7 +19,7 @@ import {
   assertabilityOf,
 } from "./claim-extraction.ts";
 import { assessLineage, citedOrigin } from "./lineage.ts";
-import { findMatches } from "./research-pipeline.ts";
+import { findMatches, subjectNoun } from "./research-pipeline.ts";
 import { SEED_SOURCES, BLOCKED_SOURCES, independenceGroups, sourcesForCategory } from "./source-seed.ts";
 
 // ===========================================================================
@@ -312,4 +312,54 @@ test("blocked sources are recorded rather than silently dropped", () => {
   }
   // The ones that refused us are recorded as refusals, not as failures of ours.
   assert.ok(BLOCKED_SOURCES.some((b) => b.status === 403));
+});
+
+// ---------------------------------------------------------------------------
+// Subject phrases become live article titles
+// ---------------------------------------------------------------------------
+
+test("a subject phrase never ends mid-thought", () => {
+  // Each of these reached a real draft title before trimDangling existed.
+  // A trailing preposition or bare number reads to a reader as a truncation
+  // bug, which is exactly what it was.
+  const cases: [string, RegExp][] = [
+    ["iPhone 18 Pro's new price might be better than you expect", /price$/i],
+    ["When Apple announced its event over the last six weeks it said nothing", /event$/i],
+    ["iPadOS 27 adds three features to make iPad more like a Mac", /iPad$/i],
+  ];
+  for (const [headline, endsWith] of cases) {
+    const noun = subjectNoun(headline, null);
+    assert.match(noun, endsWith, `${headline} -> ${noun}`);
+  }
+});
+
+test("a colon headline keeps its substantive half", () => {
+  // Taking the first half produced the bare title "Hot Chips 2026".
+  const noun = subjectNoun("Hot Chips 2026: Intel Xeon 7 'Diamond Rapids' comes with 256 cores", null);
+  assert.match(noun, /Xeon 7/);
+  assert.doesNotMatch(noun, /^Hot Chips 2026$/);
+});
+
+test("a short headline is left alone", () => {
+  assert.equal(subjectNoun("Samsung unveils the Galaxy S26 Ultra", null), "Samsung unveils the Galaxy S26 Ultra");
+});
+
+test("trimming never empties the phrase", () => {
+  // Guard against a headline of nothing but function words producing "".
+  for (const h of ["More of the", "Up to the new", "It is about to be"]) {
+    assert.ok(subjectNoun(h, null).trim().length > 0, h);
+  }
+});
+
+test("hedging words are stripped from the subject phrase", () => {
+  // These are restored in the body with CONFIRMED/REPORTED framing; a headline
+  // noun phrase carries the subject, not the epistemic status.
+  assert.equal(
+    subjectNoun("New Mac Mini Reportedly Set to Launch Before iPhone", null),
+    "New Mac Mini Set to Launch Before iPhone"
+  );
+  assert.equal(
+    subjectNoun("Apple Reportedly Will Announce iPhone 18 Pro Event Date", null),
+    "Apple Will Announce iPhone 18 Pro Event Date"
+  );
 });

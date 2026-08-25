@@ -511,15 +511,81 @@ export function suggestTitle(
   }
 }
 
-function subjectNoun(title: string, subject: SubjectMatch | null): string {
-  // KEEP THE WHOLE NAME. Reducing "Canon EOS R5 Mark II" to the matched brand
-  // alias produced the headline "Canon: what has been reported so far", which
-  // names a company rather than the thing the piece is about. A short subject
-  // line IS the noun; there is nothing to extract from it.
-  const head = title.split(/[:—]/)[0].trim();
-  if (head.length > 0 && head.split(/\s+/).length <= 8) return head;
-  if (!subject) return head;
+export function subjectNoun(title: string, subject: SubjectMatch | null): string {
+  // A subject phrase must not end mid-thought. Capping a long headline at nine
+  // words produced live titles like "iPhone 18 Pro's new price might be better
+  // than" and "When Apple announced its event over the last six" — grammatical
+  // fragments that read as truncation bugs to a reader. Trailing function words
+  // carry no subject meaning, so dropping them shortens the phrase to its last
+  // complete idea.
+  const DANGLING = new Set([
+    "a", "an", "the", "and", "or", "but", "of", "in", "on", "at", "to", "for",
+    "with", "by", "as", "from", "into", "over", "under", "after", "before",
+    "ahead", "than", "that", "this", "these", "those", "its", "his", "her",
+    "their", "our", "your", "is", "are", "was", "were", "be", "been", "will",
+    "would", "could", "might", "may", "can", "has", "have", "had", "more",
+    "most", "less", "least", "up", "out", "off", "down", "about", "last",
+    "next", "new", "first", "second", "third", "very", "so", "just", "now",
+    // Trailing comparatives are always half of a comparison whose other half
+    // was cut off: "...price might be better" begs "than what?".
+    "better", "worse", "bigger", "smaller", "faster", "slower", "cheaper",
+    "higher", "lower", "longer", "shorter", "stronger", "closer", "easier",
+    "harder", "older", "newer", "bigger", "brighter",
+    // A spelled-out number dangles exactly like a digit does; "over the last
+    // six" is no more complete than "over the last 6".
+    "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
+    "ten", "eleven", "twelve",
+    // Transitive verbs left without their object: "Xeon 7 'Diamond Rapids'
+    // comes" is cut off in the same way "...comes with up to" is. Only verbs
+    // that genuinely demand an object are listed — "launches" and "arrives"
+    // stand alone perfectly well and must not be trimmed.
+    "comes", "gets", "adds", "brings", "makes", "takes", "gives", "uses",
+    "includes", "features", "offers", "supports", "needs", "wants",
+  ]);
 
+  function trimDangling(words: readonly string[]): string[] {
+    const out = [...words];
+    while (out.length > 2) {
+      const last = out[out.length - 1].toLowerCase().replace(/[^a-z0-9']/g, "");
+      // A trailing bare number ("over the last six") is as incomplete as a
+      // trailing preposition; a number attached to a name ("Xeon 7") is not,
+      // and that case never reaches here because a noun follows it.
+      if (DANGLING.has(last) || /^\d+$/.test(last)) out.pop();
+      else break;
+    }
+    return out;
+  }
+
+  // KEEP WHAT THE STORY IS ABOUT, NOT WHO IT IS ABOUT.
+  //
+  // Falling back to the matched brand alias produced titles like "Apple: what
+  // has been reported so far" and "Report: what has been reported so far" from
+  // headlines that were perfectly specific, and generated duplicate titles
+  // whenever two different Apple stories were drafted in one run.
+  //
+  // The headline already names the subject; the work is trimming it to the
+  // substantive phrase rather than replacing it.
+  let t = title
+    .replace(/^\(PR\)\s*/i, "")
+    // Drop a trailing clause: publishers append "— here is why" and similar.
+    .replace(/\s+[—–]\s+.*$/, "")
+    // Keep the LONGER half of a colon headline: "Hot Chips 2026: Intel Xeon 7
+    // comes with 256 cores" carries its substance after the colon, and taking
+    // the first half produced the title "Hot Chips 2026".
+    .split(/[:|]/)
+    .map((part) => part.trim())
+    .sort((a, b) => b.split(/\s+/).length - a.split(/\s+/).length)[0]
+    .trim()
+    // Hedging belongs in the body, not in a headline noun phrase.
+    .replace(/\b(reportedly|apparently|allegedly|supposedly)\b/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+
+  const words = t.split(/\s+/).filter(Boolean);
+  if (words.length >= 2) return trimDangling(words.slice(0, 9)).join(" ");
+
+  // A one-word head is not a subject. Fall back to the alias only here.
+  if (!subject) return t || title.trim();
   const idx = title.toLowerCase().indexOf(subject.matchedAlias);
   if (idx >= 0) {
     const found = title.slice(idx, idx + subject.matchedAlias.length);

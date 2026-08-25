@@ -146,6 +146,13 @@ async function main(): Promise<void> {
       status: "draft", categorySlug: null, publishedAt: null,
     });
   }
+  // Two different headlines can reduce to the same templated title, which is
+  // how one run produced "Apple: what has been reported so far" twice. The
+  // subject-level duplicate check cannot see that, because it compares
+  // subjects and this collides at the TITLE.
+  const usedTitles = new Set(
+    ((content ?? []) as { title: string }[]).map((c) => c.title.toLowerCase().trim())
+  );
   const takenSlugs = new Set(
     ((content ?? []) as { slug: string }[]).map((c) => c.slug)
   );
@@ -297,7 +304,13 @@ async function main(): Promise<void> {
             relatedContent: [], relatedProducts: [],
           });
 
-          const seo = proposeSeo({ title, primaryQuestion: null });
+          if (usedTitles.has(title.toLowerCase().trim())) {
+        console.log(`  TITLE TAKEN      ${title.slice(0, 56)}`);
+        continue;
+      }
+      usedTitles.add(title.toLowerCase().trim());
+
+      const seo = proposeSeo({ title, primaryQuestion: null });
           const slug = proposeSlug(title, takenSlugs);
           if (!slug) { outcomes.push(outcome); continue; }
           takenSlugs.add(slug);
