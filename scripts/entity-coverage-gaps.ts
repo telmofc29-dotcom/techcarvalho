@@ -455,7 +455,23 @@ async function main(): Promise<void> {
         brief_kind: result.decision.framing === "confirmed" ? "breaking" : "explainer",
         freshness_sensitivity: "time_sensitive",
         verified_facts: facts, uncertainties, source_urls: sourceUrls,
-        review_state: "approved", state: "planned", reviewed_at: new Date().toISOString(),
+        // review_state IS THE HUMAN GATE. A SCRIPT MUST NEVER WRITE 'approved'.
+        //
+        // This line used to insert review_state:'approved' with a reviewed_at
+        // timestamp. It did not need to: the draft is assembled directly below
+        // by calling assembleDraft, so approval was never a precondition for
+        // anything this script does. It was set only so the brief's own record
+        // looked settled.
+        //
+        // The cost was real. brief-quality.ts documents review_state as "what a
+        // HUMAN decided" and draft-job.ts guards draft assembly on it, so this
+        // manufactured owner consent that no owner gave — 52 briefs carried it,
+        // 9 of them stamped within a single minute. Any report citing "approved"
+        // as evidence of owner control was false.
+        //
+        // The brief stays PENDING. That a draft exists is recorded by
+        // assembled_content_id, which is what that column is for.
+        review_state: "pending", state: "planned",
       }).select("id").single();
       if (briefErr || !briefRow) { console.log(`  brief failed: ${briefErr?.message}`); continue; }
 

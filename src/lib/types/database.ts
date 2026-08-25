@@ -1425,6 +1425,16 @@ export interface Database {
           review_note: string | null;
           snoozed_until: string | null;
           reviewed_at: string | null;
+          // 20260825_brief_review_actor.sql — NOT YET APPLIED. The signed-in
+          // admin who approved this brief; NULL means no human reviewer, which
+          // is what a script write looks like.
+          //
+          // VERIFIED, not assumed: PostgREST answers PGRST204 ("could not find
+          // the column in the schema cache") for an unknown column — it does
+          // NOT drop it silently. So nothing may write this field until the
+          // migration is applied; doing so breaks the admin approve button. The
+          // admin actions record the approver in review_note meanwhile.
+          reviewed_by: string | null;
           // Phase 6 — 20260822_phase6_draft_assembly.sql. Links a brief to the
           // draft it produced. `assembled_content_id` is null for every brief
           // that has not been assembled, which is what makes "approved but not

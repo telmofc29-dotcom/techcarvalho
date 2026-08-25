@@ -282,9 +282,13 @@ async function main(): Promise<void> {
             verified_facts: facts,
             uncertainties,
             source_urls: sourceUrls,
-            review_state: "approved",
+            // review_state is the HUMAN gate and a script must never write
+            // 'approved' — it manufactures owner consent nobody gave. The
+            // draft is assembled directly below, so approval was never a
+            // precondition here. assembled_content_id records that a draft
+            // exists; that is what it is for.
+            review_state: "pending",
             state: "planned",
-            reviewed_at: new Date().toISOString(),
           }).select("id").single();
 
           if (briefErr || !briefRow) {

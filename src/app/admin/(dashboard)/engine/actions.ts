@@ -543,7 +543,8 @@ export async function setUpdateProposalState(formData: FormData): Promise<void> 
  * first and its failure aborts before anything is assembled.
  */
 export async function approveAndBuild(formData: FormData): Promise<void> {
-  await requireAdmin();
+  // The admin is HELD, not discarded: approval must record who granted it.
+  const admin = await requireAdmin();
   const id = String(formData.get("id") ?? "");
   if (!id) return;
 
@@ -590,7 +591,27 @@ export async function approveAndBuild(formData: FormData): Promise<void> {
   const now = new Date().toISOString();
   const { error: approveError } = await supabase
     .from("engine_briefs")
-    .update({ review_state: "approved", reviewed_at: now, updated_at: now })
+    // reviewed_by records WHO approved. Without it, a script writing
+    // review_state='approved' is indistinguishable from this action — which is
+    // how 52 briefs came to carry consent nobody gave.
+    // RECORD WHO APPROVED, IN A COLUMN THAT EXISTS TODAY.
+    //
+    // The proper fix is a reviewed_by column, drafted in
+    // supabase/migrations_pending/20260825_brief_review_actor.sql. It is NOT
+    // applied, and PostgREST answers PGRST204 for an unknown column rather
+    // than ignoring it — verified against production — so writing reviewed_by
+    // now would break this button.
+    //
+    // review_note exists and was empty on all 52 machine approvals, so
+    // stamping the actor here makes a human approval distinguishable from a
+    // script write immediately, with no schema change. Move this to
+    // reviewed_by once the migration is applied.
+    .update({
+      review_state: "approved",
+      reviewed_at: now,
+      updated_at: now,
+      review_note: `Approved by ${admin.email ?? admin.id} via the admin queue.`,
+    })
     .eq("id", id);
   // Abort rather than continue: assembling a draft for a brief whose approval
   // did not persist would produce an article nobody approved.
@@ -734,7 +755,8 @@ export async function updateStageModes(formData: FormData): Promise<void> {
  * IT STILL CANNOT PUBLISH. engine_assemble_draft hard-wires `status='draft'`.
  */
 export async function approveResearchedTopic(formData: FormData): Promise<void> {
-  await requireAdmin();
+  // Held so the approval this action performs can name its actor.
+  const admin = await requireAdmin();
   const discoveryId = String(formData.get("discovery_id") ?? "");
   if (!discoveryId) return;
 
@@ -774,9 +796,17 @@ export async function approveResearchedTopic(formData: FormData): Promise<void> 
       verified_facts: verifiedFacts,
       uncertainties,
       source_urls: topic.evidence.map((e) => e.url),
+      // This action IS a human approval: it runs only when a signed-in admin
+      // clicks approve. reviewed_by is what proves that, and is precisely what
+      // a script writing the same field cannot supply.
+      // This action IS a human approval: it runs only when a signed-in admin
+      // clicks approve. The note names that admin, which is precisely what a
+      // script writing the same field cannot supply. See the note above about
+      // reviewed_by and its pending migration.
       review_state: "approved",
       state: "planned",
       reviewed_at: new Date().toISOString(),
+      review_note: `Approved by ${admin.email ?? admin.id} via researched topics.`,
     })
     .select("id")
     .single();
