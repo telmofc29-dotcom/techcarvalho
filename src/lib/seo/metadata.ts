@@ -110,6 +110,17 @@ export function buildMetadata({
     description: desc,
     alternates: {
       canonical,
+      // THE FEED LINK LIVES HERE, NOT IN THE ROOT LAYOUT.
+      //
+      // Next.js metadata merging REPLACES a parent segment's `alternates`
+      // wholesale when a child defines its own. Declaring the feed once in the
+      // root layout therefore advertised it on exactly the pages that set no
+      // canonical of their own — which is none of them, since every page here
+      // self-canonicalizes. The tag rendered nowhere.
+      //
+      // Emitting it from the shared builder puts it on every page instead,
+      // which is what a site-wide feed link is supposed to be.
+      types: { "application/rss+xml": [{ url: absoluteUrl("/feed.xml"), title: SITE_NAME }] },
       // Emitted only when the caller can name the locales this route really
       // exists in. Absent by default — see availableLocales above.
       ...(availableLocales && availableLocales.length > 0
@@ -123,7 +134,34 @@ export function buildMetadata({
           }
         : {}),
     },
-    robots: { index: !noindex, follow },
+    // LARGE IMAGE PREVIEWS, DECLARED ONCE.
+    //
+    // Without `max-image-preview:large`, Google is limited to a thumbnail for
+    // this site's pages, and a thumbnail is not eligible for the image-led
+    // surfaces (Discover, image-rich results) at all. The directive does not
+    // buy traffic and nothing here promises any — it removes a restriction we
+    // were imposing on ourselves for no reason.
+    //
+    // It is set via `googleBot` rather than the generic `robots` because
+    // max-image-preview, max-snippet and max-video-preview are Google
+    // directives; emitting them to every crawler is noise other engines ignore.
+    //
+    // Applied to noindex pages too, deliberately: the directives are
+    // independent of indexing, and a page that is noindex today may not be
+    // tomorrow. `index`/`follow` still carry the actual indexing decision.
+    robots: {
+      index: !noindex,
+      follow,
+      googleBot: {
+        index: !noindex,
+        follow,
+        "max-image-preview": "large",
+        // -1 = no limit. Both are Google's documented "no restriction" value,
+        // and the alternative is Google guessing a shorter cap for us.
+        "max-snippet": -1,
+        "max-video-preview": -1,
+      },
+    },
     openGraph: {
       title: fullTitle,
       description: desc,
