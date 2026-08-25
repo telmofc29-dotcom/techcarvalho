@@ -2,7 +2,9 @@ import "server-only";
 import { newCounters } from "@/lib/engine/cron";
 import { buildCorpus } from "@/lib/engine/research/feed-index";
 import { consolidateOpportunities } from "@/lib/engine/coverage-decision";
-import { PRIORITY_ENTITIES, assessPriority, scaleToStoredRange } from "@/lib/engine/priority-entities";
+import { PRIORITY_ENTITIES } from "@/lib/engine/priority-entities";
+import { rankOpportunity } from "@/lib/engine/opportunity-score";
+import { subjectDomainsForText } from "@/lib/engine/research/entity-model";
 import { assessSubject } from "@/lib/engine/subject-quality";
 import { subjectNoun } from "@/lib/engine/research/research-pipeline";
 import { titleSimilarity } from "@/lib/engine/dedupe";
@@ -66,6 +68,9 @@ function keyOf(headline: string): string {
 
 export async function runEntityCoverage(supabase: Client): Promise<StageResult> {
   const counters = newCounters();
+  // Captured BEFORE any work: anything not refreshed after this instant is a
+  // row this run no longer considers an opportunity.
+  const runStartedAt = new Date().toISOString();
 
   const [contentRes, briefsRes] = await Promise.all([
     supabase.from("content_items").select("id, title, status, published_at"),
@@ -96,6 +101,8 @@ export async function runEntityCoverage(supabase: Client): Promise<StageResult> 
   const found: {
     entity: string; tier: number; headline: string; link: string | null;
     publisher: string; score: number; reason: string; urgent: boolean; origins: number;
+    confirmation: string; significance: string; isSubject: boolean;
+    components: { name: string; value: number; why: string }[];
   }[] = [];
 
   for (const entity of PRIORITY_ENTITIES) {
@@ -160,7 +167,29 @@ export async function runEntityCoverage(supabase: Client): Promise<StageResult> 
 
       const covered = existingTitles.some((t) => titleSimilarity(headline, t) >= ALREADY_COVERED);
       const origins = 1 + g.duplicates.length;
-      const priority = assessPriority({ headline, ageDays, independentOrigins: origins, alreadyCovered: covered });
+      // RANKED, not merely prioritised. assessPriority still supplies entity
+      // tier and event importance; rankOpportunity adds what it cannot see —
+      // confirmation state, significance and whether this company is the
+      // subject or a component. Without those, 39 opportunities collapsed into
+      // three distinct scores and a one-source rumour tied with a confirmed
+      // first-party launch.
+      //
+      // firstParty comes from the evidence, never from the wording: only a URL
+      // on the subject's own domain earns `confirmed`.
+      const subjectDomains = subjectDomainsForText(headline);
+      const firstParty =
+        g.primary.link !== null &&
+        subjectDomains.some((d) => (g.primary.link as string).toLowerCase().includes(d.toLowerCase()));
+
+      const ranking = rankOpportunity({
+        headline,
+        entityAliases: entity.aliases,
+        ageDays,
+        independentOrigins: origins,
+        alreadyCovered: covered,
+        firstParty,
+      });
+      const priority = ranking.priority;
 
       // Trivial and routine items are not gaps. They are noise we correctly
       // ignore, and recording them would rebuild the queue this cleaned up.
@@ -169,8 +198,12 @@ export async function runEntityCoverage(supabase: Client): Promise<StageResult> 
 
       found.push({
         entity: entity.name, tier: entity.tier, headline, link: g.primary.link,
-        publisher: g.primary.publisher, score: priority.score, reason: priority.reason,
+        publisher: g.primary.publisher, score: ranking.score,
+        reason: `${priority.reason} ${ranking.summary}`.trim(),
         urgent: priority.urgent, origins,
+        confirmation: ranking.confirmation, significance: ranking.significance,
+        isSubject: ranking.isSubject,
+        components: ranking.components.map((c) => ({ name: c.name, value: c.value, why: c.why })),
       });
     }
   }
@@ -188,25 +221,17 @@ export async function runEntityCoverage(supabase: Client): Promise<StageResult> 
       p_subject_type: "topic",
       p_subject_key: `watchlist:${keyOf(gap.headline)}`,
       p_label: gap.headline.slice(0, 300),
-      // SCALED, NOT CLAMPED.
-      //
-      // engine_opportunities.score is numeric(5,2) CHECK 0..100, and priority
-      // scores reach PRIORITY_SCORE_MAX. Every write in the first run was
-      // rejected by that constraint.
-      //
-      // Clamping fixed the rejection and broke the ranking: everything at or
-      // above 100 became exactly 100, and 22 of the first 34 opportunities
-      // tied at the top with no way to order them. An opportunity list whose
-      // best items are indistinguishable is not a ranking.
-      //
-      // Scaling preserves the order across the whole range. The raw value is
-      // still recorded in inputs.priorityScore, so nothing is lost and the
-      // stored score is never mistaken for the priority score.
-      p_score: scaleToStoredRange(gap.score),
+// rankOpportunity already returns 0..100 with two decimals, which is exactly
+      // what numeric(5,2) stores. No scaling, and nothing to clamp away.
+      p_score: gap.score,
       p_inputs: {
         entity: gap.entity,
         tier: gap.tier,
         priorityScore: gap.score,
+        confirmation: gap.confirmation,
+        significance: gap.significance,
+        isSubject: gap.isSubject,
+        scoreComponents: gap.components,
         independentOrigins: gap.origins,
         urgent: gap.urgent,
         publisher: gap.publisher,
@@ -230,6 +255,33 @@ export async function runEntityCoverage(supabase: Client): Promise<StageResult> 
     }
   }
 
+  // EXPIRE WHAT THIS RUN NO LONGER FINDS.
+  //
+  // Nothing else removes these rows. After ranking improved, 14 rows carrying
+  // scores from the OLD model still sat above every correctly-ranked one,
+  // because the improvement could not reach rows it no longer wrote — a better
+  // model made the list worse.
+  //
+  // The cutoff is this run's start, so anything refreshed above survives. RLS
+  // restricts the table to is_admin() and the tick is unauthenticated, so this
+  // has to go through a SECURITY DEFINER function.
+  let pruned = 0;
+  const { data: prunedCount, error: pruneErr } = await supabase.rpc(
+    "engine_prune_watchlist_opportunities",
+    { p_before: runStartedAt }
+  );
+  if (pruneErr) {
+    // Missing function = migration not applied yet. Recorded, not swallowed:
+    // until it exists the list carries stale rows, and that must be visible.
+    logQueryError("entity-coverage prune", pruneErr);
+    counters.failed++;
+  } else if (typeof prunedCount === "number" && prunedCount < 0) {
+    logQueryError("entity-coverage prune", { message: "refused the cutoff as invalid" });
+    counters.failed++;
+  } else {
+    pruned = typeof prunedCount === "number" ? prunedCount : 0;
+  }
+
   return {
     status: counters.failed > 0 ? "partial" : "success",
     examined: counters.examined,
@@ -241,6 +293,7 @@ export async function runEntityCoverage(supabase: Client): Promise<StageResult> 
       uncoveredFound: found.length,
       urgent: found.filter((f) => f.urgent).length,
       recorded: shortlist.length,
+      prunedStale: pruned,
       topGaps: shortlist.slice(0, 5).map((g) => `${g.entity}: ${g.headline.slice(0, 60)}`),
     },
   };

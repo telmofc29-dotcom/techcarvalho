@@ -1815,6 +1815,15 @@ export interface Database {
           days_since_freshest: number;
         }[];
       };
+      // 20260825_prune_stale_opportunities.sql — NOT YET APPLIED. Declared so
+      // the caller typechecks; at runtime the call fails until the migration
+      // runs, and entity-coverage-job records that failure rather than
+      // swallowing it. Returns the number of rows removed, or -1 when it
+      // refuses the cutoff as missing or in the future.
+      engine_prune_watchlist_opportunities: {
+        Args: { p_before: string };
+        Returns: number;
+      };
       engine_upsert_opportunity: {
         Args: {
           p_subject_type: string;
