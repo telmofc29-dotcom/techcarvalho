@@ -92,6 +92,24 @@ export type MatchAsset = {
   rightsStatus: string;
   width: number | null;
   height: number | null;
+  /**
+   * Products this asset is LINKED to in product_media.
+   *
+   * Verified identity — a row someone created, not a guess from a filename.
+   * Optional, so every existing caller keeps working unchanged. When present it
+   * outranks text inference in BOTH directions, and the second direction is the
+   * valuable one: an asset known to depict product X is evidence AGAINST it
+   * depicting product Y, however similar their names look.
+   */
+  verifiedProducts?: readonly VerifiedProduct[];
+};
+
+/** A product this asset is recorded as depicting. */
+export type VerifiedProduct = {
+  productId: string;
+  name: string;
+  manufacturerName: string | null;
+  familyId: string | null;
 };
 
 export type MatchTarget = {
@@ -108,7 +126,41 @@ export type MatchTarget = {
   isModelSpecific: boolean;
   /** Slots already filled, so nothing proposes to displace a human choice. */
   occupiedSlots: { role: MediaRole; humanSelected: boolean }[];
+  /** The product this target IS, when it is one. Optional; enables verified matching. */
+  productId?: string | null;
+  /** The family this target belongs to, for family-level verified matching. */
+  familyId?: string | null;
 };
+
+/** What product_media says about this asset relative to this target. */
+export type VerifiedVerdict =
+  /** Linked to exactly this product. The strongest signal available. */
+  | "verified_exact"
+  /** Linked to a different product in the same family. */
+  | "verified_family"
+  /** Linked to a product that is NOT this one and not in its family. */
+  | "verified_other_product"
+  /** No product links recorded; fall back to reading the text. */
+  | "unverified";
+
+/**
+ * Compare an asset's recorded product links against a target.
+ *
+ * Pure and exported so the verdict can be tested directly — it is the part
+ * that decides whether a picture is allowed to represent a specific product.
+ */
+export function verifiedVerdict(asset: MatchAsset, target: MatchTarget): VerifiedVerdict {
+  const links = asset.verifiedProducts ?? [];
+  if (links.length === 0) return "unverified";
+  if (target.productId && links.some((l) => l.productId === target.productId)) {
+    return "verified_exact";
+  }
+  if (target.familyId && links.some((l) => l.familyId && l.familyId === target.familyId)) {
+    return "verified_family";
+  }
+  // It depicts something, and that something is not this target.
+  return "verified_other_product";
+}
 
 export type MediaMatch = {
   assetId: string;
@@ -316,6 +368,15 @@ export function scoreMatch(asset: MatchAsset, target: MatchTarget): MediaMatch {
   // single model token was enough to call it exact, which put a 5D Mark III
   // photograph on the 5D Mark II page and a DJI Mini 4 Pro render on a
   // "Neptune 4 Pro" printer.
+  // ---- verified identity beats reading the filename ----------------------
+  //
+  // product_media records what an asset actually depicts. When that exists it
+  // is better evidence than any text inference, in BOTH directions — and the
+  // refusing direction matters most: an asset verifiably showing a DIFFERENT
+  // product must never be exact-matched here, however close the names look.
+  // That is the case a filename can never rule out.
+  const verified = verifiedVerdict(asset, target);
+
   let specificity: MatchSpecificity;
   const modelComplete =
     matchedModels.length > 0 &&
@@ -324,7 +385,28 @@ export function scoreMatch(asset: MatchAsset, target: MatchTarget): MediaMatch {
     missingVariants.length === 0 &&
     extraVariants.length === 0;
 
-  if (modelComplete) {
+  if (verified === "verified_exact") {
+    specificity = "exact_model";
+    reasons.push(
+      "Recorded in the media library as a picture of this exact product, so its identity is established rather than inferred."
+    );
+  } else if (verified === "verified_other_product") {
+    // It depicts a known product, and that product is not this one. Text
+    // similarity cannot outvote a recorded fact.
+    specificity = "topical";
+    const named = (asset.verifiedProducts ?? []).map((p) => p.name).slice(0, 2).join(", ");
+    reasons.push(
+      `This image is recorded as a picture of ${named}, which is not "${target.title}". ` +
+        "Treated as topical only — a photograph of one product must not stand in for another."
+    );
+    withheld.push("Exact and family matching refused: the image's recorded subject is a different product.");
+  } else if (verified === "verified_family") {
+    specificity = "family";
+    reasons.push(
+      "Recorded as a picture of another product in the same family, so it is family-level: " +
+        "the exact identity of this model is not established."
+    );
+  } else if (modelComplete) {
     specificity = "exact_model";
     reasons.push(
       `Names the exact model: ${matchedModels.join(", ")} appears in the image's own filename, alt text or caption.`

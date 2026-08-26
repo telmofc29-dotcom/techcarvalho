@@ -24,6 +24,7 @@ import {
   classifyNature,
   proposeAltText,
   type MatchAsset,
+  type VerifiedProduct,
   type MatchTarget,
   type MediaMatch,
   type AssetNature,
@@ -70,7 +71,7 @@ async function loadAll(): Promise<Loaded> {
         "id, storage_path, alt_text, caption, source_type, asset_role, brand_role, owned, ai_generated, publication_status, rights_status, width, height"
       ),
     supabase.from("content_items").select("id, title, status, category_id"),
-    supabase.from("products").select("id, name, is_published, category_id, manufacturer_id"),
+    supabase.from("products").select("id, name, is_published, category_id, manufacturer_id, family_id"),
     supabase.from("content_media").select("content_id, media_id, role"),
     supabase.from("product_media").select("product_id, media_id, role"),
     supabase.from("taxonomy_categories").select("id, slug"),
@@ -97,6 +98,32 @@ async function loadAll(): Promise<Loaded> {
     ((mfrRes.data ?? []) as { id: string; name: string }[]).map((m) => [m.id, m.name])
   );
 
+  // VERIFIED IDENTITY, built from links that already exist.
+  //
+  // product_media is loaded below for usage counts anyway. Joining it through
+  // to the matcher turns "what does this filename claim" into "what is this
+  // image recorded as showing" — better evidence, and the only thing able to
+  // refuse an image whose filename names the wrong product.
+  const productById = new Map(
+    ((productsRes.data ?? []) as unknown as Record<string, unknown>[]).map((p) => [
+      String(p.id),
+      {
+        name: String(p.name),
+        manufacturerName: mfrName.get(String(p.manufacturer_id)) ?? null,
+        familyId: (p.family_id as string | null) ?? null,
+      },
+    ])
+  );
+  const verifiedByAsset = new Map<string, VerifiedProduct[]>();
+  for (const link of (pmRes.data ?? []) as unknown as Record<string, unknown>[]) {
+    const product = productById.get(String(link.product_id));
+    if (!product) continue;
+    const mediaId = String(link.media_id);
+    const list = verifiedByAsset.get(mediaId) ?? [];
+    list.push({ productId: String(link.product_id), ...product });
+    verifiedByAsset.set(mediaId, list);
+  }
+
   const assets: MatchAsset[] = (
     (assetsRes.data ?? []) as unknown as Record<string, unknown>[]
   ).map((a) => ({
@@ -113,6 +140,7 @@ async function loadAll(): Promise<Loaded> {
     rightsStatus: String(a.rights_status),
     width: (a.width as number | null) ?? null,
     height: (a.height as number | null) ?? null,
+    verifiedProducts: verifiedByAsset.get(String(a.id)) ?? [],
   }));
 
   // Slots per target, and total usage per asset.
@@ -160,10 +188,13 @@ async function loadAll(): Promise<Loaded> {
     is_published: boolean;
     category_id: string | null;
     manufacturer_id: string | null;
+    family_id: string | null;
   }[]) {
     targets.push({
       id: p.id,
       kind: "product",
+      productId: p.id,
+      familyId: p.family_id,
       title: p.name,
       manufacturerName: p.manufacturer_id ? (mfrName.get(p.manufacturer_id) ?? null) : null,
       categorySlug: p.category_id ? (catSlug.get(p.category_id) ?? null) : null,

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { scoreMatch, type MatchAsset, type MatchTarget } from "./match-engine.ts";
+import { scoreMatch, verifiedVerdict, type MatchAsset, type MatchTarget } from "./match-engine.ts";
 import { identityTokens, VARIANT_WORDS } from "./subject-match.ts";
 
 // FALSE-SKU PROTECTION FOR THE LIBRARY MATCHER.
@@ -92,4 +92,61 @@ test("a refusal always explains itself", () => {
     m.reasons.length > 0 || m.withheld.length > 0,
     "an asset was demoted with no stated reason"
   );
+});
+
+// ---------------------------------------------------------------------------
+// VERIFIED IDENTITY — what product_media says beats what the filename says
+// ---------------------------------------------------------------------------
+
+const linked = (filename: string, products: { productId: string; name: string; familyId: string | null }[]): MatchAsset => ({
+  ...asset(filename),
+  verifiedProducts: products.map((p) => ({ ...p, manufacturerName: "Canon" })),
+});
+
+const productTarget = (title: string, productId: string, familyId: string | null): MatchTarget => ({
+  ...target(title, "Canon"), productId, familyId,
+});
+
+test("a recorded product link establishes identity rather than inferring it", () => {
+  const m = scoreMatch(
+    linked("img-4021", [{ productId: "p-r5m2", name: "Canon EOS R5 Mark II", familyId: "f-eos-r" }]),
+    productTarget("Canon EOS R5 Mark II", "p-r5m2", "f-eos-r")
+  );
+  assert.equal(m.specificity, "exact_model");
+  assert.match(m.reasons.join(" "), /recorded in the media library/i);
+});
+
+test("an image recorded as a DIFFERENT product is refused, whatever its filename says", () => {
+  // The direction that matters most. The filename claims R5 Mark II; the
+  // database says this is a picture of the R5. A recorded fact outvotes text.
+  const m = scoreMatch(
+    linked("canon-eos-r5-mark-ii-front", [{ productId: "p-r5", name: "Canon EOS R5", familyId: "f-eos-r" }]),
+    productTarget("Canon EOS R6 Mark III", "p-r6m3", "f-other")
+  );
+  assert.equal(m.specificity, "topical");
+  assert.deepEqual(m.proposedSlots, []);
+  assert.match(m.reasons.join(" "), /recorded as a picture of Canon EOS R5/i);
+  assert.ok(m.withheld.length > 0, "a refusal must say what it withheld");
+});
+
+test("a sibling product in the same family is family-level, not exact", () => {
+  const m = scoreMatch(
+    linked("canon-r-series", [{ productId: "p-r6", name: "Canon EOS R6", familyId: "f-eos-r" }]),
+    productTarget("Canon EOS R5 Mark II", "p-r5m2", "f-eos-r")
+  );
+  assert.equal(m.specificity, "family");
+  assert.match(m.reasons.join(" "), /exact identity of this model is not established/i);
+});
+
+test("verified matching is opt-in — assets without links behave exactly as before", () => {
+  const withoutLinks = scoreMatch(asset("canon-eos-r5-front"), target("Canon EOS R5 review", "Canon"));
+  assert.equal(withoutLinks.specificity, "exact_model", "existing text inference must be unaffected");
+});
+
+test("the verdict function is decidable on its own", () => {
+  const a = linked("x", [{ productId: "p1", name: "P1", familyId: "f1" }]);
+  assert.equal(verifiedVerdict(a, productTarget("P1", "p1", "f1")), "verified_exact");
+  assert.equal(verifiedVerdict(a, productTarget("P2", "p2", "f1")), "verified_family");
+  assert.equal(verifiedVerdict(a, productTarget("P3", "p3", "f9")), "verified_other_product");
+  assert.equal(verifiedVerdict(asset("x"), productTarget("P1", "p1", "f1")), "unverified");
 });

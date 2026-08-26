@@ -134,8 +134,25 @@ export async function WorkPanel() {
   // an image currently doing nothing.
   const strongMatches =
     mediaSug?.suggestions.filter((s) => s.matches.some((m) => m.strength === "high")) ?? [];
-  const answerable = mediaNeeds?.needs.filter((n) => n.candidates.length > 0) ?? [];
-  const needNewImage = mediaNeeds?.needs.filter((n) => n.candidates.length === 0) ?? [];
+  // "ANSWERABLE" MUST MEAN THE GAP CAN ACTUALLY BE FILLED.
+  //
+  // This counted a need as answerable when it had ANY candidate at all, so a
+  // gallery-only diagram counted as answering an article that needs a HERO.
+  // The card claimed 76 answerable while the matcher could fill zero lead
+  // slots — a number that reads as "the library already covers this" when the
+  // library covers none of it, which is the difference between a queue the
+  // owner can work through and one that wastes their time.
+  const fillsAMissingSlot = (n: { target: { occupiedSlots: { role: string }[] }; candidates: { proposedSlots: string[] }[] }) => {
+    const filled = new Set(n.target.occupiedSlots.map((s) => s.role));
+    const missing = (["hero", "thumbnail"] as const).filter((r) => !filled.has(r));
+    return n.candidates.some((c) => c.proposedSlots.some((s) => (missing as readonly string[]).includes(s)));
+  };
+  const answerable = mediaNeeds?.needs.filter(fillsAMissingSlot) ?? [];
+  // The complement, by the same rule: anything the library cannot fill needs a
+  // new image, whether it has near-misses or nothing at all. Counting only
+  // needs with ZERO candidates understated this by every case where the
+  // library held something related but unusable — which is most of them.
+  const needNewImage = mediaNeeds?.needs.filter((n) => !fillsAMissingSlot(n)) ?? [];
 
   const groups: Group[] = [
     {
