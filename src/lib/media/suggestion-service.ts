@@ -19,6 +19,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { logQueryError } from "@/lib/log/query-error";
 import {
+  deriveIsModelSpecific,
   matchesForAsset,
   matchesForTarget,
   classifyNature,
@@ -178,7 +179,7 @@ async function loadAll(): Promise<Loaded> {
       categorySlug: c.category_id ? (catSlug.get(c.category_id) ?? null) : null,
       // An article naming a model number is model-specific and gets the SKU
       // rule; a general explainer does not.
-      isModelSpecific: /\d/.test(c.title) && !/^\d+\s/.test(c.title),
+      isModelSpecific: deriveIsModelSpecific(c.title),
       occupiedSlots: slotsByTarget.get(`content:${c.id}`) ?? [],
     });
   }

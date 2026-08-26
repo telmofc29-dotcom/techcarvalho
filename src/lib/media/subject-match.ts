@@ -37,6 +37,8 @@
 //
 // Pure. No I/O.
 
+import { DESIGNATION_WORDS } from "./identity.ts";
+
 export type MediaVerdict =
   /** A photograph or graphic that names this exact subject. */
   | "strong"
@@ -91,19 +93,22 @@ const STOPWORDS = new Set([
  *
  * THESE MUST SURVIVE TOKENISATION EVEN THOUGH THE FILTERS ABOVE WOULD KILL
  * THEM. "mark" was a stopword and "ii" is two characters with no digit, so
- * "Canon EOS R5 Mark II" reduced to {canon, eos, r5} — the variant vanished
+ * "Canon EOS R5 Mark II" reduced to {canon, eos, r5} -- the variant vanished
  * entirely. match-engine.ts has careful logic to refuse an asset whose variant
  * differs from the target's, and that logic was receiving nothing to work with:
  * a plain EOS R5 photograph matched an R5 Mark II article as an EXACT MODEL
  * and was offered for the hero slot.
  *
- * Roman numerals are the dangerous case because they are short. A suffix like
- * "pro" or "ultra" already survives on length alone.
+ * THE LIST NO LONGER LIVES HERE. It is DESIGNATION_WORDS in identity.ts, the
+ * one place every matcher reads it from, because four modules previously kept
+ * four different answers to "which words identify a model" and the disagreement
+ * between two of them is what shipped that defect. Re-exported under the old
+ * name so the rule reads the same at its call site.
+ *
+ * The rule this encodes: a word that pins a model is never noise, whatever its
+ * length and whatever a stopword list thinks of it.
  */
-export const VARIANT_WORDS = new Set([
-  "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x",
-  "mark", "mk",
-]);
+export const VARIANT_WORDS = DESIGNATION_WORDS;
 
 export function identityTokens(name: string): Set<string> {
   const out = new Set<string>();

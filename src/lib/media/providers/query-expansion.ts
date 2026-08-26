@@ -48,6 +48,8 @@ import type { ProviderQuery, QueryStrategy } from "./types.ts";
  * would silently change what the regex matches — and the whole point of it is
  * that "Héro" and "Hero" reach the same tokens.
  */
+import { DESIGNATION_WORDS } from "../identity.ts";
+
 const COMBINING_MARKS = new RegExp("[\\u0300-\\u036f]", "g");
 
 /**
@@ -73,13 +75,31 @@ export function identityTokens(input: string): string[] {
   return out;
 }
 
-/** Words that separate one model from its siblings within a family. */
-const VARIANT_DISCRIMINATORS = new Set([
-  "pro", "max", "ultra", "plus", "lite", "mini", "air", "se", "slim",
-  "ti", "super", "xt", "xtx", "gre", "gt", "x3d", "k", "kf", "ks",
-  "mk", "i", "ii", "iii", "iv", "v",
+/**
+ * Words that separate one model from its siblings within a family.
+ *
+ * The shared half is DESIGNATION_WORDS in ../identity.ts — the same list the
+ * library matcher and the coverage engine read, so that "does this photograph
+ * show the R5 Mark II" and "can the R5 Mark II be found by this query" cannot
+ * answer to different vocabularies again.
+ *
+ * WHAT IS LOCAL TO ACQUISITION, AND WHY. Colourways and packaging words are
+ * discriminating HERE and nowhere else: a Commons search must be able to pin
+ * "GoPro HERO13 Black" as a distinct catalogue entry, because that is the name
+ * of the SKU being sourced. The library matcher deliberately excludes them, so
+ * that a photograph of a HERO13 is not refused for a HERO13 Black article over
+ * trim. Two different questions, one shared core, and the difference is stated
+ * rather than discovered later.
+ */
+const ACQUISITION_ONLY_DISCRIMINATORS = new Set([
+  "k", "i",
   "black", "silver", "white",
-  "edition", "elite", "digital", "disc",
+  "edition", "digital", "disc",
+]);
+
+const VARIANT_DISCRIMINATORS: ReadonlySet<string> = new Set([
+  ...DESIGNATION_WORDS,
+  ...ACQUISITION_ONLY_DISCRIMINATORS,
 ]);
 
 /** Generic words that carry no identity at all and must never count as one. */

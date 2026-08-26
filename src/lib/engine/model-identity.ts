@@ -32,7 +32,8 @@
 // as a veto over similarity, not instead of it. Two pieces about the same
 // product are still compared on wording as before.
 
-import { identityTokens, modelTokens, VARIANT_WORDS } from "../media/subject-match.ts";
+import { identityTokens, modelTokens } from "../media/subject-match.ts";
+import { DESIGNATION_WORDS } from "../media/identity.ts";
 
 export type ModelIdentityVerdict = {
   /** False when the two subjects demonstrably name different models. */
@@ -53,13 +54,15 @@ export type ModelIdentityVerdict = {
 function designationTokens(subject: string): Set<string> {
   const out = new Set<string>(modelTokens(subject));
   for (const t of identityTokens(subject)) {
-    if (VARIANT_WORDS.has(t) || TIER_WORDS.has(t)) out.add(t);
+    if (DESIGNATION_WORDS.has(t)) out.add(t);
   }
   return out;
 }
 
-/** Product tier suffixes. Short, common, and load-bearing for identity. */
-const TIER_WORDS = new Set(["pro", "max", "plus", "ultra", "mini", "air", "lite", "se", "xl"]);
+// The tier list that used to live here (pro/max/plus/ultra/mini/air/lite/se/xl)
+// was a THIRD private copy of the same idea, and it was missing "studio" — so
+// "Mac Studio" registered as naming no model at all. It now reads
+// DESIGNATION_WORDS, the one list every matcher shares. See media/identity.ts.
 
 export function compareModelIdentity(a: string, b: string): ModelIdentityVerdict {
   const da = designationTokens(a);

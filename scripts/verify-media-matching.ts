@@ -12,6 +12,7 @@
 import { loadEnvLocal, createAdminClient } from "./_shared.ts";
 import {
   scoreMatch,
+  deriveIsModelSpecific,
   matchesForTarget,
   classifyNature,
   verifiedVerdict,
@@ -79,7 +80,7 @@ async function main(): Promise<void> {
   const contentTargets: MatchTarget[] = ((contentRes.data ?? []) as any[]).map((c) => ({
     id: c.id, kind: "content" as const, title: c.title, manufacturerName: null,
     categorySlug: c.category_id ? (catSlug.get(c.category_id) ?? null) : null,
-    isModelSpecific: /\d/.test(c.title) && !/^\d+\s/.test(c.title),
+    isModelSpecific: deriveIsModelSpecific(c.title),
     occupiedSlots: slots.get(`content:${c.id}`) ?? [],
   }));
   const productTargets: MatchTarget[] = ((productsRes.data ?? []) as any[]).map((p) => ({

@@ -19,6 +19,7 @@
 
 import { loadEnvLocal, createAdminClient } from "./_shared.ts";
 import {
+  deriveIsModelSpecific,
   matchesForTarget,
   type MatchAsset,
   type MatchTarget,
@@ -115,7 +116,7 @@ async function main(): Promise<void> {
     const target: MatchTarget = {
       id: c.id, kind: "content", title: c.title, manufacturerName: null,
       categorySlug: c.category_id ? (catSlug.get(c.category_id) ?? null) : null,
-      isModelSpecific: /\d/.test(c.title) && !/^\d+\s/.test(c.title),
+      isModelSpecific: deriveIsModelSpecific(c.title),
       occupiedSlots: [],
     };
 

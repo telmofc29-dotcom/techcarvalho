@@ -285,32 +285,61 @@ test(
 // nothing; it is recorded because the safe behaviour is load-bearing and a
 // naive relaxation of it would open a merge path between two live consoles.
 //
-// `discriminators()` in providers/query-expansion.ts derives nothing at all
+// `discriminators()` in providers/query-expansion.ts derived nothing at all
 // from a name whose distinguishing token is a single bare letter:
 //
 //     discriminators("Xbox Series X") -> []
 //     discriminators("Xbox Series S") -> []
 //     discriminators("Nintendo Switch") -> []
 //
-// "series" is on the NON_DISCRIMINATING list and a lone "x"/"s" is neither a
+// "series" is on the NON_DISCRIMINATING list and a lone "x"/"s" was neither a
 // digit nor a listed variant word. `assessEntityMatch` then refuses every file
 // with "No discriminating token could be derived" — correct as a fail-closed
 // default, but it means these products can NEVER acquire media by this route,
 // and the only thing keeping a Series S photograph off the Series X page is
 // that blanket refusal rather than any understanding of the difference.
 //
-// The test below pins BOTH halves so the safe half cannot be lost while
-// somebody fixes the blind spot: if a future change makes the correct file
-// confirm, the sibling file must still be refused.
+// STATUS: NARROWED, NOT CLOSED. Moving the four private variant lists onto the
+// shared DESIGNATION_WORDS (media/identity.ts) gave "Xbox Series X" the token
+// "x" — it is a roman numeral on that list, and it genuinely is what
+// distinguishes that console. "Xbox Series S" and "Nintendo Switch" still
+// derive nothing and still fail closed. That is written down rather than
+// rounded up, because a half-fixed protection described as fixed is worse than
+// one described as broken.
+//
+// The tests below pin BOTH halves so the safe half cannot be lost while
+// somebody finishes the job: whatever the derivation returns, the sibling file
+// must still be refused.
 // ---------------------------------------------------------------------------
 describe("blind spot: products with no derivable discriminator", () => {
   const xsx = subject("Xbox Series X", "Microsoft", [], "Xbox Series");
   const xss = subject("Xbox Series S", "Microsoft", [], "Xbox Series");
 
-  test("the blind spot is real and currently fails closed", () => {
-    assert.deepEqual(discriminators(xsx.canonicalName), [], "if this now returns tokens, the blind spot is fixed — check the sibling assertion below still holds");
+  test("the blind spot is narrowed, and what remains still fails closed", () => {
+    // Fixed by the shared vocabulary: "x" is a designation.
+    assert.deepEqual(discriminators(xsx.canonicalName), ["x"]);
+    // Still blind. A lone "s" is not a designation and must not become one —
+    // it is the plural of every noun in the language.
     assert.deepEqual(discriminators(xss.canonicalName), []);
     assert.deepEqual(discriminators("Nintendo Switch"), []);
+  });
+
+  // THE CASE THAT PRODUCED A LIVE DEFECT. "Mac Studio" derived nothing at all,
+  // so every digit-based test of "does this name a specific model" said no, and
+  // a Mac mini photograph was offered as the lead image for "Mac Studio
+  // review". Both matchers must now separate them.
+  test("Mac Studio and Mac mini are separable, in both matchers", () => {
+    assert.deepEqual(discriminators("Mac Studio"), ["studio"]);
+    assert.deepEqual(discriminators("Mac mini"), ["mini"]);
+    assertSiblingsNeverCross(
+      subject("Mac Studio", "Apple", [], "Mac"),
+      subject("Mac mini", "Apple", [], "Mac"),
+      (s) => ({
+        title: `File:Apple ${s.canonicalName}.jpg`,
+        categories: [`Category:${s.canonicalName}`],
+        descriptionText: `An Apple ${s.canonicalName}`,
+      })
+    );
   });
 
   test("whatever else changes, a Series S file must never confirm as a Series X", () => {

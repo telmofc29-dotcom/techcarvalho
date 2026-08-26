@@ -45,6 +45,7 @@
 // PURE. No `server-only`, no Supabase, no clock.
 
 import { identityTokens, modelTokens } from "./subject-match.ts";
+import { DESIGNATION_WORDS, designationTokens, namesSpecificModel } from "./identity.ts";
 
 export type MediaRole = "hero" | "thumbnail" | "gallery";
 
@@ -233,6 +234,20 @@ export function depictsRealObject(nature: AssetNature): boolean {
  * metadata, not a guess. It is the weakest of the three and is scored as such,
  * but ignoring it would make a fresh upload unmatchable.
  */
+/**
+ * Everything the asset says about itself, as one string.
+ *
+ * Same three sources assetVocabulary() reads — filename, alt text, caption —
+ * but unsplit, so identity.ts can apply its own tokenisation rather than
+ * inheriting a decision this module already made.
+ */
+export function assetText(asset: MatchAsset): string {
+  const filename = (asset.storagePath.split("/").pop() ?? "")
+    .replace(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-?/i, "")
+    .replace(/\.(png|jpe?g|webp|avif|gif)$/i, "");
+  return `${filename} ${asset.altText ?? ""} ${asset.caption ?? ""}`;
+}
+
 export function assetVocabulary(asset: MatchAsset): {
   all: Set<string>;
   fromFilename: Set<string>;
@@ -296,31 +311,35 @@ const NATURE_BONUS: Record<AssetNature, number> = {
   unknown: -4,
 };
 
-/**
- * Tokens that distinguish one variant of a product from another.
- *
- * "Canon EOS 5D Mark III" and "Canon EOS 5D Mark II" share the model token
- * "5d"; everything that separates them is here. Without this, a Mark III
- * photograph matched the Mark II product page as an EXACT MODEL match — the
- * precise false-SKU claim this module exists to prevent, produced by the rule
- * that was supposed to prevent it.
- */
-const VARIANT_TOKENS = new Set([
-  "ii", "iii", "iv", "vi", "vii", "viii", "ix",
-  "mark", "mk", "pro", "max", "plus", "ultra", "mini", "air", "lite", "se",
-  "xt", "ti", "super", "gen", "rev",
-]);
+// The private VARIANT_TOKENS list, and the isDistinctiveModel() guard that went
+// with it, are gone. Both were answering questions identity.ts now answers for
+// every matcher at once: which words pin a model, and which numbers are real
+// designations rather than series digits. Keeping a second copy here is exactly
+// how "Canon EOS R5" came to be an exact match for "Canon EOS R5 Mark II" in
+// this file while the acquisition matcher refused it correctly.
 
 /**
- * Whether a set of model tokens is specific enough to identify a product.
+ * Does this target title name one specific model?
  *
- * A bare single digit is not. "DJI Mini 4 Pro" and "Neptune 4 Pro" both carry
- * "4", and treating that as an identity match put a drone photograph on a
- * 3D-printer page. A real model designation has either more than one character
- * or a letter mixed in — "5d", "9950x", "r7" — so that is what is required.
+ * THE ONE PLACE THIS IS DECIDED. It was previously a bare `/\d/.test(title)`
+ * copied into four callers — suggestion-service, ensure-media-requirements,
+ * media-intelligence-report and verify-media-matching — and it was wrong in a
+ * way that shipped: "Mac Studio review" carries no digit, so it was classified
+ * as naming no model, the SKU rule below never fired, and a Mac mini photograph
+ * was offered for its hero slot at score 54. The matcher had already worked out
+ * that the image identified a different variant, printed that in its reasons,
+ * and proposed it anyway.
+ *
+ * A UNION, NOT A REPLACEMENT. The digit test stays, so nothing that used to be
+ * treated as model-specific stops being: "Nintendo Switch 2" and "Wi-Fi 7
+ * Explained" carry no designation word but are rightly held to the strict rule.
+ * The canonical designation check only ever ADDS targets to the protected set.
+ *
+ * The leading-number exclusion is kept for the same reason it was written:
+ * "10 Things To Check Before You Buy" is a listicle, not a model number.
  */
-function isDistinctiveModel(tokens: readonly string[]): boolean {
-  return tokens.some((t) => t.length >= 2 || /[a-z]/.test(t));
+export function deriveIsModelSpecific(title: string): boolean {
+  return namesSpecificModel(title) || (/\d/.test(title) && !/^\d+\s/.test(title));
 }
 
 export const MIN_SCORE = 20;
@@ -343,24 +362,46 @@ export function scoreMatch(asset: MatchAsset, target: MatchTarget): MediaMatch {
   const distinctiveTargetModels = [...targetModels].filter(
     (t) => t.length >= 2 || /[a-z]/.test(t)
   );
+  // Still used for SCORING — how much digit-level evidence there is — while
+  // designations decide IDENTITY. Two different jobs that were previously done
+  // by one number, which is why a name with no digits could not be scored at
+  // all.
   const matchedModels = distinctiveTargetModels.filter((t) => vocab.all.has(t));
-  const missingModels = distinctiveTargetModels.filter((t) => !vocab.all.has(t));
   const matchedIdentity = [...targetIdentity].filter(
     (t) => !/\d/.test(t) && vocab.all.has(t)
   );
 
-  // Variant words the TARGET carries that the asset does not. These are what
-  // separate a Mark III from a Mark II, so a missing one means the asset is a
-  // picture of a DIFFERENT variant, not of this one.
-  const missingVariants = [...targetIdentity].filter(
-    (t) => VARIANT_TOKENS.has(t) && !vocab.all.has(t)
+  // ---- designations: the canonical identity comparison -------------------
+  //
+  // The two sides are read by the SAME function (identity.ts), so a filename
+  // spelled "rtx5090" and a catalogue name spelled "RTX 5090" reach the same
+  // designation, and a name whose identity is a word rather than a number
+  // ("Mac Studio") is not invisible to it.
+  //
+  // WHY THIS REPLACED "AT LEAST ONE DIGIT-BEARING TOKEN MATCHED". That rule
+  // could not express "Mac Studio" or "DJI Mini 4 Pro" at all — neither carries
+  // a distinctive number — so a correct photograph of either could never be an
+  // exact match, and once the SKU rule started protecting them, the correct
+  // image was refused along with the wrong one. A protection that refuses
+  // everything gets switched off, so it had to be able to say yes.
+  const targetDesignations = designationTokens(target.title);
+  const assetDesignations = designationTokens(assetText(asset));
+
+  // Designations the TARGET carries and the asset does not. This is the
+  // dangerous direction: a picture claiming only "R5" standing in for an
+  // article about the "R5 Mark II" presents an older camera as the new one.
+  const unmetDesignations = [...targetDesignations].filter((t) => !assetDesignations.has(t));
+  // And the reverse, restricted to designation WORDS: a "5D Mark III"
+  // photograph is not a picture of the plain "Canon EOS 5D". Extra NUMBERS are
+  // not counted, because a comparison graphic legitimately names both products
+  // it compares — `cmp-rtx5090-vs-5080.png` really is a picture of the 5090.
+  const extraDesignations = [...assetDesignations].filter(
+    (t) => DESIGNATION_WORDS.has(t) && !targetDesignations.has(t)
   );
-  // And the reverse: a variant the ASSET claims that the target does not have.
-  // A "5D Mark III" photograph is not a picture of the plain "Canon EOS 5D",
-  // and without this check the bare model page would accept it as exact.
-  const extraVariants = [...vocab.all].filter(
-    (t) => VARIANT_TOKENS.has(t) && !targetIdentity.has(t)
-  );
+
+  // Kept for the reason strings below, which name the specific tokens.
+  const missingVariants = unmetDesignations.filter((t) => DESIGNATION_WORDS.has(t));
+  const extraVariants = extraDesignations;
 
   // ---- specificity -------------------------------------------------------
   //
@@ -378,12 +419,14 @@ export function scoreMatch(asset: MatchAsset, target: MatchTarget): MediaMatch {
   const verified = verifiedVerdict(asset, target);
 
   let specificity: MatchSpecificity;
+  // EXACT means the asset carries every designation the target does, and claims
+  // no tier or revision the target does not. A target that names no designation
+  // at all can never be exact-matched by text — there is nothing to match on,
+  // and calling that exact is how a brand-only photograph becomes a hero.
   const modelComplete =
-    matchedModels.length > 0 &&
-    missingModels.length === 0 &&
-    isDistinctiveModel(matchedModels) &&
-    missingVariants.length === 0 &&
-    extraVariants.length === 0;
+    targetDesignations.size > 0 &&
+    unmetDesignations.length === 0 &&
+    extraDesignations.length === 0;
 
   if (verified === "verified_exact") {
     specificity = "exact_model";
@@ -409,7 +452,8 @@ export function scoreMatch(asset: MatchAsset, target: MatchTarget): MediaMatch {
   } else if (modelComplete) {
     specificity = "exact_model";
     reasons.push(
-      `Names the exact model: ${matchedModels.join(", ")} appears in the image's own filename, alt text or caption.`
+      `Names the exact model: ${[...targetDesignations].join(", ")} appears in the image's own filename, alt text or caption, ` +
+        `and it claims no other tier or revision.`
     );
   } else if (matchedModels.length > 0 || matchedIdentity.length > 0) {
     specificity = "family";
@@ -423,10 +467,10 @@ export function scoreMatch(asset: MatchAsset, target: MatchTarget): MediaMatch {
         `Related but NOT the same variant: "${target.title}" is distinguished by ${missingVariants.join(", ")}, ` +
           `which this image does not claim. Treated as family-level, not as a picture of this exact unit.`
       );
-    } else if (missingModels.length > 0) {
+    } else if (unmetDesignations.length > 0) {
       reasons.push(
-        `Partial model match only (${matchedModels.join(", ")} present, ${missingModels.join(", ")} absent), ` +
-          `so it cannot be attributed to a specific unit.`
+        `Partial model match only ("${target.title}" requires ${[...targetDesignations].join(", ")}; ` +
+          `${unmetDesignations.join(", ")} absent from this image), so it cannot be attributed to a specific unit.`
       );
     } else {
       reasons.push(
