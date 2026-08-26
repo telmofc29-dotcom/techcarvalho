@@ -29,6 +29,7 @@ import { loadEnvLocal, createAdminClient } from "./_shared.ts";
 import { classifyImportance } from "../src/lib/engine/priority-entities.ts";
 import { titleSimilarity } from "../src/lib/engine/dedupe.ts";
 import { assessSubject } from "../src/lib/engine/subject-quality.ts";
+import { classifySignificance } from "../src/lib/engine/opportunity-score.ts";
 import { sameDevelopment } from "../src/lib/engine/same-development.ts";
 
 const apply = process.argv.includes("--apply");
@@ -207,7 +208,23 @@ async function main(): Promise<void> {
     if (list.length > 6) console.log(`      ... and ${list.length - 6} more`);
   }
 
+  // FLAGGED, NOT REMOVED.
+  //
+  // Whether a price change or a deal post is worth covering is an EDITORIAL
+  // judgement, not a defect. "Apple price hikes continue as Mac mini is now
+  // $899" is a real consumer-technology story; "Last Chance to Get a Switch 2
+  // for $399.99" probably is not. This surfaces them for the owner and deletes
+  // nothing — the brief says invalid artefacts may be removed only when the
+  // reason is recorded AND confidence is high, and here it is not.
   const keep = byVerdict.get("keep") ?? [];
+  const commerce = keep.filter((it) => classifySignificance(it.subject).kind === "commerce");
+  if (commerce.length > 0) {
+    console.log(`
+  ${"FLAGGED — pricing/deal stories (kept, your call)".padEnd(19)} ${String(commerce.length).padStart(3)}`);
+    for (const it of commerce.slice(0, 8)) console.log(`      [${it.kind}] ${it.subject.slice(0, 60)}`);
+    if (commerce.length > 8) console.log(`      ... and ${commerce.length - 8} more`);
+  }
+
   console.log(`\n  ${"KEEP (genuine decisions)".padEnd(19)} ${String(keep.length).padStart(3)}`);
 
   if (!apply) {

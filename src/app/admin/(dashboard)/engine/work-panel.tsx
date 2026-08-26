@@ -118,6 +118,18 @@ export async function WorkPanel() {
   );
   const watchlistOpps = rankedOpps.filter(isWatchlistOpportunity);
 
+  // UPCOMING LAUNCHES get their own card. A scheduled launch is the one thing
+  // here that can be PREPARED rather than reacted to, and burying it among
+  // developments that have already happened wastes the only lead time the
+  // queue ever offers.
+  //
+  // Only assertable schedules qualify. A rumoured date is still shown among
+  // developments, framed as a rumour — it is not promoted into a calendar.
+  const scheduled = watchlistOpps.filter((o) => {
+    const i = (o.inputs ?? {}) as Record<string, unknown>;
+    return i.upcoming === true && i.dateAssertable === true;
+  });
+
   // A strong match is one the matcher would attach: an exact-model pairing on
   // an image currently doing nothing.
   const strongMatches =
@@ -150,6 +162,21 @@ export async function WorkPanel() {
         return bits.join(" · ");
       }),
       tone: watchlistOpps.length > 0 ? "blue" : "neutral",
+      failed: oppsRes.error?.message,
+    },
+    {
+      key: "upcoming",
+      title: "Upcoming launches",
+      count: scheduled.length,
+      href: "/admin/engine/opportunities",
+      hint:
+        "Announced or confirmed schedules. These can be prepared before the day — the only lead time the queue offers. Rumoured dates are NOT here; they stay with developments, framed as rumours.",
+      examples: scheduled.slice(0, 3).map((o) => o.label.replace(/&#\d+;/g, "'")),
+      notes: scheduled.slice(0, 3).map((o) => {
+        const i = (o.inputs ?? {}) as Record<string, unknown>;
+        return String(i.timingReason ?? "Announced as upcoming.");
+      }),
+      tone: scheduled.length > 0 ? "amber" : "neutral",
       failed: oppsRes.error?.message,
     },
     {

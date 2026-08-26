@@ -72,7 +72,11 @@ const CONFIRMATION_WEIGHT: Record<ConfirmationState, number> = {
 
 const SPECULATION_MARKERS = /\b(could|might|may|possibly|some believe|speculat\w*|what if|we think)\b/i;
 const RUMOUR_MARKERS = /\b(rumou?r\w*|reportedly|allegedly|apparently|leak\w*|crazy report|is said to|claims? to|expected to|tipped to|purported\w*)\b/i;
-const ANNOUNCE_MARKERS = /\b(announce[sd]?|unveil[sed]*|introduce[sd]?|reveal[sed]*|launch(es|ed)?|debut[sed]*|now available|goes on sale|out now|ships?)\b/i;
+// Pre-order language is an announcement: opening pre-orders is a company
+// committing publicly to a product. Without it, "Mac Studio pre-orders are
+// open" was classed `reported` and its timing was not assertable — plainly
+// wrong for something you can already buy.
+const ANNOUNCE_MARKERS = /\b(announce[sd]?|unveil[sed]*|introduce[sd]?|reveal[sed]*|launch(es|ed)?|debut[sed]*|now available|goes on sale|out now|ships?|pre[- ]?orders? (are |now )?(open|live|available))\b/i;
 
 /**
  * Classify how certain a headline's claim is.

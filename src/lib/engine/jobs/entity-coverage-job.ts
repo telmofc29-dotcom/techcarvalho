@@ -4,6 +4,7 @@ import { buildCorpus } from "@/lib/engine/research/feed-index";
 import { consolidateOpportunities } from "@/lib/engine/coverage-decision";
 import { PRIORITY_ENTITIES } from "@/lib/engine/priority-entities";
 import { rankOpportunity } from "@/lib/engine/opportunity-score";
+import { detectUpcoming, upcomingBoost } from "@/lib/engine/upcoming";
 import { subjectDomainsForText } from "@/lib/engine/research/entity-model";
 import { assessSubject } from "@/lib/engine/subject-quality";
 import { subjectNoun } from "@/lib/engine/research/research-pipeline";
@@ -102,6 +103,8 @@ export async function runEntityCoverage(supabase: Client): Promise<StageResult> 
     entity: string; tier: number; headline: string; link: string | null;
     publisher: string; score: number; reason: string; urgent: boolean; origins: number;
     confirmation: string; significance: string; isSubject: boolean;
+    upcoming: boolean; timingKind: string; timingText: string | null;
+    dateAssertable: boolean; timingReason: string;
     components: { name: string; value: number; why: string }[];
   }[] = [];
 
@@ -181,6 +184,12 @@ export async function runEntityCoverage(supabase: Client): Promise<StageResult> 
         g.primary.link !== null &&
         subjectDomains.some((d) => (g.primary.link as string).toLowerCase().includes(d.toLowerCase()));
 
+      // UPCOMING LAUNCH INTELLIGENCE. Timing carries its own certainty: a date
+      // read out of a rumour is a RUMOURED date and must never be stored as a
+      // schedule, so dateAssertable comes from the claim's confirmation state
+      // rather than from how confident the sentence sounds.
+      const upcoming = detectUpcoming(headline, { firstParty });
+
       const ranking = rankOpportunity({
         headline,
         entityAliases: entity.aliases,
@@ -198,7 +207,16 @@ export async function runEntityCoverage(supabase: Client): Promise<StageResult> 
 
       found.push({
         entity: entity.name, tier: entity.tier, headline, link: g.primary.link,
-        publisher: g.primary.publisher, score: ranking.score,
+        publisher: g.primary.publisher,
+        // A CONFIRMED schedule is the most actionable thing this queue can
+        // hold — the work can be prepared before the day. A rumoured date
+        // gets no boost at all: a small one is how rumours creep up a list.
+        score: Math.round(Math.min(100, ranking.score * (1 + upcomingBoost(upcoming))) * 100) / 100,
+        upcoming: upcoming.isUpcoming,
+        timingKind: upcoming.kind,
+        timingText: upcoming.timingText,
+        dateAssertable: upcoming.dateAssertable,
+        timingReason: upcoming.reason,
         reason: `${priority.reason} ${ranking.summary}`.trim(),
         urgent: priority.urgent, origins,
         confirmation: ranking.confirmation, significance: ranking.significance,
@@ -232,6 +250,11 @@ export async function runEntityCoverage(supabase: Client): Promise<StageResult> 
         significance: gap.significance,
         isSubject: gap.isSubject,
         scoreComponents: gap.components,
+        upcoming: gap.upcoming,
+        timingKind: gap.timingKind,
+        timingText: gap.timingText,
+        dateAssertable: gap.dateAssertable,
+        timingReason: gap.timingReason,
         independentOrigins: gap.origins,
         urgent: gap.urgent,
         publisher: gap.publisher,
@@ -292,6 +315,8 @@ export async function runEntityCoverage(supabase: Client): Promise<StageResult> 
       entitiesWatched: PRIORITY_ENTITIES.length,
       uncoveredFound: found.length,
       urgent: found.filter((f) => f.urgent).length,
+      upcoming: found.filter((f) => f.upcoming).length,
+      scheduled: found.filter((f) => f.upcoming && f.dateAssertable).length,
       recorded: shortlist.length,
       prunedStale: pruned,
       topGaps: shortlist.slice(0, 5).map((g) => `${g.entity}: ${g.headline.slice(0, 60)}`),
