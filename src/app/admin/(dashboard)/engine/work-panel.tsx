@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { logQueryError } from "@/lib/log/query-error";
 import { loadAssetSuggestions, loadMediaNeeds } from "@/lib/media/suggestion-service";
 import { assessPriority } from "@/lib/engine/priority-entities";
+import { partitionOpportunities, isWatchlistOpportunity, type OpportunityRow } from "@/lib/engine/opportunity-list";
 
 // EDITORIAL WORK, GROUPED — the one screen the owner actually operates from.
 //
@@ -46,7 +47,7 @@ type Group = {
 export async function WorkPanel() {
   const supabase = await createClient();
 
-  const [draftsRes, briefsRes, proposalsRes, mediaSug, mediaNeeds] = await Promise.all([
+  const [draftsRes, briefsRes, proposalsRes, oppsRes, mediaSug, mediaNeeds] = await Promise.all([
     supabase
       .from("content_items")
       .select("id, title, status, updated_at")
@@ -64,6 +65,9 @@ export async function WorkPanel() {
       .select("id, summary, reason, state")
       .eq("state", "open")
       .limit(50),
+    supabase
+      .from("engine_opportunities")
+      .select("subject_type, subject_key, label, score, explanation, inputs"),
     loadAssetSuggestions({ limit: 60, onlyUnattached: true }).catch(() => null),
     loadMediaNeeds({ limit: 80 }).catch(() => null),
   ]);
@@ -71,6 +75,7 @@ export async function WorkPanel() {
   if (draftsRes.error) logQueryError("WorkPanel drafts", draftsRes.error);
   if (briefsRes.error) logQueryError("WorkPanel briefs", briefsRes.error);
   if (proposalsRes.error) logQueryError("WorkPanel proposals", proposalsRes.error);
+  if (oppsRes.error) logQueryError("WorkPanel opportunities", oppsRes.error);
 
   const rawDrafts = (draftsRes.data ?? []) as { id: string; title: string; updated_at: string }[];
 
@@ -100,6 +105,19 @@ export async function WorkPanel() {
   const approvedUnbuilt = (briefsRes.data ?? []) as { proposed_title: string }[];
   const proposals = (proposalsRes.data ?? []) as { summary: string | null; reason: string }[];
 
+  // OPPORTUNITIES ARE PARTITIONED, NEVER SORTED TOGETHER.
+  //
+  // Twelve category rows carry score = NULL because the scoring job refused to
+  // guess a demand figure it cannot measure — the honest answer. PostgreSQL
+  // puts NULLs FIRST on `order by score desc`, so ranking them in one list
+  // would have shown twelve unscored sections above every urgent, fully-scored
+  // development. partitionOpportunities keeps the two apart so an unscored row
+  // cannot outrank a scored one, because they are never in the same list.
+  const { ranked: rankedOpps, awaitingData: unscoredOpps } = partitionOpportunities(
+    (oppsRes.data ?? []) as OpportunityRow[]
+  );
+  const watchlistOpps = rankedOpps.filter(isWatchlistOpportunity);
+
   // A strong match is one the matcher would attach: an exact-model pairing on
   // an image currently doing nothing.
   const strongMatches =
@@ -108,6 +126,32 @@ export async function WorkPanel() {
   const needNewImage = mediaNeeds?.needs.filter((n) => n.candidates.length === 0) ?? [];
 
   const groups: Group[] = [
+    {
+      // FIRST CARD: what is happening in the world that we do not cover.
+      // Drafts are work already captured; these are the stories still
+      // uncaptured, which is the more time-sensitive decision.
+      key: "developments",
+      title: "Developments worth covering",
+      count: watchlistOpps.length,
+      href: "/admin/engine/opportunities",
+      hint:
+        unscoredOpps.length > 0
+          ? `Ranked by evidence and significance. ${unscoredOpps.length} section-level signal${unscoredOpps.length === 1 ? "" : "s"} are unscored and listed separately — there is not enough measured demand to rank them.`
+          : "Ranked by evidence and significance, highest first.",
+      examples: watchlistOpps.slice(0, 3).map((o) => o.label.replace(/&#\d+;/g, "'")),
+      notes: watchlistOpps.slice(0, 3).map((o) => {
+        const i = (o.inputs ?? {}) as Record<string, unknown>;
+        const bits = [
+          i.confirmation ? String(i.confirmation).toUpperCase() : null,
+          i.significance ? String(i.significance).replace(/_/g, " ") : null,
+          i.independentOrigins ? `${i.independentOrigins} source(s)` : null,
+          i.isSubject === false ? "company is only a component" : null,
+        ].filter(Boolean);
+        return bits.join(" · ");
+      }),
+      tone: watchlistOpps.length > 0 ? "blue" : "neutral",
+      failed: oppsRes.error?.message,
+    },
     {
       key: "drafts",
       title: "Drafts ready for review",
