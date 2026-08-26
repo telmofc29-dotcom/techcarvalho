@@ -205,7 +205,15 @@ export function isSubjectOfHeadline(headline: string, aliases: readonly string[]
   // Everything before the first verb-ish break is the subject region. Cheap and
   // good enough: a company named after "with", "featuring", "powered by" or
   // "using" is a component, and one named at the start is the actor.
-  const componentMarker = /\b(with|featuring|powered by|using|inside|based on|equipped with|packs?)\b/i;
+  // A PLATFORM LIST IS NOT AN ACTOR EITHER.
+  //
+  // "(PR) Focus Entertainment Unveils Elta ... Set for 2027 Release on PC,
+  // PlayStation & Xbox" was attributed to Microsoft as the SUBJECT. Xbox is
+  // named, but as a platform the game ships on — the story is Focus
+  // Entertainment's. "on"/"for" alone are too common to use ("Apple on Tuesday
+  // announced"), so only the release-target phrasings are listed.
+  const componentMarker =
+    /\b(with|featuring|powered by|using|inside|based on|equipped with|packs?|release on|releases on|available on|coming to|launch(es|ing)? on|out on|ships? on)\b/i;
   const idx = text.search(componentMarker);
   const subjectRegion = idx > 0 ? text.slice(0, idx) : text;
   return aliases.some((a) => {

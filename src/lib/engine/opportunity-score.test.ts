@@ -200,3 +200,18 @@ test("a pricing story ranks below the launch of the same product", () => {
   }).score;
   assert.ok(launch > pricing, `${launch} !> ${pricing}`);
 });
+
+test("a platform the product ships on is not the subject", () => {
+  // Real: attributed to Microsoft as SUBJECT because "Xbox" appears — but as a
+  // platform the game releases on. The story is Focus Entertainment's.
+  const XBOX = ["microsoft", "xbox"];
+  assert.equal(
+    isSubjectOfHeadline(
+      "(PR) Focus Entertainment Unveils Elta: Defy All Gods at Opening Night Live, Set for 2027 Release on PC, PlayStation & Xbox",
+      XBOX
+    ),
+    false
+  );
+  // Microsoft announcing its own thing is still the subject.
+  assert.equal(isSubjectOfHeadline("Xbox Series X25 Limited Edition Console Arrives", XBOX), true);
+});
