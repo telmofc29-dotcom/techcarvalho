@@ -86,6 +86,25 @@ const STOPWORDS = new Set([
  * rule quality-inventory.ts arrived at after a length filter reduced every Canon
  * article to the token "canon" and matched them all to each other.
  */
+/**
+ * Words that distinguish one variant of a product from another.
+ *
+ * THESE MUST SURVIVE TOKENISATION EVEN THOUGH THE FILTERS ABOVE WOULD KILL
+ * THEM. "mark" was a stopword and "ii" is two characters with no digit, so
+ * "Canon EOS R5 Mark II" reduced to {canon, eos, r5} — the variant vanished
+ * entirely. match-engine.ts has careful logic to refuse an asset whose variant
+ * differs from the target's, and that logic was receiving nothing to work with:
+ * a plain EOS R5 photograph matched an R5 Mark II article as an EXACT MODEL
+ * and was offered for the hero slot.
+ *
+ * Roman numerals are the dangerous case because they are short. A suffix like
+ * "pro" or "ultra" already survives on length alone.
+ */
+export const VARIANT_WORDS = new Set([
+  "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x",
+  "mark", "mk",
+]);
+
 export function identityTokens(name: string): Set<string> {
   const out = new Set<string>();
   for (const raw of name.toLowerCase().split(/[^a-z0-9./-]+/)) {
@@ -93,6 +112,10 @@ export function identityTokens(name: string): Set<string> {
     if (!t) continue;
     const hasDigit = /\d/.test(t);
     if (hasDigit) { out.add(t); continue; }
+    // Checked BEFORE the stopword and length filters, which is the whole point:
+    // both of them were discarding exactly the tokens that separate a Mark II
+    // from a Mark III.
+    if (VARIANT_WORDS.has(t)) { out.add(t); continue; }
     if (STOPWORDS.has(t)) continue;
     if (t.length < 3) continue;
     out.add(t);
