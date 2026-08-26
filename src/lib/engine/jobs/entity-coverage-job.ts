@@ -9,6 +9,7 @@ import { subjectDomainsForText } from "@/lib/engine/research/entity-model";
 import { assessSubject } from "@/lib/engine/subject-quality";
 import { subjectNoun } from "@/lib/engine/research/research-pipeline";
 import { titleSimilarity } from "@/lib/engine/dedupe";
+import { coversSameModel } from "@/lib/engine/model-identity";
 import { logQueryError } from "@/lib/log/query-error";
 import type { createClient } from "@/lib/supabase/server";
 import type { StageResult } from "@/lib/engine/jobs/discovery";
@@ -168,7 +169,16 @@ export async function runEntityCoverage(supabase: Client): Promise<StageResult> 
       if (!assessSubject(headline).usable) continue;
       if (!assessSubject(subjectNoun(headline, null)).usable) continue;
 
-      const covered = existingTitles.some((t) => titleSimilarity(headline, t) >= ALREADY_COVERED);
+      // MODEL IDENTITY VETOES SIMILARITY.
+      //
+      // Word overlap alone marked every adjacent model as covered — 8 of 8 in
+      // testing, including "Canon EOS R5 Mark II firmware update" answered by
+      // "Canon EOS R5 firmware update" at 0.71. A publication that covers the
+      // R5 would never learn the R5 Mark II shipped, and would report the gap
+      // as handled. Existing coverage only counts when it names the SAME model.
+      const covered = existingTitles.some(
+        (t) => titleSimilarity(headline, t) >= ALREADY_COVERED && coversSameModel(headline, t)
+      );
       const origins = 1 + g.duplicates.length;
       // RANKED, not merely prioritised. assessPriority still supplies entity
       // tier and event importance; rankOpportunity adds what it cannot see —

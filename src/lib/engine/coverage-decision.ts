@@ -34,6 +34,7 @@
 // PURE. No `server-only`, no Supabase, no clock beyond what is passed in.
 
 import { titleSimilarity } from "./dedupe.ts";
+import { coversSameModel } from "./model-identity.ts";
 
 export type CoverageDecision =
   | "NEW_ARTICLE"
@@ -122,9 +123,28 @@ export function decideCoverage(input: CoverageInput): CoverageVerdict {
   const now = input.now ?? new Date();
   const reasons: string[] = [];
 
+  // MODEL IDENTITY IS A VETO OVER SIMILARITY.
+  //
+  // Adjacent models share nearly every word: "Canon EOS R5 Mark II firmware
+  // update" and "Canon EOS R5 firmware update" score 0.71, well past
+  // SAME_STORY_THRESHOLD, so the newer product's development was treated as
+  // already covered by the older product's article. Similarity still decides
+  // how RELATED two pieces are; it may no longer decide that a different
+  // product is the same one.
+  //
+  // A piece about a different model is not discarded — it is capped below the
+  // same-story threshold, so it stays visible as related, which is exactly
+  // what SUPPORTING exists to express.
   const scored = input.existing
-    .map((piece) => ({ piece, similarity: titleSimilarity(input.subject, piece.title) }))
+    .map((piece) => ({
+      piece,
+      similarity: titleSimilarity(input.subject, piece.title),
+      sameModel: coversSameModel(input.subject, piece.title),
+    }))
     .filter((x) => x.similarity >= SAME_SUBJECT_THRESHOLD)
+    .map((x) =>
+      x.sameModel ? x : { ...x, similarity: Math.min(x.similarity, SAME_STORY_THRESHOLD - 0.01) }
+    )
     .sort((a, b) => b.similarity - a.similarity);
 
   const nearby = scored.slice(0, 5);
