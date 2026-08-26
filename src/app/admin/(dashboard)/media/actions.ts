@@ -10,6 +10,7 @@ import { evaluatePublishEligibility } from "@/lib/media/rights";
 import { resolvePublicationSource } from "@/lib/media/publication-source";
 import type { MediaType, MediaRole, MediaSourceType, MediaRightsStatus, MediaBrandRole, MediaAssetRole, Insert } from "@/lib/types/database";
 import { explainProvenanceRequirement, stampModificationAssessment } from "@/lib/media/provenance-invariant";
+import { assessDeletion, type MediaDeletionAssessment } from "@/lib/media/deletion-safety";
 import { presetById } from "@/lib/media/classification-presets";
 import { checkUploadCandidate, isIssuedStoragePath, sanitizeFileName } from "@/lib/media/upload-limits";
 import { getAdminPreviewUrl } from "@/lib/media/admin-preview-url";
@@ -466,6 +467,215 @@ export async function bulkSetRightsStatus(ids: string[], rightsStatus: MediaRigh
     } else {
       summary.succeeded = count ?? eligible.length;
     }
+  }
+
+  revalidatePath("/admin/media");
+  return summary;
+}
+
+// ---------------------------------------------------------------------------
+// BULK DELETE
+// ---------------------------------------------------------------------------
+//
+// WHY THIS IS NOT bulkPublishMediaAssets WITH A DIFFERENT VERB
+// ------------------------------------------------------------
+// Publishing is reversible. Deleting a media asset is not: the row goes, and
+// with it both storage objects, and there is no undo. So this action is built
+// around what the FOREIGN KEYS actually do when a row disappears, which is not
+// one thing:
+//
+//   content_media.media_id               cascade   article silently loses its image
+//   product_media.media_id               cascade   product silently loses its image
+//   media_derivatives.media_asset_id     cascade   derived files go too (correct)
+//   content_items.og_media_id            SET NULL  the social card blanks
+//   manufacturers.logo_media_id          SET NULL  the brand logo blanks
+//   media_requirements.resolved_media_id SET NULL  the record that a sourcing
+//                                                  request was satisfied is erased
+//   engine_media_candidates.ingested_media_id SET NULL
+//
+// Every one of those happens without a word from Postgres. `deleteMediaAsset`,
+// the single-asset action, accepts that: it is invoked from one asset's own
+// page by someone looking at that asset. A bulk action is invoked on twenty
+// things at once by someone looking at a grid of thumbnails, and "the delete
+// succeeded" would be a true statement about a page that just lost its hero.
+//
+// So: ATTACHED MEDIA IS REFUSED, server-side and unconditionally. The
+// confirmation dialog in the grid is user interface; this is the enforcement,
+// and it takes no "force" argument, because the safe way to delete an attached
+// asset is to detach it first and look at what that page becomes.
+//
+// NO SILENT PARTIAL DELETION. Every id the caller passed comes back in exactly
+// one bucket — deleted, refused, or failed — each with a reason. A caller that
+// asked for twenty and got nine is told which nine, and why the other eleven
+// survived.
+
+/**
+ * What would happen if these assets were deleted.
+ *
+ * Read-only. The grid calls this to build its confirmation dialog, and
+ * bulkDeleteMediaAssets calls it AGAIN before writing anything — the dialog's
+ * answer is never trusted as the authority, because the library can change
+ * between the two calls and because a client can send whatever it likes.
+ *
+ * The DECISION lives in media/deletion-safety.ts and is unit-tested there.
+ * This function is the I/O half: it counts what points at each asset and hands
+ * the counts over. Keeping the judgement out of the Server Action is what makes
+ * it testable without deleting anything.
+ */
+export async function inspectMediaForDeletion(ids: string[]): Promise<MediaDeletionAssessment[]> {
+  await requireAdmin();
+  if (ids.length === 0) return [];
+
+  const supabase = await createClient();
+
+  const [assets, contentLinks, productLinks, derivatives, ogRefs, logoRefs, requirementRefs, candidateRefs] =
+    await Promise.all([
+      supabase.from("media_assets").select("id, storage_path, publication_status").in("id", ids),
+      supabase.from("content_media").select("media_id, role").in("media_id", ids),
+      supabase.from("product_media").select("media_id, role").in("media_id", ids),
+      supabase.from("media_derivatives").select("media_asset_id").in("media_asset_id", ids),
+      supabase.from("content_items").select("og_media_id").in("og_media_id", ids),
+      supabase.from("manufacturers").select("logo_media_id").in("logo_media_id", ids),
+      supabase.from("media_requirements").select("resolved_media_id").in("resolved_media_id", ids),
+      supabase.from("engine_media_candidates").select("ingested_media_id").in("ingested_media_id", ids),
+    ]);
+
+  const readFailures: string[] = [];
+  for (const [name, res] of [
+    ["media_assets", assets],
+    ["content_media", contentLinks],
+    ["product_media", productLinks],
+    ["media_derivatives", derivatives],
+    ["content_items.og_media_id", ogRefs],
+    ["manufacturers.logo_media_id", logoRefs],
+    ["media_requirements", requirementRefs],
+    ["engine_media_candidates", candidateRefs],
+  ] as const) {
+    if (res.error) readFailures.push(`${name}: ${res.error.message}`);
+  }
+
+  const tally = (rows: unknown, key: string): Map<string, number> => {
+    const m = new Map<string, number>();
+    for (const r of (rows ?? []) as Record<string, unknown>[]) {
+      const id = String(r[key] ?? "");
+      if (id) m.set(id, (m.get(id) ?? 0) + 1);
+    }
+    return m;
+  };
+  const roles = (rows: unknown, key: string): Map<string, string[]> => {
+    const m = new Map<string, string[]>();
+    for (const r of (rows ?? []) as Record<string, unknown>[]) {
+      const id = String(r[key] ?? "");
+      if (id) m.set(id, [...(m.get(id) ?? []), String(r.role ?? "")]);
+    }
+    return m;
+  };
+
+  const contentByRole = roles(contentLinks.data, "media_id");
+  const productByRole = roles(productLinks.data, "media_id");
+  const derivCount = tally(derivatives.data, "media_asset_id");
+  const ogCount = tally(ogRefs.data, "og_media_id");
+  const logoCount = tally(logoRefs.data, "logo_media_id");
+  const reqCount = tally(requirementRefs.data, "resolved_media_id");
+  const candCount = tally(candidateRefs.data, "ingested_media_id");
+
+  const byId = new Map(
+    ((assets.data ?? []) as { id: string; storage_path: string; publication_status: string }[]).map((a) => [a.id, a])
+  );
+
+  return ids.map((id) => {
+    const row = byId.get(id);
+    return assessDeletion(id, row ? (row.storage_path.split("/").pop() ?? row.storage_path) : id, {
+      contentRoles: contentByRole.get(id) ?? [],
+      productRoles: productByRole.get(id) ?? [],
+      ogReferences: ogCount.get(id) ?? 0,
+      logoReferences: logoCount.get(id) ?? 0,
+      requirementReferences: reqCount.get(id) ?? 0,
+      derivatives: derivCount.get(id) ?? 0,
+      engineCandidates: candCount.get(id) ?? 0,
+      publicationStatus: row?.publication_status ?? "unknown",
+      exists: row !== undefined,
+      readFailures,
+    });
+  });
+}
+
+export type BulkDeleteSummary = {
+  requested: number;
+  deleted: { id: string; filename: string }[];
+  refused: { id: string; filename: string; reason: string }[];
+  failed: { id: string; filename: string; reason: string }[];
+  /** Storage objects no DB row describes any more. Reconcilable, never silent. */
+  storageOrphans: string[];
+};
+
+/**
+ * Delete the selected media assets, refusing any that are attached to anything.
+ *
+ * Order matters, and matches the single-asset action: the DB row goes first,
+ * then the storage objects. If a storage removal fails the result is an
+ * orphaned file — harmless, listed in the summary, reconcilable — rather than a
+ * live row pointing at a file that is gone.
+ */
+export async function bulkDeleteMediaAssets(ids: string[]): Promise<BulkDeleteSummary> {
+  await requireAdmin();
+  const summary: BulkDeleteSummary = {
+    requested: ids.length,
+    deleted: [],
+    refused: [],
+    failed: [],
+    storageOrphans: [],
+  };
+  if (ids.length === 0) return summary;
+
+  // RE-CHECKED HERE, not taken from the dialog. What the admin confirmed was
+  // rendered from a snapshot; this is the state at the moment of writing.
+  const assessments = await inspectMediaForDeletion(ids);
+  const supabase = await createClient();
+
+  for (const assessment of assessments) {
+    if (assessment.blocked) {
+      summary.refused.push({
+        id: assessment.id,
+        filename: assessment.filename,
+        reason: assessment.reason ?? "Refused.",
+      });
+      continue;
+    }
+
+    const { data: row, error: readError } = await supabase
+      .from("media_assets")
+      .select("storage_path, public_storage_path")
+      .eq("id", assessment.id)
+      .maybeSingle();
+    if (readError || !row) {
+      summary.failed.push({
+        id: assessment.id,
+        filename: assessment.filename,
+        reason: readError?.message ?? "Could not read the row.",
+      });
+      continue;
+    }
+
+    const { error: deleteError } = await supabase.from("media_assets").delete().eq("id", assessment.id);
+    if (deleteError) {
+      summary.failed.push({ id: assessment.id, filename: assessment.filename, reason: deleteError.message });
+      continue;
+    }
+
+    const { error: privateError } = await supabase.storage
+      .from(MEDIA_PRIVATE_BUCKET)
+      .remove([row.storage_path]);
+    if (privateError) summary.storageOrphans.push(`${MEDIA_PRIVATE_BUCKET}/${row.storage_path}`);
+    if (row.public_storage_path) {
+      const { error: publicError } = await supabase.storage
+        .from(MEDIA_PUBLIC_BUCKET)
+        .remove([row.public_storage_path]);
+      if (publicError) summary.storageOrphans.push(`${MEDIA_PUBLIC_BUCKET}/${row.public_storage_path}`);
+    }
+
+    summary.deleted.push({ id: assessment.id, filename: assessment.filename });
+    revalidatePath(`/admin/media/${assessment.id}`);
   }
 
   revalidatePath("/admin/media");
@@ -1170,6 +1380,69 @@ export async function classifyMediaAsset(
  * this re-check drops any that arrived anyway, so an existing hero survives a
  * stale form post.
  */
+/**
+ * A newly attached lead image answers the open sourcing request for that page.
+ *
+ * WHY THIS EXISTS
+ * ---------------
+ * The brief's requirement is "new uploaded media should be capable of
+ * satisfying awaiting-media requests", and it was the one half of the loop that
+ * was not wired. `media_requirements` rows were OPENED automatically (by
+ * scripts/ensure-media-requirements.ts, when the matcher could honestly fill
+ * nothing) and were never CLOSED by anything except a human editing the row by
+ * hand. So attaching the very image a request asked for left the request open,
+ * the awaiting-media queue kept counting it, and `resolved_media_id` — the
+ * column whose entire purpose is to record which asset answered — stayed null.
+ *
+ * IT MOVES TO 'available', NOT 'approved'
+ * ---------------------------------------
+ * 'approved' is the state `evaluateMediaReadiness` treats as the gate for
+ * publishing the record. Letting an automatic attach reach it would be this
+ * system approving its own work, which is the one thing the whole engine is
+ * built not to do. 'available' is the honest statement of what just happened:
+ * the image now exists and is attached, and a person still decides whether it
+ * is good enough. The human approval gate is untouched.
+ *
+ * NON-DESTRUCTIVE. A requirement already at 'approved' is left alone — that is
+ * a decision somebody made — and existing notes are never rewritten, because
+ * they record sourcing work already done.
+ */
+async function resolveMediaRequirementFor(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  target: { kind: "content" | "product"; id: string },
+  mediaId: string
+): Promise<void> {
+  const column = target.kind === "content" ? "content_id" : "product_id";
+
+  const { data: requirement, error } = await supabase
+    .from("media_requirements")
+    .select("id, sourcing_status, resolved_media_id")
+    .eq(column, target.id)
+    .maybeSingle();
+  if (error) {
+    console.error(`[resolveMediaRequirementFor] read: ${error.message}`);
+    return;
+  }
+  if (!requirement) return;
+
+  const row = requirement as { id: string; sourcing_status: string; resolved_media_id: string | null };
+  // Already settled by a person. Not this function's business.
+  if (row.sourcing_status === "approved") return;
+  if (row.resolved_media_id === mediaId && row.sourcing_status === "available") return;
+
+  const { error: updateError } = await supabase
+    .from("media_requirements")
+    .update({
+      sourcing_status: "available",
+      resolved_media_id: mediaId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", row.id);
+  if (updateError) console.error(`[resolveMediaRequirementFor] update: ${updateError.message}`);
+
+  revalidatePath("/admin/media/requirements");
+}
+
 export async function applyMediaSuggestion(formData: FormData): Promise<void> {
   await requireAdmin();
   const mediaId = String(formData.get("media_id") ?? "");
@@ -1248,6 +1521,13 @@ export async function applyMediaSuggestion(formData: FormData): Promise<void> {
     // A unique-constraint collision means somebody filled the slot between the
     // read above and this write. That is the constraint doing its job.
     console.error(`[applyMediaSuggestion] attach: ${insertError.message}`);
+  } else if (slots.includes("hero")) {
+    // The page now HAS the lead image its sourcing request was asking for, so
+    // the request is answered. Only on the hero: a gallery addition does not
+    // satisfy a request for a lead image, and treating it as though it did is
+    // how "awaiting media" would start reading as done while the page still had
+    // no face. See resolveMediaRequirementFor.
+    await resolveMediaRequirementFor(supabase, { kind: targetKind, id: targetId }, mediaId);
   }
 
   revalidatePath("/admin/media/suggestions");

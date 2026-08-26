@@ -4,7 +4,16 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Badge } from "@/components/admin/ui";
-import { bulkPublishMediaAssets, bulkUnpublishMediaAssets, bulkSetRightsStatus, type BulkActionSummary } from "./actions";
+import {
+  bulkPublishMediaAssets,
+  bulkUnpublishMediaAssets,
+  bulkSetRightsStatus,
+  bulkDeleteMediaAssets,
+  inspectMediaForDeletion,
+  type BulkActionSummary,
+  type BulkDeleteSummary,
+} from "./actions";
+import type { MediaDeletionAssessment } from "@/lib/media/deletion-safety";
 import type { MediaRightsStatus } from "@/lib/types/database";
 
 type MediaItem = {
@@ -34,6 +43,18 @@ export function MediaGrid({ items }: { items: MediaItem[] }) {
   const [isPending, startTransition] = useTransition();
   const [lastSummary, setLastSummary] = useState<{ action: string; summary: BulkActionSummary } | null>(null);
 
+  // DELETE IS TWO STEPS, ALWAYS.
+  //
+  // `pendingDelete` holds the server's own assessment of what would happen —
+  // not a count, and not a generic "are you sure". The admin sees each filename
+  // and, for anything attached, exactly what it is attached to. Nothing is sent
+  // back to the delete action until they press the second button.
+  //
+  // This is confirmation, not protection: the server refuses attached assets
+  // whatever this component sends. See inspectMediaForDeletion.
+  const [pendingDelete, setPendingDelete] = useState<MediaDeletionAssessment[] | null>(null);
+  const [deleteResult, setDeleteResult] = useState<BulkDeleteSummary | null>(null);
+
   function toggle(id: string) {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -51,7 +72,26 @@ export function MediaGrid({ items }: { items: MediaItem[] }) {
     });
   }
 
+  function askToDelete() {
+    setDeleteResult(null);
+    startTransition(async () => {
+      setPendingDelete(await inspectMediaForDeletion(Array.from(selected)));
+    });
+  }
+
+  function confirmDelete() {
+    const deletable = (pendingDelete ?? []).filter((a) => !a.blocked).map((a) => a.id);
+    startTransition(async () => {
+      const summary = await bulkDeleteMediaAssets(deletable);
+      setDeleteResult(summary);
+      setPendingDelete(null);
+      setSelected(new Set());
+    });
+  }
+
   const ids = Array.from(selected);
+  const deletable = (pendingDelete ?? []).filter((a) => !a.blocked);
+  const blocked = (pendingDelete ?? []).filter((a) => a.blocked);
 
   return (
     <div className="flex flex-col gap-4">
@@ -84,11 +124,113 @@ export function MediaGrid({ items }: { items: MediaItem[] }) {
           </button>
           <button
             type="button"
-            onClick={() => setSelected(new Set())}
+            disabled={isPending}
+            onClick={askToDelete}
+            className="rounded px-3 py-1.5 text-xs font-medium border border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-50"
+          >
+            Delete selected ({selected.size})
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSelected(new Set());
+              setPendingDelete(null);
+            }}
             className="ml-auto text-xs text-neutral-500 hover:text-neutral-800"
           >
             Clear selection
           </button>
+        </div>
+      )}
+
+      {pendingDelete && (
+        <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-sm">
+          <p className="font-medium text-red-900">
+            Delete {deletable.length} of {pendingDelete.length} selected file
+            {pendingDelete.length === 1 ? "" : "s"}?
+          </p>
+          <p className="mt-1 text-xs text-red-800">
+            This removes the database row and both storage copies. It cannot be undone.
+          </p>
+
+          {deletable.length > 0 && (
+            <div className="mt-3">
+              <p className="text-xs font-medium text-red-900">Will be deleted:</p>
+              <ul className="mt-1 flex flex-col gap-1">
+                {deletable.map((a) => (
+                  <li key={a.id} className="text-xs text-red-900">
+                    <span className="font-mono">{a.filename}</span>
+                    {a.relationships.length > 0 && (
+                      <span className="text-red-700"> — {a.relationships.map((r) => r.label).join("; ")}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {blocked.length > 0 && (
+            <div className="mt-3">
+              <p className="text-xs font-medium text-neutral-800">
+                Kept — {blocked.length} file{blocked.length === 1 ? " is" : "s are"} still in use:
+              </p>
+              <ul className="mt-1 flex flex-col gap-1">
+                {blocked.map((a) => (
+                  <li key={a.id} className="text-xs text-neutral-700">
+                    <span className="font-mono">{a.filename}</span> — {a.reason}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div className="mt-4 flex items-center gap-3">
+            <button
+              type="button"
+              disabled={isPending || deletable.length === 0}
+              onClick={confirmDelete}
+              className="rounded px-3 py-1.5 text-xs font-medium bg-red-700 text-white hover:bg-red-800 disabled:opacity-50"
+            >
+              {deletable.length === 0
+                ? "Nothing can be deleted"
+                : `Yes, permanently delete ${deletable.length} file${deletable.length === 1 ? "" : "s"}`}
+            </button>
+            <button
+              type="button"
+              onClick={() => setPendingDelete(null)}
+              className="text-xs text-neutral-600 hover:text-neutral-900"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {deleteResult && (
+        <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-xs text-neutral-700">
+          <p className="font-medium">
+            Delete: {deleteResult.deleted.length} of {deleteResult.requested} removed
+            {deleteResult.refused.length > 0 && `, ${deleteResult.refused.length} refused`}
+            {deleteResult.failed.length > 0 && `, ${deleteResult.failed.length} failed`}
+          </p>
+          {/* Every non-deletion is named. A partial result that reported only a
+              success count would be indistinguishable from a complete one. */}
+          {deleteResult.refused.map((r) => (
+            <p key={r.id} className="mt-1">
+              kept <span className="font-mono">{r.filename}</span> — {r.reason}
+            </p>
+          ))}
+          {deleteResult.failed.map((r) => (
+            <p key={r.id} className="mt-1 text-red-700">
+              FAILED <span className="font-mono">{r.filename}</span> — {r.reason}
+            </p>
+          ))}
+          {deleteResult.storageOrphans.length > 0 && (
+            <p className="mt-1 text-amber-800">
+              {deleteResult.storageOrphans.length} storage object(s) could not be removed and are now orphaned:{" "}
+              {deleteResult.storageOrphans.join(", ")}
+            </p>
+          )}
         </div>
       )}
 
