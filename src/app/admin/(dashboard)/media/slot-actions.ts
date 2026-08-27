@@ -82,12 +82,20 @@ async function insertAssociation(
   targetId: string,
   mediaId: string,
   role: MediaRole,
-  sortOrder: number
+  sortOrder: number,
+  adminId: string
 ) {
+  // Filled from the admin slot editor, so it is a human selection and names the
+  // human. See media/selection-policy.ts.
+  const provenance = {
+    selection_kind: "human" as const,
+    selected_by: adminId,
+    selected_at: new Date().toISOString(),
+  };
   const row =
     kind === "product"
-      ? { product_id: targetId, media_id: mediaId, role, sort_order: sortOrder }
-      : { content_id: targetId, media_id: mediaId, role, sort_order: sortOrder };
+      ? { product_id: targetId, media_id: mediaId, role, sort_order: sortOrder, ...provenance }
+      : { content_id: targetId, media_id: mediaId, role, sort_order: sortOrder, ...provenance };
   return kind === "product"
     ? supabase.from("product_media").insert(row as never)
     : supabase.from("content_media").insert(row as never);
@@ -144,7 +152,9 @@ export async function updateTargetSlots(
   _prev: SlotActionState,
   formData: FormData
 ): Promise<SlotActionState> {
-  await requireAdmin();
+  // Named on every row this writes: an admin working the slot editor IS the
+  // human whose choice must not be silently reconsidered later.
+  const admin = await requireAdmin();
 
   const op = String(formData.get("op") ?? "");
   // Every control that names an asset writes `media_id__<op>`, and we take the
@@ -220,7 +230,7 @@ export async function updateTargetSlots(
               const { error } = await updateRole(supabase, kind, targetId, operation.mediaId, existing.role, operation.role);
               if (error) return { error: error.message, notice: null };
             } else {
-              const { error } = await insertAssociation(supabase, kind, targetId, operation.mediaId, operation.role, 0);
+              const { error } = await insertAssociation(supabase, kind, targetId, operation.mediaId, operation.role, 0, admin.id);
               if (error) return { error: error.message, notice: null };
             }
           }
@@ -242,7 +252,7 @@ export async function updateTargetSlots(
           if (error) return { error: error.message, notice: null };
         }
         if (existingThumb?.media_id !== mediaId) {
-          const { error } = await insertAssociation(supabase, kind, targetId, mediaId, "thumbnail", 0);
+          const { error } = await insertAssociation(supabase, kind, targetId, mediaId, "thumbnail", 0, admin.id);
           if (error) return { error: error.message, notice: null };
         }
         revalidateFor(kind, targetId);
@@ -264,7 +274,7 @@ export async function updateTargetSlots(
           return { error: null, notice: "That image is already in the gallery." };
         }
         const nextOrder = Math.max(0, ...slots.filter((s) => s.role === "gallery").map((s) => s.sort_order + 1));
-        const { error } = await insertAssociation(supabase, kind, targetId, mediaId, "gallery", nextOrder);
+        const { error } = await insertAssociation(supabase, kind, targetId, mediaId, "gallery", nextOrder, admin.id);
         if (error) return { error: error.message, notice: null };
         revalidateFor(kind, targetId);
         return { error: null, notice: "Added to the gallery." };

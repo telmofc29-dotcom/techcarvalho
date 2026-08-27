@@ -993,7 +993,8 @@ async function saveAssociations(input: {
   targetIds: string[];
   formData: FormData;
 }): Promise<AssociationState> {
-  await requireAdmin();
+  // Named on every association this writes. See humanSelection().
+  const admin = await requireAdmin();
   const { kind, mediaId, formData } = input;
 
   const targetColumn = kind === "product" ? "product_id" : "content_id";
@@ -1162,7 +1163,7 @@ async function saveAssociations(input: {
     }
     for (const role of want) {
       if (have.has(role)) continue;
-      const res = await insertAssoc(supabase, kind, targetId, mediaId, role);
+      const res = await insertAssoc(supabase, kind, targetId, mediaId, role, admin.id);
       if (res.error) return { error: res.error.message };
       added++;
     }
@@ -1208,17 +1209,40 @@ function deleteAssoc(
     : supabase.from("content_media").delete().eq("content_id", targetId).eq("media_id", mediaId).eq("role", role);
 }
 
+/**
+ * The provenance stamp for a slot an ADMIN filled.
+ *
+ * Every write from the admin UI is a human decision by definition — somebody
+ * looked at the image and pressed a button — so it is recorded as one, and it
+ * names them. The database enforces the pairing: content_media_human_needs_actor
+ * refuses a 'human' row with no actor, and refuses an 'engine' row that claims
+ * one. A provenance field nothing enforces drifts into decoration; this one
+ * cannot.
+ *
+ * The engine's own attach path uses the opposite stamp — see
+ * selection-policy.ts for what each one licenses.
+ */
+function humanSelection(adminId: string): {
+  selection_kind: "human";
+  selected_by: string;
+  selected_at: string;
+} {
+  return { selection_kind: "human", selected_by: adminId, selected_at: new Date().toISOString() };
+}
+
 function insertAssoc(
   supabase: Awaited<ReturnType<typeof createClient>>,
   kind: "product" | "content",
   targetId: string,
   mediaId: string,
-  role: MediaRole
+  role: MediaRole,
+  adminId: string
 ) {
+  const provenance = humanSelection(adminId);
   const row =
     kind === "product"
-      ? { product_id: targetId, media_id: mediaId, role, sort_order: 0 }
-      : { content_id: targetId, media_id: mediaId, role, sort_order: 0 };
+      ? { product_id: targetId, media_id: mediaId, role, sort_order: 0, ...provenance }
+      : { content_id: targetId, media_id: mediaId, role, sort_order: 0, ...provenance };
   return kind === "product"
     ? supabase.from("product_media").insert(row as never)
     : supabase.from("content_media").insert(row as never);
@@ -1444,7 +1468,9 @@ async function resolveMediaRequirementFor(
 }
 
 export async function applyMediaSuggestion(formData: FormData): Promise<void> {
-  await requireAdmin();
+  // The admin is named on the row this writes: an image applied from the
+  // suggestion queue was still CHOSEN by a person pressing Apply.
+  const admin = await requireAdmin();
   const mediaId = String(formData.get("media_id") ?? "");
   const targetKind = String(formData.get("target_kind") ?? "");
   const targetId = String(formData.get("target_id") ?? "");
@@ -1510,12 +1536,28 @@ export async function applyMediaSuggestion(formData: FormData): Promise<void> {
       ? (
           await supabase
             .from("content_media")
-            .insert(slots.map((role) => ({ content_id: targetId, media_id: mediaId, role, sort_order: 0 })))
+            .insert(
+              slots.map((role) => ({
+                content_id: targetId,
+                media_id: mediaId,
+                role,
+                sort_order: 0,
+                ...humanSelection(admin.id),
+              }))
+            )
         ).error
       : (
           await supabase
             .from("product_media")
-            .insert(slots.map((role) => ({ product_id: targetId, media_id: mediaId, role, sort_order: 0 })))
+            .insert(
+              slots.map((role) => ({
+                product_id: targetId,
+                media_id: mediaId,
+                role,
+                sort_order: 0,
+                ...humanSelection(admin.id),
+              }))
+            )
         ).error;
   if (insertError) {
     // A unique-constraint collision means somebody filled the slot between the

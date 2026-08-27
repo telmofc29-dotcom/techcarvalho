@@ -34,7 +34,7 @@
 // PURE. No `server-only`, no Supabase, no clock beyond what is passed in.
 
 import { titleSimilarity } from "./dedupe.ts";
-import { coversSameModel } from "./model-identity.ts";
+import { compareModelIdentity, coversSameModel } from "./model-identity.ts";
 
 export type CoverageDecision =
   | "NEW_ARTICLE"
@@ -146,6 +146,10 @@ export function decideCoverage(input: CoverageInput): CoverageVerdict {
       x.sameModel ? x : { ...x, similarity: Math.min(x.similarity, SAME_STORY_THRESHOLD - 0.01) }
     )
     .sort((a, b) => b.similarity - a.similarity);
+  // `sameModel` travels with each entry from here on. Capping similarity was
+  // only ever half the veto: it stops a different product being called the SAME
+  // STORY, and says nothing about what the fallback at the end of this function
+  // then does with it. See the different-model branch below.
 
   const nearby = scored.slice(0, 5);
 
@@ -214,12 +218,51 @@ export function decideCoverage(input: CoverageInput): CoverageVerdict {
   const substantial = input.claimCount >= 5 && input.independentOrigins >= 2;
   if (substantial) {
     reasons.push(
-      `Related to "${best.piece.title}" (similarity ${best.similarity.toFixed(2)}) but not the same subject.`
+      best.sameModel
+        ? `Related to "${best.piece.title}" (similarity ${best.similarity.toFixed(2)}) but not the same subject.`
+        : `Related to "${best.piece.title}" (similarity ${best.similarity.toFixed(2)}), which is about a ` +
+          `different model (${compareModelIdentity(input.subject, best.piece.title).differing.join(", ")}).`
     );
     reasons.push(
       `${input.claimCount} claims across ${input.independentOrigins} independent origins is enough for its own piece, linked to that one.`
     );
     return { decision: "SUPPORTING", target: best.piece, similarity: best.similarity, reasons, nearby };
+  }
+
+  // ---- 5. thin, and about a DIFFERENT PRODUCT ---------------------------
+  //
+  // THE DEFECT THIS BRANCH FIXES, found by running the brief's own sibling
+  // pairs through decideCoverage against a corpus holding only the sibling:
+  //
+  //     "Canon EOS R5 Mark II announced"  vs existing "Canon EOS R5 announced"
+  //     -> UPDATE_EXISTING          0 of 11 pairs survived
+  //
+  // The veto had done its job — it reported "different models (mark, ii)" and
+  // capped similarity at 0.41, below the same-story line — and then execution
+  // fell past the SUPPORTING bar (which wants 5 claims) into the absorb-it
+  // fallback, which is written for a thin story about the SAME subject.
+  //
+  // For the same model, absorbing is right: a small R5 story belongs on the R5
+  // page. For a different model it is two failures at once. The R5 article
+  // would be edited to describe a camera it is not about, and the R5 Mark II —
+  // a real, uncovered product development — would never get a page, while the
+  // system reported the work as handled.
+  //
+  // So a different product is NEW_ARTICLE even when thin. Everything reaching
+  // here already cleared the "worth covering at all" gate at the top, so this
+  // cannot launder an empty story: it can only decline to merge two products.
+  if (!best.sameModel) {
+    const identity = compareModelIdentity(input.subject, best.piece.title);
+    reasons.push(
+      `"${best.piece.title}" is the closest existing page (similarity ${best.similarity.toFixed(2)}), ` +
+        `but it is about a DIFFERENT model: the two differ by ${identity.differing.join(", ")}.`
+    );
+    reasons.push(
+      "Folding this into that page would make it describe a product it is not about, and would leave this " +
+        "development with no page while reporting it as covered."
+    );
+    reasons.push(`Write it separately and link it to "${best.piece.title}".`);
+    return { decision: "NEW_ARTICLE", target: null, similarity: best.similarity, reasons, nearby };
   }
 
   reasons.push(

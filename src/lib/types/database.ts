@@ -171,6 +171,19 @@ export type AnalyticsEventType =
   | "outbound_link_click"
   | "affiliate_click";
 export type AnalyticsRollupDimension = "category" | "product" | "content" | "manufacturer" | "search_term" | "path" | "site";
+/**
+ * WHO chose a media slot — see 20260826_media_selection_provenance.sql.
+ *
+ * `unknown` is a real third state, not a missing value: 170 links predate
+ * provenance tracking and nobody can now say which were deliberate. The matcher
+ * treats `unknown` exactly as it treats `human` — PROTECTED — so the honest
+ * answer never licences the engine to overwrite a choice the owner made.
+ *
+ * A `human` row must name its actor and an `engine` row must not claim one;
+ * both are CHECK constraints in the database, not conventions here.
+ */
+export type MediaSelectionKind = "human" | "engine" | "unknown";
+
 export type MediaRole = "hero" | "gallery" | "thumbnail";
 export type ReliabilityTier = "primary" | "secondary" | "community";
 // 'public_domain_or_cc' and 'tc_graphic' added by
@@ -928,6 +941,10 @@ export interface Database {
           media_id: string;
           role: MediaRole;
           sort_order: number;
+          // 20260826_media_selection_provenance.sql — applied 2026-08-27.
+          selected_by: string | null;
+          selection_kind: MediaSelectionKind;
+          selected_at: string | null;
         };
         Insert: {
           id?: string;
@@ -935,6 +952,9 @@ export interface Database {
           media_id: string;
           role: MediaRole;
           sort_order?: number;
+          selected_by?: string | null;
+          selection_kind?: MediaSelectionKind;
+          selected_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["product_media"]["Insert"]>;
         Relationships: [];
@@ -946,6 +966,10 @@ export interface Database {
           media_id: string;
           role: MediaRole;
           sort_order: number;
+          // 20260826_media_selection_provenance.sql — applied 2026-08-27.
+          selected_by: string | null;
+          selection_kind: MediaSelectionKind;
+          selected_at: string | null;
         };
         Insert: {
           id?: string;
@@ -953,6 +977,9 @@ export interface Database {
           media_id: string;
           role: MediaRole;
           sort_order?: number;
+          selected_by?: string | null;
+          selection_kind?: MediaSelectionKind;
+          selected_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["content_media"]["Insert"]>;
         Relationships: [];

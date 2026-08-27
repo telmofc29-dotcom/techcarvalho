@@ -9,14 +9,29 @@ import "server-only";
 //
 // ON "HUMAN SELECTED"
 // -------------------
-// content_media has no column recording WHO chose a slot, so this cannot
-// distinguish an owner's deliberate hero from one an earlier automation
-// attached. It therefore treats EVERY occupied hero and thumbnail as protected.
-// That is the fail-safe direction: the cost is a suggestion the owner has to
-// make explicitly, and the alternative cost is silently overwriting a choice
-// somebody made on purpose.
+// It used to treat EVERY occupied hero and thumbnail as protected, because
+// content_media had no column recording WHO chose a slot and overwriting a
+// deliberate editorial choice is the worse error. Correct, and it blocked
+// automatic media association completely.
+//
+// 20260826_media_selection_provenance.sql was applied on 2026-08-27, so the
+// distinction is now real: `human` and `unknown` are protected, `engine` may be
+// reconsidered. `unknown` sits with `human` on purpose — 170 links predate the
+// column and nobody can say which were deliberate, so the conservative reading
+// is the only honest one. See media/selection-policy.ts, which is the single
+// place that question is answered.
+//
+// ON ROTATION
+// -----------
+// The usage map was already computed here and thrown away. It now orders
+// candidates WITHIN a narrow score band, so two equally good images take turns
+// instead of one leading every page. It cannot promote a worse image: the band
+// is anchored on the leader and is narrower than any single piece of evidence
+// the scorer weighs.
 
 import { createClient } from "@/lib/supabase/server";
+import { isProtectedSelection, orderForSlot, explainRotation } from "./selection-policy.ts";
+import type { MediaSelectionKind } from "@/lib/types/database";
 import { logQueryError } from "@/lib/log/query-error";
 import {
   deriveIsModelSpecific,
@@ -73,8 +88,8 @@ async function loadAll(): Promise<Loaded> {
       ),
     supabase.from("content_items").select("id, title, status, category_id"),
     supabase.from("products").select("id, name, is_published, category_id, manufacturer_id, family_id"),
-    supabase.from("content_media").select("content_id, media_id, role"),
-    supabase.from("product_media").select("product_id, media_id, role"),
+    supabase.from("content_media").select("content_id, media_id, role, selection_kind"),
+    supabase.from("product_media").select("product_id, media_id, role, selection_kind"),
     supabase.from("taxonomy_categories").select("id, slug"),
     supabase.from("manufacturers").select("id, name"),
   ]);
@@ -147,21 +162,30 @@ async function loadAll(): Promise<Loaded> {
   // Slots per target, and total usage per asset.
   const slotsByTarget = new Map<string, { role: "hero" | "thumbnail" | "gallery"; humanSelected: boolean }[]>();
   const usage = new Map<string, number>();
-  const push = (key: string, role: string, mediaId: string) => {
+  const push = (key: string, role: string, mediaId: string, kind: MediaSelectionKind | null) => {
     if (role !== "hero" && role !== "thumbnail" && role !== "gallery") return;
     slotsByTarget.set(key, [
       ...(slotsByTarget.get(key) ?? []),
-      // See the header: with no provenance column, every occupied slot is
-      // treated as a deliberate human choice.
-      { role, humanSelected: true },
+      // `unknown` counts as protected. See selection-policy.ts.
+      { role, humanSelected: isProtectedSelection(kind) },
     ]);
     usage.set(mediaId, (usage.get(mediaId) ?? 0) + 1);
   };
-  for (const r of (cmRes.data ?? []) as { content_id: string; media_id: string; role: string }[]) {
-    push(`content:${r.content_id}`, r.role, r.media_id);
+  for (const r of (cmRes.data ?? []) as {
+    content_id: string;
+    media_id: string;
+    role: string;
+    selection_kind: MediaSelectionKind | null;
+  }[]) {
+    push(`content:${r.content_id}`, r.role, r.media_id, r.selection_kind);
   }
-  for (const r of (pmRes.data ?? []) as { product_id: string; media_id: string; role: string }[]) {
-    push(`product:${r.product_id}`, r.role, r.media_id);
+  for (const r of (pmRes.data ?? []) as {
+    product_id: string;
+    media_id: string;
+    role: string;
+    selection_kind: MediaSelectionKind | null;
+  }[]) {
+    push(`product:${r.product_id}`, r.role, r.media_id, r.selection_kind);
   }
 
   const targets: MatchTarget[] = [];
@@ -249,7 +273,7 @@ export async function loadAssetSuggestions(
 export async function loadMediaNeeds(
   options: { limit?: number } = {}
 ): Promise<{ needs: TargetNeed[]; failures: string[] }> {
-  const { assets, targets, failures } = await loadAll();
+  const { assets, targets, usage, failures } = await loadAll();
   const usable = assets.filter(
     (a) => a.publicationStatus === "published" && a.rightsStatus !== "restricted"
   );
@@ -266,7 +290,29 @@ export async function loadMediaNeeds(
         ? "No lead image"
         : "No explicit card image";
 
-    const candidates = matchesForTarget(target, usable, { limit: 3 });
+    // ROTATION, APPLIED AFTER MATCHING AND NEVER INSTEAD OF IT.
+    //
+    // matchesForTarget has already refused everything that would be a false
+    // claim; what survives is a list of images that are all honest for this
+    // page. Only then does usage get a say, and only between candidates within
+    // ROTATION_BAND of each other. A uniquely-best exact match has no equals to
+    // rotate with and is returned first every time.
+    const scored = matchesForTarget(target, usable, { limit: 8 });
+    const order = orderForSlot(
+      scored.map((m) => ({ assetId: m.assetId, score: m.score, usageCount: usage.get(m.assetId) ?? 0 }))
+    );
+    const byId = new Map(scored.map((m) => [m.assetId, m]));
+    const candidates = order
+      .map((r) => byId.get(r.assetId))
+      .filter((m): m is MediaMatch => m !== undefined)
+      .slice(0, 3);
+
+    // Said out loud, because a rotation that cannot explain itself is
+    // indistinguishable from a random one.
+    const rotationNote = explainRotation(order[0] ?? null, order[1] ?? null);
+    if (rotationNote && candidates[0]) {
+      candidates[0] = { ...candidates[0], reasons: [...candidates[0].reasons, rotationNote] };
+    }
 
     // Priority: published pages a reader can already reach come first, and a
     // page with a candidate sitting unused outranks one that needs new work.

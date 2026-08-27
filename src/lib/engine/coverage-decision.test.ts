@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import {
   decideCoverage,
@@ -7,6 +7,7 @@ import {
   SAME_SUBJECT_THRESHOLD,
   type ExistingPiece,
 } from "./coverage-decision.ts";
+import { FALSE_MATCH_PAIRS } from "../media/false-match-corpus.ts";
 
 const NOW = new Date("2026-08-25T12:00:00Z");
 
@@ -199,4 +200,80 @@ test("every verdict explains itself", () => {
     assert.ok(v.reasons.length > 0);
     assert.ok(v.reasons.every((r) => r.length > 15));
   }
+});
+
+// ---------------------------------------------------------------------------
+// THE THIN-STORY-ABOUT-A-DIFFERENT-PRODUCT PATH.
+//
+// This suite was GREEN while decideCoverage returned UPDATE_EXISTING for all
+// eleven sibling pairs in the false-match corpus. The veto was working — it
+// reported "different models" and capped similarity below the same-story line —
+// and then execution fell past the SUPPORTING bar into the absorb-it fallback,
+// which is written for a thin story about the SAME subject.
+//
+// Found by running the corpus through decideCoverage against production data,
+// not by unit test, which is exactly why these now exist.
+// ---------------------------------------------------------------------------
+describe("a thin story about a DIFFERENT model is never absorbed", () => {
+  const siblingOnly = (title: string): ExistingPiece[] => [
+    {
+      id: "sibling",
+      title,
+      slug: "sibling",
+      status: "published",
+      categorySlug: null,
+      publishedAt: new Date(Date.now() - 30 * 86400_000).toISOString(),
+    },
+  ];
+
+  // Deliberately BELOW the SUPPORTING bar (5 claims, 2 origins), because that
+  // is the combination that used to fall through.
+  const thin = (subject: string, existingTitle: string) =>
+    decideCoverage({
+      subject,
+      categorySlug: null,
+      independentOrigins: 3,
+      framing: "confirmed",
+      claimCount: 3,
+      existing: siblingOnly(existingTitle),
+    });
+
+  for (const pair of FALSE_MATCH_PAIRS) {
+    test(`"${pair.subject}" is not absorbed into the "${pair.sibling}" page`, () => {
+      const v = thin(`${pair.subject} announced`, `${pair.sibling} announced`);
+      assert.notEqual(
+        v.decision,
+        "UPDATE_EXISTING",
+        `folding this into the ${pair.sibling} page would make it describe a product it is not about — ${v.reasons.join(" | ")}`
+      );
+      assert.equal(v.decision, "NEW_ARTICLE");
+      assert.equal(v.target, null, "there is no page to update, so none may be named as the target");
+      assert.ok(
+        v.reasons.some((r) => /DIFFERENT model/.test(r)),
+        `the decision must say why: ${v.reasons.join(" | ")}`
+      );
+    });
+  }
+
+  // The other half. Absorbing a thin story into the page about the SAME product
+  // is correct and must not be lost to the fix above.
+  test("a thin story about the SAME product is still absorbed", () => {
+    const v = thin("Canon EOS R5 firmware 2.0 released", "Canon EOS R5 firmware roundup");
+    assert.equal(v.decision, "UPDATE_EXISTING");
+    assert.equal(v.target?.title, "Canon EOS R5 firmware roundup");
+  });
+
+  // And the gate above it still bites: a different model cannot be used to
+  // launder a story with nothing in it into a new page.
+  test("a different model with nothing to say is still NO_COVERAGE", () => {
+    const v = decideCoverage({
+      subject: "Canon EOS R5 Mark II announced",
+      categorySlug: null,
+      independentOrigins: 1,
+      framing: "insufficient",
+      claimCount: 1,
+      existing: siblingOnly("Canon EOS R5 announced"),
+    });
+    assert.equal(v.decision, "NO_COVERAGE");
+  });
 });

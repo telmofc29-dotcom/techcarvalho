@@ -32,8 +32,7 @@
 // as a veto over similarity, not instead of it. Two pieces about the same
 // product are still compared on wording as before.
 
-import { identityTokens, modelTokens } from "../media/subject-match.ts";
-import { DESIGNATION_WORDS } from "../media/identity.ts";
+import { designationTokens } from "../media/identity.ts";
 
 export type ModelIdentityVerdict = {
   /** False when the two subjects demonstrably name different models. */
@@ -43,26 +42,27 @@ export type ModelIdentityVerdict = {
   reason: string;
 };
 
-/**
- * Tokens that pin a specific model: anything with a digit, plus the variant
- * words that separate one revision from the next.
- *
- * "pro", "ultra", "max" and "mini" count. They are how Apple and Samsung
- * distinguish products, and treating them as noise is what let "iPhone 18 Pro"
- * be answered by "iPhone 18".
- */
-function designationTokens(subject: string): Set<string> {
-  const out = new Set<string>(modelTokens(subject));
-  for (const t of identityTokens(subject)) {
-    if (DESIGNATION_WORDS.has(t)) out.add(t);
-  }
-  return out;
-}
-
-// The tier list that used to live here (pro/max/plus/ultra/mini/air/lite/se/xl)
-// was a THIRD private copy of the same idea, and it was missing "studio" — so
-// "Mac Studio" registered as naming no model at all. It now reads
-// DESIGNATION_WORDS, the one list every matcher shares. See media/identity.ts.
+// THE LAST PRIVATE TOKEN COMPUTATION, NOW GONE.
+//
+// This module used to build its own designation set — `modelTokens()` (which
+// keeps any digit-bearing token WHOLE) plus the shared vocabulary. Sharing the
+// WORD LIST was not enough, because the two sides still disagreed about what
+// counted as a token at all.
+//
+// The cost, found by running real subjects through decideCoverage:
+//
+//     "Canon EOS R5 firmware 2.0 released"  vs  "Canon EOS R5 firmware roundup"
+//     -> different models, differing by "2.0"
+//
+// A FIRMWARE VERSION read as a model designation. Harmless while both branches
+// of the decision led to UPDATE_EXISTING; the moment "different model" started
+// producing NEW_ARTICLE, it would have spawned a separate page for every
+// version-numbered follow-up to a story.
+//
+// media/identity.ts splits "2.0" into "2" and "0", neither of which is a
+// distinctive designation, and keeps "r5" — so both titles reduce to {r5} and
+// the veto correctly abstains. One function, one answer, for the coverage
+// engine and both matchers.
 
 export function compareModelIdentity(a: string, b: string): ModelIdentityVerdict {
   const da = designationTokens(a);
