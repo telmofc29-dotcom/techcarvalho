@@ -151,12 +151,107 @@ function isDistinctiveNumber(token: string): boolean {
  * `canon5d0195.jpg` would otherwise contribute "canon" as if it were a model
  * designation, and every Canon shares that.
  */
+// ---------------------------------------------------------------------------
+// Contextual numbers
+// ---------------------------------------------------------------------------
+
+/**
+ * A bare number that identifies something ONLY because of the word in front of
+ * it.
+ *
+ * THE PROBLEM THIS SOLVES
+ * -----------------------
+ * A lone digit is deliberately not a designation. That rule is load-bearing:
+ * "DJI Mini 4 Pro" and "Neptune 4 Pro" both carry "4", and treating that as
+ * identity once put a drone photograph on a 3D-printer page.
+ *
+ * But it also meant the site could not tell these apart:
+ *
+ *     Wi-Fi 6   Wi-Fi 6E   Wi-Fi 7   Wi-Fi 8
+ *     USB 3     USB 4
+ *     PCIe 4    PCIe 5     PCIe 6
+ *     PlayStation 4        PlayStation 5
+ *
+ * In every one of those the number IS the identity — because it belongs to a
+ * named thing. "7" means nothing; "Wi-Fi 7" means one specific standard.
+ *
+ * THE RULE
+ * --------
+ * A number identifies when it is attached to a naming word, and the word
+ * travels with it as a single token:
+ *
+ *     "Wi-Fi 7"        -> wifi#7
+ *     "Wi-Fi 8"        -> wifi#8          same context, different number
+ *                                          -> different standards
+ *     "DJI Mini 4 Pro" -> mini#4
+ *     "Neptune 4 Pro"  -> neptune#4       DIFFERENT context -> the shared "4"
+ *                                          creates no identity at all
+ *
+ * A shared number alone can therefore never link two products, which is the
+ * property that must not be lost while fixing the standards.
+ *
+ * Hyphens are stripped from the context so "wi-fi" and "wifi" are one word: a
+ * filename and a headline almost never spell it the same way.
+ */
+function contextOf(token: string): string {
+  return token.replace(/-/g, "");
+}
+
+/**
+ * Emit `context#number` for every bare number that follows a naming word.
+ *
+ * Only NON-distinctive numbers get this treatment. A number that already
+ * identifies on its own ("5090", "60d") is a designation already and does not
+ * need a chaperone.
+ *
+ * A designation word is never a context: "Mark 2" is a revision, and revisions
+ * are handled by REVISION_WORDS. Treating "mark" as a naming context would make
+ * "Mark 2" and "Mark 3" differ twice over, which changes nothing, and would let
+ * "Pro 4" and "Pro 5" of two unrelated products appear comparable, which is the
+ * exact failure this design avoids.
+ */
+function addContextualNumbers(pieces: readonly string[], out: Set<string>): void {
+  // The caller guarantees the name carries no real model number.
+  for (let i = 1; i < pieces.length; i++) {
+    const num = pieces[i];
+    if (!/^\d+$/.test(num)) continue;
+    if (isYear(num)) continue;
+    if (isDistinctiveNumber(num)) continue;
+    const prev = contextOf(pieces[i - 1]);
+    if (!/^[a-z]+$/.test(prev)) continue;
+    if (prev.length < 2) continue;
+    if (DESIGNATION_WORDS.has(prev)) continue;
+    out.add(`${prev}#${num}`);
+  }
+}
+
 export function designationTokens(name: string): Set<string> {
   const out = new Set<string>();
   const folded = name
     .normalize("NFD")
     .replace(new RegExp("[\\u0300-\\u036f]", "g"), "")
     .toLowerCase();
+
+  // The flat sequence of alphabetic and numeric pieces, IN ORDER, so a number
+  // can see the word in front of it. Hyphenated words stay whole here ("wi-fi"),
+  // because that word is the context and contextOf() flattens it.
+  const sequence: string[] = [];
+  for (const run of folded.split(/[^a-z0-9-]+/)) {
+    const trimmed = run.replace(/^-+|-+$/g, "");
+    if (!trimmed) continue;
+    // A run of letters and hyphens is ONE word: "wi-fi". Keeping it whole is the
+    // entire reason hyphens survive the split.
+    if (/^[a-z-]+$/.test(trimmed)) { sequence.push(trimmed); continue; }
+    // Anything with a digit in it is a filename or a model number, and its
+    // hyphens ARE separators. The first version flattened them instead, so
+    // "canon-eos-r5-front" became one word "canoneosr" followed by "5" and
+    // produced the context `canoneosr#5` — which nothing else on earth
+    // produces, so a correct Canon photograph stopped matching its own product.
+    for (const segment of trimmed.split("-")) {
+      for (const piece of segment.match(/[a-z]+|[0-9]+/g) ?? []) sequence.push(piece);
+    }
+  }
+  const contextualFromGlue = new Set<string>();
 
   for (const run of folded.split(/[^a-z0-9]+/)) {
     if (!run) continue;
@@ -165,6 +260,23 @@ export function designationTokens(name: string): Set<string> {
 
     if (!hasDigit) {
       if (DESIGNATION_WORDS.has(run)) out.add(run);
+      continue;
+    }
+
+    // A GLUED SPELLING MUST NOT OUT-DECLARE A SPACED ONE.
+    //
+    // "WIFI7" is one alphanumeric run, so it would emit the whole token
+    // "wifi7" — which "Wi-Fi 7" never produces — and the two spellings of one
+    // standard looked like two different things.
+    //
+    // A run of {two or more letters}{one digit} IS the glued spelling of a
+    // contextual number, so it is written as one: usb4 -> usb#4, pcie5 ->
+    // pcie#5, wifi7 -> wifi#7. Runs whose number identifies on its own ("s26",
+    // "hero13") and runs whose prefix is a single letter ("r5", "z8") are
+    // untouched, because neither is a context-plus-version.
+    const gluedContext = /^([a-z]{2,})(\d)$/.exec(run);
+    if (gluedContext && !DESIGNATION_WORDS.has(gluedContext[1])) {
+      contextualFromGlue.add(`${gluedContext[1]}#${gluedContext[2]}`);
       continue;
     }
 
@@ -196,6 +308,46 @@ export function designationTokens(name: string): Set<string> {
         if (/\d/.test(acc) && isDistinctiveNumber(acc)) out.add(acc);
       }
     }
+  }
+
+  // CONTEXTUAL NUMBERS ARE THE LAST RESORT, AND ONLY WHERE NOTHING ELSE
+  // IDENTIFIES NUMERICALLY.
+  //
+  // Run after the main pass, so it can see what that pass found. If the name
+  // already carries a real model number — "R5", "9950X", "6E" — then any other
+  // bare digit in it is a version, a series tier or a count, not the identity:
+  //
+  //   "Canon EOS R5 firmware 2.0"  -> r5        (NOT firmware#2)
+  //   "AMD Ryzen 9 9950X"          -> 9950x     (NOT ryzen#9)
+  //   "Wi-Fi 6E"                   -> 6e        (NOT wifi#6)
+  //
+  // Both of those first two shipped as bugs — the firmware one made a correct
+  // update read as a different product, the Ryzen one made a correct photograph
+  // stop matching its own page — and both were caught by tests that already
+  // existed, going red.
+  //
+  // A designation WORD does not suppress this. "PlayStation 5 Pro" carries
+  // "pro" and still needs playstation#5, because "pro" says which variant and
+  // nothing at all about which generation.
+  for (const t of contextualFromGlue) out.add(t);
+
+  const carriesRealNumber = [...out].some((t) => /\d/.test(t) && !t.includes("#"));
+  if (!carriesRealNumber) {
+    const sequence: string[] = [];
+    for (const run of folded.split(/[^a-z0-9-]+/)) {
+      const trimmed = run.replace(/^-+|-+$/g, "");
+      if (!trimmed) continue;
+      // A run of letters and hyphens is ONE word: "wi-fi". Keeping it whole is
+      // the entire reason hyphens survive this split.
+      if (/^[a-z-]+$/.test(trimmed)) { sequence.push(trimmed); continue; }
+      // Anything with a digit is a filename or a model number, and ITS hyphens
+      // are separators. Flattening them instead turned "canon-eos-r5-front"
+      // into the context "canoneosr" — a word nothing else on earth produces.
+      for (const segment of trimmed.split("-")) {
+        for (const piece of segment.match(/[a-z]+|[0-9]+/g) ?? []) sequence.push(piece);
+      }
+    }
+    addContextualNumbers(sequence, out);
   }
 
   return out;
@@ -247,8 +399,54 @@ export function compareDesignations(subject: string, other: string): Designation
     };
   }
 
-  const onlyInSubject = [...a].filter((t) => !b.has(t));
-  const onlyInOther = [...b].filter((t) => !a.has(t));
+  let onlyInSubject = [...a].filter((t) => !b.has(t));
+  let onlyInOther = [...b].filter((t) => !a.has(t));
+
+  // A RANGE COVERS THE POINTS INSIDE IT.
+  //
+  // "Wi-Fi 4 to Wi-Fi 7: What Each Generation Changed" carries {wifi#4, wifi#7}
+  // and an article about "Wi-Fi 7" carries {wifi#7}. Read as a plain set
+  // difference that is a disagreement, and the coverage veto would announce that
+  // the generations piece is about a different standard — while it is sitting
+  // there covering exactly that standard.
+  //
+  // So within one context, a SUBSET is not a disagreement. {7} against {4,7} is
+  // one piece being broader than the other. {7} against {8} is two different
+  // standards, and {4,7} against {8} still is. Only a difference in BOTH
+  // directions means the two names disagree about which thing they are naming.
+  //
+  // This applies to contextual numbers only. A subset rule over ordinary
+  // designations would say a plain "EOS R5" covers an "EOS R5 Mark II", which is
+  // the false-SKU claim this whole file exists to refuse.
+  const byContext = (tokens: readonly string[]): Map<string, Set<string>> => {
+    const m = new Map<string, Set<string>>();
+    for (const t of tokens) {
+      const hash = t.indexOf("#");
+      if (hash < 0) continue;
+      const ctx = t.slice(0, hash);
+      if (!m.has(ctx)) m.set(ctx, new Set());
+      m.get(ctx)!.add(t.slice(hash + 1));
+    }
+    return m;
+  };
+  const ctxA = byContext([...a]);
+  const ctxB = byContext([...b]);
+  const subsetContexts = new Set<string>();
+  for (const [ctx, na] of ctxA) {
+    const nb = ctxB.get(ctx);
+    if (!nb) continue; // context on one side only — ordinary designation rules apply
+    const aSubset = [...na].every((n) => nb.has(n));
+    const bSubset = [...nb].every((n) => na.has(n));
+    if (aSubset || bSubset) subsetContexts.add(ctx);
+  }
+  if (subsetContexts.size > 0) {
+    const covered = (t: string) => {
+      const hash = t.indexOf("#");
+      return hash >= 0 && subsetContexts.has(t.slice(0, hash));
+    };
+    onlyInSubject = onlyInSubject.filter((t) => !covered(t));
+    onlyInOther = onlyInOther.filter((t) => !covered(t));
+  }
 
   if (onlyInSubject.length === 0 && onlyInOther.length === 0) {
     return {

@@ -211,8 +211,20 @@ async function main(): Promise<void> {
     "evidence_records", "media_assets", "content_items", "content_relationships",
     "content_products", "content_tags", "engine_briefs", "engine_sources", "engine_discoveries",
   ]) {
-    const r = await db.from(t).select("id", { count: "exact", head: true });
-    counts[t] = r.error ? `ERR ${r.error.code}` : (r as unknown as { count: number }).count;
+    // COUNT ON "*", NOT "id".
+    //
+    // content_tags is a pure join table: primary key (content_id, tag_id), no
+    // id column at all. Asking for "id" errored, and with head:true PostgREST
+    // returns an EMPTY error body, so error.code was undefined and the baseline
+    // printed the memorable non-message "ERR undefined" for weeks.
+    //
+    // The data was never in question — 259 rows, readable, correct shape, and
+    // every real call site in src/ selects (content_id, tag_id). It was this
+    // line, and a report that could not say so.
+    const r = await db.from(t).select("*", { count: "exact", head: true });
+    counts[t] = r.error
+      ? `ERR ${r.error.code || r.error.message || "unknown error"}`
+      : (r as unknown as { count: number }).count;
   }
 
   // ---- report ----

@@ -46,6 +46,7 @@
 
 import { identityTokens, modelTokens } from "./subject-match.ts";
 import { DESIGNATION_WORDS, designationTokens, namesSpecificModel } from "./identity.ts";
+import { partitionTokens, type EntityVocabulary } from "./entity-vocabulary.ts";
 
 export type MediaRole = "hero" | "thumbnail" | "gallery";
 
@@ -344,7 +345,20 @@ export function deriveIsModelSpecific(title: string): boolean {
 
 export const MIN_SCORE = 20;
 
-export function scoreMatch(asset: MatchAsset, target: MatchTarget): MediaMatch {
+/**
+ * Options carrying evidence the matcher cannot derive from one pairing.
+ *
+ * `entityVocabulary` is the set of words that NAME something this publication
+ * covers, built from manufacturers, products, families, categories and tags.
+ * See entity-vocabulary.ts for why this replaced "any word over two letters".
+ */
+export type ScoreOptions = { entityVocabulary?: EntityVocabulary };
+
+export function scoreMatch(
+  asset: MatchAsset,
+  target: MatchTarget,
+  options: ScoreOptions = {}
+): MediaMatch {
   const nature = classifyNature(asset);
   const vocab = assetVocabulary(asset);
   const reasons: string[] = [];
@@ -367,8 +381,18 @@ export function scoreMatch(asset: MatchAsset, target: MatchTarget): MediaMatch {
   // by one number, which is why a name with no digits could not be scored at
   // all.
   const matchedModels = distinctiveTargetModels.filter((t) => vocab.all.has(t));
-  const matchedIdentity = [...targetIdentity].filter(
-    (t) => !/\d/.test(t) && vocab.all.has(t)
+  // NAMING TOKENS VERSUS ORDINARY ENGLISH.
+  //
+  // Both sides of this used to count equally at 12 points each, so "what",
+  // "actually" and "about" bought their way to a family match between an Apple
+  // story and a GTA 6 graphic. Only tokens drawn from the site's own reference
+  // data can establish that an image is about a subject; the rest are recorded
+  // so a reason can mention them, and score nothing.
+  const entityVocabulary: EntityVocabulary = options.entityVocabulary ?? new Set<string>();
+  const sharedNonDigit = [...targetIdentity].filter((t) => !/\d/.test(t) && vocab.all.has(t));
+  const { naming: matchedIdentity, ordinary: matchedOrdinary } = partitionTokens(
+    sharedNonDigit,
+    entityVocabulary
   );
 
   // ---- designations: the canonical identity comparison -------------------
@@ -456,6 +480,8 @@ export function scoreMatch(asset: MatchAsset, target: MatchTarget): MediaMatch {
         `and it claims no other tier or revision.`
     );
   } else if (matchedModels.length > 0 || matchedIdentity.length > 0) {
+    // Reached only on a designation or a NAMING token. Ordinary shared words
+    // fall through to `topical` below and are refused there.
     specificity = "family";
     if (extraVariants.length > 0) {
       reasons.push(
@@ -485,6 +511,9 @@ export function scoreMatch(asset: MatchAsset, target: MatchTarget): MediaMatch {
   let score = 0;
   score += matchedModels.length * 30;
   score += matchedIdentity.length * 12;
+  // matchedOrdinary is deliberately worth ZERO. Shared ordinary English is not
+  // evidence that two things are about the same subject, and paying for it is
+  // what filled the suggestion queue with noise.
   // A description a human wrote is better evidence than a filename.
   const describedHits = [...targetIdentity, ...targetModels].filter((t) =>
     vocab.fromDescription.has(t)
@@ -523,7 +552,12 @@ export function scoreMatch(asset: MatchAsset, target: MatchTarget): MediaMatch {
     return finish(asset, target, specificity, nature, -1, reasons, withheld, []);
   }
   if (specificity === "topical") {
-    withheld.push("Only a category-level association; too weak to attach automatically.");
+    withheld.push(
+      matchedOrdinary.length > 0
+        ? `The only overlap is ordinary wording (${matchedOrdinary.slice(0, 5).join(", ")}), which names nothing ` +
+          `this publication covers. Shared English is not evidence that two things are about the same subject.`
+        : "Only a category-level association; too weak to attach automatically."
+    );
     return finish(asset, target, specificity, nature, score, reasons, withheld, []);
   }
 
@@ -594,11 +628,11 @@ function finish(
 export function matchesForAsset(
   asset: MatchAsset,
   targets: readonly MatchTarget[],
-  options: { limit?: number; minScore?: number } = {}
+  options: { limit?: number; minScore?: number } & ScoreOptions = {}
 ): MediaMatch[] {
   const min = options.minScore ?? MIN_SCORE;
   return targets
-    .map((t) => scoreMatch(asset, t))
+    .map((t) => scoreMatch(asset, t, options))
     .filter((m) => m.score >= min && m.proposedSlots.length > 0)
     .sort((a, b) => b.score - a.score || a.target.title.localeCompare(b.target.title))
     .slice(0, options.limit ?? 5);
@@ -608,11 +642,11 @@ export function matchesForAsset(
 export function matchesForTarget(
   target: MatchTarget,
   assets: readonly MatchAsset[],
-  options: { limit?: number; minScore?: number } = {}
+  options: { limit?: number; minScore?: number } & ScoreOptions = {}
 ): MediaMatch[] {
   const min = options.minScore ?? MIN_SCORE;
   return assets
-    .map((a) => scoreMatch(a, target))
+    .map((a) => scoreMatch(a, target, options))
     .filter((m) => m.score >= min && m.proposedSlots.length > 0)
     .sort((a, b) => b.score - a.score || a.assetId.localeCompare(b.assetId))
     .slice(0, options.limit ?? 5);

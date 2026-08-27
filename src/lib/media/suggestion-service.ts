@@ -31,6 +31,7 @@ import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
 import { isProtectedSelection, orderForSlot, explainRotation } from "./selection-policy.ts";
+import { buildEntityVocabulary, type EntityVocabulary } from "./entity-vocabulary.ts";
 import type { MediaSelectionKind } from "@/lib/types/database";
 import { logQueryError } from "@/lib/log/query-error";
 import {
@@ -71,6 +72,8 @@ export type TargetNeed = {
 type Loaded = {
   assets: MatchAsset[];
   targets: MatchTarget[];
+  /** Words that NAME something this site covers. See entity-vocabulary.ts. */
+  entityVocabulary: EntityVocabulary;
   /** media_id -> number of slots it currently occupies anywhere. */
   usage: Map<string, number>;
   failures: string[];
@@ -80,7 +83,8 @@ async function loadAll(): Promise<Loaded> {
   const supabase = await createClient();
   const failures: string[] = [];
 
-  const [assetsRes, contentRes, productsRes, cmRes, pmRes, catsRes, mfrRes] = await Promise.all([
+  const [assetsRes, contentRes, productsRes, cmRes, pmRes, catsRes, mfrRes, famRes, tagRes] =
+    await Promise.all([
     supabase
       .from("media_assets")
       .select(
@@ -92,6 +96,8 @@ async function loadAll(): Promise<Loaded> {
     supabase.from("product_media").select("product_id, media_id, role, selection_kind"),
     supabase.from("taxonomy_categories").select("id, slug"),
     supabase.from("manufacturers").select("id, name"),
+    supabase.from("product_families").select("name"),
+    supabase.from("taxonomy_tags").select("name"),
   ]);
 
   for (const [name, res] of [
@@ -229,14 +235,25 @@ async function loadAll(): Promise<Loaded> {
     });
   }
 
-  return { assets, targets, usage, failures };
+  // BUILT FROM REFERENCE DATA THE READS ABOVE ALREADY FETCHED — no extra query.
+  // It grows as the catalogue grows, which is the property a hand-written
+  // stopword list can never have.
+  const entityVocabulary = buildEntityVocabulary({
+    manufacturers: ((mfrRes.data ?? []) as { name: string }[]).map((m) => m.name),
+    productNames: ((productsRes.data ?? []) as { name: string }[]).map((p) => p.name),
+    familyNames: ((famRes.data ?? []) as { name: string }[]).map((f) => f.name),
+    categorySlugs: ((catsRes.data ?? []) as { slug: string }[]).map((c) => c.slug),
+    tagNames: ((tagRes.data ?? []) as { name: string }[]).map((t) => t.name),
+  });
+
+  return { assets, targets, usage, entityVocabulary, failures };
 }
 
 /** MEDIA -> CONTENT. Where could each image go? */
 export async function loadAssetSuggestions(
   options: { limit?: number; onlyUnattached?: boolean } = {}
 ): Promise<{ suggestions: AssetSuggestion[]; failures: string[] }> {
-  const { assets, targets, usage, failures } = await loadAll();
+  const { assets, targets, usage, entityVocabulary, failures } = await loadAll();
 
   const pool = options.onlyUnattached
     ? assets.filter((a) => (usage.get(a.id) ?? 0) === 0)
@@ -244,7 +261,7 @@ export async function loadAssetSuggestions(
 
   const suggestions: AssetSuggestion[] = [];
   for (const asset of pool) {
-    const matches = matchesForAsset(asset, targets, { limit: 4 });
+    const matches = matchesForAsset(asset, targets, { limit: 4, entityVocabulary });
     if (matches.length === 0) continue;
     suggestions.push({
       asset,
@@ -273,7 +290,7 @@ export async function loadAssetSuggestions(
 export async function loadMediaNeeds(
   options: { limit?: number } = {}
 ): Promise<{ needs: TargetNeed[]; failures: string[] }> {
-  const { assets, targets, usage, failures } = await loadAll();
+  const { assets, targets, usage, entityVocabulary, failures } = await loadAll();
   const usable = assets.filter(
     (a) => a.publicationStatus === "published" && a.rightsStatus !== "restricted"
   );
@@ -297,7 +314,7 @@ export async function loadMediaNeeds(
     // page. Only then does usage get a say, and only between candidates within
     // ROTATION_BAND of each other. A uniquely-best exact match has no equals to
     // rotate with and is returned first every time.
-    const scored = matchesForTarget(target, usable, { limit: 8 });
+    const scored = matchesForTarget(target, usable, { limit: 8, entityVocabulary });
     const order = orderForSlot(
       scored.map((m) => ({ assetId: m.assetId, score: m.score, usageCount: usage.get(m.assetId) ?? 0 }))
     );

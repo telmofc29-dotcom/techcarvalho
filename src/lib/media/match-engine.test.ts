@@ -12,6 +12,41 @@ import {
   type MatchAsset,
   type MatchTarget,
 } from "./match-engine.ts";
+import { buildEntityVocabulary } from "./entity-vocabulary.ts";
+
+// THE VOCABULARY THESE TESTS RUN AGAINST.
+//
+// Built exactly the way suggestion-service builds the real one — from
+// catalogue-shaped reference data — because that is the input the matcher
+// actually receives. These tests used to pass with NO vocabulary, which meant
+// they were asserting that any word over two letters could establish relevance.
+// Four of them went red when that stopped being true, and they were right to:
+// "Ryzen" and "Wi-Fi" ARE things this publication covers, and they are in here
+// for the same reason they are in production — because the catalogue names them.
+const VOCAB = buildEntityVocabulary({
+  manufacturers: ["AMD", "Canon", "NVIDIA", "Intel", "Sony", "Apple", "Samsung", "DJI", "Bambu Lab"],
+  productNames: [
+    "AMD Ryzen 9 9950X",
+    "Canon EOS R5",
+    "Canon EOS 5D Mark III",
+    "NVIDIA GeForce RTX 5090",
+    "Bambu Lab X1 Carbon",
+    "Sony PlayStation 5",
+  ],
+  familyNames: ["Ryzen", "Canon EOS R", "GeForce RTX 50"],
+  categorySlugs: ["cameras-photography", "computing", "networking", "gaming", "3d-printing"],
+  tagNames: ["Wi-Fi 7", "Wi-Fi", "Mesh Wi-Fi", "Router", "CPU", "GPU", "Drone", "Console"],
+});
+
+
+/**
+ * scoreMatch with the vocabulary supplied, which is how the app calls it.
+ *
+ * A test that omits it is testing a matcher that has been told the site covers
+ * nothing, and will conclude that nothing is relevant to anything.
+ */
+const scoreMatchV = (a: Parameters<typeof scoreMatch>[0], t: Parameters<typeof scoreMatch>[1]) =>
+  scoreMatch(a, t, { entityVocabulary: VOCAB });
 
 function asset(over: Partial<MatchAsset> = {}): MatchAsset {
   return {
@@ -50,8 +85,7 @@ function target(over: Partial<MatchTarget> = {}): MatchTarget {
 // ---------------------------------------------------------------------------
 
 test("a family-level Ryzen photo matches general Ryzen material", () => {
-  const m = scoreMatch(
-    asset({ storagePath: "image/ryzen-cpu-in-hand.jpg" }),
+  const m = scoreMatchV(asset({ storagePath: "image/ryzen-cpu-in-hand.jpg" }),
     target({ title: "Ryzen CPUs explained", isModelSpecific: false })
   );
   assert.equal(m.specificity, "family");
@@ -62,8 +96,7 @@ test("a family-level Ryzen photo matches general Ryzen material", () => {
 test("the SAME photo is REFUSED for a specific SKU", () => {
   // The fabrication this prevents: presenting a generic Ryzen photo as a
   // picture of one exact part.
-  const m = scoreMatch(
-    asset({ storagePath: "image/ryzen-cpu-in-hand.jpg" }),
+  const m = scoreMatchV(asset({ storagePath: "image/ryzen-cpu-in-hand.jpg" }),
     target({ title: "AMD Ryzen 9 9950X", kind: "product", isModelSpecific: true })
   );
   assert.deepEqual(m.proposedSlots, []);
@@ -71,8 +104,7 @@ test("the SAME photo is REFUSED for a specific SKU", () => {
 });
 
 test("a photo whose OWN metadata names the model is allowed on that SKU", () => {
-  const m = scoreMatch(
-    asset({ storagePath: "image/ryzen-9950x-installed.jpg" }),
+  const m = scoreMatchV(asset({ storagePath: "image/ryzen-9950x-installed.jpg" }),
     target({ title: "AMD Ryzen 9 9950X", kind: "product", isModelSpecific: true })
   );
   assert.equal(m.specificity, "exact_model");
@@ -81,8 +113,7 @@ test("a photo whose OWN metadata names the model is allowed on that SKU", () => 
 });
 
 test("model evidence may come from owner-written alt text, not just the filename", () => {
-  const m = scoreMatch(
-    asset({ storagePath: "image/IMG_4821.jpg", altText: "My Ryzen 9950X on the motherboard" }),
+  const m = scoreMatchV(asset({ storagePath: "image/IMG_4821.jpg", altText: "My Ryzen 9950X on the motherboard" }),
     target({ title: "AMD Ryzen 9 9950X", kind: "product", isModelSpecific: true })
   );
   assert.equal(m.specificity, "exact_model");
@@ -94,9 +125,8 @@ test("model evidence may come from owner-written alt text, not just the filename
 
 test("owner photography outranks a concept render of the same subject", () => {
   const t = target({ title: "PlayStation 5 storage explained" });
-  const photo = scoreMatch(asset({ id: "own", storagePath: "image/playstation-5-console.jpg" }), t);
-  const render = scoreMatch(
-    asset({
+  const photo = scoreMatchV(asset({ id: "own", storagePath: "image/playstation-5-console.jpg" }), t);
+  const render = scoreMatchV(asset({
       id: "gen",
       storagePath: "image/playstation-5-console.png",
       sourceType: "tc_graphic",
@@ -111,9 +141,8 @@ test("owner photography outranks a concept render of the same subject", () => {
 
 test("owner photography outranks an official press image, all else equal", () => {
   const t = target({ title: "PlayStation 5 storage explained" });
-  const own = scoreMatch(asset({ id: "o", storagePath: "image/playstation-5.jpg" }), t);
-  const press = scoreMatch(
-    asset({ id: "p", storagePath: "image/playstation-5.jpg", sourceType: "press_kit" }),
+  const own = scoreMatchV(asset({ id: "o", storagePath: "image/playstation-5.jpg" }), t);
+  const press = scoreMatchV(asset({ id: "p", storagePath: "image/playstation-5.jpg", sourceType: "press_kit" }),
     t
   );
   assert.ok(own.score > press.score);
@@ -121,8 +150,7 @@ test("owner photography outranks an official press image, all else equal", () =>
 
 test("a boost never promotes across specificity", () => {
   // Being an owner photograph does not make it a picture of that exact SKU.
-  const m = scoreMatch(
-    asset({ storagePath: "image/moon-through-telescope.jpg" }),
+  const m = scoreMatchV(asset({ storagePath: "image/moon-through-telescope.jpg" }),
     target({ title: "AMD Ryzen 9 9950X", kind: "product", isModelSpecific: true })
   );
   assert.deepEqual(m.proposedSlots, []);
@@ -150,18 +178,16 @@ test("a concept render may lead a general article but never a SKU page", () => {
     sourceType: "tc_graphic",
     aiGenerated: true,
   });
-  const general = scoreMatch(render, target({ title: "PS6 rumours so far", isModelSpecific: false }));
+  const general = scoreMatchV(render, target({ title: "PS6 rumours so far", isModelSpecific: false }));
   assert.ok(general.proposedSlots.includes("hero"));
-  const sku = scoreMatch(
-    render,
+  const sku = scoreMatchV(render,
     target({ title: "PlayStation 6", kind: "product", isModelSpecific: true })
   );
   assert.ok(!sku.proposedSlots.includes("hero"));
 });
 
 test("a diagram is offered for the gallery, not the lead", () => {
-  const m = scoreMatch(
-    asset({
+  const m = scoreMatchV(asset({
       storagePath: "image/wifi-generations-timeline.png",
       sourceType: "tc_graphic",
       assetRole: "diagram",
@@ -179,8 +205,7 @@ test("a diagram is offered for the gallery, not the lead", () => {
 // ---------------------------------------------------------------------------
 
 test("a human-selected hero is never proposed for replacement", () => {
-  const m = scoreMatch(
-    asset({ storagePath: "image/ryzen-9950x.jpg" }),
+  const m = scoreMatchV(asset({ storagePath: "image/ryzen-9950x.jpg" }),
     target({
       title: "AMD Ryzen 9 9950X",
       kind: "product",
@@ -193,8 +218,7 @@ test("a human-selected hero is never proposed for replacement", () => {
 });
 
 test("an occupied but non-human hero is still not taken silently", () => {
-  const m = scoreMatch(
-    asset({ storagePath: "image/ryzen-9950x.jpg" }),
+  const m = scoreMatchV(asset({ storagePath: "image/ryzen-9950x.jpg" }),
     target({
       title: "AMD Ryzen 9 9950X",
       kind: "product",
@@ -207,8 +231,7 @@ test("an occupied but non-human hero is still not taken silently", () => {
 });
 
 test("Hero + Thumbnail + Gallery can all be proposed for one asset", () => {
-  const m = scoreMatch(
-    asset({ storagePath: "image/ryzen-9950x.jpg" }),
+  const m = scoreMatchV(asset({ storagePath: "image/ryzen-9950x.jpg" }),
     target({ title: "AMD Ryzen 9 9950X", kind: "product", isModelSpecific: true })
   );
   assert.deepEqual(m.proposedSlots, ["hero", "thumbnail", "gallery"]);
@@ -219,8 +242,7 @@ test("Hero + Thumbnail + Gallery can all be proposed for one asset", () => {
 // ---------------------------------------------------------------------------
 
 test("restricted rights refuse every slot", () => {
-  const m = scoreMatch(
-    asset({ storagePath: "image/ryzen-9950x.jpg", rightsStatus: "restricted" }),
+  const m = scoreMatchV(asset({ storagePath: "image/ryzen-9950x.jpg", rightsStatus: "restricted" }),
     target({ title: "AMD Ryzen 9 9950X", kind: "product", isModelSpecific: true })
   );
   assert.deepEqual(m.proposedSlots, []);
@@ -228,8 +250,7 @@ test("restricted rights refuse every slot", () => {
 });
 
 test("a logo is never editorial imagery", () => {
-  const m = scoreMatch(
-    asset({ storagePath: "image/amd-logo.png", brandRole: "logo_full" }),
+  const m = scoreMatchV(asset({ storagePath: "image/amd-logo.png", brandRole: "logo_full" }),
     target({ title: "AMD Ryzen 9 9950X", kind: "product", isModelSpecific: true })
   );
   assert.deepEqual(m.proposedSlots, []);
@@ -249,8 +270,8 @@ test("the upload uuid prefix does not become shared vocabulary", () => {
 
 test("written description scores above filename alone", () => {
   const t = target({ title: "Ryzen CPUs explained" });
-  const named = scoreMatch(asset({ id: "d", storagePath: "image/IMG_1.jpg", altText: "A Ryzen CPU" }), t);
-  const filed = scoreMatch(asset({ id: "f", storagePath: "image/ryzen.jpg" }), t);
+  const named = scoreMatchV(asset({ id: "d", storagePath: "image/IMG_1.jpg", altText: "A Ryzen CPU" }), t);
+  const filed = scoreMatchV(asset({ id: "f", storagePath: "image/ryzen.jpg" }), t);
   assert.ok(named.score > filed.score, `${named.score} vs ${filed.score}`);
 });
 
@@ -321,10 +342,10 @@ test("a Mark III photograph is NOT an exact match for the Mark II", () => {
   // prevent, produced by the rule meant to prevent it.
   const photo = asset({ storagePath: "image/canon-eos-5d-mark-iii.jpg", sourceType: "public_domain_or_cc" });
 
-  const markIII = scoreMatch(photo, target({ title: "Canon EOS 5D Mark III", kind: "product", isModelSpecific: true }));
+  const markIII = scoreMatchV(photo, target({ title: "Canon EOS 5D Mark III", kind: "product", isModelSpecific: true }));
   assert.equal(markIII.specificity, "exact_model", "its own model must still match");
 
-  const markII = scoreMatch(photo, target({ title: "Canon EOS 5D Mark II", kind: "product", isModelSpecific: true }));
+  const markII = scoreMatchV(photo, target({ title: "Canon EOS 5D Mark II", kind: "product", isModelSpecific: true }));
   assert.notEqual(markII.specificity, "exact_model");
   assert.deepEqual(markII.proposedSlots, [], "and it must not be attachable there");
   assert.match(markII.reasons.join(" "), /different variant|distinguished by/i);
@@ -332,7 +353,7 @@ test("a Mark III photograph is NOT an exact match for the Mark II", () => {
 
 test("a Mark III photograph is not an exact match for the plain model either", () => {
   const photo = asset({ storagePath: "image/canon-eos-5d-mark-iii.jpg", sourceType: "public_domain_or_cc" });
-  const plain = scoreMatch(photo, target({ title: "Canon EOS 5D", kind: "product", isModelSpecific: true }));
+  const plain = scoreMatchV(photo, target({ title: "Canon EOS 5D", kind: "product", isModelSpecific: true }));
   assert.notEqual(plain.specificity, "exact_model");
   assert.deepEqual(plain.proposedSlots, []);
 });
@@ -341,7 +362,7 @@ test("a bare shared digit does not identify a product", () => {
   // Also from production: dji-mini-4-pro.png matched "Neptune 4 Pro", a 3D
   // printer, because both contain "4".
   const drone = asset({ storagePath: "image/dji-mini-4-pro.png", sourceType: "tc_graphic", aiGenerated: true });
-  const printer = scoreMatch(drone, target({ title: "Neptune 4 Pro", kind: "product", isModelSpecific: true }));
+  const printer = scoreMatchV(drone, target({ title: "Neptune 4 Pro", kind: "product", isModelSpecific: true }));
   assert.notEqual(printer.specificity, "exact_model");
   assert.deepEqual(printer.proposedSlots, []);
 });
@@ -349,8 +370,7 @@ test("a bare shared digit does not identify a product", () => {
 test("a series digit is not required for a genuine model match", () => {
   // The other direction of the same rule: requiring every digit token rejected
   // a correct match, because "Ryzen 9 9950X" carries a bare "9".
-  const m = scoreMatch(
-    asset({ storagePath: "image/ryzen-9950x.jpg" }),
+  const m = scoreMatchV(asset({ storagePath: "image/ryzen-9950x.jpg" }),
     target({ title: "AMD Ryzen 9 9950X", kind: "product", isModelSpecific: true })
   );
   assert.equal(m.specificity, "exact_model");
@@ -360,15 +380,13 @@ test("hyphenated and flat spellings of the same word unify", () => {
   // Found by the acceptance run: "wifi-7-router.jpg" missed "Wi-Fi 7
   // explained" entirely, because a filename almost never spells it the way a
   // title does.
-  const m = scoreMatch(
-    asset({ storagePath: "image/wifi-7-router.jpg" }),
+  const m = scoreMatchV(asset({ storagePath: "image/wifi-7-router.jpg" }),
     target({ title: "Wi-Fi 7 explained" })
   );
   assert.ok(m.proposedSlots.includes("hero"), JSON.stringify(m.withheld));
 
   // And the reverse spelling.
-  const m2 = scoreMatch(
-    asset({ storagePath: "image/wi-fi-mesh-node.jpg" }),
+  const m2 = scoreMatchV(asset({ storagePath: "image/wi-fi-mesh-node.jpg" }),
     target({ title: "Wifi mesh explained" })
   );
   assert.ok(m2.proposedSlots.length > 0);
