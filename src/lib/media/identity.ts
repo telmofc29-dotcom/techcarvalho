@@ -45,8 +45,26 @@
  */
 export const REVISION_WORDS: ReadonlySet<string> = new Set([
   "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x",
-  "mark", "mk", "gen", "rev",
+  "mark", "mk",
 ]);
+
+// "gen" AND "rev" ARE NOT ON THAT LIST, AND THE REASON IS MEASURED.
+//
+// They were, briefly. Running the matcher across every category against real
+// production data produced this:
+//
+//   ARTICLE "SK Hynix Next-Gen HBM Memory to Use Intel EMIB-T"
+//   IMAGE   hero-next-gen-console-rumor-tracker-ps6-xbox.png
+//   specificity: EXACT_MODEL — "Names the exact model: gen"
+//
+// A console rumour graphic declared an exact-model match for a memory story,
+// because both titles contain "next-gen". "Mark" earns its place: it appears in
+// product names and almost nowhere else. "Gen" is ordinary English in this
+// subject area and appears in half the headlines on the site.
+//
+// Nothing is lost where it matters. A generation glued to its number — "gen4",
+// "rev2" — survives as a whole alphanumeric run and is still a designation. It
+// is only the bare word that is noise.
 
 /**
  * Tier and format suffixes — how a manufacturer separates products that share a
