@@ -71,21 +71,28 @@ async function main(): Promise<void> {
     const bad = rows.filter((r) => r.review_state === "approved" && !r.reviewed_by);
     refused("existing approved brief with no reviewer", bad.length === 0, `${rows.length} briefs, ${bad.length} approved without an actor`);
 
-    const target = rows[0];
-    if (target) {
-      const { error } = await db
-        .from("engine_briefs")
-        .update({ review_state: "approved" as const, reviewed_by: null })
-        .eq("id", target.id);
-      const wasRefused = error !== null && REFUSAL_CODES.has(error.code ?? "");
-      refused("approve a brief with no human actor", wasRefused, error ? `${error.code}: ${error.message.slice(0, 80)}` : "ACCEPTED — the gate is gone");
-      if (!error) {
-        await db
-          .from("engine_briefs")
-          .update({ review_state: target.review_state as never, reviewed_by: target.reviewed_by })
-          .eq("id", target.id);
-      }
-    }
+    // THE CONSTRAINT ITSELF IS NOT ATTACKED FROM HERE, DELIBERATELY.
+    //
+    // Proving that approved-without-an-actor is refused means attempting the
+    // write, and scripts/verify-review-actor.ts already does exactly that — on
+    // SEEDED disposable rows, covering both the insert and the pending->approved
+    // update path, removing everything it creates.
+    //
+    // An earlier version of this file attempted it against a REAL brief and
+    // restored the row afterwards. src/lib/engine/human-gate.test.ts caught it
+    // and was right to: that guard forbids any script writing
+    // review_state:'approved', and the honest response to it is to stop writing
+    // it, not to add another name to its allowlist. If the constraint were ever
+    // dropped, that version would have genuinely approved a real brief for as
+    // long as the restore took.
+    //
+    // So what is checked here is the STATE, and the constraint proof is left to
+    // the script that can do it without touching anything real.
+    refused(
+      "brief approval constraint is covered elsewhere",
+      true,
+      "see scripts/verify-review-actor.ts — seeded rows, both write paths, nothing real touched"
+    );
   }
 
   // ---- 3. private media exposure --------------------------------------
