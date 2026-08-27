@@ -534,7 +534,15 @@ export async function inspectMediaForDeletion(ids: string[]): Promise<MediaDelet
       supabase.from("content_media").select("media_id, role").in("media_id", ids),
       supabase.from("product_media").select("media_id, role").in("media_id", ids),
       supabase.from("media_derivatives").select("media_asset_id").in("media_asset_id", ids),
-      supabase.from("content_items").select("og_media_id").in("og_media_id", ids),
+      // seo_metadata, NOT content_items. The og_media_id column lives on
+      // seo_metadata (initial schema, line 297) and content_items has no such
+      // column at all. Querying the wrong table did not fail loudly — it
+      // returned PGRST204, which this function correctly treats as a read
+      // failure and therefore refuses EVERY deletion. Safe, and completely
+      // non-functional. Found by running the real queries against production;
+      // the unit tests feed assessDeletion synthetic counts and could never see
+      // a wrong table name.
+      supabase.from("seo_metadata").select("og_media_id").in("og_media_id", ids),
       supabase.from("manufacturers").select("logo_media_id").in("logo_media_id", ids),
       supabase.from("media_requirements").select("resolved_media_id").in("resolved_media_id", ids),
       supabase.from("engine_media_candidates").select("ingested_media_id").in("ingested_media_id", ids),
@@ -546,7 +554,7 @@ export async function inspectMediaForDeletion(ids: string[]): Promise<MediaDelet
     ["content_media", contentLinks],
     ["product_media", productLinks],
     ["media_derivatives", derivatives],
-    ["content_items.og_media_id", ogRefs],
+    ["seo_metadata.og_media_id", ogRefs],
     ["manufacturers.logo_media_id", logoRefs],
     ["media_requirements", requirementRefs],
     ["engine_media_candidates", candidateRefs],
