@@ -225,6 +225,56 @@ function addContextualNumbers(pieces: readonly string[], out: Set<string>): void
   }
 }
 
+/**
+ * Words that can never be a series name, so can never lend a suffix its meaning.
+ *
+ * A SHORT, CLOSED LIST of English connectives — not a blacklist of vocabulary.
+ * Without it, "Canon EOS R vs RP" would read the context of "RP" as "vs" and
+ * invent `vs#rp`, and "Best of 2026" would invent `best#of`.
+ */
+const NON_CONTEXT_WORDS = new Set([
+  "vs", "versus", "and", "or", "the", "for", "with", "from", "into", "than",
+  "but", "not", "new", "best", "top", "our", "your", "its", "his", "her",
+]);
+
+/**
+ * A LETTER suffix that identifies a model only because of the series in front
+ * of it.
+ *
+ * THE CASE THIS EXISTS FOR
+ * ------------------------
+ * "Canon EOS R" and "Canon EOS RP" are two different full-frame bodies. Neither
+ * derives a designation: "R" is a single letter, and single letters are excluded
+ * because a lone letter identifies nothing; "RP" is two letters and is not a
+ * tier word. So the two collided — the only collision in the entire Canon EOS R
+ * line — and a photograph of one could stand at family level for the other.
+ *
+ * It is the same shape as a contextual number. "R" means nothing; "EOS R" means
+ * one camera. So the series travels with the suffix: eos#r, eos#rp.
+ *
+ * THREE CONSTRAINTS KEEP IT FROM SPREADING
+ * ----------------------------------------
+ *   1. Only when the name derives NOTHING else. "EOS R5" already has "r5"; a
+ *      suffix would be redundant and could only add disagreement.
+ *   2. The suffix must be the LAST token. "Canon EOS R vs RP" is a comparison
+ *      naming two bodies and should pin neither; requiring final position, plus
+ *      the connective list, leaves it deriving nothing, which is right.
+ *   3. The series word must be a real word (three letters or more) and not a
+ *      connective — so a bare "R" with nothing in front of it creates no
+ *      identity at all, which is the property that must not be lost.
+ */
+function addContextualSuffix(pieces: readonly string[], out: Set<string>): void {
+  if (pieces.length < 2) return;
+  const suffix = pieces[pieces.length - 1];
+  if (!/^[a-z]{1,3}$/.test(suffix)) return;
+  if (DESIGNATION_WORDS.has(suffix)) return;
+  const series = contextOf(pieces[pieces.length - 2]);
+  if (series.length < 3) return;
+  if (NON_CONTEXT_WORDS.has(series)) return;
+  if (DESIGNATION_WORDS.has(series)) return;
+  out.add(`${series}#${suffix}`);
+}
+
 export function designationTokens(name: string): Set<string> {
   const out = new Set<string>();
   const folded = name
@@ -348,6 +398,10 @@ export function designationTokens(name: string): Set<string> {
       }
     }
     addContextualNumbers(sequence, out);
+
+    // Still nothing? Then a trailing letter suffix is the only identity the
+    // name has: "Canon EOS R", "Canon EOS RP". Tried last, and only here.
+    if (out.size === 0) addContextualSuffix(sequence, out);
   }
 
   return out;

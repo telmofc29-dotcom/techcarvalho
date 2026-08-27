@@ -125,6 +125,35 @@ async function main(): Promise<void> {
   }
 
   const targets: MatchTarget[] = [];
+  // PRODUCT PAGES USE THE SAME MATCHER, THE SAME GATE AND THE SAME PROVENANCE.
+  //
+  // A product row always names one specific model, so isModelSpecific is true
+  // unconditionally and the SKU rule refuses every family-level image for it.
+  // That is the strict exact-identity bar the brief asks for, and it is the rule
+  // that already exists rather than a second one written for products: a generic
+  // manufacturer graphic cannot reach a product hero because it is not an exact
+  // match, not because a product-specific check turned it away.
+  //
+  // productId and familyId are supplied so verifiedVerdict can use product_media
+  // as recorded evidence — an image linked to a DIFFERENT product is refused
+  // outright, whatever its filename says.
+  for (const p of (P.data ?? []) as Record<string, unknown>[]) {
+    const key = `product:${p.id}`;
+    targets.push({
+      id: String(p.id),
+      kind: "product",
+      productId: String(p.id),
+      familyId: str(p.family_id),
+      title: String(p.name),
+      manufacturerName: p.manufacturer_id ? (mfr.get(String(p.manufacturer_id)) ?? null) : null,
+      categorySlug: p.category_id ? (cat.get(String(p.category_id)) ?? null) : null,
+      isModelSpecific: true,
+      occupiedSlots: (slotsByTarget.get(key) ?? []).map((sl) => ({
+        role: sl.role,
+        humanSelected: sl.protectedSelection,
+      })),
+    });
+  }
   for (const c of (C.data ?? []) as Record<string, unknown>[]) {
     const key = `content:${c.id}`;
     targets.push({
@@ -147,7 +176,10 @@ async function main(): Promise<void> {
 
   console.log("=".repeat(78));
   console.log(`AUTO-ATTACH ${apply ? "— APPLYING" : "— REPORT ONLY"}`);
-  console.log(`${assets.length} assets (${usable.length} usable), ${targets.length} content targets`);
+  console.log(
+    `${assets.length} assets (${usable.length} usable), ${targets.length} targets ` +
+      `(${targets.filter((t) => t.kind === "content").length} content, ${targets.filter((t) => t.kind === "product").length} product)`
+  );
   console.log(`entity vocabulary: ${entityVocabulary.size} naming words`);
   console.log("=".repeat(78));
 
@@ -169,7 +201,7 @@ async function main(): Promise<void> {
     const byId = new Map(scored.map((m) => [m.assetId, m]));
 
     let filledHere = false;
-    const held = [...(slotsByTarget.get(`content:${target.id}`) ?? [])];
+    const held = [...(slotsByTarget.get(`${target.kind}:${target.id}`) ?? [])];
 
     for (const candidate of ordered) {
       const match = byId.get(candidate.assetId);
@@ -184,21 +216,26 @@ async function main(): Promise<void> {
       if (decision.slots.length === 0) continue;
 
       const file = (asset.storagePath.split("/").pop() ?? "").replace(/^[0-9a-f-]{36}-?/i, "");
-      console.log(`\n  ARTICLE  [${target.isModelSpecific ? "model-specific" : "general"}] ${target.title.slice(0, 62)}`);
+      console.log(
+        `
+  ${target.kind === "product" ? "PRODUCT" : "ARTICLE"}  ` +
+          `[${target.isModelSpecific ? "model-specific" : "general"}] ${target.title.slice(0, 62)}`
+      );
       console.log(`  IMAGE    ${file}`);
       console.log(`  MATCH    ${match.specificity} / ${match.strength} / score ${match.score} / ${match.nature}`);
       console.log(`  ATTACH   ${decision.slots.join(", ")}  as selection_kind='engine'`);
       for (const r of decision.reasons) console.log(`    why     ${r}`);
 
       if (apply) {
+        const table = target.kind === "product" ? "product_media" : "content_media";
         const rows = decision.slots.map((role) => ({
-          content_id: target.id,
+          [target.kind === "product" ? "product_id" : "content_id"]: target.id,
           media_id: asset.id,
           role,
           sort_order: 0,
           ...engineSelection(),
         }));
-        const { error } = await db.from("content_media").insert(rows as never);
+        const { error } = await db.from(table).insert(rows as never);
         if (error) {
           console.log(`    FAILED  ${error.message}`);
           continue;

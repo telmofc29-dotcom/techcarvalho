@@ -156,3 +156,68 @@ describe("the matcher refuses a wrong-generation image", () => {
     assert.deepEqual(m.proposedSlots, [], `reasons: ${m.reasons.join(" | ")}`);
   });
 });
+
+// ---------------------------------------------------------------------------
+// LETTER SUFFIXES: the Canon EOS R line.
+//
+// "Canon EOS R" and "Canon EOS RP" were the ONLY collision in the entire line —
+// 1 of 66 pairs. Neither derives a designation on its own: a single letter
+// identifies nothing, and "RP" is not a tier word. So a photograph of one could
+// stand at family level for the other.
+// ---------------------------------------------------------------------------
+describe("the Canon EOS R line is fully separable", () => {
+  const LINE = [
+    "Canon EOS R",
+    "Canon EOS RP",
+    "Canon EOS R5",
+    "Canon EOS R6",
+    "Canon EOS R7",
+    "Canon EOS R8",
+    "Canon EOS R10",
+    "Canon EOS R50",
+    "Canon EOS R100",
+    "Canon EOS R5 Mark II",
+  ];
+
+  for (let i = 0; i < LINE.length; i++) {
+    for (let j = i + 1; j < LINE.length; j++) {
+      test(`"${LINE[i]}" is not "${LINE[j]}"`, () => {
+        assert.equal(
+          same(LINE[i], LINE[j]),
+          false,
+          `${JSON.stringify([...designationTokens(LINE[i])])} vs ${JSON.stringify([...designationTokens(LINE[j])])}`
+        );
+      });
+    }
+  }
+
+  test("the two that used to collide now derive a series-scoped identity", () => {
+    assert.deepEqual([...designationTokens("Canon EOS R")], ["eos#r"]);
+    assert.deepEqual([...designationTokens("Canon EOS RP")], ["eos#rp"]);
+  });
+});
+
+describe("a bare letter never creates identity on its own", () => {
+  test("a lone letter with nothing in front of it derives nothing", () => {
+    assert.deepEqual([...designationTokens("R")], []);
+    assert.deepEqual([...designationTokens("RP")], []);
+  });
+
+  test("a connective is never a series name", () => {
+    // "Canon EOS R vs RP" names TWO bodies and should pin neither. Reading the
+    // context of "RP" as "vs" would have invented `vs#rp`.
+    assert.deepEqual([...designationTokens("Canon EOS R vs RP")], []);
+    assert.deepEqual([...designationTokens("Best of AI")], []);
+  });
+
+  test("the suffix rule never fires when the name already identifies", () => {
+    // Redundant at best, and it could only add disagreement.
+    assert.deepEqual([...designationTokens("Canon EOS R5")], ["r5"]);
+    assert.ok(![...designationTokens("GoPro HERO13 Black")].some((t) => t.includes("#")));
+  });
+
+  test("a different series with the same suffix letter is still different", () => {
+    assert.equal(same("Canon EOS R", "Nikon Z R"), false);
+    assert.equal(same("Canon EOS R", "Canon PowerShot R"), false);
+  });
+});

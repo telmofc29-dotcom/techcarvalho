@@ -24,6 +24,7 @@ import {
   type VerifiedProduct,
 } from "../src/lib/media/match-engine.ts";
 import { FALSE_MATCH_PAIRS } from "../src/lib/media/false-match-corpus.ts";
+import { buildEntityVocabulary } from "../src/lib/media/entity-vocabulary.ts";
 
 loadEnvLocal();
 const URL_ = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -44,7 +45,8 @@ const str = (v: unknown): string | null => (typeof v === "string" ? v : null);
 async function main(): Promise<void> {
   if (!URL_ || !ANON) throw new Error("NEXT_PUBLIC_SUPABASE_URL / _PUBLISHABLE_KEY are not set.");
 
-  const [assetRows, contentRows, productRows, pmRows, cmRows, catRows, mfrRows] = await Promise.all([
+  const [assetRows, contentRows, productRows, pmRows, cmRows, catRows, mfrRows, famRows, tagRows] =
+    await Promise.all([
     rest<Row>(
       "media_assets?select=id,storage_path,alt_text,caption,source_type,asset_role,brand_role,owned,ai_generated,publication_status,rights_status,width,height&limit=1000"
     ),
@@ -54,6 +56,8 @@ async function main(): Promise<void> {
     rest<Row>("content_media?select=content_id,media_id,role&limit=2000"),
     rest<Row>("taxonomy_categories?select=id,slug&limit=200"),
     rest<Row>("manufacturers?select=id,name&limit=200"),
+    rest<Row>("product_families?select=name&limit=500"),
+    rest<Row>("taxonomy_tags?select=name&limit=500"),
   ]);
 
   // ---- THE LEAK CHECK, FIRST -------------------------------------------
@@ -73,6 +77,22 @@ async function main(): Promise<void> {
   const unpublishedContent = contentRows.filter((c) => c.status !== "published");
   console.log(`  content_items readable by anon: ${contentRows.length}, not published: ${unpublishedContent.length}`);
   if (unpublishedContent.length > 0) process.exitCode = 1;
+
+  // THE MATCHER MUST BE GIVEN THE SAME VOCABULARY THE APP GIVES IT.
+  //
+  // Without it every naming word is "ordinary", and this script printed the
+  // false sentence "the only overlap is ordinary wording (canon, eos), which
+  // names nothing this publication covers" about a publication whose catalogue
+  // is largely Canon EOS bodies. The refusals were still correct; the stated
+  // REASON was not, and a verification tool that explains itself wrongly is
+  // worse than one that says nothing.
+  const entityVocabulary = buildEntityVocabulary({
+    manufacturers: mfrRows.map((m) => String(m.name)),
+    productNames: productRows.map((p) => String(p.name)),
+    familyNames: famRows.map((f) => String(f.name)),
+    categorySlugs: catRows.map((c) => String(c.slug)),
+    tagNames: tagRows.map((t) => String(t.name)),
+  });
 
   const catSlug = new Map(catRows.map((c) => [String(c.id), String(c.slug)]));
   const mfrName = new Map(mfrRows.map((m) => [String(m.id), String(m.name)]));
@@ -158,7 +178,7 @@ async function main(): Promise<void> {
   let shown = 0;
   for (const t of [...productTargets, ...contentTargets]) {
     if (shown >= 12) break;
-    const best = matchesForTarget(t, usable, { limit: 1 })[0];
+    const best = matchesForTarget(t, usable, { limit: 1, entityVocabulary })[0];
     if (!best) continue;
     const asset = assets.find((a) => a.id === best.assetId)!;
     const file = (asset.storagePath.split("/").pop() ?? "").replace(/^[0-9a-f-]{36}-?/i, "");
@@ -202,7 +222,7 @@ async function main(): Promise<void> {
       isModelSpecific: deriveIsModelSpecific(`${pair.subject} review`),
       occupiedSlots: [],
     };
-    const m = scoreMatch(real, t);
+    const m = scoreMatch(real, t, { entityVocabulary });
     const file = (real.storagePath.split("/").pop() ?? "").replace(/^[0-9a-f-]{36}-?/i, "");
     console.log(`\n  ARTICLE "${t.title}"`);
     console.log(`    IMAGE   ${file}   (${classifyNature(real)})`);
@@ -227,7 +247,7 @@ async function main(): Promise<void> {
     (t) => !t.occupiedSlots.some((s) => s.role === "hero")
   );
   const answerable = needsLead.filter((t) =>
-    matchesForTarget(t, usable, { limit: 1 }).some((m) => m.proposedSlots.includes("hero"))
+    matchesForTarget(t, usable, { limit: 1, entityVocabulary }).some((m) => m.proposedSlots.includes("hero"))
   );
   console.log(`  published targets with no hero  : ${needsLead.length}`);
   console.log(`  of those, the library CAN fill  : ${answerable.length}`);
