@@ -889,6 +889,79 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["locales"]["Insert"]>;
         Relationships: [];
       };
+      // ---------------------------------------------------------------
+      // Knowledge graph — 20260827_knowledge_graph.sql, applied.
+      //
+      // These five tables were applied in production and were never added
+      // here, so every query against them failed to type-check and had to be
+      // cast. That is how scripts/verify-internal-links.ts came to ask for
+      // `concept_id` on a table whose column is `technology_id`: nothing was
+      // checking the name. This file is hand-written (no Supabase CLI in this
+      // environment), so keeping it in step is a manual duty — see CLAUDE.md.
+      // ---------------------------------------------------------------
+      technology_concepts: {
+        Row: {
+          id: string;
+          slug: string;
+          name: string;
+          kind: string;
+          manufacturer_id: string | null;
+          category_id: string | null;
+          summary: string | null;
+          is_published: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          slug: string;
+          name: string;
+          kind: string;
+          manufacturer_id?: string | null;
+          category_id?: string | null;
+          summary?: string | null;
+          is_published?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["technology_concepts"]["Insert"]>;
+        Relationships: [];
+      };
+      product_technologies: {
+        Row: { product_id: string; technology_id: string; note: string | null; created_at: string };
+        Insert: { product_id: string; technology_id: string; note?: string | null; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["product_technologies"]["Insert"]>;
+        Relationships: [];
+      };
+      content_technologies: {
+        Row: {
+          content_id: string;
+          /** NOT concept_id. The column is technology_id. */
+          technology_id: string;
+          role: "explains" | "references";
+          created_at: string;
+        };
+        Insert: {
+          content_id: string;
+          technology_id: string;
+          role?: "explains" | "references";
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["content_technologies"]["Insert"]>;
+        Relationships: [];
+      };
+      technology_relationships: {
+        Row: Record<string, unknown>;
+        Insert: Record<string, unknown>;
+        Update: Record<string, unknown>;
+        Relationships: [];
+      };
+      product_claims: {
+        Row: Record<string, unknown>;
+        Insert: Record<string, unknown>;
+        Update: Record<string, unknown>;
+        Relationships: [];
+      };
       content_tags: {
         Row: { content_id: string; tag_id: string };
         Insert: { content_id: string; tag_id: string };

@@ -16,6 +16,8 @@
 //
 // Deterministic. No AI provider.
 
+import { compareDesignations } from "../media/identity.ts";
+
 /** Words that carry no topical signal in a tech headline. */
 const STOPWORDS = new Set([
   "the", "a", "an", "and", "or", "for", "with", "your", "you", "is", "are",
@@ -95,6 +97,8 @@ export type LinkCandidate = {
   title: string;
   categoryId: string | null;
   type: string;
+  /** Recorded associations. Optional — absent means "nothing is known". */
+  evidence?: LinkEvidence;
 };
 
 export type LinkSuggestion = {
@@ -112,31 +116,160 @@ export type LinkSuggestion = {
  */
 export const AUTO_LINK_THRESHOLD = 0.5;
 
-/** Shared-term overlap, with a bonus for same-category pairs. */
-export function relatedness(a: LinkCandidate, b: LinkCandidate): number {
+/**
+ * What is KNOWN about a piece, as opposed to what its title happens to say.
+ *
+ * WHY THIS WAS ADDED
+ * ------------------
+ * `relatedness()` was shared-term overlap over titles. That is raw keyword
+ * matching, and on this site's headlines it links on ordinary English: two
+ * pieces both titled "... What They Actually Promise" share three terms and
+ * score as related while being about system requirements and humanoid robots.
+ * It is the same defect the media matcher had, in a different subsystem, and it
+ * is fixed the same way — with evidence rather than a longer stopword list.
+ *
+ * Every field here is a RECORDED RELATIONSHIP the site already stores. None of
+ * it is inferred from prose:
+ *
+ *   productIds     content_products      which products the piece is about
+ *   tagIds         content_tags          editorial taxonomy
+ *   conceptIds     content_technologies  knowledge-graph concepts
+ *   manufacturerIds  derived from the products
+ *   familyIds        derived from the products
+ *
+ * Optional, every one of them. A piece with no associations falls back to the
+ * title comparison it always had, which is why adding this can strengthen a
+ * link but never invents one where nothing was known.
+ */
+export type LinkEvidence = {
+  productIds?: readonly string[];
+  familyIds?: readonly string[];
+  manufacturerIds?: readonly string[];
+  tagIds?: readonly string[];
+  conceptIds?: readonly string[];
+};
+
+/**
+ * Words that name something this publication covers.
+ *
+ * The SAME vocabulary the media matcher uses (media/entity-vocabulary.ts),
+ * built from the same catalogue rows. Supplying it makes an ordinary shared
+ * word worth nothing here too; omitting it leaves the previous behaviour
+ * exactly as it was.
+ */
+export type LinkContext = {
+  entityVocabulary?: ReadonlySet<string>;
+};
+
+const overlapCount = (a?: readonly string[], b?: readonly string[]): number => {
+  if (!a?.length || !b?.length) return 0;
+  const set = new Set(a);
+  return b.filter((x) => set.has(x)).length;
+};
+
+/**
+ * How much two pieces genuinely belong together, on evidence.
+ *
+ * THE WEIGHTS, AND WHY THEY ARE ORDERED THIS WAY
+ * ----------------------------------------------
+ *   same product        0.55  the strongest thing the site can know. Two pieces
+ *                             recorded against the same product row ARE related.
+ *   same concept        0.35  a knowledge-graph link somebody established
+ *   same family         0.25  the same product line, not the same product
+ *   shared tag          0.20  editorial taxonomy, chosen by a person
+ *   same manufacturer   0.08  weak on purpose. "Both mention Samsung" is the
+ *                             brief's example of a link that must not be made,
+ *                             so it can contribute but never carry a pairing.
+ *   naming-word overlap 0.30  title words that name something real
+ *   same category       0.15  a nudge, unchanged
+ *   same type          -0.05  two comparisons compete for one intent
+ *
+ * A DIFFERENT MODEL CAPS THE RESULT. If both titles name a model designation and
+ * the designations disagree, the pieces are about different products and the
+ * score is held below AUTO_LINK_THRESHOLD — an EOS R5 review and an EOS R5 Mark
+ * II review are related and are not interchangeable. This is the same
+ * compareDesignations veto the coverage engine and the media matcher use.
+ */
+export function relatedness(
+  a: LinkCandidate,
+  b: LinkCandidate,
+  context: LinkContext = {}
+): number {
+  const vocabulary = context.entityVocabulary;
+
+  let score = 0;
+  const ea = a.evidence ?? {};
+  const eb = b.evidence ?? {};
+
+  if (overlapCount(ea.productIds, eb.productIds) > 0) score += 0.55;
+  if (overlapCount(ea.conceptIds, eb.conceptIds) > 0) score += 0.35;
+  if (overlapCount(ea.familyIds, eb.familyIds) > 0) score += 0.25;
+  if (overlapCount(ea.tagIds, eb.tagIds) > 0) score += 0.2;
+  if (overlapCount(ea.manufacturerIds, eb.manufacturerIds) > 0) score += 0.08;
+
+  // Title overlap still contributes, but only on words that NAME something when
+  // a vocabulary is supplied. Without one, behaviour is unchanged.
   const ta = topicTerms(a.title);
   const tb = topicTerms(b.title);
-  if (ta.size === 0 || tb.size === 0) return 0;
+  const shared = [...ta].filter((t) => tb.has(t));
+  const naming = vocabulary
+    ? shared.filter((t) => vocabulary.has(t) || t.startsWith("concept:"))
+    : shared;
+  // STRICTLY ADDITIVE. This is the ORIGINAL overlap term, at its original
+  // weight, so a pair that scored above the bar before still does. Evidence
+  // above can only ever strengthen a pairing; it never weakens one.
+  //
+  // The one change is WHICH shared terms count. With a vocabulary supplied,
+  // only words that name something the site covers do — so "both say
+  // 'actually'" stops being relatedness while "both say 'GPU'" still is.
+  // Without a vocabulary the filter is a no-op and behaviour is unchanged,
+  // which is what keeps this safe to add underneath existing callers.
+  if (naming.length > 0 && ta.size > 0 && tb.size > 0) {
+    score += naming.length / Math.min(ta.size, tb.size);
+  }
 
-  let shared = 0;
-  for (const t of ta) if (tb.has(t)) shared++;
-  if (shared === 0) return 0;
+  if (score <= 0) return 0;
 
-  // Overlap relative to the smaller title, so a short focused title can still
-  // match a longer one about the same subject.
-  const overlap = shared / Math.min(ta.size, tb.size);
+  if (a.categoryId && a.categoryId === b.categoryId) score += 0.15;
+  if (a.type === b.type) score -= 0.05;
 
-  // Same category is real evidence of relatedness, but only a nudge — the
-  // whole point is to find links, not to link everything in a category to
-  // everything else in it.
-  const sameCategory = a.categoryId && a.categoryId === b.categoryId ? 0.15 : 0;
+  // THE VETO. Same shape as the coverage engine's and the media matcher's.
+  const identity = compareDesignations(a.title, b.title);
+  if (identity.conflict) {
+    score = Math.min(score, AUTO_LINK_THRESHOLD - 0.01);
+  }
 
-  // Two pieces of the SAME type about the same subject are often competitors
-  // for the same search intent rather than complements. A small penalty keeps
-  // comparison-to-comparison links from crowding out more useful pairings.
-  const sameTypePenalty = a.type === b.type ? 0.05 : 0;
+  return Math.max(0, Math.min(1, score));
+}
 
-  return Math.max(0, Math.min(1, overlap + sameCategory - sameTypePenalty));
+/** Why two pieces were paired, in words an editor can check. */
+export function explainRelatedness(
+  a: LinkCandidate,
+  b: LinkCandidate,
+  context: LinkContext = {}
+): string {
+  const ea = a.evidence ?? {};
+  const eb = b.evidence ?? {};
+  const parts: string[] = [];
+  if (overlapCount(ea.productIds, eb.productIds) > 0) parts.push("both are recorded against the same product");
+  if (overlapCount(ea.conceptIds, eb.conceptIds) > 0) parts.push("share a knowledge-graph concept");
+  if (overlapCount(ea.familyIds, eb.familyIds) > 0) parts.push("cover the same product family");
+  if (overlapCount(ea.tagIds, eb.tagIds) > 0) parts.push("share an editorial tag");
+  if (overlapCount(ea.manufacturerIds, eb.manufacturerIds) > 0) parts.push("share a manufacturer");
+
+  const vocabulary = context.entityVocabulary;
+  const tb = topicTerms(b.title);
+  const shared = [...topicTerms(a.title)].filter((t) => tb.has(t));
+  const naming = vocabulary ? shared.filter((t) => vocabulary.has(t) || t.startsWith("concept:")) : shared;
+  if (naming.length > 0) parts.push(`name the same things (${naming.slice(0, 4).join(", ")})`);
+  if (a.categoryId && a.categoryId === b.categoryId) parts.push("sit in the same category");
+
+  const identity = compareDesignations(a.title, b.title);
+  const veto = identity.conflict
+    ? ` They name DIFFERENT models (${[...identity.onlyInSubject, ...identity.onlyInOther].slice(0, 3).join(", ")}), so this is a related-reading link, not the same subject.`
+    : "";
+
+  return (parts.length > 0 ? `They ${parts.join(", ")}.` : "No recorded relationship.") + veto;
 }
 
 /**
@@ -165,28 +298,23 @@ export function suggestLinksFor(
   item: LinkCandidate,
   candidates: LinkCandidate[],
   existingPairs: Set<string>,
-  limit = 4
+  limit = 4,
+  context: LinkContext = {}
 ): LinkSuggestion[] {
   const out: LinkSuggestion[] = [];
   for (const other of candidates) {
     if (other.id === item.id) continue;
     if (existingPairs.has(pairKey(item.id, other.id))) continue;
 
-    const score = relatedness(item, other);
+    const score = relatedness(item, other, context);
     if (score <= 0) continue;
 
-    const shared = [...topicTerms(item.title)].filter((t) =>
-      topicTerms(other.title).has(t)
-    );
     out.push({
       fromId: item.id,
       toId: other.id,
       toTitle: other.title,
       score: Number(score.toFixed(3)),
-      reason:
-        `Shares ${shared.length} topic term(s) (${shared.slice(0, 4).join(", ")})` +
-        (item.categoryId && item.categoryId === other.categoryId ? " and the same category" : "") +
-        `. Score ${score.toFixed(2)}.`,
+      reason: `${explainRelatedness(item, other, context)} Score ${score.toFixed(2)}.`,
     });
   }
   out.sort((a, b) => b.score - a.score);

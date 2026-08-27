@@ -238,6 +238,18 @@ const NON_CONTEXT_WORDS = new Set([
 ]);
 
 /**
+ * One- and two-letter English words that can never be a model suffix.
+ *
+ * "...Is It Still Worth It" ends in "it" after "worth", and without this the
+ * suffix rule would coin `worth#it` and treat two ordinary headlines as naming
+ * the same product. Closed list, one and two letters only.
+ */
+const NON_SUFFIX_WORDS = new Set([
+  "it", "is", "in", "on", "at", "to", "of", "or", "an", "as", "be", "by",
+  "do", "go", "if", "my", "no", "so", "up", "us", "we", "he", "me", "am", "a",
+]);
+
+/**
  * A LETTER suffix that identifies a model only because of the series in front
  * of it.
  *
@@ -266,8 +278,16 @@ const NON_CONTEXT_WORDS = new Set([
 function addContextualSuffix(pieces: readonly string[], out: Set<string>): void {
   if (pieces.length < 2) return;
   const suffix = pieces[pieces.length - 1];
-  if (!/^[a-z]{1,3}$/.test(suffix)) return;
+  // ONE OR TWO LETTERS ONLY.
+  //
+  // Three was too generous: "Why AMD Doesn't Have a 2026 Flagship GPU" ends in
+  // "gpu" after "flagship" and coined `flagship#gpu`, which then read as a model
+  // designation and vetoed a perfectly good internal link. Real suffix-only
+  // model names in this catalogue are one or two letters — EOS R, EOS RP, USB C
+  // — and a three-letter trailing word is far more often an ordinary noun.
+  if (!/^[a-z]{1,2}$/.test(suffix)) return;
   if (DESIGNATION_WORDS.has(suffix)) return;
+  if (NON_SUFFIX_WORDS.has(suffix)) return;
   const series = contextOf(pieces[pieces.length - 2]);
   if (series.length < 3) return;
   if (NON_CONTEXT_WORDS.has(series)) return;
