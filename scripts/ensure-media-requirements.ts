@@ -14,6 +14,19 @@
 // by category on 2026-08-22 — no usable photograph"), and replacing that with a
 // freshly generated line would destroy the record of a search someone ran.
 //
+// ONE EXACT EXCEPTION, AND IT IS EXACT. An earlier engine path opened 45 of
+// these with a single boilerplate line:
+//
+//     "Auto-created for an engine-assembled draft. Media required before
+//      publication."
+//
+// That sentence records no search, names no subject, and tells a sourcing
+// session nothing it did not already know. Because it never overwrote anything,
+// every one of those 45 kept it, and the detailed brief below had only ever been
+// written once. So a requirement whose notes are BYTE-IDENTICAL to that known
+// placeholder is upgraded in place. Anything else — a human's note, an edited
+// note, a note with one character different — is left exactly as it is.
+//
 //   npx tsx scripts/ensure-media-requirements.ts            (report)
 //   npx tsx scripts/ensure-media-requirements.ts --apply
 
@@ -27,6 +40,16 @@ import {
 } from "../src/lib/media/match-engine.ts";
 
 const apply = process.argv.includes("--apply");
+
+/**
+ * The one note this script is allowed to replace.
+ *
+ * Matched byte-for-byte, deliberately. A prefix or fuzzy match would eventually
+ * swallow a note somebody had appended to, which is the exact loss this script's
+ * non-overwrite rule exists to prevent.
+ */
+const REPLACEABLE_PLACEHOLDER =
+  "Auto-created for an engine-assembled draft. Media required before publication.";
 
 /**
  * The brief written onto a new requirement.
@@ -71,7 +94,7 @@ async function main(): Promise<void> {
     db.from("product_media").select("product_id, media_id, role"),
     db.from("taxonomy_categories").select("id, slug"),
     db.from("manufacturers").select("id, name"),
-    db.from("media_requirements").select("id, content_id"),
+    db.from("media_requirements").select("id, content_id, notes, sourcing_status"),
   ]);
   for (const [n, r] of [["assets", assetsRes], ["content", contentRes], ["requirements", reqRes]] as const) {
     if (r.error) throw new Error(`${n} read failed: ${r.error.message}`);
@@ -106,9 +129,13 @@ async function main(): Promise<void> {
   const usable = assets.filter((a) => a.publicationStatus === "published" && a.rightsStatus !== "restricted");
 
   const heroed = new Set(((cmRes.data ?? []) as any[]).filter((r) => r.role === "hero").map((r) => r.content_id));
-  const haveRequirement = new Set(((reqRes.data ?? []) as any[]).filter((r) => r.content_id).map((r) => r.content_id));
+  const requirementByContent = new Map<string, { id: string; notes: string | null; sourcing_status: string }>(
+    ((reqRes.data ?? []) as any[])
+      .filter((r) => r.content_id)
+      .map((r) => [String(r.content_id), { id: String(r.id), notes: r.notes ?? null, sourcing_status: String(r.sourcing_status) }])
+  );
 
-  let needed = 0, created = 0, alreadyOk = 0, matchable = 0;
+  let needed = 0, created = 0, alreadyOk = 0, matchable = 0, upgradedCount = 0;
 
   for (const c of (contentRes.data ?? []) as any[]) {
     if (heroed.has(c.id)) continue;
@@ -129,7 +156,38 @@ async function main(): Promise<void> {
     }
 
     needed++;
-    if (haveRequirement.has(c.id)) { alreadyOk++; continue; }
+
+    const nearestAssetForExisting = matches[0] ? usable.find((a) => a.id === matches[0].assetId) : undefined;
+    const existing = requirementByContent.get(c.id);
+    if (existing) {
+      const isPlaceholder = (existing.notes ?? "").trim() === REPLACEABLE_PLACEHOLDER;
+      if (!isPlaceholder) { alreadyOk++; continue; }
+
+      const upgraded = briefFor(
+        c.title,
+        nearestAssetForExisting
+          ? (nearestAssetForExisting.storagePath.split("/").pop() ?? "").replace(/^[0-9a-f-]{36}-/, "")
+          : null
+      );
+      console.log(`
+  UPGRADE  [${c.status}] ${String(c.title).slice(0, 60)}`);
+      console.log(`           placeholder -> a brief naming the subject and what must not be used`);
+      if (apply) {
+        const { error } = await db
+          .from("media_requirements")
+          .update({ notes: upgraded, updated_at: new Date().toISOString() })
+          .eq("id", existing.id)
+          // Re-checked at write time. If anyone edited those notes between the
+          // read and now, this updates nothing rather than overwriting them.
+          .eq("notes", REPLACEABLE_PLACEHOLDER);
+        if (error) console.error(`           update failed: ${error.message}`);
+        else upgradedCount++;
+      } else {
+        upgradedCount++;
+      }
+      alreadyOk++;
+      continue;
+    }
 
     const nearestAsset = matches[0] ? usable.find((a) => a.id === matches[0].assetId) : undefined;
     const nearest = nearestAsset
@@ -156,6 +214,7 @@ async function main(): Promise<void> {
   console.log(`  articles needing new media       : ${needed}`);
   console.log(`    already had a requirement      : ${alreadyOk}`);
   console.log(`    ${apply ? "opened" : "would open"}                       : ${created}`);
+  console.log(`    ${apply ? "upgraded from placeholder" : "would upgrade"}      : ${upgradedCount}`);
   if (!apply) console.log("\n  REPORT ONLY — re-run with --apply");
 }
 
