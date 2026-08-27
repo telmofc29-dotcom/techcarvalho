@@ -12,6 +12,7 @@ import type { MediaType, MediaRole, MediaSourceType, MediaRightsStatus, MediaBra
 import { explainProvenanceRequirement, stampModificationAssessment } from "@/lib/media/provenance-invariant";
 import { assessDeletion, type MediaDeletionAssessment } from "@/lib/media/deletion-safety";
 import { presetById } from "@/lib/media/classification-presets";
+import { readImageDimensions, isPlausible } from "@/lib/media/image-dimensions";
 import { checkUploadCandidate, isIssuedStoragePath, sanitizeFileName } from "@/lib/media/upload-limits";
 import { getAdminPreviewUrl } from "@/lib/media/admin-preview-url";
 import {
@@ -299,7 +300,33 @@ export async function finaliseMediaUpload(formData: FormData): Promise<BatchUplo
 
   const meta = readMetadata(formData);
   if ("error" in meta) return { id: null, error: meta.error };
-  const payload = stampModificationAssessment(meta.payload, admin.id, new Date().toISOString());
+  let payload = stampModificationAssessment(meta.payload, admin.id, new Date().toISOString());
+
+  // MEASURE ON THE SERVER WHEN THE CLIENT DID NOT.
+  //
+  // The upload form reads naturalWidth/naturalHeight in the browser, so a normal
+  // upload arrives measured. Five assets in production were not: they came from
+  // the Commons import scripts, which insert rows directly and never touch this
+  // form. Two of them were published article heroes, and the Discover audit
+  // could only report them as unmeasurable.
+  //
+  // Measuring here closes every route, because this is the one function that
+  // creates a media_assets row from an uploaded object. The bytes decide; the
+  // filename never does — both of those five were named "1280px-..." and both
+  // turned out to be PORTRAIT, so a filename-derived width would have been
+  // right about the number and wrong about the shape.
+  //
+  // A failure to measure leaves the columns null, exactly as before. An
+  // unmeasured asset is a known gap the audit reports; a wrongly measured one
+  // silences that audit.
+  if (payload.media_type === "image" && (payload.width == null || payload.height == null)) {
+    const { data: blob } = await supabase.storage.from(MEDIA_PRIVATE_BUCKET).download(path);
+    if (blob) {
+      const head = new Uint8Array((await blob.arrayBuffer()).slice(0, 65536));
+      const dims = readImageDimensions(head);
+      if (isPlausible(dims)) payload = { ...payload, width: dims.width, height: dims.height };
+    }
+  }
 
   const { data, error: insertError } = await supabase
     .from("media_assets")
