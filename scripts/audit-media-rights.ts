@@ -33,7 +33,28 @@ import { licenceUrl } from "../src/lib/media/licence-links.ts";
 const env = Object.fromEntries(fs.readFileSync(new URL("../.env.local", import.meta.url),"utf8").split(/\r?\n/).filter(l=>l.includes("=")).map(l=>{const i=l.indexOf("=");return [l.slice(0,i).trim(),l.slice(i+1).trim()];}));
 async function main() {
   const sb = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
-  await sb.auth.signInWithPassword({ email:"telmo.f.c29@gmail.com", password:"TeandIn0729!!" });
+  // CREDENTIALS COME FROM THE ENVIRONMENT, NEVER FROM THIS FILE.
+  //
+  // This line used to carry a real production email and password as string
+  // literals, and it was committed. Every other script in scripts/ already read
+  // process.env; this one was the single exception, which is how it survived —
+  // nothing looked wrong at the call sites around it.
+  //
+  // It fails LOUDLY rather than falling back to anon: a rights audit that
+  // silently ran as an unauthenticated user would read zero rows through RLS
+  // and report PASS, which is the exact failure mode the comment below this
+  // block exists to prevent.
+  const email = process.env.TC_ADMIN_EMAIL;
+  const password = process.env.TC_ADMIN_PASSWORD;
+  if (!email || !password) {
+    throw new Error(
+      "TC_ADMIN_EMAIL and TC_ADMIN_PASSWORD must be set for this invocation " +
+        "(e.g. TC_ADMIN_EMAIL=... TC_ADMIN_PASSWORD=... npx tsx scripts/audit-media-rights.ts). " +
+        "Never hardcode them here."
+    );
+  }
+  const { error: authError } = await sb.auth.signInWithPassword({ email, password });
+  if (authError) throw new Error(`Admin sign-in failed: ${authError.message}`);
   // Every read checks its error explicitly. RLS denies by returning ZERO ROWS
   // rather than an error, so an empty result and a failed query look identical
   // unless you look — an audit that silently read nothing would report PASS.
